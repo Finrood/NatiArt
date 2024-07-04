@@ -5,11 +5,11 @@
 
 version: 2
 updates:
-  - package-ecosystem: "npm"   # Assuming the front-end uses npm for dependency management
-    directory: "/front"        # Path to the front-end directory
+  - package-ecosystem: "npm"    # Assuming the front-end uses npm for dependency management
+    directory: "/frontend"         # Path to the front-end directory
     schedule:
-      interval: "daily"        # Frequency of dependency updates (e.g., daily, weekly)
-  - package-ecosystem: "maven" # Assuming the server uses Maven for dependency management
-    directory: "/server"       # Path to the server directory
+      interval: "daily"         # Frequency of dependency updates (e.g., daily, weekly)
+  - package-ecosystem: "gradle" # Change Maven to Gradle for the server dependency management
+    directory: "/backend"        # Path to the server directory
     schedule:
-      interval: "daily"        # Frequency of dependency updates (e.g., daily, weekly)
+      interval: "daily"         # Frequency of dependency updates (e.g., daily, weekly)
