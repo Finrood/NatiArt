@@ -1,0 +1,165 @@
+<div class="min-h-screen bg-[#FDF5E6] flex items-center justify-center px-4 sm:px-6 lg:px-8">
+  <div class="w-full max-w-xs sm:max-w-sm md:max-w-md space-y-6 sm:space-y-8" [@fadeIn]>
+    <div>
+      <h1 class="mt-6 text-center text-2xl sm:text-3xl md:text-4xl font-light text-[#4A4A4A]">
+        Join Porcelain Elegance
+      </h1>
+      <p class="mt-2 text-center text-xs sm:text-sm md:text-base text-[#888]">
+        Create your account in two simple steps
+      </p>
+    </div>
+
+    <!-- Step indicator -->
+    <div class="flex justify-center items-center space-x-4">
+      <div class="w-8 h-8 rounded-full bg-[#D4A59A] text-white flex items-center justify-center"
+           [ngClass]="{'bg-[#D4A59A]': currentStep === 1, 'bg-[#C89F94]': currentStep === 2}">
+        1
+      </div>
+      <div class="w-16 h-1 bg-[#C89F94]" [ngClass]="{'bg-[#D4A59A]': currentStep === 2}"></div>
+      <div class="w-8 h-8 rounded-full bg-[#C89F94] text-white flex items-center justify-center"
+           [ngClass]="{'bg-[#D4A59A]': currentStep === 2}">
+        2
+      </div>
+    </div>
+
+    <form [formGroup]="signupForm" (ngSubmit)="onSubmit()" class="mt-6 sm:mt-8 space-y-4 sm:space-y-6">
+      <!-- Step 1: Email and Password -->
+      <div *ngIf="currentStep === 1" [@slideInRight] formGroupName="credentials">
+        <div class="rounded-md shadow-sm -space-y-px">
+          <div>
+            <label for="email" class="sr-only">Email address</label>
+            <input id="email" formControlName="username" type="email" required
+                   class="appearance-none rounded-none relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] rounded-t-md focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
+                   placeholder="Email address"
+                   [ngClass]="{'border-red-500': signupForm.get('credentials.username')?.invalid && signupForm.get('credentials.username')?.touched}"
+                   aria-describedby="email-error">
+          </div>
+          <div *ngIf="signupForm.get('credentials.username')?.invalid && signupForm.get('credentials.username')?.touched" id="email-error" class="text-red-500 text-xs sm:text-sm mt-1 ml-1">
+            Please enter a valid email address.
+          </div>
+          <div>
+            <label for="password" class="sr-only">Password</label>
+            <input id="password" formControlName="password" type="password" required
+                   class="appearance-none rounded-none relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
+                   placeholder="Password"
+                   [ngClass]="{'border-red-500': signupForm.get('credentials.password')?.invalid && signupForm.get('credentials.password')?.touched}"
+                   aria-describedby="password-error">
+          </div>
+          <div>
+            <label for="confirmPassword" class="sr-only">Confirm Password</label>
+            <input id="confirmPassword" formControlName="confirmPassword" type="password" required
+                   class="appearance-none rounded-none relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] rounded-b-md focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
+                   placeholder="Confirm Password"
+                   [ngClass]="{'border-red-500': signupForm.get('credentials.confirmPassword')?.invalid && signupForm.get('credentials.confirmPassword')?.touched}"
+                   aria-describedby="confirm-password-error">
+          </div>
+          <div *ngIf="signupForm.get('credentials.password')?.invalid && signupForm.get('credentials.password')?.touched" id="password-error" class="text-red-500 text-xs sm:text-sm mt-1 ml-1">
+            Password is required and must be at least 6 characters long.
+          </div>
+          <div *ngIf="signupForm.get('credentials')?.hasError('passwordMismatch') && signupForm.get('credentials.confirmPassword')?.touched" id="confirm-password-error" class="text-red-500 text-xs sm:text-sm mt-1 ml-1">
+            Passwords do not match.
+          </div>
+        </div>
+
+        <div>
+          <button type="button" (click)="onNextStep()"
+                  [disabled]="signupForm.get('credentials')?.invalid"
+                  class="group relative w-full flex justify-center py-2 sm:py-3 px-4 border border-transparent text-sm sm:text-base font-medium rounded-md text-white bg-[#D4A59A] hover:bg-[#C89F94] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#D4A59A] transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+            Next
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: Profile Information -->
+      <div *ngIf="currentStep === 2" [@slideInRight] formGroupName="profile">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="firstname" class="sr-only">First Name</label>
+            <input id="firstname" formControlName="firstname" type="text" required
+                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
+                   placeholder="First Name">
+          </div>
+          <div>
+            <label for="lastname" class="sr-only">Last Name</label>
+            <input id="lastname" formControlName="lastname" type="text" required
+                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
+                   placeholder="Last Name">
+          </div>
+          <div>
+            <label for="phone" class="sr-only">Phone</label>
+            <input id="phone" formControlName="phone" type="tel"
+                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
+                   placeholder="Phone">
+          </div>
+          <div>
+            <label for="country" class="sr-only">Country</label>
+            <input readonly id="country" formControlName="country" type="text"
+                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
+                   placeholder="Country">
+          </div>
+          <div>
+            <label for="state" class="sr-only">State</label>
+            <input id="state" formControlName="state" type="text"
+                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
+                   placeholder="State">
+          </div>
+          <div>
+            <label for="city" class="sr-only">City</label>
+            <input id="city" formControlName="city" type="text"
+                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
+                   placeholder="City">
+          </div>
+          <div>
+            <label for="zipCode" class="sr-only">Zip Code</label>
+            <input id="zipCode" formControlName="zipCode" type="text"
+                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
+                   placeholder="CEP"
+                   (input)="onZipCodeChange()">
+          </div>
+
+          <div *ngIf="isLoadingAddress" class="text-center mt-4 sm:col-span-2">
+            <div class="spinner"></div>
+            <p class="mt-2 text-sm text-[#888]">Loading address...</p>
+          </div>
+
+          <div class="sm:col-span-2">
+            <label for="street" class="sr-only">Street</label>
+            <input id="street" formControlName="street" type="text"
+                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
+                   placeholder="Street">
+          </div>
+          <div class="sm:col-span-2">
+            <label for="complement" class="sr-only">Address Complement</label>
+            <input id="complement" formControlName="complement" type="text"
+                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
+                   placeholder="Address Complement">
+          </div>
+        </div>
+
+        <div class="flex justify-between mt-6">
+          <button type="button"
+                  (click)="onPreviousStep()"
+                  class="group relative flex justify-center py-2 sm:py-3 px-4 border border-[#D4A59A] text-sm sm:text-base font-medium rounded-md text-[#D4A59A] bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#D4A59A] transition-colors duration-300">
+            Previous
+          </button>
+          <button type="submit"
+                  [disabled]="signupForm.invalid"
+                  class="group relative flex justify-center py-2 sm:py-3 px-4 border border-transparent text-sm sm:text-base font-medium rounded-md text-white bg-[#D4A59A] hover:bg-[#C89F94] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#D4A59A] transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+            Sign Up
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <div *ngIf="errorMessage" class="mt-3 text-center text-xs sm:text-sm text-red-600" role="alert">
+      {{ errorMessage }}
+    </div>
+
+    <p class="mt-4 sm:mt-6 text-center text-xs sm:text-sm text-[#888]">
+      Already have an account?
+      <a routerLink="/login" class="font-medium text-[#D4A59A] hover:text-[#C89F94] transition-colors duration-300 focus:outline-none focus:underline">
+        Sign in
+      </a>
+    </p>
+  </div>
+</div>

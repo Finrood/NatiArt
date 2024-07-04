@@ -1,0 +1,15 @@
+# To get started with Dependabot version updates, you'll need to specify which
+# package ecosystems to update and where the package manifests are located.
+# Please see the documentation for all configuration options:
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  - package-ecosystem: "npm"   # Assuming the front-end uses npm for dependency management
+    directory: "/front"        # Path to the front-end directory
+    schedule:
+      interval: "daily"        # Frequency of dependency updates (e.g., daily, weekly)
+  - package-ecosystem: "maven" # Assuming the server uses Maven for dependency management
+    directory: "/server"       # Path to the server directory
+    schedule:
+      interval: "daily"        # Frequency of dependency updates (e.g., daily, weekly)
