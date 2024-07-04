@@ -7,11 +7,11 @@ import java.util.List;
 import java.util.Optional;
 
 public interface CategoryManager {
-    Optional<Category> getCategory(String id);
-    Category getCategoryOrDie(String id);
+    Optional<Category> getCategory(String categoryId);
+    Category getCategoryOrDie(String categoryId);
     List<Category> getCategories();
     Category createCategory(CategoryDto categoryDto);
     Category updateCategory(CategoryDto categoryDto);
-    Category hideCategory(String id);
-    void deleteCategory(String id);
+    Category inverseVisibility(String categoryId);
+    void deleteCategory(String categoryId);
 }

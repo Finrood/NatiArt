@@ -41,9 +41,9 @@ public class CategoryController {
         return CategoryDto.from(categoryManager.updateCategory(categoryDto));
     }
 
-    @DeleteMapping("/categories/{categoryId}/hide")
-    public void hideCategory(@PathVariable String categoryId) {
-        categoryManager.hideCategory(categoryId);
+    @PatchMapping("/categories/{categoryId}/visibility/inverse")
+    public CategoryDto hideCategory(@PathVariable String categoryId) {
+        return CategoryDto.from(categoryManager.inverseVisibility(categoryId));
     }
 
     @DeleteMapping("/categories/{categoryId}")

@@ -1,10 +1,10 @@
-INSERT INTO public.category (id, version, label, description, created_at, updated_at)
+INSERT INTO public.category (id, version, label, description, created_at, updated_at, active)
 VALUES
-    ('b5b8e8c1-2dbd-4c2b-8e18-1a6e6d8b97f1', 0, 'Tableware', 'Porcelain items used for setting a table for dining, including plates, bowls, and cups.', '2024-07-03T00:00:00Z', '2024-07-03T00:00:00Z'),
-    ('c3b1a76d-36d7-4a0e-8f30-5eae61a4c6b0', 0, 'Decorative', 'Porcelain items that serve decorative purposes, such as vases, figurines, and wall art.', '2024-07-03T00:00:00Z', '2024-07-03T00:00:00Z'),
-    ('d1c3e4b2-4942-4b9c-b5d6-8729df9dca38', 0, 'Tea Sets', 'Complete sets of porcelain items used for serving tea, including teapots, cups, and saucers.', '2024-07-03T00:00:00Z', '2024-07-03T00:00:00Z'),
-    ('e6d4f5a7-5a8b-4c1b-bc5a-1e3e3f7a1b2d', 0, 'Bathroom Accessories', 'Porcelain accessories designed for bathroom use, such as soap dishes, toothbrush holders, and lotion dispensers.', '2024-07-03T00:00:00Z', '2024-07-03T00:00:00Z'),
-    ('f2b9c5d1-8d4f-4b1c-8d6f-3e4a5f8b6a1e', 0, 'Kitchenware', 'Porcelain items used in the kitchen for food preparation and storage, including mixing bowls, canisters, and jars.', '2024-07-03T00:00:00Z', '2024-07-03T00:00:00Z');
+    ('b5b8e8c1-2dbd-4c2b-8e18-1a6e6d8b97f1', 0, 'Tableware', 'Porcelain items used for setting a table for dining, including plates, bowls, and cups.', '2024-07-03T00:00:00Z', '2024-07-03T00:00:00Z', true),
+    ('c3b1a76d-36d7-4a0e-8f30-5eae61a4c6b0', 0, 'Decorative', 'Porcelain items that serve decorative purposes, such as vases, figurines, and wall art.', '2024-07-03T00:00:00Z', '2024-07-03T00:00:00Z', true),
+    ('d1c3e4b2-4942-4b9c-b5d6-8729df9dca38', 0, 'Tea Sets', 'Complete sets of porcelain items used for serving tea, including teapots, cups, and saucers.', '2024-07-03T00:00:00Z', '2024-07-03T00:00:00Z', true),
+    ('e6d4f5a7-5a8b-4c1b-bc5a-1e3e3f7a1b2d', 0, 'Bathroom Accessories', 'Porcelain accessories designed for bathroom use, such as soap dishes, toothbrush holders, and lotion dispensers.', '2024-07-03T00:00:00Z', '2024-07-03T00:00:00Z', true),
+    ('f2b9c5d1-8d4f-4b1c-8d6f-3e4a5f8b6a1e', 0, 'Kitchenware', 'Porcelain items used in the kitchen for food preparation and storage, including mixing bowls, canisters, and jars.', '2024-07-03T00:00:00Z', '2024-07-03T00:00:00Z', false);
 
 INSERT INTO public.product (id, version, label, description, original_price, marked_price, stock_quantity, category_id, tags, created_at, updated_at)
 VALUES

@@ -22,6 +22,8 @@ node_modules/
 *.iml
 *.ipr
 *.gradle/
+*.angular
+*/.idea
 
 ### NetBeans ###
 /nbproject/private/
@@ -29,7 +31,6 @@ node_modules/
 /dist/
 /nbdist/
 /.nb-gradle/
-build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 

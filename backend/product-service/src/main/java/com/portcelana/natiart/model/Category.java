@@ -23,6 +23,9 @@ public class Category {
 
     private String description;
 
+    @Column(nullable = false)
+    private boolean active;
+
     @CreatedDate
     @Column(updatable = false)
     private Instant createdAt;
@@ -36,6 +39,7 @@ public class Category {
     public Category(String label) {
         this.id = UUID.randomUUID().toString();
         this.label = label;
+        this.active = true;
     }
 
     public String getId() {
@@ -57,6 +61,15 @@ public class Category {
 
     public Category setDescription(String description) {
         this.description = description;
+        return this;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public Category setActive(boolean active) {
+        this.active = active;
         return this;
     }
 

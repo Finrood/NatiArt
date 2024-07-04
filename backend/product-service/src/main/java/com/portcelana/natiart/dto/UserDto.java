@@ -5,6 +5,9 @@ public class UserDto {
     private String username;
     private String role;
 
+    public UserDto() {
+    }
+
     public String getId() {
         return id;
     }

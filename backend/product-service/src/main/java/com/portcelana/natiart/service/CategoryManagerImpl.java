@@ -18,14 +18,14 @@ public class CategoryManagerImpl implements CategoryManager{
     }
 
     @Override
-    public Optional<Category> getCategory(String id) {
-        return categoryRepository.findById(id);
+    public Optional<Category> getCategory(String categoryId) {
+        return categoryRepository.findById(categoryId);
     }
 
     @Override
-    public Category getCategoryOrDie(String id) {
-        return getCategory(id)
-                .orElseThrow(() -> new ResourceNotFoundException(String.format("Category with id %s not found", id)));
+    public Category getCategoryOrDie(String categoryId) {
+        return getCategory(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException(String.format("Category with id %s not found", categoryId)));
     }
 
     @Override
@@ -51,14 +51,15 @@ public class CategoryManagerImpl implements CategoryManager{
         return categoryRepository.save(category);
     }
 
-    //TODO Implements hidden/visible for model Category
     @Override
-    public Category hideCategory(String id) {
-        return null;
+    public Category inverseVisibility(String categoryId) {
+        final Category category = getCategoryOrDie(categoryId);
+        category.setActive(!category.isActive());
+        return categoryRepository.save(category);
     }
 
     @Override
-    public void deleteCategory(String id) {
-        categoryRepository.deleteById(id);
+    public void deleteCategory(String categoryId) {
+        categoryRepository.deleteById(categoryId);
     }
 }

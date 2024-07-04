@@ -6,12 +6,17 @@ public class CategoryDto {
     private String id;
     private String label;
     private String description;
+    private boolean active;
 
     public static CategoryDto from(Category category) {
         if (category == null) return null;
         return new CategoryDto(category.getLabel())
                 .setId(category.getId())
-                .setDescription(category.getDescription());
+                .setDescription(category.getDescription())
+                .setActive(category.isActive());
+    }
+
+    public CategoryDto() {
     }
 
     public CategoryDto(String label) {
@@ -42,6 +47,15 @@ public class CategoryDto {
 
     public CategoryDto setDescription(String description) {
         this.description = description;
+        return this;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public CategoryDto setActive(boolean active) {
+        this.active = active;
         return this;
     }
 
