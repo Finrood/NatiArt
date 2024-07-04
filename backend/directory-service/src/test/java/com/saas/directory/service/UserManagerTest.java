@@ -5,8 +5,12 @@ import com.saas.directory.controller.helper.ResourceNotFoundException;
 import com.saas.directory.dto.ProfileDto;
 import com.saas.directory.dto.UserRegistrationDto;
 import com.saas.directory.model.Profile;
+import com.saas.directory.model.Role;
+import com.saas.directory.model.RoleName;
 import com.saas.directory.model.User;
+import com.saas.directory.repository.RoleRepository;
 import com.saas.directory.repository.UserRepository;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 
+import javax.management.relation.RoleNotFoundException;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -24,6 +29,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class UserManagerTest {
     private final UserRepository userRepository = mock(UserRepository.class);
+    private final RoleRepository roleRepository  = mock(RoleRepository.class);
     private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
     private final ProfileManager profileManager = mock(ProfileManager.class);
 
@@ -33,13 +39,14 @@ public class UserManagerTest {
     public void initContext() {
          userManager = new UserManager(
                  userRepository,
+                 roleRepository,
                  profileManager,
                  passwordEncoder
          );
     }
 
     @Test
-    public void test_create_new_user_with_unique_username_and_password() {
+    public void test_create_new_user_with_unique_username_and_password() throws RoleNotFoundException {
         // Prepare test data
         final ProfileDto profileDto = new ProfileDto();
         profileDto.setFirstname("John");
@@ -61,6 +68,7 @@ public class UserManagerTest {
                 .setPhone("+1234567890")
                 .setComplement("Apt 101");
         when(profileManager.createProfile(any(User.class), any(ProfileDto.class))).thenReturn(profile);
+        when(roleRepository.findRoleByLabel(RoleName.USER)).thenReturn(Optional.of(new Role(RoleName.USER)));
 
         // Perform the registration
         final User result = userManager.registerUser(userRegistrationDto);
@@ -92,7 +100,7 @@ public class UserManagerTest {
     }
 
     @Test
-    public void test_register_new_user_with_unique_username_and_password() {
+    public void test_register_new_user_with_unique_username_and_password() throws RoleNotFoundException {
         // Prepare test data
         final ProfileDto profileDto = new ProfileDto();
         profileDto.setFirstname("John");
@@ -114,6 +122,7 @@ public class UserManagerTest {
                 .setPhone("+1234567890")
                 .setComplement("Apt 101");
         when(profileManager.createProfile(any(User.class), any(ProfileDto.class))).thenReturn(profile);
+        when(roleRepository.findRoleByLabel(RoleName.USER)).thenReturn(Optional.of(new Role(RoleName.USER)));
 
         // Perform the registration
         final User result = userManager.registerUser(userRegistrationDto);
@@ -176,13 +185,14 @@ public class UserManagerTest {
     }
 
     @Test
-    public void test_register_user_with_null_profile() {
+    public void test_register_user_with_null_profile() throws RoleNotFoundException {
         // Prepare test data
         final UserRegistrationDto userRegistrationDto = new UserRegistrationDto("new_username", "password", null);
 
         final User user = new User("new_username", "password");
         when(userRepository.existsUserByUsernameIgnoreCase("new_username")).thenReturn(false);
         when(userRepository.save(any())).thenReturn(user);
+        when(roleRepository.findRoleByLabel(RoleName.USER)).thenReturn(Optional.of(new Role(RoleName.USER)));
 
         // Perform the registration
         final User result = userManager.registerUser(userRegistrationDto);
@@ -193,7 +203,7 @@ public class UserManagerTest {
     }
 
     @Test
-    public void test_register_user_with_empty_profile() {
+    public void test_register_user_with_empty_profile() throws RoleNotFoundException {
         // Prepare test data
         final ProfileDto profileDto = new ProfileDto();
 
@@ -206,6 +216,7 @@ public class UserManagerTest {
                 .setPhone("")
                 .setComplement("");
         when(profileManager.createProfile(any(User.class), any(ProfileDto.class))).thenReturn(profile);
+        when(roleRepository.findRoleByLabel(RoleName.USER)).thenReturn(Optional.of(new Role(RoleName.USER)));
 
         // Perform the registration
         final User result = userManager.registerUser(userRegistrationDto);

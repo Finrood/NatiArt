@@ -1,0 +1,13 @@
+rootProject.name = "NatiArt"
+
+include("backend")
+include("backend:directory-service")
+include("backend:product-service")
+include("frontend")
+include("frontend:natiart-app")
+
+project(":backend").projectDir = file("backend")
+project(":backend:directory-service").projectDir = file("backend/directory-service")
+project(":backend:product-service").projectDir = file("backend/product-service")
+project(":frontend").projectDir = file("frontend")
+project(":frontend:natiart-app").projectDir = file("frontend/natiart-app")
