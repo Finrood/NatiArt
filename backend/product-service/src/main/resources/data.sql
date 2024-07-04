@@ -1,4 +1,4 @@
-INSERT INTO Category (id, version, label, description, created_at, updated_at)
+INSERT INTO public.category (id, version, label, description, created_at, updated_at)
 VALUES
     ('b5b8e8c1-2dbd-4c2b-8e18-1a6e6d8b97f1', 0, 'Tableware', 'Porcelain items used for setting a table for dining, including plates, bowls, and cups.', '2024-07-03T00:00:00Z', '2024-07-03T00:00:00Z'),
     ('c3b1a76d-36d7-4a0e-8f30-5eae61a4c6b0', 0, 'Decorative', 'Porcelain items that serve decorative purposes, such as vases, figurines, and wall art.', '2024-07-03T00:00:00Z', '2024-07-03T00:00:00Z'),
@@ -6,7 +6,7 @@ VALUES
     ('e6d4f5a7-5a8b-4c1b-bc5a-1e3e3f7a1b2d', 0, 'Bathroom Accessories', 'Porcelain accessories designed for bathroom use, such as soap dishes, toothbrush holders, and lotion dispensers.', '2024-07-03T00:00:00Z', '2024-07-03T00:00:00Z'),
     ('f2b9c5d1-8d4f-4b1c-8d6f-3e4a5f8b6a1e', 0, 'Kitchenware', 'Porcelain items used in the kitchen for food preparation and storage, including mixing bowls, canisters, and jars.', '2024-07-03T00:00:00Z', '2024-07-03T00:00:00Z');
 
-INSERT INTO Product (id, version, label, description, original_price, marked_price, stock_quantity, category_id, tags, created_at, updated_at)
+INSERT INTO public.product (id, version, label, description, original_price, marked_price, stock_quantity, category_id, tags, created_at, updated_at)
 VALUES
     ('1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p', 0, 'Porcelain Dinner Plate', 'Elegant porcelain dinner plate perfect for any occasion.', 15.99, 13.99, 100, 'b5b8e8c1-2dbd-4c2b-8e18-1a6e6d8b97f1', '["dinnerware", "plate", "elegant"]', '2024-07-03T00:00:00Z', '2024-07-03T00:00:00Z'),
     ('2b3c4d5e-6f7g-8h9i-0j1k-2l3m4n5o6p7q', 0, 'Porcelain Salad Bowl', 'Stylish and durable salad bowl for your table setting.', 12.99, 11.49, 150, 'b5b8e8c1-2dbd-4c2b-8e18-1a6e6d8b97f1', '["salad", "bowl", "tableware"]', '2024-07-03T00:00:00Z', '2024-07-03T00:00:00Z'),

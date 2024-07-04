@@ -10,13 +10,11 @@ import com.saas.directory.model.RoleName;
 import com.saas.directory.model.User;
 import com.saas.directory.repository.RoleRepository;
 import com.saas.directory.repository.UserRepository;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
 
 import javax.management.relation.RoleNotFoundException;
 import java.util.Optional;

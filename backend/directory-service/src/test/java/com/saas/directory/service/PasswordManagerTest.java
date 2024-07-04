@@ -2,26 +2,22 @@ package com.saas.directory.service;
 
 import com.saas.directory.configuration.UserAuthenticationProvider;
 import com.saas.directory.controller.helper.ResourceNotFoundException;
-import com.saas.directory.dto.CredentialsDto;
 import com.saas.directory.dto.ResetPasswordDto;
-import com.saas.directory.dto.UserAuthDto;
 import com.saas.directory.model.Token;
 import com.saas.directory.model.TokenType;
 import com.saas.directory.model.User;
-import com.saas.directory.repository.TokenRepository;
 import com.saas.directory.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Instant;
 import java.util.Optional;
-import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)

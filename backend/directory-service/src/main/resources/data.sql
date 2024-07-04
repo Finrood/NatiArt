@@ -1,8 +1,8 @@
-INSERT INTO Role (id, version, label, description, created_at, updated_at, active, deactivated_at) VALUES
+INSERT INTO public.role (id, version, label, description, created_at, updated_at, active, deactivated_at) VALUES
 ('a1b2c3d4-e5f6-7g8h-9i0j-k1l2m3n4o5p6', 0, 'USER', 'Standard user role', '2024-07-01T00:00:00Z', '2024-07-01T00:00:00Z', true, NULL),
 ('q7r8s9t0-u1v2-w3x4-y5z6-a7b8c9d0e1f2', 0, 'ADMIN', 'Administrator role', '2024-07-01T00:00:00Z', '2024-07-01T00:00:00Z', true, NULL);
 
-INSERT INTO users (id, version, username, password_hash, email_confirmed, created_at, updated_at, active, deactivated_at, role_id) VALUES
+INSERT INTO public.users (id, version, username, password_hash, email_confirmed, created_at, updated_at, active, deactivated_at, role_id) VALUES
          (
              '789e4567-e89b-12d3-a456-426614174000', -- id
              1,                                      -- version

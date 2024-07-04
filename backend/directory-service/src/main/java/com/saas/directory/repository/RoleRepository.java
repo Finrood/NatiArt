@@ -2,7 +2,6 @@ package com.saas.directory.repository;
 
 import com.saas.directory.model.Role;
 import com.saas.directory.model.RoleName;
-import com.saas.directory.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
