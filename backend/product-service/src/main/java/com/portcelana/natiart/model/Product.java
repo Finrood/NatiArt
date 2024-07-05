@@ -41,7 +41,7 @@ public class Product {
 
     @ElementCollection
     @CollectionTable(name = "product_images", joinColumns = @JoinColumn(name = "product_id"))
-    private List<String> images;
+    private List<String> images = new ArrayList<>();
 
     @CreatedDate
     @Column(updatable = false)

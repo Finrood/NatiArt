@@ -4,6 +4,7 @@ import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Product;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -17,7 +18,7 @@ public class ProductDto {
     private int stockQuantity;
     private Category category;
     private Set<String> tags = new HashSet<>();
-    private List<String> images;
+    private List<String> images = new ArrayList<>();
 
     public static ProductDto from(Product product) {
         if (product == null) return null;
