@@ -22,6 +22,7 @@ node_modules/
 *.iml
 *.ipr
 *.gradle/
+*/.gradle/
 *.angular
 */.idea
 
