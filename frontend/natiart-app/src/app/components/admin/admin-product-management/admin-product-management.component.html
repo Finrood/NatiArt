@@ -1,0 +1,107 @@
+<div class="flex justify-between items-center">
+  <h2 class="text-2xl sm:text-3xl font-light">Products</h2>
+  <button (click)="openModal()"
+          class="bg-[#D4A59A] text-white px-4 py-2 rounded-full hover:bg-[#C89F94] transition-colors text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#D4A59A] focus:ring-opacity-50">
+    Add New Product
+  </button>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+  <div *ngFor="let product of products()" class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+    <div class="bg-[#F3E5D8] h-48 sm:h-64">
+      <img *ngIf="product.images && product.images.length > 0" [src]="product.images[0]" alt="{{ product.label }}" class="w-full h-full object-cover">
+    </div>
+    <div class="p-6">
+      <h3 class="text-xl font-semibold mb-2">{{ product.label }}</h3>
+      <p class="text-gray-600 mb-4">{{ product.description }}</p>
+      <div class="flex justify-between items-center">
+        <span class="text-lg font-bold text-[#D4A59A]">${{ product.markedPrice }}</span>
+        <span class="text-sm text-gray-500 line-through">${{ product.originalPrice }}</span>
+      </div>
+      <div class="mt-4 flex justify-between">
+        <button (click)="editProduct(product)"
+                class="text-[#D4A59A] border border-[#D4A59A] px-3 py-1 rounded-full hover:bg-[#D4A59A] hover:text-white transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A59A] focus:ring-opacity-50">
+          Edit
+        </button>
+        <button (click)="deleteProduct(product.id)"
+                class="text-red-500 border border-red-500 px-3 py-1 rounded-full hover:bg-red-500 hover:text-white transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50">
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Product Modal -->
+<div id="productModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+  <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+    <h3 class="text-2xl mb-4 font-light">{{ isEditingProduct() ? 'Edit Product' : 'Add Product' }}</h3>
+    <form (ngSubmit)="submitForm()">
+      <div class="mb-4">
+        <label for="productLabel" class="block text-sm font-medium text-gray-700 mb-1">Label</label>
+        <input type="text" id="productLabel" [(ngModel)]="newProduct().label" name="productLabel"
+               class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#D4A59A] focus:border-[#D4A59A] sm:text-sm">
+      </div>
+      <div class="mb-4">
+        <label for="productDescription" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <textarea id="productDescription" [(ngModel)]="newProduct().description" name="productDescription" rows="3"
+                  class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#D4A59A] focus:border-[#D4A59A] sm:text-sm"></textarea>
+      </div>
+      <div class="mb-4">
+        <label for="productOriginalPrice" class="block text-sm font-medium text-gray-700 mb-1">Original Price</label>
+        <input type="number" id="productOriginalPrice" [(ngModel)]="newProduct().originalPrice" name="productOriginalPrice"
+               class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#D4A59A] focus:border-[#D4A59A] sm:text-sm">
+      </div>
+      <div class="mb-4">
+        <label for="productMarkedPrice" class="block text-sm font-medium text-gray-700 mb-1">Marked Price</label>
+        <input type="number" id="productMarkedPrice" [(ngModel)]="newProduct().markedPrice" name="productMarkedPrice"
+               class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#D4A59A] focus:border-[#D4A59A] sm:text-sm">
+      </div>
+      <div class="mb-4">
+        <label for="productStockQuantity" class="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
+        <input type="number" id="productStockQuantity" [(ngModel)]="newProduct().stockQuantity" name="productStockQuantity"
+               class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#D4A59A] focus:border-[#D4A59A] sm:text-sm">
+      </div>
+      <div class="mb-4">
+        <label for="productCategory" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+        <select id="productCategory" [(ngModel)]="newProduct().categoryId" name="productCategory"
+                class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#D4A59A] focus:border-[#D4A59A] sm:text-sm">
+          <option *ngFor="let category of categories()" [ngValue]="category.id">{{ category.label }}</option>
+        </select>
+      </div>
+      <div class="mb-4">
+        <label for="productTags" class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+        <input type="text" id="productTags" [(ngModel)]="newProduct().tags" name="productTags"
+               class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#D4A59A] focus:border-[#D4A59A] sm:text-sm"
+               placeholder="Enter tags separated by commas">
+      </div>
+      <div class="mb-4">
+        <label for="productImages" class="block text-sm font-medium text-gray-700 mb-1">Images</label>
+        <input type="file" id="productImages" (change)="onFileSelected($event)" multiple accept="image/*"
+               class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#D4A59A] focus:border-[#D4A59A] sm:text-sm">
+
+      </div>
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Image Previews</label>
+        <div class="grid grid-cols-3 gap-2">
+          <div *ngFor="let preview of imagePreviews()" class="relative">
+            <img [src]="preview" alt="Image preview" class="w-full h-full object-cover rounded-md">
+            <button type="button" (click)="removeImage(imagePreviews().indexOf(preview))"
+                    class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1">
+              &times;
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end space-x-2">
+        <button type="button" (click)="closeModal()"
+                class="bg-gray-300 text-gray-700 px-4 py-2 rounded-full hover:bg-gray-400 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50">
+          Cancel
+        </button>
+        <button type="submit"
+                class="bg-[#D4A59A] text-white px-4 py-2 rounded-full hover:bg-[#C89F94] transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A59A] focus:ring-opacity-50">
+          {{ isEditingProduct() ? 'Update' : 'Add' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

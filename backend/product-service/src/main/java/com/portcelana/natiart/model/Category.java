@@ -6,7 +6,9 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -22,6 +24,9 @@ public class Category {
     private String label;
 
     private String description;
+
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private final Set<Product> products = new HashSet<>();
 
     @Column(nullable = false)
     private boolean active;
@@ -62,6 +67,10 @@ public class Category {
     public Category setDescription(String description) {
         this.description = description;
         return this;
+    }
+
+    public Set<Product> getProducts() {
+        return products;
     }
 
     public boolean isActive() {

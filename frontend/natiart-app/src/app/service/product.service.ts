@@ -4,6 +4,7 @@ import {Router} from "@angular/router";
 import {Observable} from "rxjs";
 import {TokenService} from "./token.service";
 import {Product} from "../models/product.model";
+import {ProductRequest} from "../models/ProductRequest";
 
 @Injectable({
   providedIn: 'root'
@@ -24,7 +25,7 @@ export class ProductService {
     return this.http.get<any>(this.apiUrl, { headers });
   }
 
-  addProduct(newProduct: Partial<Product>): Observable<any> {
+  addProduct(newProduct: FormData): Observable<any> {
     const headers = this.getHeaders();
     return this.http.post<any>(`${this.apiUrl}/create`, newProduct, { headers });
   }

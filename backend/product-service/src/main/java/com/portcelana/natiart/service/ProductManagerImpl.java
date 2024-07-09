@@ -13,9 +13,12 @@ import java.util.Optional;
 @Service
 public class ProductManagerImpl implements ProductManager {
     private final ProductRepository productRepository;
+    private final CategoryManager categoryManager;
 
-    public ProductManagerImpl(ProductRepository productRepository) {
+    public ProductManagerImpl(ProductRepository productRepository,
+                              CategoryManager categoryManager) {
         this.productRepository = productRepository;
+        this.categoryManager = categoryManager;
     }
 
     @Override
@@ -41,9 +44,10 @@ public class ProductManagerImpl implements ProductManager {
 
     @Override
     public Product createProduct(ProductDto productDto) {
+        final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
         final Product product = new Product(productDto.getLabel(), productDto.getOriginalPrice())
                 .setDescription(productDto.getDescription())
-                .setCategory(productDto.getCategory())
+                .setCategory(category)
                 .setMarkedPrice(productDto.getMarkedPrice())
                 .setImages(productDto.getImages())
                 .setStockQuantity(productDto.getStockQuantity())
@@ -53,10 +57,12 @@ public class ProductManagerImpl implements ProductManager {
 
     @Override
     public Product updateProduct(ProductDto productDto) {
+        final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
+
         final Product product = getProductOrDie(productDto.getId())
                 .setLabel(productDto.getLabel())
                 .setDescription(productDto.getDescription())
-                .setCategory(productDto.getCategory())
+                .setCategory(category)
                 .setOriginalPrice(productDto.getOriginalPrice())
                 .setMarkedPrice(productDto.getMarkedPrice())
                 .setImages(productDto.getImages())

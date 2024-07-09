@@ -9,16 +9,16 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class ProductDto {
-    private String id;
-    private String label;
-    private String description;
-    private BigDecimal originalPrice;
-    private BigDecimal markedPrice;
-    private int stockQuantity;
-    private Category category;
-    private Set<String> tags = new HashSet<>();
-    private List<String> images = new ArrayList<>();
+    public class ProductDto {
+        private String id;
+        private String label;
+        private String description;
+        private BigDecimal originalPrice;
+        private BigDecimal markedPrice;
+        private int stockQuantity;
+        private String categoryId;
+        private Set<String> tags = new HashSet<>();
+        private List<String> images = new ArrayList<>();
 
     public static ProductDto from(Product product) {
         if (product == null) return null;
@@ -27,10 +27,9 @@ public class ProductDto {
                 .setDescription(product.getDescription())
                 .setMarkedPrice(product.getMarkedPrice())
                 .setStockQuantity(product.getStockQuantity())
-                .setCategory(product.getCategory())
+                .setCategory(product.getCategory().getId())
                 .setTags(product.getTags())
                 .setImages(product.getImages());
-
     }
 
     public ProductDto(String label, BigDecimal originalPrice) {
@@ -92,12 +91,12 @@ public class ProductDto {
         return this;
     }
 
-    public Category getCategory() {
-        return category;
+    public String getCategoryId() {
+        return categoryId;
     }
 
-    public ProductDto setCategory(Category category) {
-        this.category = category;
+    public ProductDto setCategory(String categoryId) {
+        this.categoryId = categoryId;
         return this;
     }
 

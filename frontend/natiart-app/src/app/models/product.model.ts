@@ -7,7 +7,7 @@ export interface Product {
   originalPrice: number;
   markedPrice?: number;
   stockQuantity: number;
-  category: Category;
-  tags: Set<string>;
+  categoryId: string;
+  tags?: Set<string>;
   images: string[];
 }

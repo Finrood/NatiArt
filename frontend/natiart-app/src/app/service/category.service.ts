@@ -34,6 +34,11 @@ export class CategoryService {
     return this.http.put<any>(`${this.apiUrl}/${id}`, editCategoryData, { headers });
   }
 
+  deleteCategory(id: string): Observable<any> {
+    const headers = this.getHeaders();
+    return this.http.delete<any>(`${this.apiUrl}/${id}`,  { headers });
+  }
+
   inverseCategoryVisibility(id: string): Observable<any> {
     const headers = this.getHeaders();
     return this.http.patch<any>(`${this.apiUrl}/${id}/visibility/inverse`, null, { headers });

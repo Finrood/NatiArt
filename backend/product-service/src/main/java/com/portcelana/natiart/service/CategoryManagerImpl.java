@@ -60,6 +60,10 @@ public class CategoryManagerImpl implements CategoryManager{
 
     @Override
     public void deleteCategory(String categoryId) {
+        final Category category = this.getCategoryOrDie(categoryId);
+        if (! category.getProducts().isEmpty()) {
+            throw new IllegalArgumentException(String.format("Category with label %s contains products.", category.getLabel()));
+        }
         categoryRepository.deleteById(categoryId);
     }
 }
