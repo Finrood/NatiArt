@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import {Component} from '@angular/core';
 import {CategoryManagementComponent} from "../admin-category-management/admin-category-management.component";
 import {ProductManagementComponent} from "../admin-product-management/admin-product-management.component";
 import {NgForOf, NgSwitch, NgSwitchCase} from "@angular/common";

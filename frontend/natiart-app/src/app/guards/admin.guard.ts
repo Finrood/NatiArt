@@ -1,6 +1,6 @@
-import { CanActivateFn, Router, UrlTree } from '@angular/router';
-import { inject } from '@angular/core';
-import { TokenService } from '../service/token.service';
+import {CanActivateFn, Router, UrlTree} from '@angular/router';
+import {inject} from '@angular/core';
+import {TokenService} from '../service/token.service';
 
 
 export const adminGuard: CanActivateFn = (route, state): boolean | UrlTree => {

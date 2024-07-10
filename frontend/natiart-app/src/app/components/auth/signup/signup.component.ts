@@ -1,10 +1,10 @@
-import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { CustomValidators } from './CustomValidators';
-import { animate, style, transition, trigger } from '@angular/animations';
-import { Router, RouterLink } from '@angular/router';
-import { finalize } from 'rxjs/operators';
-import { NgClass, NgIf } from '@angular/common';
+import {Component, OnInit} from '@angular/core';
+import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
+import {CustomValidators} from './CustomValidators';
+import {animate, style, transition, trigger} from '@angular/animations';
+import {Router, RouterLink} from '@angular/router';
+import {finalize} from 'rxjs/operators';
+import {NgClass, NgIf} from '@angular/common';
 import {SignupService} from "../../../service/signup.service";
 import {UserRegistration} from "../../../models/user-registration.model";
 import {Profile} from "../../../models/profile.model";

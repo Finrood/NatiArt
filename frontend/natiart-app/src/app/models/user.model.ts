@@ -1,4 +1,4 @@
-import { Profile } from './profile.model';
+import {Profile} from './profile.model';
 
 export enum RoleName {
   ADMIN = 'ADMIN',

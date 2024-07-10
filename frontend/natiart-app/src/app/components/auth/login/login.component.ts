@@ -1,5 +1,5 @@
 import {Component, OnInit} from '@angular/core';
-import { trigger, state, style, animate, transition } from '@angular/animations';
+import {animate, state, style, transition, trigger} from '@angular/animations';
 import {HttpClient} from "@angular/common/http";
 import {Router} from "@angular/router";
 import {FormsModule} from "@angular/forms";

@@ -1,12 +1,12 @@
-import { Component, OnInit, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
-import { ProductService } from '../../../service/product.service';
-import { CategoryService } from '../../../service/category.service';
-import { Category } from '../../../models/category.model';
-import { Product } from '../../../models/product.model';
+import {Component, inject, OnInit} from '@angular/core';
+import {CommonModule} from '@angular/common';
+import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
+import {ProductService} from '../../../service/product.service';
+import {CategoryService} from '../../../service/category.service';
+import {Category} from '../../../models/category.model';
+import {Product} from '../../../models/product.model';
 import {BehaviorSubject, Subscription} from 'rxjs';
-import { Alert } from '../../../models/alert.model';
+import {Alert} from '../../../models/alert.model';
 import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
 
 interface ImagePreview {

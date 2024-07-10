@@ -1,10 +1,10 @@
-import { Component, OnInit, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import {ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl} from '@angular/forms';
-import { CategoryService } from '../../../service/category.service';
-import { Category } from '../../../models/category.model';
-import { BehaviorSubject } from 'rxjs';
-import { Alert } from '../../../models/alert.model';
+import {Component, inject, OnInit} from '@angular/core';
+import {CommonModule} from '@angular/common';
+import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
+import {CategoryService} from '../../../service/category.service';
+import {Category} from '../../../models/category.model';
+import {BehaviorSubject} from 'rxjs';
+import {Alert} from '../../../models/alert.model';
 
 @Component({
   selector: 'app-admin-category-management',
