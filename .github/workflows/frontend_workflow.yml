@@ -14,29 +14,18 @@ jobs:
         node-version: [20]
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Cache Node.js modules
-      uses: actions/cache@v4
-      id: cache-node-modules
-      with:
-        path: frontend/natiart-app/node_modules
-        key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('frontend/natiart-app/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-${{ matrix.node-version }}-
+      - name: Set up Node.js ${{ matrix.node-version }} and Cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: frontend/natiart-app/package-lock.json
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-        cache-dependency-path: frontend/natiart-app/package-lock.json
-
-    - name: Install Dependencies
-      working-directory: frontend/natiart-app
-      run: npm ci
-
-    - name: Build
-      working-directory: frontend/natiart-app
-      run: npm run build
+      - name: Install Dependencies and Build
+        working-directory: frontend/natiart-app
+        run: |
+          npm ci
+          npm run build
