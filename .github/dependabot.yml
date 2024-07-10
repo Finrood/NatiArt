@@ -1,15 +1,33 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
-
 version: 2
 updates:
-  - package-ecosystem: "npm"    # Assuming the front-end uses npm for dependency management
-    directory: "/frontend"         # Path to the front-end directory
+  - package-ecosystem: "npm"
+    directory: "/frontend"
     schedule:
-      interval: "daily"         # Frequency of dependency updates (e.g., daily, weekly)
-  - package-ecosystem: "gradle" # Change Maven to Gradle for the server dependency management
-    directory: "/backend"        # Path to the server directory
+      interval: "daily"
+    labels:
+      - "dependencies"
+      - "frontend"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      frontend-dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "gradle"
+    directory: "/backend"
     schedule:
-      interval: "daily"         # Frequency of dependency updates (e.g., daily, weekly)
+      interval: "daily"
+    labels:
+      - "dependencies"
+      - "backend"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      backend-dependencies:
+        patterns:
+          - "*"
