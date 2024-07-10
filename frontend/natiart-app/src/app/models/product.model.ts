@@ -10,4 +10,5 @@ export interface Product {
   categoryId: string;
   tags?: Set<string>;
   images: string[];
+  active?: boolean;
 }

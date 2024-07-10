@@ -15,6 +15,10 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-devtools")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     runtimeOnly("com.h2database:h2")
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.2")
+    implementation("org.apache.commons:commons-lang3:3.14.0")
+    implementation("commons-io:commons-io:2.16.1")
+    implementation("org.apache.poi:poi:5.3.0")
+    implementation("org.sejda.imageio:webp-imageio:0.1.6")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.3")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.3")
 }

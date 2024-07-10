@@ -42,7 +42,7 @@ public class CategoryController {
     }
 
     @PatchMapping("/categories/{categoryId}/visibility/inverse")
-    public CategoryDto hideCategory(@PathVariable String categoryId) {
+    public CategoryDto inverseCategoryVisibility(@PathVariable String categoryId) {
         return CategoryDto.from(categoryManager.inverseVisibility(categoryId));
     }
 

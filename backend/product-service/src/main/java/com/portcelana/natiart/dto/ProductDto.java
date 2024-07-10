@@ -1,6 +1,5 @@
 package com.portcelana.natiart.dto;
 
-import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Product;
 
 import java.math.BigDecimal;
@@ -19,6 +18,7 @@ import java.util.Set;
         private String categoryId;
         private Set<String> tags = new HashSet<>();
         private List<String> images = new ArrayList<>();
+        private boolean active;
 
     public static ProductDto from(Product product) {
         if (product == null) return null;
@@ -29,7 +29,8 @@ import java.util.Set;
                 .setStockQuantity(product.getStockQuantity())
                 .setCategory(product.getCategory().getId())
                 .setTags(product.getTags())
-                .setImages(product.getImages());
+                .setImages(product.getImages())
+                .setActive(product.isActive());
     }
 
     public ProductDto(String label, BigDecimal originalPrice) {
@@ -115,6 +116,15 @@ import java.util.Set;
 
     public ProductDto setImages(List<String> images) {
         this.images = images;
+        return this;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public ProductDto setActive(boolean active) {
+        this.active = active;
         return this;
     }
 }

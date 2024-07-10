@@ -30,7 +30,7 @@ export class ProductService {
     return this.http.post<any>(`${this.apiUrl}/create`, newProduct, { headers });
   }
 
-  updateProduct(id: string, editProductData: Product): Observable<any> {
+  updateProduct(id: string, editProductData: FormData): Observable<any> {
     const headers = this.getHeaders();
     return this.http.put<any>(`${this.apiUrl}/${id}`, editProductData, { headers });
   }
@@ -38,5 +38,15 @@ export class ProductService {
   deleteProduct(id: string): Observable<any> {
     const headers = this.getHeaders();
     return this.http.delete<any>(`${this.apiUrl}/${id}`, { headers });
+  }
+
+  inverseProductVisibility(id: string): Observable<any> {
+    const headers = this.getHeaders();
+    return this.http.patch<any>(`${this.apiUrl}/${id}/visibility/inverse`, null, { headers });
+  }
+
+  getImage(imagePath: string): Observable<Blob> {
+    const headers = this.getHeaders();
+    return this.http.get(`http://localhost:8082/images?path=${encodeURIComponent(imagePath)}`, { responseType: 'blob', headers: headers });
   }
 }

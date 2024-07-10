@@ -43,6 +43,9 @@ public class Product {
     @CollectionTable(name = "product_images", joinColumns = @JoinColumn(name = "product_id"))
     private List<String> images = new ArrayList<>();
 
+    @Column(nullable = false)
+    private boolean active;
+
     @CreatedDate
     @Column(updatable = false)
     private Instant createdAt;
@@ -58,6 +61,7 @@ public class Product {
         this.id = UUID.randomUUID().toString();
         this.label = label;
         this.originalPrice = originalPrice;
+        this.active = true;
     }
 
     public String getId() {
@@ -133,6 +137,15 @@ public class Product {
 
     public Product setImages(List<String> images) {
         this.images = images;
+        return this;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public Product setActive(boolean active) {
+        this.active = active;
         return this;
     }
 
