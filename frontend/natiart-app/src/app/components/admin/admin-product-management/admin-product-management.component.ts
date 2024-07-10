@@ -8,6 +8,7 @@ import {Product} from '../../../models/product.model';
 import {BehaviorSubject, Observable, Subscription} from 'rxjs';
 import {Alert} from '../../../models/alert.model';
 import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
+import { CdkDragDrop, moveItemInArray, DragDropModule } from '@angular/cdk/drag-drop';
 
 interface ImagePreview {
   url: string | SafeUrl;
@@ -19,7 +20,7 @@ interface ImagePreview {
 @Component({
   selector: 'app-admin-product-management',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, DragDropModule],
   templateUrl: './admin-product-management.component.html',
   styleUrls: ['./admin-product-management.component.css']
 })
@@ -84,14 +85,14 @@ export class ProductManagementComponent implements OnInit {
       const formData = new FormData();
       const product: Product = this.productForm.value;
 
-      // Add existing image paths to the product object
+      // Update images order based on the current order in imagePreviews
       product.images = this.imagePreviews
         .filter(preview => preview.isExisting)
         .map(preview => (preview as any).originalUrl || preview.url as string);
 
       formData.append('productDto', new Blob([JSON.stringify(product)], { type: 'application/json' }));
 
-      // Add only new images to formData
+      // Add only new images to formData, maintaining the current order
       this.imagePreviews.filter(preview => !preview.isExisting).forEach(preview => {
         if (preview.file) {
           formData.append('newImages', preview.file, preview.file.name);
@@ -158,6 +159,29 @@ export class ProductManagementComponent implements OnInit {
       this.fetchImage(product.id!, product.images[0]);
     }
   }
+
+  onImageDrop(event: CdkDragDrop<ImagePreview[]>) {
+    moveItemInArray(this.imagePreviews, event.previousIndex, event.currentIndex);
+    this.updateProductImages();
+  }
+
+  private updateProductImages() {
+    const existingImages = this.imagePreviews
+      .filter(preview => preview.isExisting)
+      .map(preview => (preview as any).originalUrl || preview.url as string);
+
+    const newImages = this.imagePreviews
+      .filter(preview => !preview.isExisting)
+      .map(preview => preview.file)
+      .filter((file): file is File => file !== undefined);
+
+    this.productForm.patchValue({
+      images: existingImages
+    });
+
+    this.imageFiles = newImages;
+  }
+
 
   openModal(product?: Product): void {
     if (product) {
