@@ -3,12 +3,14 @@ import {HttpClient, HttpHeaders} from "@angular/common/http";
 import {Observable} from "rxjs";
 import {Category} from "../models/category.model";
 import {TokenService} from "./token.service";
+import {environment} from "../../environments/environment";
 
 @Injectable({
   providedIn: 'root'
 })
 export class CategoryService {
-  private apiUrl = "http://localhost:8082/categories"
+  private readonly apiUrl: string = `${environment.productApiUrl}/categories`;
+
   constructor(private http: HttpClient, private tokenService: TokenService) {}
 
   private getHeaders(): HttpHeaders {

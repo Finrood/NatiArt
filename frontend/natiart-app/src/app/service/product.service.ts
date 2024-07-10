@@ -2,12 +2,14 @@ import {Injectable} from '@angular/core';
 import {HttpClient, HttpHeaders} from "@angular/common/http";
 import {Observable} from "rxjs";
 import {TokenService} from "./token.service";
+import {environment} from "../../environments/environment";
 
 @Injectable({
   providedIn: 'root'
 })
 export class ProductService {
-  private apiUrl = "http://localhost:8082/products"
+  private readonly apiUrl: string = `${environment.productApiUrl}/products`;
+
   constructor(private http: HttpClient, private tokenService: TokenService) {}
 
   private getHeaders(): HttpHeaders {

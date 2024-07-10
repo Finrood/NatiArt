@@ -2,11 +2,14 @@ import {Injectable} from '@angular/core';
 import {HttpClient} from "@angular/common/http";
 import {Router} from "@angular/router";
 import {RoleName} from "../models/user.model";
+import {environment} from "../../environments/environment";
 
 @Injectable({
   providedIn: 'root'
 })
 export class TokenService {
+  private readonly apiUrl: string = `${environment.directoryApiUrl}`;
+
   private accessTokenKey = 'accessToken';
   private refreshTokenKey = 'refreshToken';
 
@@ -40,7 +43,7 @@ export class TokenService {
         'Authorization': `Bearer ${refreshToken}`
       };
 
-      this.http.post<{ accessToken: string, refreshToken: string }>('http://localhost:8081/refresh-token', null, { headers })
+      this.http.post<{ accessToken: string, refreshToken: string }>(`${this.apiUrl}/refresh-token`, null, { headers })
         .subscribe({
           next: (response) => {
             this.setAccessToken(response.accessToken);

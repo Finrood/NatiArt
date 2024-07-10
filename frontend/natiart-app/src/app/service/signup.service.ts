@@ -1,6 +1,7 @@
 import {Injectable} from '@angular/core';
 import {HttpClient} from "@angular/common/http";
 import {Observable} from "rxjs";
+import {environment} from "../../environments/environment";
 
 export interface SignupRequest {
   username: string;
@@ -35,7 +36,7 @@ export interface ViaCEPResponse {
   providedIn: 'root'
 })
 export class SignupService {
-  private apiUrl = `http://localhost:8081/register-user`;
+  private readonly apiUrl: string = `${environment.directoryApiUrl}/register-user`;
 
   constructor(private http: HttpClient) {}
 
