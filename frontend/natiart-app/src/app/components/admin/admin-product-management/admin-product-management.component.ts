@@ -5,14 +5,15 @@ import {ProductService} from '../../../service/product.service';
 import {CategoryService} from '../../../service/category.service';
 import {Category} from '../../../models/category.model';
 import {Product} from '../../../models/product.model';
-import {BehaviorSubject, Subscription} from 'rxjs';
+import {BehaviorSubject, Observable, Subscription} from 'rxjs';
 import {Alert} from '../../../models/alert.model';
 import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
 
 interface ImagePreview {
-  url: string;
+  url: string | SafeUrl;
   isExisting: boolean;
   file?: File;
+  originalUrl?: string;  // Added this line
 }
 
 @Component({
@@ -86,7 +87,7 @@ export class ProductManagementComponent implements OnInit {
       // Add existing image paths to the product object
       product.images = this.imagePreviews
         .filter(preview => preview.isExisting)
-        .map(preview => preview.url);
+        .map(preview => (preview as any).originalUrl || preview.url as string);
 
       formData.append('productDto', new Blob([JSON.stringify(product)], { type: 'application/json' }));
 
@@ -96,6 +97,8 @@ export class ProductManagementComponent implements OnInit {
           formData.append('newImages', preview.file, preview.file.name);
         }
       });
+
+      console.log(product);
 
       if (this.isEditingProduct.value) {
         this.updateProduct(product.id!, formData);
@@ -164,6 +167,7 @@ export class ProductManagementComponent implements OnInit {
         url: imagePath,
         isExisting: true
       })) || [];
+      this.loadExistingImages(product.images || []);
     } else {
       this.isEditingProduct.next(false);
       this.productForm.reset({ originalPrice: 0, markedPrice: 0, stockQuantity: 0 });
@@ -174,11 +178,21 @@ export class ProductManagementComponent implements OnInit {
     modal?.classList.remove('hidden');
   }
 
+  private loadExistingImages(imagePaths: string[]): void {
+    imagePaths.forEach((path, index) => {
+      this.fetchImagePreview(path, index);
+    });
+  }
+
   private fetchImagePreview(imagePath: string, index: number): void {
     this.productService.getImage(imagePath).subscribe(blob => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        this.imagePreviews[index].url = reader.result as string;
+        this.imagePreviews[index] = {
+          url: this.sanitizer.bypassSecurityTrustResourceUrl(reader.result as string),
+          isExisting: true,
+          originalUrl: imagePath  // Store the original URL
+        };
       };
       reader.readAsDataURL(blob);
     });
@@ -202,7 +216,7 @@ export class ProductManagementComponent implements OnInit {
         const result = e.target?.result;
         if (typeof result === 'string') {
           this.imagePreviews.push({
-            url: result,
+            url: this.sanitizer.bypassSecurityTrustResourceUrl(result),
             isExisting: false,
             file: file
           });
@@ -241,11 +255,6 @@ export class ProductManagementComponent implements OnInit {
     this.subscriptions.push(subscription);
   }
 
-
-
-
-
-
   toggleProductVisibility(product: Product): void {
     this.productService.inverseProductVisibility(product.id!).subscribe({
       next: (response: Product) => {
@@ -255,7 +264,6 @@ export class ProductManagementComponent implements OnInit {
     });
   }
 
-  // Update the addProduct method
   addProduct(formData: FormData): void {
     this.productService.addProduct(formData).subscribe({
       next: (response) => {
@@ -272,7 +280,6 @@ export class ProductManagementComponent implements OnInit {
     });
   }
 
-  // Update the updateProduct method
   updateProduct(productId: string, formData: FormData): void {
     this.productService.updateProduct(productId, formData).subscribe({
       next: (response: Product) => {

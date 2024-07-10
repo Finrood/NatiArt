@@ -101,7 +101,7 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Image Previews</label>
           <div class="grid grid-cols-3 gap-2">
             <div *ngFor="let preview of imagePreviews; let i = index" class="relative">
-              <img [src]="sanitizer.bypassSecurityTrustResourceUrl(preview.url)" alt="Image preview" class="w-full h-24 object-cover rounded-md">
+              <img [src]="preview.url" alt="Image preview" class="w-full h-24 object-cover rounded-md">
               <button type="button" (click)="removeImage(i)" class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 text-xs">
                 &times;
               </button>
