@@ -3,6 +3,9 @@ import {HttpClient} from "@angular/common/http";
 import {Router} from "@angular/router";
 import {RoleName} from "../models/user.model";
 import {environment} from "../../environments/environment";
+import {Observable} from "rxjs";
+import {SignupRequest} from "./signup.service";
+import {Credentials} from "../models/credentials.model";
 
 @Injectable({
   providedIn: 'root'
@@ -96,5 +99,13 @@ export class TokenService {
   isAdmin(): boolean {
     const role = this.getUserRole();
     return role ? role.toUpperCase() === RoleName.ADMIN : false;
+  }
+
+  login(credentials: Credentials): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/login`, credentials);
+  }
+
+  logout(): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/logout`, null);
   }
 }

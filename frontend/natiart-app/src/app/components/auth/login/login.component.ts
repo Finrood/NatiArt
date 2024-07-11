@@ -71,7 +71,7 @@ export class LoginComponent implements OnInit {
   }
 
   onSubmit() {
-    this.http.post<{ accessToken: string, refreshToken: string }>('http://localhost:8081/login', this.credentials)
+    this.tokenService.login(this.credentials)
       .subscribe({
         next: (response) => {
           this.tokenService.setAccessToken(response.accessToken);

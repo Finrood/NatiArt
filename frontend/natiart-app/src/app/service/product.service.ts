@@ -9,6 +9,8 @@ import {environment} from "../../environments/environment";
 })
 export class ProductService {
   private readonly apiUrl: string = `${environment.productApiUrl}/products`;
+  private readonly apiUrlImages: string = `${environment.productApiUrl}`;
+
 
   constructor(private http: HttpClient, private tokenService: TokenService) {}
 
@@ -46,6 +48,6 @@ export class ProductService {
 
   getImage(imagePath: string): Observable<Blob> {
     const headers = this.getHeaders();
-    return this.http.get(`http://localhost:8082/images?path=${encodeURIComponent(imagePath)}`, { responseType: 'blob', headers: headers });
+    return this.http.get(`${this.apiUrlImages}/images?path=${encodeURIComponent(imagePath)}`, { responseType: 'blob', headers: headers });
   }
 }

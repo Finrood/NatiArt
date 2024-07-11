@@ -2,6 +2,7 @@ HELP.md
 product-images/
 target/
 build/
+dist/
 node_modules/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/

@@ -1,6 +1,6 @@
+console.log('Environment is production');  // Add this for debugging
 export const environment = {
   production: true,
-  directoryApiUrl: 'http://localhost:8081/server/nati/directory',
-  productApiUrl: 'http://localhost:8082/server/nati/product',
-  apiUrl: 'https://www.samuelpetre.com/server/portfolio'
+  directoryApiUrl: 'https://natiart.samuelpetre.com/server/directory',
+  productApiUrl: 'https://natiart.samuelpetre.com/server/product',
 };
