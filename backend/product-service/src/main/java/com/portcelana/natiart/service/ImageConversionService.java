@@ -40,7 +40,7 @@ public class ImageConversionService {
                 WebPWriteParam param = new WebPWriteParam(writer.getLocale());
                 param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
                 param.setCompressionType("Lossy");
-                param.setCompressionQuality(0.8f);
+                param.setCompressionQuality(0.6f);
 
                 writer.write(null, new IIOImage(bufferedImage, null, null), param);
             } finally {

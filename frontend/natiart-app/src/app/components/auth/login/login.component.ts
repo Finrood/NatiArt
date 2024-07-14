@@ -3,7 +3,7 @@ import {animate, state, style, transition, trigger} from '@angular/animations';
 import {HttpClient} from "@angular/common/http";
 import {Router} from "@angular/router";
 import {FormsModule} from "@angular/forms";
-import {NgIf} from "@angular/common";
+import {NgClass, NgIf} from "@angular/common";
 import {TokenService} from "../../../service/token.service";
 import {Credentials} from "../../../models/credentials.model";
 
@@ -12,7 +12,8 @@ import {Credentials} from "../../../models/credentials.model";
   standalone: true,
   imports: [
     FormsModule,
-    NgIf
+    NgIf,
+    NgClass
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css',
@@ -53,6 +54,7 @@ import {Credentials} from "../../../models/credentials.model";
 export class LoginComponent implements OnInit {
   emailFocused = false;
   passwordFocused = false;
+  showPassword = false;
   isHovered = false;
 
   credentials: Credentials = {
@@ -68,6 +70,10 @@ export class LoginComponent implements OnInit {
       this.router.navigate(['/dashboard'])
         .then(() => {});
     }
+  }
+
+  togglePasswordVisibility() {
+    this.showPassword = !this.showPassword;
   }
 
   onSubmit() {
