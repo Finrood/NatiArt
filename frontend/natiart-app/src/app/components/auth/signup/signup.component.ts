@@ -1,13 +1,13 @@
-import {Component, OnInit} from '@angular/core';
-import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
-import {CustomValidators} from './CustomValidators';
-import {animate, style, transition, trigger} from '@angular/animations';
-import {Router, RouterLink} from '@angular/router';
-import {finalize} from 'rxjs/operators';
-import {NgClass, NgIf} from '@angular/common';
-import {SignupService} from "../../../service/signup.service";
-import {UserRegistration} from "../../../models/user-registration.model";
-import {Profile} from "../../../models/profile.model";
+import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { CustomValidators } from './CustomValidators';
+import { animate, style, transition, trigger } from '@angular/animations';
+import { Router, RouterLink } from '@angular/router';
+import { finalize } from 'rxjs/operators';
+import { NgClass, NgIf } from '@angular/common';
+import { SignupService } from "../../../service/signup.service";
+import { UserRegistration } from "../../../models/user-registration.model";
+import { Profile } from "../../../models/profile.model";
 
 @Component({
   selector: 'app-signup',
@@ -53,9 +53,11 @@ export class SignupComponent implements OnInit {
 
   private initForm(): FormGroup {
     return this.fb.group({
-      username: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, CustomValidators.passwordComplexity()]],
-      confirmPassword: ['', Validators.required],
+      credentials: this.fb.group({
+        username: ['', [Validators.required, Validators.email]],
+        password: ['', [Validators.required, CustomValidators.passwordComplexity()]],
+        confirmPassword: ['', Validators.required],
+      }, { validators: CustomValidators.passwordMatchValidator }),
       profile: this.fb.group({
         firstname: ['', Validators.required],
         lastname: ['', Validators.required],
@@ -67,12 +69,12 @@ export class SignupComponent implements OnInit {
         street: ['', Validators.required],
         complement: [''],
       }),
-    }, { validator: CustomValidators.passwordMatchValidator });
+    });
   }
 
   onNextStep(): void {
-    if (this.signupForm.get('username')?.invalid || this.signupForm.get('password')?.invalid || this.signupForm.get('confirmPassword')?.invalid) {
-      this.setErrorMessage('Please fill all required fields correctly.');
+    if (this.signupForm.get('credentials')?.invalid) {
+      this.signupForm.get('credentials')?.markAllAsTouched();
       return;
     }
     this.currentStep = 2;
@@ -86,14 +88,15 @@ export class SignupComponent implements OnInit {
 
   onSubmit(): void {
     if (this.signupForm.invalid) {
+      this.signupForm.markAllAsTouched();
       this.setErrorMessage('Please fill all required fields correctly.');
       return;
     }
 
     const formValue = this.signupForm.value;
     const userRegistration: UserRegistration = {
-      username: formValue.username,
-      password: formValue.password,
+      username: formValue.credentials.username,
+      password: formValue.credentials.password,
       profile: formValue.profile as Profile
     };
 
@@ -135,6 +138,25 @@ export class SignupComponent implements OnInit {
           this.setErrorMessage('Error fetching address. Please enter manually.');
         }
       });
+  }
+
+  getFieldError(fieldName: string): string {
+    const field = this.signupForm.get(fieldName);
+    if (field?.invalid && (field.dirty || field.touched)) {
+      if (field.errors?.['required']) return 'This field is required.';
+      if (field.errors?.['email']) return 'Please enter a valid email address.';
+      if (field.errors?.['passwordComplexity']) return 'Password must be at least 6 characters long and contain uppercase, lowercase, and numeric characters.';
+      if (field.errors?.['pattern']) return 'Please enter a valid phone number.';
+    }
+    return '';
+  }
+
+  getPasswordMatchError(): string {
+    const credentialsGroup = this.signupForm.get('credentials');
+    if (credentialsGroup?.errors?.['passwordMismatch'] && credentialsGroup.get('confirmPassword')?.touched) {
+      return 'Passwords do not match.';
+    }
+    return '';
   }
 
   private setErrorMessage(message: string): void {
