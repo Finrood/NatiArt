@@ -1,4 +1,4 @@
-import {Component, inject, OnInit} from '@angular/core';
+import {Component, HostListener, inject, OnInit} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {ProductService} from '../../../service/product.service';
@@ -41,6 +41,14 @@ export class ProductManagementComponent implements OnInit {
   imageUrls: { [productId: string]: SafeUrl | null } = {};
   private subscriptions: Subscription[] = [];
 
+  isTouch: boolean = false;
+  isDragging: boolean = false;
+
+  @HostListener('window:resize', ['$event'])
+  onResize(event: Event) {
+    this.isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  }
+
   constructor() {
     this.productForm = this.fb.group({
       id: [''],
@@ -59,6 +67,7 @@ export class ProductManagementComponent implements OnInit {
   ngOnInit(): void {
     this.getProducts();
     this.getCategories();
+    this.isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   }
 
   ngOnDestroy(): void {
@@ -160,11 +169,6 @@ export class ProductManagementComponent implements OnInit {
     }
   }
 
-  onImageDrop(event: CdkDragDrop<ImagePreview[]>) {
-    moveItemInArray(this.imagePreviews, event.previousIndex, event.currentIndex);
-    this.updateProductImages();
-  }
-
   private updateProductImages() {
     const existingImages = this.imagePreviews
       .filter(preview => preview.isExisting)
@@ -253,13 +257,31 @@ export class ProductManagementComponent implements OnInit {
   }
 
   removeImage(index: number): void {
-    this.imagePreviews.splice(index, 1);
-    if (!this.imagePreviews[index].isExisting) {
-      const fileIndex = this.imageFiles.indexOf(this.imagePreviews[index].file!);
-      if (fileIndex > -1) {
-        this.imageFiles.splice(fileIndex, 1);
+    if (!this.isDragging && index >= 0 && index < this.imagePreviews.length) {
+      const removedPreview = this.imagePreviews.splice(index, 1)[0];
+      if (!removedPreview.isExisting && removedPreview.file) {
+        const fileIndex = this.imageFiles.indexOf(removedPreview.file);
+        if (fileIndex > -1) {
+          this.imageFiles.splice(fileIndex, 1);
+        }
       }
+      this.updateProductImages();
     }
+  }
+
+  onImageDrop(event: CdkDragDrop<ImagePreview[]>) {
+    moveItemInArray(this.imagePreviews, event.previousIndex, event.currentIndex);
+    this.updateProductImages();
+  }
+
+  dragStarted() {
+    this.isDragging = true;
+  }
+
+  dragEnded() {
+    setTimeout(() => {
+      this.isDragging = false;
+    }, 0);
   }
 
   private updateAllProductImages(products: Product[]): void {
