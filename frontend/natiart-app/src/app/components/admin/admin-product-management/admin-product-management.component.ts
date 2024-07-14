@@ -136,7 +136,7 @@ export class ProductManagementComponent implements OnInit {
   }
 
   private isValidImageFile(file: File): boolean {
-    return file.type.match(/image\/*/) !== null && file.size <= 5000000;
+    return file.type.match(/image\/*/) !== null && file.size <= 10000000;
   }
 
   private showAlert(message: string, type: 'success' | 'error'): void {
