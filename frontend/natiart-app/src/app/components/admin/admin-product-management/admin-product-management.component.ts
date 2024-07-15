@@ -9,6 +9,7 @@ import {BehaviorSubject, Observable, Subscription} from 'rxjs';
 import {Alert} from '../../../models/alert.model';
 import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
 import { CdkDragDrop, moveItemInArray, DragDropModule } from '@angular/cdk/drag-drop';
+import heic2any from 'heic2any';
 
 interface ImagePreview {
   url: string | SafeUrl;
@@ -104,7 +105,11 @@ export class ProductManagementComponent implements OnInit {
       // Add only new images to formData, maintaining the current order
       this.imagePreviews.filter(preview => !preview.isExisting).forEach(preview => {
         if (preview.file) {
-          formData.append('newImages', preview.file, preview.file.name);
+          // Use the converted file if it's a HEIC file
+          const fileToUpload = preview.file.type === 'image/jpeg' && preview.file.name.endsWith('.jpg')
+            ? preview.file
+            : preview.file;
+          formData.append('newImages', fileToUpload, fileToUpload.name);
         }
       });
 
@@ -145,7 +150,12 @@ export class ProductManagementComponent implements OnInit {
   }
 
   private isValidImageFile(file: File): boolean {
-    return file.type.match(/image\/*/) !== null;
+    // Check if the file type matches image/* or is specifically image/heic
+    const isImageMimeType = file.type.match(/image\/*/) !== null || file.type.toLowerCase() === 'image/heic';
+
+    // Check if the file name ends with .heic or .HEIC, ignoring any spaces or parentheses
+    const hasHeicExtension = /\.heic$/i.test(file.name.trim().toLowerCase());
+    return isImageMimeType || hasHeicExtension;
   }
 
   private showAlert(message: string, type: 'success' | 'error'): void {
@@ -226,34 +236,67 @@ export class ProductManagementComponent implements OnInit {
     });
   }
 
-  onFileSelected(event: Event): void {
+  async onFileSelected(event: Event): Promise<void> {
     const element = event.target as HTMLInputElement;
     const fileList: FileList | null = element.files;
 
     if (fileList) {
       const newFiles = Array.from(fileList);
       this.imageFiles = [...this.imageFiles, ...newFiles];
-      newFiles.forEach(file => this.readAndAddImagePreview(file));
+      for (const file of newFiles) {
+        await this.readAndAddImagePreview(file);
+      }
     }
   }
 
-  private readAndAddImagePreview(file: File): void {
+  private async readAndAddImagePreview(file: File): Promise<void> {
     if (this.isValidImageFile(file)) {
-      const reader = new FileReader();
-      reader.onload = (e: ProgressEvent<FileReader>) => {
-        const result = e.target?.result;
-        if (typeof result === 'string') {
-          this.imagePreviews.push({
-            url: this.sanitizer.bypassSecurityTrustResourceUrl(result),
-            isExisting: false,
-            file: file
-          });
+      let previewFile = file;
+      let previewUrl: string | ArrayBuffer | null = null;
+
+      // If it's a HEIC file, convert it to JPEG
+      if (file.name.toLowerCase().endsWith('.heic')) {
+        try {
+          const jpegBlob = await heic2any({
+            blob: file,
+            toType: 'image/jpeg',
+          }) as Blob;
+
+          const singleJpegBlob = Array.isArray(jpegBlob) ? jpegBlob[0] : jpegBlob;
+
+          previewFile = new File([singleJpegBlob], file.name.replace(/\.heic$/i, '.jpg'), { type: 'image/jpeg' });
+          previewUrl = URL.createObjectURL(singleJpegBlob);
+        } catch (error) {
+          console.error('Error converting HEIC to JPEG:', error);
+          return;
         }
-      };
-      reader.readAsDataURL(file);
+      }
+
+      if (!previewUrl) {
+        const reader = new FileReader();
+        reader.onload = (e: ProgressEvent<FileReader>) => {
+          const result = e.target?.result;
+          if (result) {
+            this.addImagePreview(result, previewFile);
+          } else {
+            console.error('Failed to read file:', file.name);
+          }
+        };
+        reader.readAsDataURL(previewFile);
+      } else {
+        this.addImagePreview(previewUrl, previewFile);
+      }
     } else {
-      console.error('File is not an image or exceeds 5MB limit:', file.name);
+      console.error('File is not a valid image:', file.name);
     }
+  }
+
+  private addImagePreview(url: string | ArrayBuffer, file: File): void {
+    this.imagePreviews.push({
+      url: this.sanitizer.bypassSecurityTrustResourceUrl(url as string),
+      isExisting: false,
+      file: file
+    });
   }
 
   removeImage(index: number): void {
