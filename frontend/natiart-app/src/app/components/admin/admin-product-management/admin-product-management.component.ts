@@ -1,13 +1,13 @@
-import {Component, HostListener, inject, OnInit} from '@angular/core';
-import {CommonModule} from '@angular/common';
-import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
-import {ProductService} from '../../../service/product.service';
-import {CategoryService} from '../../../service/category.service';
-import {Category} from '../../../models/category.model';
-import {Product} from '../../../models/product.model';
-import {BehaviorSubject, Observable, Subscription} from 'rxjs';
-import {Alert} from '../../../models/alert.model';
-import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
+import { Component, HostListener, inject, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ProductService } from '../../../service/product.service';
+import { CategoryService } from '../../../service/category.service';
+import { Category } from '../../../models/category.model';
+import { Product } from '../../../models/product.model';
+import { BehaviorSubject, Observable, Subscription } from 'rxjs';
+import { Alert } from '../../../models/alert.model';
+import { DomSanitizer, SafeUrl } from "@angular/platform-browser";
 import { CdkDragDrop, moveItemInArray, DragDropModule } from '@angular/cdk/drag-drop';
 import heic2any from 'heic2any';
 
@@ -15,7 +15,7 @@ interface ImagePreview {
   url: string | SafeUrl;
   isExisting: boolean;
   file?: File;
-  originalUrl?: string;  // Added this line
+  originalUrl?: string;
 }
 
 @Component({
@@ -44,6 +44,9 @@ export class ProductManagementComponent implements OnInit {
 
   isTouch: boolean = false;
   isDragging: boolean = false;
+
+  isLoadingImages: boolean = false;
+  isSubmitting: boolean = false;
 
   @HostListener('window:resize', ['$event'])
   onResize(event: Event) {
@@ -91,29 +94,25 @@ export class ProductManagementComponent implements OnInit {
   }
 
   submitForm(): void {
-    if (this.productForm.valid) {
+    if (this.productForm.valid && !this.isSubmitting) {
+      this.isSubmitting = true;
       const formData = new FormData();
       const product: Product = this.productForm.value;
 
-      // Update images order based on the current order in imagePreviews
       product.images = this.imagePreviews
         .filter(preview => preview.isExisting)
         .map(preview => (preview as any).originalUrl || preview.url as string);
 
       formData.append('productDto', new Blob([JSON.stringify(product)], { type: 'application/json' }));
 
-      // Add only new images to formData, maintaining the current order
       this.imagePreviews.filter(preview => !preview.isExisting).forEach(preview => {
         if (preview.file) {
-          // Use the converted file if it's a HEIC file
           const fileToUpload = preview.file.type === 'image/jpeg' && preview.file.name.endsWith('.jpg')
             ? preview.file
             : preview.file;
           formData.append('newImages', fileToUpload, fileToUpload.name);
         }
       });
-
-      console.log(product);
 
       if (this.isEditingProduct.value) {
         this.updateProduct(product.id!, formData);
@@ -150,10 +149,7 @@ export class ProductManagementComponent implements OnInit {
   }
 
   private isValidImageFile(file: File): boolean {
-    // Check if the file type matches image/* or is specifically image/heic
     const isImageMimeType = file.type.match(/image\/*/) !== null || file.type.toLowerCase() === 'image/heic';
-
-    // Check if the file name ends with .heic or .HEIC, ignoring any spaces or parentheses
     const hasHeicExtension = /\.heic$/i.test(file.name.trim().toLowerCase());
     return isImageMimeType || hasHeicExtension;
   }
@@ -196,7 +192,6 @@ export class ProductManagementComponent implements OnInit {
     this.imageFiles = newImages;
   }
 
-
   openModal(product?: Product): void {
     if (product) {
       this.isEditingProduct.next(true);
@@ -229,7 +224,7 @@ export class ProductManagementComponent implements OnInit {
         this.imagePreviews[index] = {
           url: this.sanitizer.bypassSecurityTrustResourceUrl(reader.result as string),
           isExisting: true,
-          originalUrl: imagePath  // Store the original URL
+          originalUrl: imagePath
         };
       };
       reader.readAsDataURL(blob);
@@ -237,6 +232,7 @@ export class ProductManagementComponent implements OnInit {
   }
 
   async onFileSelected(event: Event): Promise<void> {
+    this.isLoadingImages = true;
     const element = event.target as HTMLInputElement;
     const fileList: FileList | null = element.files;
 
@@ -247,6 +243,7 @@ export class ProductManagementComponent implements OnInit {
         await this.readAndAddImagePreview(file);
       }
     }
+    this.isLoadingImages = false;
   }
 
   private async readAndAddImagePreview(file: File): Promise<void> {
@@ -254,12 +251,12 @@ export class ProductManagementComponent implements OnInit {
       let previewFile = file;
       let previewUrl: string | ArrayBuffer | null = null;
 
-      // If it's a HEIC file, convert it to JPEG
       if (file.name.toLowerCase().endsWith('.heic')) {
         try {
           const jpegBlob = await heic2any({
             blob: file,
             toType: 'image/jpeg',
+            quality: 0.8
           }) as Blob;
 
           const singleJpegBlob = Array.isArray(jpegBlob) ? jpegBlob[0] : jpegBlob;
@@ -339,7 +336,7 @@ export class ProductManagementComponent implements OnInit {
     const subscription = this.productService.getImage(imagePath).subscribe(blob => {
       const objectUrl = URL.createObjectURL(blob);
       this.imageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
-      this.products.next([...this.products.value]); // Trigger change detection
+      this.products.next([...this.products.value]);
     });
     this.subscriptions.push(subscription);
   }
@@ -361,10 +358,12 @@ export class ProductManagementComponent implements OnInit {
         this.updateProductImage(response);
         this.closeModal();
         this.showAlert('Product added successfully', 'success');
+        this.isSubmitting = false;
       },
       error: (error) => {
         console.error('Error adding product:', error);
         this.showAlert('Error adding product', 'error');
+        this.isSubmitting = false;
       }
     });
   }
@@ -377,10 +376,12 @@ export class ProductManagementComponent implements OnInit {
         this.updateProductImage(response);
         this.closeModal();
         this.showAlert('Product updated successfully', 'success');
+        this.isSubmitting = false;
       },
       error: (error) => {
         console.error('Error updating product:', error);
         this.showAlert('Error updating product', 'error');
+        this.isSubmitting = false;
       }
     });
   }
