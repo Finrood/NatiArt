@@ -1,7 +1,136 @@
 <app-top-menu></app-top-menu>
+
+<!-- Full-width banner -->
+<div class="relative w-full h-[400px] mb-8">
+  <img *ngFor="let image of bannerImages; let i = index"
+       [src]="image"
+       [alt]="'Banner ' + (i + 1)"
+       [class.opacity-100]="i === currentBannerIndex"
+       [class.opacity-0]="i !== currentBannerIndex"
+       class="absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-500">
+  <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-4">
+    <div class="container mx-auto">
+      <h2 class="text-3xl font-bold">Welcome to Our Porcelain Collection</h2>
+      <p class="mt-2">Discover elegance in every piece</p>
+    </div>
+  </div>
+
+  <!-- Navigation Arrows -->
+  <button (click)="prevSlide()" class="absolute top-1/2 left-4 transform -translate-y-1/2 bg-white bg-opacity-50 hover:bg-opacity-75 p-2 rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+    </svg>
+  </button>
+  <button (click)="nextSlide()" class="absolute top-1/2 right-4 transform -translate-y-1/2 bg-white bg-opacity-50 hover:bg-opacity-75 p-2 rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+    </svg>
+  </button>
+
+  <!-- Navigation Dots -->
+  <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+    <button *ngFor="let image of bannerImages; let i = index"
+            (click)="goToSlide(i)"
+            [class.bg-white]="i === currentBannerIndex"
+            [class.bg-gray-400]="i !== currentBannerIndex"
+            class="w-3 h-3 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400">
+    </button>
+  </div>
+</div>
+
 <div class="flex">
-  <app-left-menu class="w-64"></app-left-menu>
+  <app-left-menu class="w-64 min-h-screen"></app-left-menu>
   <main class="flex-grow">
-    <!-- Main content components go here -->
+    <div class="container mx-auto px-4">
+      <!-- Featured Products -->
+      <section class="mb-8">
+        <h2 class="text-2xl sm:text-3xl font-light mb-4">Featured Products</h2>
+        <div class="relative">
+          <div class="overflow-hidden">
+            <div class="flex transition-transform duration-300 ease-in-out" [style.transform]="'translateX(' + -featuredScrollPosition + 'px)'">
+              <div *ngFor="let product of featuredProducts | async" class="w-full sm:w-1/2 lg:w-1/3 flex-shrink-0 px-3">
+                <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                  <div class="bg-[#F3E5D8] h-48 sm:h-64 mb-4 rounded-md overflow-hidden">
+                    <img *ngIf="imageUrls[product.id!]" [src]="imageUrls[product.id!]" [alt]="product.label" class="w-full h-full object-cover">
+                  </div>
+                  <h3 class="text-xl font-semibold mb-2">{{ product.label }}</h3>
+                  <p class="text-gray-600 mb-4">{{ product.description }}</p>
+                  <div class="flex justify-between items-center mb-4">
+                    <span class="text-lg font-bold text-[#D4A59A]">R${{ product.markedPrice.toFixed(2) }}</span>
+                    <span [hidden]="isOriginalPriceHidden(product)" class="text-sm text-gray-500 line-through">R${{ product.originalPrice.toFixed(2) }}</span>
+                  </div>
+                  <button class="w-full bg-[#D4A59A] text-white px-4 py-2 rounded-full hover:bg-[#C89F94] transition-colors text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#D4A59A] focus:ring-opacity-50">
+                    Add to Cart
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button (click)="scrollProducts('featured', 'left')" class="absolute left-0 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-50 hover:bg-opacity-75 p-2 rounded-full shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <button (click)="scrollProducts('featured', 'right')" class="absolute right-0 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-50 hover:bg-opacity-75 p-2 rounded-full shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- New Products -->
+      <section class="mb-8">
+        <h2 class="text-2xl sm:text-3xl font-light mb-4">New Arrivals</h2>
+        <div class="relative">
+          <div class="overflow-hidden">
+            <div class="flex transition-transform duration-300 ease-in-out" [style.transform]="'translateX(' + -newProductsScrollPosition + 'px)'">
+              <div *ngFor="let product of newProducts | async" class="w-full sm:w-1/2 lg:w-1/3 flex-shrink-0 px-3">
+                <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                  <div class="bg-[#F3E5D8] h-48 sm:h-64 mb-4 rounded-md overflow-hidden">
+                    <img *ngIf="imageUrls[product.id!]" [src]="imageUrls[product.id!]" [alt]="product.label" class="w-full h-full object-cover">
+                  </div>
+                  <h3 class="text-xl font-semibold mb-2">{{ product.label }}</h3>
+                  <p class="text-gray-600 mb-4">{{ product.description }}</p>
+                  <div class="flex justify-between items-center mb-4">
+                    <span class="text-lg font-bold text-[#D4A59A]">R${{ product.markedPrice.toFixed(2) }}</span>
+                    <span [hidden]="isOriginalPriceHidden(product)" class="text-sm text-gray-500 line-through">R${{ product.originalPrice.toFixed(2) }}</span>
+                  </div>
+                  <button class="w-full bg-[#D4A59A] text-white px-4 py-2 rounded-full hover:bg-[#C89F94] transition-colors text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#D4A59A] focus:ring-opacity-50">
+                    Add to Cart
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button (click)="scrollProducts('new', 'left')" class="absolute left-0 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-50 hover:bg-opacity-75 p-2 rounded-full shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <button (click)="scrollProducts('new', 'right')" class="absolute right-0 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-50 hover:bg-opacity-75 p-2 rounded-full shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- About Us -->
+      <section>
+        <div class="bg-white p-6 rounded-lg shadow-md">
+          <h2 class="text-2xl sm:text-3xl font-light mb-4">About Our Porcelain</h2>
+          <p class="text-gray-600 mb-4">
+            Our porcelain products are crafted with the utmost care and attention to detail.
+            We pride ourselves on combining traditional techniques with modern designs to create
+            pieces that are both functional and beautiful. Explore our collection and bring a touch
+            of elegance to your home.
+          </p>
+          <button class="bg-transparent text-[#D4A59A] border border-[#D4A59A] px-4 py-2 rounded-full hover:bg-[#D4A59A] hover:text-white transition-colors text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#D4A59A] focus:ring-opacity-50">
+            Learn More
+          </button>
+        </div>
+      </section>
+    </div>
   </main>
 </div>

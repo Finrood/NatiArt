@@ -43,6 +43,22 @@ public class ProductController {
                 .toList();
     }
 
+    @GetMapping("/products/new")
+    public List<ProductDto> getNewProducts() {
+        return productManager.getProducts().stream()
+                .map(ProductDto::from)
+                .sorted(Comparator.comparing(ProductDto::getLabel))
+                .toList();
+    }
+
+    @GetMapping("/products/featured")
+    public List<ProductDto> getFeaturedProducts() {
+        return productManager.getProducts().stream()
+                .map(ProductDto::from)
+                .sorted(Comparator.comparing(ProductDto::getLabel))
+                .toList();
+    }
+
     @PostMapping(value = "/products/create")
     public ProductDto createProduct(@RequestPart("productDto") ProductDto productDto,
                                     @RequestPart(value = "newImages", required = false) List<MultipartFile> newImages) throws IOException {

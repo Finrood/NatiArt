@@ -3,7 +3,7 @@ export interface Product {
   label: string;
   description?: string;
   originalPrice: number;
-  markedPrice?: number;
+  markedPrice: number;
   stockQuantity: number;
   categoryId: string;
   tags?: Set<string>;

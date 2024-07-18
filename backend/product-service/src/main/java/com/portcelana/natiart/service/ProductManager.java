@@ -15,6 +15,8 @@ public interface ProductManager {
     Optional<Product> getProduct(String id);
     Product getProductOrDie(String id);
     List<Product> getProducts();
+    List<Product> getNewProducts();
+    List<Product> getFeaturedProducts();
     List<Product>getProductsByCategory(Category category);
     Product createProduct(ProductDto productDto, List<InputFile> imagesInput);
     Product updateProduct(ProductDto productDto, List<InputFile> imagesInput);

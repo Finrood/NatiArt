@@ -18,6 +18,8 @@ import java.util.Set;
         private String categoryId;
         private Set<String> tags = new HashSet<>();
         private List<String> images = new ArrayList<>();
+        private boolean newProduct;
+        private boolean featuredProduct;
         private boolean active;
 
     public static ProductDto from(Product product) {
@@ -30,6 +32,8 @@ import java.util.Set;
                 .setCategory(product.getCategory().getId())
                 .setTags(product.getTags())
                 .setImages(product.getImages())
+                .setNewProduct(product.isNewProduct())
+                .setFeaturedProduct(product.isFeaturedProduct())
                 .setActive(product.isActive());
     }
 
@@ -119,8 +123,25 @@ import java.util.Set;
         return this;
     }
 
-    public boolean isActive() {
-        return active;
+    public boolean isNewProduct() {
+        return newProduct;
+    }
+
+    public ProductDto setNewProduct(boolean newProduct) {
+        this.newProduct = newProduct;
+        return this;
+    }
+
+    public boolean isFeaturedProduct() {
+        return featuredProduct;
+    }
+
+    public ProductDto setFeaturedProduct(boolean featuredProduct) {
+        this.featuredProduct = featuredProduct;
+        return this;
+    }
+
+    public boolean isActive() {return active;
     }
 
     public ProductDto setActive(boolean active) {

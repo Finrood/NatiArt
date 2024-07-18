@@ -44,6 +44,11 @@ public class Product {
     private List<String> images = new ArrayList<>();
 
     @Column(nullable = false)
+    private boolean newProduct;
+    @Column(nullable = false)
+    private boolean featuredProduct;
+
+    @Column(nullable = false)
     private boolean active;
 
     @CreatedDate
@@ -137,6 +142,24 @@ public class Product {
 
     public Product setImages(List<String> images) {
         this.images = images;
+        return this;
+    }
+
+    public boolean isNewProduct() {
+        return newProduct;
+    }
+
+    public Product setNewProduct(boolean newProduct) {
+        this.newProduct = newProduct;
+        return this;
+    }
+
+    public boolean isFeaturedProduct() {
+        return featuredProduct;
+    }
+
+    public Product setFeaturedProduct(boolean featuredProduct) {
+        this.featuredProduct = featuredProduct;
         return this;
     }
 

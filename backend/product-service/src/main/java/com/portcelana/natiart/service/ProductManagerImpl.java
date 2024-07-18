@@ -55,6 +55,18 @@ public class ProductManagerImpl implements ProductManager {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Product> getNewProducts() {
+        return productRepository.findAllByNewProduct(true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Product> getFeaturedProducts() {
+        return productRepository.findAllByFeaturedProduct(true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Product> getProductsByCategory(Category category) {
         return productRepository.findAllByCategory(category);
     }
@@ -68,7 +80,9 @@ public class ProductManagerImpl implements ProductManager {
                 .setCategory(category)
                 .setMarkedPrice(productDto.getMarkedPrice())
                 .setStockQuantity(productDto.getStockQuantity())
-                .setTags(productDto.getTags()));
+                .setTags(productDto.getTags()))
+                .setNewProduct(productDto.isNewProduct())
+                .setFeaturedProduct(productDto.isFeaturedProduct());
 
         final List<String> imagesUris = processImages(product, productDto.getImages(), imagesInput);
         product.setImages(imagesUris);
@@ -87,7 +101,9 @@ public class ProductManagerImpl implements ProductManager {
                 .setOriginalPrice(productDto.getOriginalPrice())
                 .setMarkedPrice(productDto.getMarkedPrice())
                 .setStockQuantity(productDto.getStockQuantity())
-                .setTags(productDto.getTags());
+                .setTags(productDto.getTags())
+                .setNewProduct(productDto.isNewProduct())
+                .setFeaturedProduct(productDto.isFeaturedProduct());
 
         final List<String> imagesUris = processImages(product, productDto.getImages(), imagesInput);
         product.setImages(imagesUris);

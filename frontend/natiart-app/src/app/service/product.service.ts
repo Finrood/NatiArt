@@ -26,6 +26,16 @@ export class ProductService {
     return this.http.get<any>(this.apiUrl, { headers });
   }
 
+  getFeaturedProducts(): Observable<any> {
+    const headers = this.getHeaders();
+    return this.http.get<any>(`${this.apiUrl}/featured`, { headers });
+  }
+
+  getNewProducts(): Observable<any> {
+    const headers = this.getHeaders();
+    return this.http.get<any>(`${this.apiUrl}/new`, { headers });
+  }
+
   addProduct(newProduct: FormData): Observable<any> {
     const headers = this.getHeaders();
     return this.http.post<any>(`${this.apiUrl}/create`, newProduct, { headers });
