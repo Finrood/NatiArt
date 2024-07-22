@@ -6,6 +6,7 @@ import {Product} from "../../../models/product.model";
 import {ProductService} from "../../../service/product.service";
 import {BehaviorSubject, Subscription} from "rxjs";
 import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
+import {RouterLink} from "@angular/router";
 
 @Component({
   selector: 'app-customer-dashboard',
@@ -15,7 +16,8 @@ import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
     LeftMenuComponent,
     NgForOf,
     NgIf,
-    AsyncPipe
+    AsyncPipe,
+    RouterLink
   ],
   templateUrl: './customer-dashboard.component.html',
   styleUrl: './customer-dashboard.component.css'

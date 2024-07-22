@@ -6,6 +6,8 @@ import {CustomerDashboardComponent} from "./components/customer/customer-dashboa
 import {AdminDashboardComponent} from "./components/admin/admin-dashboard/admin-dashboard.component";
 import {authGuard} from "./guards/auth.guard";
 import {adminGuard} from "./guards/admin.guard";
+import {ProductDetailComponent} from "./components/customer/product-detail/product-detail.component";
+import {productGuard} from "./guards/product-guard.guard";
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -15,6 +17,12 @@ export const routes: Routes = [
     path: 'dashboard',
     component: CustomerDashboardComponent,
     canActivate: [authGuard]
+  },
+  {
+    path: 'product/:id',
+    component: ProductDetailComponent,
+    canActivate: [authGuard],
+    canDeactivate: [productGuard]
   },
   {
     path: 'admin',
@@ -39,6 +47,6 @@ export const routes: Routes = [
       { path: '', redirectTo: 'categories', pathMatch: 'full' }
     ]
   },
-  { path: '', redirectTo: '/login', pathMatch: 'full' },
-  { path: '**', redirectTo: '/login' }
+  { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
+  { path: '**', redirectTo: '/dashboard' }
 ];

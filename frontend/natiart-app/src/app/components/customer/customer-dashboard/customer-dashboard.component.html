@@ -59,9 +59,14 @@
                     <span class="text-lg font-bold text-[#D4A59A]">R${{ product.markedPrice.toFixed(2) }}</span>
                     <span [hidden]="isOriginalPriceHidden(product)" class="text-sm text-gray-500 line-through">R${{ product.originalPrice.toFixed(2) }}</span>
                   </div>
-                  <button class="w-full bg-[#D4A59A] text-white px-4 py-2 rounded-full hover:bg-[#C89F94] transition-colors text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#D4A59A] focus:ring-opacity-50">
-                    Add to Cart
-                  </button>
+                  <div class="flex space-x-2">
+                    <button class="flex-1 bg-[#D4A59A] text-white px-4 py-2 rounded-full hover:bg-[#C89F94] transition-colors text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#D4A59A] focus:ring-opacity-50">
+                      Add to Cart
+                    </button>
+                    <button [routerLink]="['/product', product.id]" class="flex-1 bg-transparent text-[#D4A59A] border border-[#D4A59A] px-4 py-2 rounded-full hover:bg-[#D4A59A] hover:text-white transition-colors text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#D4A59A] focus:ring-opacity-50">
+                      View Details
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -96,9 +101,14 @@
                     <span class="text-lg font-bold text-[#D4A59A]">R${{ product.markedPrice.toFixed(2) }}</span>
                     <span [hidden]="isOriginalPriceHidden(product)" class="text-sm text-gray-500 line-through">R${{ product.originalPrice.toFixed(2) }}</span>
                   </div>
-                  <button class="w-full bg-[#D4A59A] text-white px-4 py-2 rounded-full hover:bg-[#C89F94] transition-colors text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#D4A59A] focus:ring-opacity-50">
-                    Add to Cart
-                  </button>
+                  <div class="flex space-x-2">
+                    <button class="flex-1 bg-[#D4A59A] text-white px-4 py-2 rounded-full hover:bg-[#C89F94] transition-colors text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#D4A59A] focus:ring-opacity-50">
+                      Add to Cart
+                    </button>
+                    <button [routerLink]="['/product', product.id]" class="flex-1 bg-transparent text-[#D4A59A] border border-[#D4A59A] px-4 py-2 rounded-full hover:bg-[#D4A59A] hover:text-white transition-colors text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#D4A59A] focus:ring-opacity-50">
+                      View Details
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

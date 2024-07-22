@@ -1,0 +1,16 @@
+.zoomed {
+  cursor: zoom-out;
+}
+
+#imageContainer {
+  overflow: hidden;
+}
+
+#mainImage {
+  transition: transform-origin 0.1s ease-out;
+}
+
+#zoomLens {
+  overflow: hidden;
+  pointer-events: none;
+}

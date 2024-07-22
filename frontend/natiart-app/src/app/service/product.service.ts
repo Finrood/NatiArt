@@ -26,6 +26,11 @@ export class ProductService {
     return this.http.get<any>(this.apiUrl, { headers });
   }
 
+  getProductsByCategory(categoryId: string): Observable<any> {
+    const headers = this.getHeaders();
+    return this.http.get<any>(this.apiUrl, { headers });
+  }
+
   getFeaturedProducts(): Observable<any> {
     const headers = this.getHeaders();
     return this.http.get<any>(`${this.apiUrl}/featured`, { headers });
@@ -34,6 +39,11 @@ export class ProductService {
   getNewProducts(): Observable<any> {
     const headers = this.getHeaders();
     return this.http.get<any>(`${this.apiUrl}/new`, { headers });
+  }
+
+  getProduct(productId: string|null): Observable<any> {
+    const headers = this.getHeaders();
+    return this.http.get<any>(`${this.apiUrl}/${productId}`, { headers });
   }
 
   addProduct(newProduct: FormData): Observable<any> {
