@@ -1,12 +1,13 @@
 import {Component} from '@angular/core';
 import {TopMenuComponent} from "../top-menu/top-menu.component";
 import {LeftMenuComponent} from "../left-menu/left-menu.component";
-import {AsyncPipe, NgForOf, NgIf} from "@angular/common";
+import {AsyncPipe, CurrencyPipe, NgForOf, NgIf} from "@angular/common";
 import {Product} from "../../../models/product.model";
 import {ProductService} from "../../../service/product.service";
 import {BehaviorSubject, Subscription} from "rxjs";
 import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
 import {RouterLink} from "@angular/router";
+import {CartService} from "../../../service/cart.service";
 
 @Component({
   selector: 'app-customer-dashboard',
@@ -17,7 +18,8 @@ import {RouterLink} from "@angular/router";
     NgForOf,
     NgIf,
     AsyncPipe,
-    RouterLink
+    RouterLink,
+    CurrencyPipe
   ],
   templateUrl: './customer-dashboard.component.html',
   styleUrl: './customer-dashboard.component.css'
@@ -45,6 +47,7 @@ export class CustomerDashboardComponent {
 
   constructor(
     private productService: ProductService,
+    private cartService: CartService,
     private sanitizer: DomSanitizer
   ) {}
 
@@ -112,6 +115,10 @@ export class CustomerDashboardComponent {
     } else {
       this.newProductsScrollPosition = Math.max(0, Math.min(this.newProductsScrollPosition + scrollAmount, (this.newProducts.value.length - 3) * containerWidth / 3));
     }
+  }
+
+  addToCart(product: Product) {
+    this.cartService.addToCart(product, 1);
   }
 
   private startBannerInterval() {

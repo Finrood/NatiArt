@@ -8,6 +8,7 @@ import { ProductService } from "../../../service/product.service";
 import { DomSanitizer, SafeUrl } from "@angular/platform-browser";
 import { TopMenuComponent } from "../top-menu/top-menu.component";
 import { LeftMenuComponent } from "../left-menu/left-menu.component";
+import {CartService} from "../../../service/cart.service";
 
 @Component({
   selector: 'app-product-detail',
@@ -46,7 +47,8 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private productService: ProductService,
     private sanitizer: DomSanitizer,
-    private renderer: Renderer2
+    private renderer: Renderer2,
+    private cartService: CartService
   ) {}
 
   ngOnInit() {
@@ -134,8 +136,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   }
 
   addToCart(product: Product) {
-    // Implement your add to cart logic here
-    console.log('Adding to cart:', product, 'Quantity:', this.quantity);
+    this.cartService.addToCart(product, this.quantity);
   }
 
   toggleZoom(event: MouseEvent) {
