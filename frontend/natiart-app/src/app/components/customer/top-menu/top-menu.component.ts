@@ -63,5 +63,6 @@ export class TopMenuComponent implements OnInit {
 
   search(term: string) {
     console.log('Searching for:', term);
+    //TODO
   }
 }

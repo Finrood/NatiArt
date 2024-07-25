@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
-import {BehaviorSubject, map, Observable} from "rxjs";
-import {Product} from "../models/product.model";
-import {CartItem} from "../models/CartItem.model";
-
+import { BehaviorSubject, Observable, of } from "rxjs";
+import { map } from "rxjs/operators";
+import { Product } from "../models/product.model";
+import { CartItem } from "../models/CartItem.model";
 
 @Injectable({
   providedIn: 'root'
@@ -24,7 +24,7 @@ export class CartService {
     return this.cartItemsSubject.asObservable();
   }
 
-  addToCart(product: Product, quantity: number): void {
+  addToCart(product: Product, quantity: number): Observable<void> {
     const existingItem = this.cartItems.find(item => item.product.id === product.id);
     if (existingItem) {
       existingItem.quantity += quantity;
@@ -32,28 +32,32 @@ export class CartService {
       this.cartItems.push({ product, quantity });
     }
     this.updateCart();
+    return of(undefined); // Returning observable of void to indicate operation completion
   }
 
-  removeFromCart(productId: string): void {
+  removeFromCart(productId: string): Observable<void> {
     this.cartItems = this.cartItems.filter(item => item.product.id !== productId);
     this.updateCart();
+    return of(undefined); // Returning observable of void to indicate operation completion
   }
 
-  updateItemQuantity(productId: string, quantity: number): void {
+  updateItemQuantity(productId: string, quantity: number): Observable<void> {
     const item = this.cartItems.find(item => item.product.id === productId);
     if (item) {
       item.quantity = quantity;
       if (item.quantity <= 0) {
-        this.removeFromCart(productId);
+        return this.removeFromCart(productId);
       } else {
         this.updateCart();
       }
     }
+    return of(undefined); // Returning observable of void to indicate operation completion
   }
 
-  clearCart(): void {
+  clearCart(): Observable<void> {
     this.cartItems = [];
     this.updateCart();
+    return of(undefined); // Returning observable of void to indicate operation completion
   }
 
   private updateCart(): void {

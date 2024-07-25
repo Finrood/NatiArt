@@ -1,0 +1,81 @@
+<div class="container mx-auto px-4 py-8">
+  <h1 id="your-cart" class="text-3xl font-semibold mb-8 text-gray-800">Your Cart</h1>
+
+  <ng-container *ngIf="(cartItems$ | async)?.length; else emptyCart">
+    <div class="bg-white rounded-lg shadow-md p-4 md:p-6 mb-8">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="border-b">
+          <tr class="hidden md:table-row">
+            <th class="text-left py-2">Product</th>
+            <th class="text-center py-2">Quantity</th>
+            <th class="text-right py-2">Price</th>
+            <th class="text-right py-2">Total</th>
+            <th class="text-center py-2">Actions</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr *ngFor="let item of cartItems$ | async" class="flex flex-col md:table-row border-b last:border-b-0">
+            <td class="py-4 flex items-center justify-between md:table-cell">
+              <span class="font-bold md:hidden">Product:</span>
+              <div class="flex items-center">
+                <img [src]="imageUrls[item.product.id!]" [alt]="item.product.label" class="w-16 h-16 object-cover mr-4 rounded">
+                <span class="font-medium">{{ item.product.label }}</span>
+              </div>
+            </td>
+            <td class="py-4 flex items-center justify-between md:table-cell md:text-center">
+              <span class="font-bold md:hidden">Quantity:</span>
+              <div class="flex items-center">
+                <button type="button" (click)="updateQuantity(item, -1)" [disabled]="item.quantity <= 1" aria-label="Decrease quantity" class="p-2 bg-gray-200 rounded-l hover:bg-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50">
+                  <svg class="h-4 w-4" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M20 12H4"></path></svg>
+                </button>
+                <span class="mx-2 w-8 text-center">{{ item.quantity }}</span>
+                <button type="button" (click)="updateQuantity(item, 1)" [disabled]="item.quantity >= item.product.stockQuantity" aria-label="Increase quantity" class="p-2 bg-gray-200 rounded-r hover:bg-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50">
+                  <svg class="h-4 w-4" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 4v16m8-8H4"></path></svg>
+                </button>
+              </div>
+            </td>
+            <td class="py-4 flex items-center justify-between md:table-cell md:text-right">
+              <span class="font-bold md:hidden">Price:</span>
+              {{ item.product.markedPrice | currency:'BRL' }}
+            </td>
+            <td class="py-4 flex items-center justify-between md:table-cell md:text-right">
+              <span class="font-bold md:hidden">Total:</span>
+              {{ item.product.markedPrice * item.quantity | currency:'BRL' }}
+            </td>
+            <td class="py-4 flex items-center justify-between md:table-cell md:text-center">
+              <span class="font-bold md:hidden">Actions:</span>
+              <button (click)="confirmRemoveItem(item)" aria-label="Remove item" class="text-red-500 hover:text-red-700 p-2 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-red-500">
+                <svg class="h-5 w-5" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              </button>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="flex flex-col md:flex-row justify-between items-center mb-8">
+      <p class="text-2xl font-semibold text-gray-800 mb-4 md:mb-0">Total: {{ cartTotal$ | async | currency:'BRL' }}</p>
+      <button (click)="confirmClearCart()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">Clear Cart</button>
+    </div>
+
+    <div class="flex flex-col md:flex-row justify-between items-center mt-8">
+      <a routerLink="/products" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 transition-colors mb-4 md:mb-0 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">Continue Shopping</a>
+      <button (click)="proceedToCheckout()" [disabled]="isLoading$ | async" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+        <ng-container *ngIf="!(isLoading$ | async); else loadingCheckout">Proceed to Checkout</ng-container>
+        <ng-template #loadingCheckout>Processing...</ng-template>
+      </button>
+    </div>
+
+    <app-shipping-estimation class="mt-8"></app-shipping-estimation>
+  </ng-container>
+
+  <ng-template #emptyCart>
+    <div class="text-center py-8">
+      <h2 class="text-2xl font-semibold mb-4 text-gray-800">Your cart is empty</h2>
+      <p class="mb-4">Looks like you haven't added any items to your cart yet.</p>
+      <a routerLink="/products" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Start Shopping</a>
+    </div>
+  </ng-template>
+</div>

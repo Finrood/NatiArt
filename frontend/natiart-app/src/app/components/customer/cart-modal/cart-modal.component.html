@@ -18,7 +18,7 @@
           <p class="font-semibold">{{ item.product.label }}</p>
           <div class="flex items-center mt-1">
             <input type="number" [(ngModel)]="item.quantity" (change)="updateQuantity(item, item.quantity)"
-                   class="w-16 p-1 border rounded mr-2" min="1">
+                   class="w-16 p-1 border rounded mr-2" [min]="1" [max]="item.product.stockQuantity">
             <p>{{ item.product.markedPrice * item.quantity | currency:'BRL' }}</p>
           </div>
         </div>

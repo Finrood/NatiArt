@@ -25,7 +25,7 @@ public class SecurityConfig {
 				.addFilterBefore(new JwtAuthFilter(), BasicAuthenticationFilter.class)
 				.cors(cors -> cors.configurationSource(corsFilter))
 				.authorizeHttpRequests(request -> request
-						.anyRequest().authenticated());
+						.anyRequest().permitAll());
 
 		return http.build();
 	}

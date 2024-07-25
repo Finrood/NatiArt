@@ -45,6 +45,11 @@ export class CartModalComponent implements OnInit, OnDestroy {
   }
 
   updateQuantity(item: CartItem, newQuantity: number) {
+    if(newQuantity < 1) {
+      newQuantity = 1;
+    } else if (newQuantity > item.product.stockQuantity) {
+      newQuantity = item.product.stockQuantity;
+    }
     this.cartService.updateItemQuantity(item.product.id!, newQuantity);
   }
 

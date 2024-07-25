@@ -12,6 +12,12 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 public class ControllerAdvice {
     private final static Logger logger = LoggerFactory.getLogger(ControllerAdvice.class);
 
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Object> handleException(Exception e) {
+        logger.error("Exception caught in controller: ", e);
+        return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Object> handleArgumentException(IllegalArgumentException e) {
         logger.debug("Exception caught in controller: ", e);
