@@ -1,9 +1,9 @@
 package com.portcelana.natiart.service;
 
-import com.portcelana.natiart.dto.ShippingEstimateRequest;
-import com.portcelana.natiart.service.support.MelhorenvioShippingCalculationResponse;
 import com.portcelana.natiart.dto.ShippingEstimate;
+import com.portcelana.natiart.dto.ShippingEstimateRequest;
 import com.portcelana.natiart.service.support.MelhorenvioShippingCalculationRequest;
+import com.portcelana.natiart.service.support.MelhorenvioShippingCalculationResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.core.ParameterizedTypeReference;

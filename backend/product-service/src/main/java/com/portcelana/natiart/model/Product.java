@@ -35,6 +35,10 @@ public class Product {
     @JoinColumn(name = "category_id")
     private Category category;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "package_id")
+    private Package packaging;
+
     @Column(length = 1000)
     @Convert(converter = SetStringJpaConverter.class)
     private Set<String> tags = new HashSet<>();
@@ -124,6 +128,15 @@ public class Product {
 
     public Product setCategory(Category category) {
         this.category = category;
+        return this;
+    }
+
+    public Package getPackaging() {
+        return packaging;
+    }
+
+    public Product setPackaging(Package packaging) {
+        this.packaging = packaging;
         return this;
     }
 
