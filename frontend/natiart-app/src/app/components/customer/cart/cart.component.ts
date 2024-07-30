@@ -5,7 +5,7 @@ import { CartItem } from '../../../models/CartItem.model';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { CartService } from '../../../service/cart.service';
 import { ProductService } from '../../../service/product.service';
-import { RouterLink } from '@angular/router';
+import {Router, RouterLink} from '@angular/router';
 import { AsyncPipe, CurrencyPipe, NgForOf, NgIf } from '@angular/common';
 import { ShippingEstimationComponent } from '../shipping-estimation/shipping-estimation.component';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -35,7 +35,8 @@ export class CartComponent implements OnInit, OnDestroy {
   constructor(
     private cartService: CartService,
     private productService: ProductService,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private router: Router
   ) {
     this.cartItems$ = this.cartService.getCartItems();
     this.cartTotal$ = this.cartService.getCartTotal();
@@ -98,9 +99,8 @@ export class CartComponent implements OnInit, OnDestroy {
 
   proceedToCheckout(): void {
     if (!this.isLoading$.value) {
-      console.log('Proceeding to checkout');
-      //TODO
-      // Implement checkout logic here
+      this.router.navigate(['/checkout'])
+        .then(() => {});
     }
   }
 
