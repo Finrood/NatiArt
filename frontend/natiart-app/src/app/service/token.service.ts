@@ -24,20 +24,32 @@ export class TokenService {
 
   }
 
-  getAccessToken(): string | null {
-    return localStorage.getItem(this.accessTokenKey);
+  getAccessToken(): string | null | undefined {
+    const token = localStorage.getItem(this.accessTokenKey);
+    if (token === null || token === undefined) {
+      return null;
+    }
+    return token;
   }
 
-  getRefreshToken(): string | null {
+  getRefreshToken(): string | null | undefined {
     return localStorage.getItem(this.refreshTokenKey);
   }
 
-  setAccessToken(token: string): void {
-    localStorage.setItem(this.accessTokenKey, token);
+  setAccessToken(token: string | null | undefined): void {
+    if (token === null || token === undefined) {
+      localStorage.removeItem(this.accessTokenKey);
+    } else {
+      localStorage.setItem(this.accessTokenKey, token);
+    }
   }
 
-  setRefreshToken(token: string): void {
-    localStorage.setItem(this.refreshTokenKey, token);
+  setRefreshToken(token: string | null | undefined): void {
+    if (token === null || token === undefined) {
+      localStorage.removeItem(this.refreshTokenKey);
+    } else {
+      localStorage.setItem(this.refreshTokenKey, token);
+    }
   }
 
   clearTokens(): void {
@@ -104,7 +116,7 @@ export class TokenService {
     }
   }
 
-  getDecodedToken(token: string | null): any {
+  getDecodedToken(token: string | null | undefined): any {
     if (!token) {
       return null;
     }
@@ -122,21 +134,20 @@ export class TokenService {
   }
 
   login(credentials: Credentials): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/login`, credentials).pipe(
-      map(() => {
-        this.clearTokens();
+    return this.http.post<Credentials>(`${this.apiUrl}/login`, credentials).pipe(
+      map((response) => {
         this.isLoggedInSubject.next(true);
-        return true;
+        return response;
       })
     );
   }
 
   logout(): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/logout`, null).pipe(
-      map(() => {
+      map((response) => {
         this.clearTokens();
         this.isLoggedInSubject.next(false);
-        return true;
+        return response;
       })
     );
   }

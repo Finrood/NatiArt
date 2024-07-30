@@ -5,6 +5,7 @@ import com.saas.directory.dto.UserRegistrationDto;
 import com.saas.directory.helper.TargetUser;
 import com.saas.directory.service.UserManager;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,7 +20,7 @@ public class UserController {
 		this.userManager = userManager;
 	}
 
-	@PostMapping("/users/current")
+	@GetMapping("/users/current")
 	public ResponseEntity<UserDto> currentUser(@TargetUser String username) {
 		if (username == null || username.isEmpty()) {
 			return ResponseEntity.ok(null);

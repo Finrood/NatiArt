@@ -15,10 +15,14 @@ export class ProductService {
   constructor(private http: HttpClient, private tokenService: TokenService) {}
 
   private getHeaders(): HttpHeaders {
-    const accessToken = this.tokenService.getAccessToken();
-    return new HttpHeaders({
-      'Authorization': `Bearer ${accessToken}`
-    });
+    const accessToken: string | null | undefined = this.tokenService.getAccessToken();
+    if (accessToken === null || accessToken === undefined) {
+      return new HttpHeaders();
+    } else {
+      return new HttpHeaders({
+        'Authorization': `Bearer ${accessToken}`
+      });
+    }
   }
 
   getProducts(): Observable<any> {
