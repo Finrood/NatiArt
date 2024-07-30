@@ -8,6 +8,7 @@ import { NgClass, NgIf } from '@angular/common';
 import {SignupService, ViaCEPResponse} from "../../../service/signup.service";
 import { UserRegistration } from "../../../models/user-registration.model";
 import { Profile } from "../../../models/profile.model";
+import {CepFormatDirective} from "../../customer/shipping-estimation/cep-format-directive.directive";
 
 @Component({
   selector: 'app-signup',
@@ -33,6 +34,7 @@ import { Profile } from "../../../models/profile.model";
     NgClass,
     ReactiveFormsModule,
     NgIf,
+    CepFormatDirective
   ],
 })
 export class SignupComponent implements OnInit {

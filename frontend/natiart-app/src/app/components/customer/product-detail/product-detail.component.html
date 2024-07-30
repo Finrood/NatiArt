@@ -49,7 +49,7 @@
 
           <!-- Price -->
           <div class="mb-6">
-            <span class="text-2xl font-bold text-[#D4A59A]">{{ product.markedPrice | currency:'BRL' }}</span>
+            <span class="text-2xl font-bold text-primary">{{ product.markedPrice | currency:'BRL' }}</span>
             <span *ngIf="product.originalPrice > product.markedPrice" class="ml-2 text-gray-500 line-through">
               {{ product.originalPrice | currency:'BRL' }}
             </span>
@@ -80,7 +80,7 @@
           <!-- Add to Cart -->
           <button
             (click)="addToCart(product)"
-            class="w-full bg-[#D4A59A] text-white px-6 py-3 rounded-full font-medium hover:bg-[#C89F94] transition-colors focus:outline-none focus:ring-2 focus:ring-[#D4A59A] focus:ring-opacity-50"
+            class="w-full bg-primary text-white px-6 py-3 rounded-full font-medium hover:bg-primary-dark transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50"
           >
             Add to Cart
           </button>
@@ -106,7 +106,7 @@
               <img [src]="relatedProduct.images[0] || ''" [alt]="relatedProduct.label" class="absolute top-0 left-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
             </div>
             <h3 class="text-lg font-medium mb-2">{{ relatedProduct.label }}</h3>
-            <p class="text-[#D4A59A] font-semibold">{{ relatedProduct.markedPrice | currency:'BRL' }}</p>
+            <p class="text-primary font-semibold">{{ relatedProduct.markedPrice | currency:'BRL' }}</p>
           </div>
         </div>
       </div>

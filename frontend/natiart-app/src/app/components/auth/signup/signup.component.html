@@ -1,181 +1,207 @@
-<div class="min-h-screen bg-[#FDF5E6] flex items-center justify-center px-4 sm:px-6 lg:px-8">
-  <div class="w-full max-w-xs sm:max-w-sm md:max-w-md space-y-6 sm:space-y-8" [@fadeIn]>
+<div class="min-h-screen bg-background flex items-center justify-center px-4 sm:px-6 lg:px-8">
+  <div class="w-full max-w-md space-y-8" [@fadeIn]>
     <div>
-      <h1 class="mt-6 text-center text-2xl sm:text-3xl md:text-4xl font-light text-[#4A4A4A]">
+      <h1 class="mt-6 text-center text-3xl font-light text-secondary">
         Join Porcelain Elegance
       </h1>
-      <p class="mt-2 text-center text-xs sm:text-sm md:text-base text-[#888]">
+      <p class="mt-2 text-center text-sm text-secondary-light">
         Create your account in two simple steps
       </p>
     </div>
 
     <!-- Step indicator -->
     <div class="flex justify-center items-center space-x-4">
-      <div class="w-8 h-8 rounded-full bg-[#D4A59A] text-white flex items-center justify-center"
-           [ngClass]="{'bg-[#D4A59A]': currentStep === 1, 'bg-[#C89F94]': currentStep === 2}">
+      <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-medium"
+           [ngClass]="{'bg-primary': currentStep === 1, 'bg-primary-light': currentStep === 2}">
         1
       </div>
-      <div class="w-16 h-1 bg-[#C89F94]" [ngClass]="{'bg-[#D4A59A]': currentStep === 2}"></div>
-      <div class="w-8 h-8 rounded-full bg-[#C89F94] text-white flex items-center justify-center"
-           [ngClass]="{'bg-[#D4A59A]': currentStep === 2}">
+      <div class="w-16 h-1 bg-primary-light" [ngClass]="{'bg-primary': currentStep === 2}"></div>
+      <div class="w-8 h-8 rounded-full bg-primary-light text-white flex items-center justify-center text-sm font-medium"
+           [ngClass]="{'bg-primary': currentStep === 2}">
         2
       </div>
     </div>
 
-    <form [formGroup]="signupForm" (ngSubmit)="onSubmit()" class="mt-6 sm:mt-8 space-y-4 sm:space-y-6">
+    <form [formGroup]="signupForm" (ngSubmit)="onSubmit()" class="mt-8 space-y-6">
       <!-- Step 1: Email and Password -->
-      <div *ngIf="currentStep === 1" [@slideInRight] formGroupName="credentials">
-        <div class="rounded-md shadow-sm -space-y-px">
-          <div>
-            <label for="email" class="sr-only">Email address</label>
-            <input id="email" formControlName="username" type="email" required
-                   class="appearance-none rounded-none relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] rounded-t-md focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
-                   [ngClass]="{'border-red-500': getFieldError('credentials.username')}"
-                   placeholder="Email address">
-          </div>
-          <div *ngIf="getFieldError('credentials.username')" class="text-red-500 text-xs sm:text-sm mt-1 ml-1">
+      <div *ngIf="currentStep === 1" [@slideInRight] formGroupName="credentials" class="space-y-6">
+        <div>
+          <label for="email" class="block text-sm font-medium text-secondary">Email address</label>
+          <input id="email" formControlName="username" type="email" required
+                 class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                 [ngClass]="{'border-error': getFieldError('credentials.username')}"
+                 placeholder="you@example.com">
+          <p *ngIf="getFieldError('credentials.username')" class="mt-2 text-sm text-red-600">
             {{ getFieldError('credentials.username') }}
-          </div>
-          <div>
-            <label for="password" class="sr-only">Password</label>
-            <input id="password" formControlName="password" type="password" required
-                   class="appearance-none rounded-none relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
-                   [ngClass]="{'border-red-500': getFieldError('credentials.password')}"
-                   placeholder="Password">
-          </div>
-          <div *ngIf="getFieldError('credentials.password')" class="text-red-500 text-xs sm:text-sm mt-1 ml-1">
-            {{ getFieldError('credentials.password') }}
-          </div>
-          <div>
-            <label for="confirmPassword" class="sr-only">Confirm Password</label>
-            <input id="confirmPassword" formControlName="confirmPassword" type="password" required
-                   class="appearance-none rounded-none relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] rounded-b-md focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
-                   [ngClass]="{'border-red-500': getPasswordMatchError()}"
-                   placeholder="Confirm Password">
-          </div>
-          <div *ngIf="getPasswordMatchError()" class="text-red-500 text-xs sm:text-sm mt-1 ml-1">
-            {{ getPasswordMatchError() }}
-          </div>
+          </p>
         </div>
 
-        <div class="mt-4">
+        <div>
+          <label for="password" class="block text-sm font-medium text-secondary">Password</label>
+          <input id="password" formControlName="password" type="password" required
+                 class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                 [ngClass]="{'border-error': getFieldError('credentials.password')}"
+                 placeholder="••••••••">
+          <p *ngIf="getFieldError('credentials.password')" class="mt-2 text-sm text-red-600">
+            {{ getFieldError('credentials.password') }}
+          </p>
+        </div>
+
+        <div>
+          <label for="confirmPassword" class="block text-sm font-medium text-secondary">Confirm Password</label>
+          <input id="confirmPassword" formControlName="confirmPassword" type="password" required
+                 class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                 [ngClass]="{'border-error': getPasswordMatchError()}"
+                 placeholder="••••••••">
+          <p *ngIf="getPasswordMatchError()" class="mt-2 text-sm text-red-600">
+            {{ getPasswordMatchError() }}
+          </p>
+        </div>
+
+        <div>
           <button type="button" (click)="onNextStep()"
                   [disabled]="signupForm.get('credentials')?.invalid"
-                  class="group relative w-full flex justify-center py-2 sm:py-3 px-4 border border-transparent text-sm sm:text-base font-medium rounded-md text-white bg-[#D4A59A] hover:bg-[#C89F94] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#D4A59A] transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                  class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-input text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
             Next
           </button>
         </div>
       </div>
 
       <!-- Step 2: Profile Information -->
-      <div *ngIf="currentStep === 2" [@slideInRight] formGroupName="profile">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div *ngIf="currentStep === 2" [@slideInRight] formGroupName="profile" class="space-y-6">
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
-            <label for="firstname" class="sr-only">First Name</label>
+            <label for="firstname" class="block text-sm font-medium text-secondary">First Name</label>
             <input id="firstname" formControlName="firstname" type="text" required
-                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
-                   [ngClass]="{'border-red-500': getFieldError('profile.firstname')}"
-                   placeholder="First Name">
-            <div *ngIf="getFieldError('profile.firstname')" class="text-red-500 text-xs sm:text-sm mt-1 ml-1">
+                   class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                   [ngClass]="{'border-error': getFieldError('profile.firstname')}"
+                   placeholder="John">
+            <p *ngIf="getFieldError('profile.firstname')" class="mt-2 text-sm text-red-600">
               {{ getFieldError('profile.firstname') }}
-            </div>
+            </p>
           </div>
+
           <div>
-            <label for="lastname" class="sr-only">Last Name</label>
+            <label for="lastname" class="block text-sm font-medium text-secondary">Last Name</label>
             <input id="lastname" formControlName="lastname" type="text" required
-                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
-                   [ngClass]="{'border-red-500': getFieldError('profile.lastname')}"
-                   placeholder="Last Name">
-            <div *ngIf="getFieldError('profile.lastname')" class="text-red-500 text-xs sm:text-sm mt-1 ml-1">
+                   class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                   [ngClass]="{'border-error': getFieldError('profile.lastname')}"
+                   placeholder="Doe">
+            <p *ngIf="getFieldError('profile.lastname')" class="mt-2 text-sm text-red-600">
               {{ getFieldError('profile.lastname') }}
-            </div>
+            </p>
           </div>
+
           <div>
-            <label for="phone" class="sr-only">Phone</label>
+            <label for="phone" class="block text-sm font-medium text-secondary">Phone</label>
             <input id="phone" formControlName="phone" type="tel"
-                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
-                   [ngClass]="{'border-red-500': getFieldError('profile.phone')}"
-                   placeholder="Phone">
-            <div *ngIf="getFieldError('profile.phone')" class="text-red-500 text-xs sm:text-sm mt-1 ml-1">
+                   class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                   [ngClass]="{'border-error': getFieldError('profile.phone')}"
+                   placeholder="(123) 456-7890">
+            <p *ngIf="getFieldError('profile.phone')" class="mt-2 text-sm text-red-600">
               {{ getFieldError('profile.phone') }}
-            </div>
+            </p>
           </div>
 
           <div>
-            <label for="zipCode" class="sr-only">Zip Code</label>
+            <label for="zipCode" class="block text-sm font-medium text-secondary">Zip Code</label>
             <input id="zipCode" formControlName="zipCode" type="text" required
-                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
-                   [ngClass]="{'border-red-500': getFieldError('profile.zipCode')}"
-                   placeholder="CEP"
+                   class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                   [ngClass]="{'border-error': getFieldError('profile.zipCode')}"
+                   placeholder="12345"
+                   cepFormat
                    (input)="onZipCodeChange()">
-            <div *ngIf="getFieldError('profile.zipCode')" class="text-red-500 text-xs sm:text-sm mt-1 ml-1">
+            <p *ngIf="getFieldError('profile.zipCode')" class="mt-2 text-sm text-red-600">
               {{ getFieldError('profile.zipCode') }}
-            </div>
-          </div>
-
-          <div *ngIf="isLoadingAddress" class="text-center mt-4 sm:col-span-2">
-            <div class="spinner"></div>
-            <p class="mt-2 text-sm text-[#888]">Loading address...</p>
-          </div>
-
-          <div>
-            <label for="country" class="sr-only">Country</label>
-            <input readonly id="country" formControlName="country" type="text"
-                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
-                   placeholder="Country">
-          </div>
-          <div>
-            <label for="state" class="sr-only">State</label>
-            <input id="state" formControlName="state" type="text" required
-                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
-                   [ngClass]="{'border-red-500': getFieldError('profile.state')}"
-                   placeholder="State">
-            <div *ngIf="getFieldError('profile.state')" class="text-red-500 text-xs sm:text-sm mt-1 ml-1">
-              {{ getFieldError('profile.state') }}
-            </div>
-          </div>
-          <div>
-            <label for="city" class="sr-only">City</label>
-            <input id="city" formControlName="city" type="text" required
-                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
-                   [ngClass]="{'border-red-500': getFieldError('profile.city')}"
-                   placeholder="City">
-            <div *ngIf="getFieldError('profile.city')" class="text-red-500 text-xs sm:text-sm mt-1 ml-1">
-              {{ getFieldError('profile.city') }}
-            </div>
-          </div>
-
-          <div class="sm:col-span-2">
-            <label for="street" class="sr-only">Street</label>
-            <input id="street" formControlName="street" type="text" required
-                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
-                   [ngClass]="{'border-red-500': getFieldError('profile.street')}"
-                   placeholder="Street">
-            <div *ngIf="getFieldError('profile.street')" class="text-red-500 text-xs sm:text-sm mt-1 ml-1">
-              {{ getFieldError('profile.street') }}
-            </div>
-          </div>
-          <div class="sm:col-span-2">
-            <label for="complement" class="sr-only">Address Complement</label>
-            <input id="complement" formControlName="complement" type="text"
-                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
-                   placeholder="Address Complement">
+            </p>
           </div>
         </div>
 
-        <div class="flex justify-between mt-6">
+        <div *ngIf="isLoadingAddress" class="text-center">
+          <div class="spinner border-t-4 border-primary border-solid rounded-full w-8 h-8 mx-auto animate-spin"></div>
+          <p class="mt-2 text-sm text-secondary-light">Loading address...</p>
+        </div>
+
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <div>
+            <label for="country" class="block text-sm font-medium text-secondary">Country</label>
+            <input readonly id="country" formControlName="country" type="text"
+                   class="mt-1 block w-full px-3 py-2 bg-gray-100 border border-primary rounded-md shadow-input text-secondary-light focus:outline-none sm:text-sm"
+                   placeholder="Country">
+          </div>
+
+          <div>
+            <label for="state" class="block text-sm font-medium text-secondary">State</label>
+            <input id="state" formControlName="state" type="text" required
+                   class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                   [ngClass]="{'border-error': getFieldError('profile.state')}"
+                   placeholder="State">
+            <p *ngIf="getFieldError('profile.state')" class="mt-2 text-sm text-red-600">
+              {{ getFieldError('profile.state') }}
+            </p>
+          </div>
+
+          <div>
+            <label for="city" class="block text-sm font-medium text-secondary">City</label>
+            <input id="city" formControlName="city" type="text" required
+                   class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                   [ngClass]="{'border-error': getFieldError('profile.city')}"
+                   placeholder="City">
+            <p *ngIf="getFieldError('profile.city')" class="mt-2 text-sm text-red-600">
+              {{ getFieldError('profile.city') }}
+            </p>
+          </div>
+
+          <div>
+            <label for="neighborhood" class="block text-sm font-medium text-secondary">Neighborhood</label>
+            <input id="neighborhood" formControlName="neighborhood" type="text" required
+                   class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                   [ngClass]="{'border-error': getFieldError('profile.neighborhood')}"
+                   placeholder="neighborhood">
+            <p *ngIf="getFieldError('profile.neighborhood')" class="mt-2 text-sm text-red-600">
+              {{ getFieldError('profile.neighborhood') }}
+            </p>
+          </div>
+
+          <div>
+            <label for="street" class="block text-sm font-medium text-secondary">Street</label>
+            <input id="street" formControlName="street" type="text" required
+                   class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                   [ngClass]="{'border-error': getFieldError('profile.street')}"
+                   placeholder="123 Main St">
+            <p *ngIf="getFieldError('profile.street')" class="mt-2 text-sm text-red-600">
+              {{ getFieldError('profile.street') }}
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <label for="complement" class="block text-sm font-medium text-secondary">Address Complement</label>
+          <input id="complement" formControlName="complement" type="text"
+                 class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                 placeholder="Apartment, suite, unit, building, floor, etc.">
+        </div>
+
+        <div class="flex justify-between space-x-4">
           <button type="button"
                   (click)="onPreviousStep()"
-                  class="group relative flex justify-center py-2 sm:py-3 px-4 border border-[#D4A59A] text-sm sm:text-base font-medium rounded-md text-[#D4A59A] bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#D4A59A] transition-colors duration-300">
+                  class="flex-1 py-2 px-4 border border-primary rounded-md shadow-input text-sm font-medium text-primary bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300">
             Previous
           </button>
           <button type="submit"
                   [disabled]="signupForm.invalid"
-                  class="group relative flex justify-center py-2 sm:py-3 px-4 border border-transparent text-sm sm:text-base font-medium rounded-md text-white bg-[#D4A59A] hover:bg-[#C89F94] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#D4A59A] transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                  class="flex-1 py-2 px-4 border border-transparent rounded-md shadow-input text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
             Sign Up
           </button>
         </div>
       </div>
     </form>
+
+    <p class="mt-2 text-center text-sm text-secondary-light">
+      Already have an account?
+      <a href="/login" class="font-medium text-primary hover:text-primary-dark transition-colors duration-300 focus:outline-none focus:underline">
+        Sign in
+      </a>
+    </p>
   </div>
 </div>

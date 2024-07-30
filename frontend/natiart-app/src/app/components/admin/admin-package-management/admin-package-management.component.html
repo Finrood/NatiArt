@@ -10,7 +10,7 @@
 <div class="flex justify-between items-center mb-4">
   <h2 class="text-2xl sm:text-3xl font-light">Packages</h2>
   <button (click)="openModal()"
-          class="bg-[#D4A59A] text-white px-4 py-2 rounded-full hover:bg-[#C89F94] transition-colors text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#D4A59A] focus:ring-opacity-50">
+          class="bg-primary text-white px-4 py-2 rounded-full hover:bg-primary-dark transition-colors text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
     Add New Package
   </button>
 </div>
@@ -24,11 +24,11 @@
 
     <div class="flex flex-wrap justify-between gap-2">
       <button (click)="openModal(pack)"
-              class="text-[#D4A59A] border border-[#D4A59A] px-3 py-1 rounded-full hover:bg-[#D4A59A] hover:text-white transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A59A] focus:ring-opacity-50">
+              class="text-primary border border-primary px-3 py-1 rounded-full hover:bg-primary hover:text-white transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
         Edit
       </button>
       <button (click)="deletePackage(pack.id!)"
-              class="text-red-500 border border-red-500 px-3 py-1 rounded-full hover:bg-red-500 hover:text-white transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50">
+              class="text-error border border-error px-3 py-1 rounded-full hover:bg-error hover:text-white transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-error focus:ring-opacity-50">
         Delete
       </button>
     </div>
@@ -43,7 +43,7 @@
       <div class="mb-4">
         <label for="packageLabel" class="block text-sm font-medium text-gray-700 mb-1">Label</label>
         <input formControlName="label" type="text" id="packageLabel" name="packageLabel"
-               class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#D4A59A] focus:border-[#D4A59A] sm:text-sm">
+               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
         <div *ngIf="packageForm.get('label')?.invalid && packageForm.get('label')?.touched" class="text-red-600 text-sm mt-1">
           Label is required.
         </div>
@@ -51,7 +51,7 @@
       <div class="mb-4">
         <label for="packageHeight" class="block text-sm font-medium text-gray-700 mb-1">Height</label>
         <input type="number" step="0.01" formControlName="height" id="packageHeight" name="packageHeight"
-                  class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#D4A59A] focus:border-[#D4A59A] sm:text-sm">
+                  class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
         <div *ngIf="packageForm.get('height')?.invalid && packageForm.get('height')?.touched" class="text-red-600 text-sm mt-1">
           Height is required.
         </div>
@@ -59,7 +59,7 @@
       <div class="mb-4">
         <label for="packageWidth" class="block text-sm font-medium text-gray-700 mb-1">Width</label>
         <input type="number" step="0.01" formControlName="width" id="packageWidth" name="packageWidth"
-               class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#D4A59A] focus:border-[#D4A59A] sm:text-sm">
+               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
         <div *ngIf="packageForm.get('width')?.invalid && packageForm.get('width')?.touched" class="text-red-600 text-sm mt-1">
           Width is required.
         </div>
@@ -67,7 +67,7 @@
       <div class="mb-4">
         <label for="packageDepth" class="block text-sm font-medium text-gray-700 mb-1">Depth</label>
         <input type="number" step="0.01" formControlName="depth" id="packageDepth" name="packageDepth"
-               class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#D4A59A] focus:border-[#D4A59A] sm:text-sm">
+               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
         <div *ngIf="packageForm.get('depth')?.invalid && packageForm.get('depth')?.touched" class="text-red-600 text-sm mt-1">
           Depth is required.
         </div>
@@ -78,7 +78,7 @@
           Cancel
         </button>
         <button type="submit"
-                class="bg-[#D4A59A] text-white px-4 py-2 rounded-full hover:bg-[#C89F94] transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-[#D4A59A] focus:ring-opacity-50">
+                class="bg-primary text-white px-4 py-2 rounded-full hover:bg-primary-dark transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
           {{ isEditingPackage.value ? 'Update' : 'Add' }}
         </button>
       </div>

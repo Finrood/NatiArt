@@ -38,7 +38,7 @@ export class AdminDashboardComponent {
 
   getButtonClasses(isActive: boolean): string {
     const baseClasses = 'px-4 py-2 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-opacity-50';
-    const activeClasses = 'bg-[#D4A59A] text-white hover:bg-[#C89F94] focus:ring-[#D4A59A]';
+    const activeClasses = 'bg-primary text-white hover:bg-primary-dark focus:ring-primary';
     const inactiveClasses = 'bg-gray-200 text-gray-700 hover:bg-gray-300 focus:ring-gray-400';
 
     return `${baseClasses} ${isActive ? activeClasses : inactiveClasses}`;

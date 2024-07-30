@@ -1,39 +1,39 @@
-<div class="bg-white shadow-sm">
+<div class="bg-[#F9EBE0] shadow-input">
   <div class="container mx-auto px-4 py-4 sm:py-6 flex flex-col sm:flex-row justify-between items-center">
     <h1 class="text-2xl sm:text-3xl font-light tracking-wider mb-4 sm:mb-0">PORCELAIN ELEGANCE</h1>
 
     <nav class="hidden sm:flex space-x-6">
-      <a href="#" class="hover:text-[#D4A59A] transition-colors">Home</a>
-      <a href="#" class="hover:text-[#D4A59A] transition-colors">Collections</a>
-      <a href="#" class="hover:text-[#D4A59A] transition-colors">About</a>
-      <a href="#" class="hover:text-[#D4A59A] transition-colors">Contact</a>
+      <a href="#" class="hover:text-primary transition-colors">Home</a>
+      <a href="#" class="hover:text-primary transition-colors">Collections</a>
+      <a href="#" class="hover:text-primary transition-colors">About</a>
+      <a href="#" class="hover:text-primary transition-colors">Contact</a>
     </nav>
 
     <div class="flex items-center space-x-4">
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[#4A4A4A] hover:text-[#D4A59A] cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-secondary hover:text-primary cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
       </svg>
 
       <div class="relative cart-container" (mouseenter)="showCartModal()" (mouseleave)="hideCartModal()">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[#4A4A4A] hover:text-[#D4A59A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-secondary hover:text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
         </svg>
-        <span *ngIf="(cartItemCount$ | async) as count" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full text-xs px-1.5">
+        <span *ngIf="(cartItemCount$ | async) as count" class="absolute -top-2 -right-2 bg-error text-white rounded-full text-xs px-1.5">
           {{ count }}
         </span>
         <app-cart-modal *ngIf="isCartHovered"></app-cart-modal>
       </div>
 
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[#4A4A4A] hover:text-[#D4A59A] sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" (click)="toggleMobileMenu()">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-secondary hover:text-primary sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" (click)="toggleMobileMenu()">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
       </svg>
     </div>
   </div>
 
   <div class="md:hidden bg-white px-4 py-2" *ngIf="isMobileMenuOpen">
-    <a href="#" class="block py-2 hover:text-[#D4A59A] transition-colors">Home</a>
-    <a href="#" class="block py-2 hover:text-[#D4A59A] transition-colors">Collections</a>
-    <a href="#" class="block py-2 hover:text-[#D4A59A] transition-colors">About</a>
-    <a href="#" class="block py-2 hover:text-[#D4A59A] transition-colors">Contact</a>
+    <a href="#" class="block py-2 hover:text-primary transition-colors">Home</a>
+    <a href="#" class="block py-2 hover:text-primary transition-colors">Collections</a>
+    <a href="#" class="block py-2 hover:text-primary transition-colors">About</a>
+    <a href="#" class="block py-2 hover:text-primary transition-colors">Contact</a>
   </div>
 </div>
