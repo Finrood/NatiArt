@@ -30,6 +30,8 @@ public class Profile {
 
 	private String city;
 
+	private String neighborhood;
+
 	private String zipCode;
 
 	private String street;
@@ -121,6 +123,15 @@ public class Profile {
 
 	public Profile setCity(String city) {
 		this.city = city;
+		return this;
+	}
+
+	public String getNeighborhood() {
+		return neighborhood;
+	}
+
+	public Profile setNeighborhood(String neighborhood) {
+		this.neighborhood = neighborhood;
 		return this;
 	}
 

@@ -9,6 +9,7 @@ import {adminGuard} from "./guards/admin.guard";
 import {ProductDetailComponent} from "./components/customer/product-detail/product-detail.component";
 import {productGuard} from "./guards/product-guard.guard";
 import {CartComponent} from "./components/customer/cart/cart.component";
+import {CheckoutComponent} from "./components/customer/checkout/checkout.component";
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -31,6 +32,11 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'checkout',
+    component: CheckoutComponent,
+    canActivate: [authGuard]
+  },
+  {
     path: 'admin',
     component: AdminDashboardComponent,
     canActivate: [authGuard, adminGuard],
@@ -49,6 +55,11 @@ export const routes: Routes = [
         path: 'products',
         loadComponent: () => import('./components/admin/admin-product-management/admin-product-management.component')
           .then(m => m.ProductManagementComponent)
+      },
+      {
+        path: 'packages',
+        loadComponent: () => import('./components/admin/admin-package-management/admin-package-management.component')
+          .then(m => m.PackageManagementComponent)
       },
       { path: '', redirectTo: 'categories', pathMatch: 'full' }
     ]

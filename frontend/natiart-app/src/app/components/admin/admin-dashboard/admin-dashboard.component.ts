@@ -32,7 +32,8 @@ import {RouterLink, RouterLinkActive, RouterOutlet} from "@angular/router";
 export class AdminDashboardComponent {
   menuItems = [
     { path: 'categories', label: 'Categories' },
-    { path: 'products', label: 'Products' }
+    { path: 'products', label: 'Products' },
+    { path: 'packages', label: 'Packages' }
   ];
 
   getButtonClasses(isActive: boolean): string {

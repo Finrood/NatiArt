@@ -1,11 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { CustomValidators } from './CustomValidators';
+import { CustomPasswordValidators } from './CustomPasswordValidators';
 import { animate, style, transition, trigger } from '@angular/animations';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs/operators';
 import { NgClass, NgIf } from '@angular/common';
-import { SignupService } from "../../../service/signup.service";
+import {SignupService, ViaCEPResponse} from "../../../service/signup.service";
 import { UserRegistration } from "../../../models/user-registration.model";
 import { Profile } from "../../../models/profile.model";
 
@@ -55,9 +55,9 @@ export class SignupComponent implements OnInit {
     return this.fb.group({
       credentials: this.fb.group({
         username: ['', [Validators.required, Validators.email]],
-        password: ['', [Validators.required, CustomValidators.passwordComplexity()]],
+        password: ['', [Validators.required, CustomPasswordValidators.passwordComplexity()]],
         confirmPassword: ['', Validators.required],
-      }, { validators: CustomValidators.passwordMatchValidator }),
+      }, { validators: CustomPasswordValidators.passwordMatchValidator }),
       profile: this.fb.group({
         firstname: ['', Validators.required],
         lastname: ['', Validators.required],
@@ -65,6 +65,7 @@ export class SignupComponent implements OnInit {
         country: ['Brazil', Validators.required],
         state: ['', Validators.required],
         city: ['', Validators.required],
+        neighborhood: ['', Validators.required],
         zipCode: ['', Validators.required],
         street: ['', Validators.required],
         complement: [''],
@@ -123,14 +124,14 @@ export class SignupComponent implements OnInit {
     this.signupService.getAddressFromZipCode(zipCode)
       .pipe(finalize(() => this.isLoadingAddress = false))
       .subscribe({
-        next: (data: any) => {
+        next: (data: ViaCEPResponse) => {
           this.signupForm.patchValue({
             profile: {
               street: data.logradouro,
               city: data.localidade,
+              neighborhood: data.bairro,
               state: data.uf,
               country: "Brazil",
-              complement: data.complemento,
             },
           });
         },

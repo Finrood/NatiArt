@@ -21,6 +21,9 @@ public class PackageManagerImpl implements PackageManager {
     @Override
     @Transactional(readOnly = true)
     public Optional<Package> getPackage(String packageId) {
+        if (packageId == null) {
+            return Optional.empty();
+        }
         return packageRepository.findById(packageId);
     }
 

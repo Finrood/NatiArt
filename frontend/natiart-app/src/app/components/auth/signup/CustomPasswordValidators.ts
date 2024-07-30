@@ -1,6 +1,6 @@
 import {AbstractControl, ValidationErrors, ValidatorFn} from '@angular/forms';
 
-export class CustomValidators {
+export class CustomPasswordValidators {
   static passwordComplexity(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       const value = control.value;

@@ -6,6 +6,7 @@ import {FormsModule} from "@angular/forms";
 import {NgClass, NgIf} from "@angular/common";
 import {TokenService} from "../../../service/token.service";
 import {Credentials} from "../../../models/credentials.model";
+import {UserService} from "../../../service/user.service";
 
 @Component({
   selector: 'app-login',
@@ -63,10 +64,11 @@ export class LoginComponent implements OnInit {
   };
   errorMessage: string = '';
 
-  constructor(private http: HttpClient, private router: Router, private tokenService: TokenService) {}
+  constructor(private http: HttpClient, private router: Router, private tokenService: TokenService, private userService: UserService) {}
 
   ngOnInit(): void {
     if (this.tokenService.getAccessToken()) {
+      this.userService.getCurrentUser();
       this.router.navigate(['/dashboard'])
         .then(() => {});
     }
@@ -82,6 +84,7 @@ export class LoginComponent implements OnInit {
         next: (response) => {
           this.tokenService.setAccessToken(response.accessToken);
           this.tokenService.setRefreshToken(response.refreshToken);
+          this.userService.getCurrentUser();
           this.router.navigate(['/dashboard'])
             .then(() => {});
         },

@@ -3,7 +3,7 @@ import {HttpClient} from "@angular/common/http";
 import {Router} from "@angular/router";
 import {RoleName} from "../models/user.model";
 import {environment} from "../../environments/environment";
-import {Observable} from "rxjs";
+import {BehaviorSubject, map, Observable} from "rxjs";
 import {SignupRequest} from "./signup.service";
 import {Credentials} from "../models/credentials.model";
 
@@ -11,12 +11,18 @@ import {Credentials} from "../models/credentials.model";
   providedIn: 'root'
 })
 export class TokenService {
+  private isLoggedInSubject = new BehaviorSubject<boolean>(false);
+  isLoggedIn$ = this.isLoggedInSubject.asObservable();
+
   private readonly apiUrl: string = `${environment.directoryApiUrl}`;
 
   private accessTokenKey = 'accessToken';
   private refreshTokenKey = 'refreshToken';
 
-  constructor(private http: HttpClient, private router: Router) {}
+  constructor(private http: HttpClient, private router: Router) {
+    this.isLoggedInSubject.next(this.getAccessToken() !== null);
+
+  }
 
   getAccessToken(): string | null {
     return localStorage.getItem(this.accessTokenKey);
@@ -51,6 +57,7 @@ export class TokenService {
           next: (response) => {
             this.setAccessToken(response.accessToken);
             this.setRefreshToken(response.refreshToken);
+            this.isLoggedInSubject.next(true);
           },
           error: (error) => {
             console.log(error);
@@ -67,11 +74,18 @@ export class TokenService {
   isAccessTokenExpired(): boolean {
     const accessToken = this.getAccessToken();
     if (!accessToken) {
+      this.isLoggedInSubject.next(false);
       return true;
     }
     const accessTokenPayload = this.getDecodedToken(this.getAccessToken());
     const expirationTime = accessTokenPayload.exp * 1000; // Convert to milliseconds
-    return expirationTime < Date.now(); // Check if token has expired
+    if(expirationTime < Date.now()) {
+      this.isLoggedInSubject.next(true);
+      return true;
+    } else {
+      this.isLoggedInSubject.next(false);
+      return false;
+    }
   }
 
   isRefreshTokenExpired(): boolean {
@@ -81,7 +95,13 @@ export class TokenService {
     }
     const accessTokenPayload = this.getDecodedToken(this.getRefreshToken());
     const expirationTime = accessTokenPayload.exp * 1000; // Convert to milliseconds
-    return expirationTime < Date.now(); // Check if token has expired
+    if(expirationTime < Date.now()) {
+      this.isLoggedInSubject.next(true);
+      return true;
+    } else {
+      this.isLoggedInSubject.next(false);
+      return false;
+    }
   }
 
   getDecodedToken(token: string | null): any {
@@ -102,10 +122,22 @@ export class TokenService {
   }
 
   login(credentials: Credentials): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/login`, credentials);
+    return this.http.post<any>(`${this.apiUrl}/login`, credentials).pipe(
+      map(() => {
+        this.clearTokens();
+        this.isLoggedInSubject.next(true);
+        return true;
+      })
+    );
   }
 
   logout(): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/logout`, null);
+    return this.http.post<any>(`${this.apiUrl}/logout`, null).pipe(
+      map(() => {
+        this.clearTokens();
+        this.isLoggedInSubject.next(false);
+        return true;
+      })
+    );
   }
 }

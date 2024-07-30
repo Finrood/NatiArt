@@ -6,6 +6,7 @@ export interface Product {
   markedPrice: number;
   stockQuantity: number;
   categoryId: string;
+  productId: string;
   tags?: Set<string>;
   images: string[];
   active?: boolean;

@@ -131,8 +131,8 @@ public class Product {
         return this;
     }
 
-    public Package getPackaging() {
-        return packaging;
+    public Optional<Package> getPackaging() {
+        return Optional.ofNullable(packaging);
     }
 
     public Product setPackaging(Package packaging) {

@@ -3,6 +3,7 @@ package com.portcelana.natiart.service;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.ProductDto;
 import com.portcelana.natiart.model.Category;
+import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.repository.ProductRepository;
 import com.portcelana.natiart.storage.InputFile;
@@ -24,13 +25,16 @@ public class ProductManagerImpl implements ProductManager {
     private static final String IMAGE_BASE_PATH = "product-images/";
     private final ProductRepository productRepository;
     private final CategoryManager categoryManager;
+    private final PackageManager packageManager;
     private final StorageService storageService;
 
     public ProductManagerImpl(ProductRepository productRepository,
                               CategoryManager categoryManager,
+                              PackageManager packageManager,
                               StorageService storageService) {
         this.productRepository = productRepository;
         this.categoryManager = categoryManager;
+        this.packageManager = packageManager;
         this.storageService = storageService;
     }
 
@@ -75,12 +79,14 @@ public class ProductManagerImpl implements ProductManager {
     @Transactional
     public Product createProduct(ProductDto productDto, List<InputFile> imagesInput) {
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
+        final Optional<Package> pack = packageManager.getPackage(productDto.getPackageId());
         final Product product = productRepository.save(new Product(productDto.getLabel(), productDto.getOriginalPrice())
-                .setDescription(productDto.getDescription())
-                .setCategory(category)
-                .setMarkedPrice(productDto.getMarkedPrice())
-                .setStockQuantity(productDto.getStockQuantity())
-                .setTags(productDto.getTags()))
+                        .setDescription(productDto.getDescription())
+                        .setCategory(category)
+                        .setPackaging(pack.orElse(null))
+                        .setMarkedPrice(productDto.getMarkedPrice())
+                        .setStockQuantity(productDto.getStockQuantity())
+                        .setTags(productDto.getTags()))
                 .setNewProduct(productDto.isNewProduct())
                 .setFeaturedProduct(productDto.isFeaturedProduct());
 
@@ -94,10 +100,12 @@ public class ProductManagerImpl implements ProductManager {
     @Transactional
     public Product updateProduct(ProductDto productDto, List<InputFile> imagesInput) {
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
+        final Optional<Package> pack = packageManager.getPackage(productDto.getPackageId());
         final Product product = getProductOrDie(productDto.getId())
                 .setLabel(productDto.getLabel())
                 .setDescription(productDto.getDescription())
                 .setCategory(category)
+                .setPackaging(pack.orElse(null))
                 .setOriginalPrice(productDto.getOriginalPrice())
                 .setMarkedPrice(productDto.getMarkedPrice())
                 .setStockQuantity(productDto.getStockQuantity())
@@ -108,6 +116,19 @@ public class ProductManagerImpl implements ProductManager {
         final List<String> imagesUris = processImages(product, productDto.getImages(), imagesInput);
         product.setImages(imagesUris);
 
+        return productRepository.save(product);
+    }
+
+    @Override
+    @Transactional
+    public Product decreaseProductStockQuantityBy(String productId, int quantityToDecrease) {
+        final Product product = getProductOrDie(productId);
+
+        if ((product.getStockQuantity() - quantityToDecrease) < 0) {
+            throw new RuntimeException("Insufficient stock for product with id [%s] " + productId);
+        }
+
+        product.setStockQuantity(product.getStockQuantity() - quantityToDecrease);
         return productRepository.save(product);
     }
 

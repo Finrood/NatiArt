@@ -10,6 +10,7 @@ import { Alert } from '../../../models/alert.model';
 import { DomSanitizer, SafeUrl } from "@angular/platform-browser";
 import { CdkDragDrop, moveItemInArray, DragDropModule } from '@angular/cdk/drag-drop';
 import heic2any from 'heic2any';
+import {PackageService} from "../../../service/package.service";
 
 interface ImagePreview {
   url: string | SafeUrl;
@@ -28,12 +29,14 @@ interface ImagePreview {
 export class ProductManagementComponent implements OnInit {
   private productService = inject(ProductService);
   private categoryService = inject(CategoryService);
+  private packageService = inject(PackageService);
   private fb = inject(FormBuilder);
   protected sanitizer = inject(DomSanitizer);
 
   alert$ = new BehaviorSubject<Alert | null>(null);
   products = new BehaviorSubject<Product[]>([]);
   categories = new BehaviorSubject<Category[]>([]);
+  packages = new BehaviorSubject<Category[]>([]);
   isEditingProduct = new BehaviorSubject(false);
   productForm: FormGroup;
   imagePreviews: ImagePreview[] = [];
@@ -62,6 +65,7 @@ export class ProductManagementComponent implements OnInit {
       markedPrice: [0, Validators.min(0)],
       stockQuantity: [0, [Validators.required, Validators.min(0)]],
       categoryId: ['', Validators.required],
+      packageId: [''],
       tags: [new Set<string>()],
       images: [[]],
       active: [true]
@@ -71,6 +75,7 @@ export class ProductManagementComponent implements OnInit {
   ngOnInit(): void {
     this.getProducts();
     this.getCategories();
+    this.getPackages()
     this.isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   }
 
@@ -82,6 +87,13 @@ export class ProductManagementComponent implements OnInit {
     this.categoryService.getCategories().subscribe({
       next: (response) => this.categories.next(response),
       error: (error) => console.error('Error getting categories:', error)
+    });
+  }
+
+  private getPackages(): void {
+    this.packageService.getPackages().subscribe({
+      next: (response) => this.packages.next(response),
+      error: (error) => console.error('Error getting packages:', error)
     });
   }
 

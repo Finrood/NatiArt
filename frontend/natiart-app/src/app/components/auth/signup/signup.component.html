@@ -100,6 +100,24 @@
               {{ getFieldError('profile.phone') }}
             </div>
           </div>
+
+          <div>
+            <label for="zipCode" class="sr-only">Zip Code</label>
+            <input id="zipCode" formControlName="zipCode" type="text" required
+                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
+                   [ngClass]="{'border-red-500': getFieldError('profile.zipCode')}"
+                   placeholder="CEP"
+                   (input)="onZipCodeChange()">
+            <div *ngIf="getFieldError('profile.zipCode')" class="text-red-500 text-xs sm:text-sm mt-1 ml-1">
+              {{ getFieldError('profile.zipCode') }}
+            </div>
+          </div>
+
+          <div *ngIf="isLoadingAddress" class="text-center mt-4 sm:col-span-2">
+            <div class="spinner"></div>
+            <p class="mt-2 text-sm text-[#888]">Loading address...</p>
+          </div>
+
           <div>
             <label for="country" class="sr-only">Country</label>
             <input readonly id="country" formControlName="country" type="text"
@@ -125,22 +143,6 @@
             <div *ngIf="getFieldError('profile.city')" class="text-red-500 text-xs sm:text-sm mt-1 ml-1">
               {{ getFieldError('profile.city') }}
             </div>
-          </div>
-          <div>
-            <label for="zipCode" class="sr-only">Zip Code</label>
-            <input id="zipCode" formControlName="zipCode" type="text" required
-                   class="appearance-none rounded-md relative block w-full px-3 py-2 sm:py-3 border border-[#D4A59A] placeholder-[#888] text-[#4A4A4A] focus:outline-none focus:ring-[#D4A59A] focus:border-[#D4A59A] focus:z-10 text-sm sm:text-base"
-                   [ngClass]="{'border-red-500': getFieldError('profile.zipCode')}"
-                   placeholder="CEP"
-                   (input)="onZipCodeChange()">
-            <div *ngIf="getFieldError('profile.zipCode')" class="text-red-500 text-xs sm:text-sm mt-1 ml-1">
-              {{ getFieldError('profile.zipCode') }}
-            </div>
-          </div>
-
-          <div *ngIf="isLoadingAddress" class="text-center mt-4 sm:col-span-2">
-            <div class="spinner"></div>
-            <p class="mt-2 text-sm text-[#888]">Loading address...</p>
           </div>
 
           <div class="sm:col-span-2">

@@ -1,5 +1,6 @@
 package com.portcelana.natiart.dto;
 
+import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.model.Product;
 
 import java.math.BigDecimal;
@@ -8,19 +9,20 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-    public class ProductDto {
-        private String id;
-        private String label;
-        private String description;
-        private BigDecimal originalPrice;
-        private BigDecimal markedPrice;
-        private int stockQuantity;
-        private String categoryId;
-        private Set<String> tags = new HashSet<>();
-        private List<String> images = new ArrayList<>();
-        private boolean newProduct;
-        private boolean featuredProduct;
-        private boolean active;
+public class ProductDto {
+    private String id;
+    private String label;
+    private String description;
+    private BigDecimal originalPrice;
+    private BigDecimal markedPrice;
+    private int stockQuantity;
+    private String categoryId;
+    private String packageId;
+    private Set<String> tags = new HashSet<>();
+    private List<String> images = new ArrayList<>();
+    private boolean newProduct;
+    private boolean featuredProduct;
+    private boolean active;
 
     public static ProductDto from(Product product) {
         if (product == null) return null;
@@ -30,6 +32,7 @@ import java.util.Set;
                 .setMarkedPrice(product.getMarkedPrice())
                 .setStockQuantity(product.getStockQuantity())
                 .setCategory(product.getCategory().getId())
+                .setPackageId(product.getPackaging().map(Package::getId).orElse(null))
                 .setTags(product.getTags())
                 .setImages(product.getImages())
                 .setNewProduct(product.isNewProduct())
@@ -105,6 +108,15 @@ import java.util.Set;
         return this;
     }
 
+    public String getPackageId() {
+        return packageId;
+    }
+
+    public ProductDto setPackageId(String packageId) {
+        this.packageId = packageId;
+        return this;
+    }
+
     public Set<String> getTags() {
         return tags;
     }
@@ -141,7 +153,8 @@ import java.util.Set;
         return this;
     }
 
-    public boolean isActive() {return active;
+    public boolean isActive() {
+        return active;
     }
 
     public ProductDto setActive(boolean active) {

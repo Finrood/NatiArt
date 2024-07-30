@@ -1,7 +1,10 @@
-export interface Profile {
+import {OrderItemDto} from "./orderItem.model";
+
+export interface OrderDto {
   id?: string;
   firstname: string;
   lastname: string;
+  email: string;
   phone?: string;
   country: string;
   state: string;
@@ -10,4 +13,9 @@ export interface Profile {
   zipCode: string;
   street: string;
   complement?: string;
+  orderDate?: Date;
+  items: OrderItemDto[];
+  deliveryAmount?: number;
+  totalAmount?: number;
+  status?: string;
 }

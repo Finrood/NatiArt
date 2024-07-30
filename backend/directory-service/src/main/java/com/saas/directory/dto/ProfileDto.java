@@ -10,6 +10,7 @@ public class ProfileDto {
     private String country;
     private String state;
     private String city;
+    private String neighborhood;
     private String zipCode;
     private String street;
     private String complement;
@@ -24,6 +25,7 @@ public class ProfileDto {
                 .setCountry(profile.getCountry())
                 .setState(profile.getState())
                 .setCity(profile.getCity())
+                .setNeighborhood(profile.getNeighborhood())
                 .setZipCode(profile.getZipCode())
                 .setStreet(profile.getStreet())
                 .setComplement(profile.getComplement());
@@ -89,6 +91,15 @@ public class ProfileDto {
 
     public ProfileDto setCity(String city) {
         this.city = city;
+        return this;
+    }
+
+    public String getNeighborhood() {
+        return neighborhood;
+    }
+
+    public ProfileDto setNeighborhood(String neighborhood) {
+        this.neighborhood = neighborhood;
         return this;
     }
 

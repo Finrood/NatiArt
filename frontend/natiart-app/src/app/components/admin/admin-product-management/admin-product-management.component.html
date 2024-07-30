@@ -97,6 +97,13 @@
           </select>
         </div>
         <div class="mb-4">
+          <label for="productPackage" class="block text-sm font-medium text-gray-700 mb-1">Package</label>
+          <select formControlName="packageId" id="productPackage" name="productPackage"
+                  class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#D4A59A] focus:border-[#D4A59A] sm:text-sm">
+            <option *ngFor="let pack of packages | async" [value]="pack.id">{{ pack.label }}</option>
+          </select>
+        </div>
+        <div class="mb-4">
           <label for="productImages" class="block text-sm font-medium text-gray-700 mb-1">Images</label>
           <input type="file" id="productImages" (change)="onFileSelected($event)" multiple accept="image/*"
                  class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#D4A59A] focus:border-[#D4A59A] sm:text-sm">
