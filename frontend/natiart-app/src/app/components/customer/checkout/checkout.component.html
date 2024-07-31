@@ -13,50 +13,170 @@
           <p class="mb-4">Checking out as a guest? You can also <a routerLink="/login" class="text-blue-500 hover:underline">log in</a> to use your saved information.</p>
         </ng-template>
 
-        <form [formGroup]="checkoutForm" (ngSubmit)="onSubmit()">
-          <div class="mb-4">
-            <label for="firstname" class="block text-sm font-medium text-gray-700 mb-1">Firstname</label>
-            <input type="text" id="firstname" formControlName="firstname" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <!-- Step indicator -->
+        <div class="flex justify-center items-center space-x-4">
+          <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-medium"
+               [ngClass]="{'bg-primary': currentStep === 1, 'bg-primary-light': currentStep === 2}">
+            1
           </div>
-          <div class="mb-4">
-            <label for="lastname" class="block text-sm font-medium text-gray-700 mb-1">Lastname</label>
-            <input type="text" id="lastname" formControlName="lastname" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <div class="w-16 h-1 bg-primary-light" [ngClass]="{'bg-primary': currentStep === 2}"></div>
+          <div class="w-8 h-8 rounded-full bg-primary-light text-white flex items-center justify-center text-sm font-medium"
+               [ngClass]="{'bg-primary': currentStep === 2}">
+            2
           </div>
-          <div class="mb-4">
-            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input type="email" id="email" formControlName="email" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <form [formGroup]="checkoutForm" (ngSubmit)="onSubmit()" class="mt-8 space-y-6">
+          <!-- Step 1: Personal information -->
+          <div *ngIf="currentStep === 1" [@slideInRight] formGroupName="userInfo" class="space-y-6">
+            <div>
+              <label for="email" class="block text-sm font-medium text-secondary">Email address</label>
+              <input id="email" formControlName="email" type="email" required
+                     class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                     [ngClass]="{'border-error': getFieldError('userInfo.email')}"
+                     placeholder="you@yourbest.com">
+              <p *ngIf="getFieldError('userInfo.email')" class="mt-2 text-sm text-red-600">
+                {{ getFieldError('userInfo.email') }}
+              </p>
+            </div>
+
+            <div>
+              <label for="firstname" class="block text-sm font-medium text-secondary">First Name</label>
+              <input id="firstname" formControlName="firstname" type="text" required
+                     class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                     [ngClass]="{'border-error': getFieldError('userInfo.firstname')}"
+                     placeholder="John">
+              <p *ngIf="getFieldError('userInfo.firstname')" class="mt-2 text-sm text-red-600">
+                {{ getFieldError('userInfo.firstname') }}
+              </p>
+            </div>
+
+            <div>
+              <label for="lastname" class="block text-sm font-medium text-secondary">Last Name</label>
+              <input id="lastname" formControlName="lastname" type="text" required
+                     class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                     [ngClass]="{'border-error': getFieldError('userInfo.lastname')}"
+                     placeholder="Doe">
+              <p *ngIf="getFieldError('userInfo.lastname')" class="mt-2 text-sm text-red-600">
+                {{ getFieldError('userInfo.lastname') }}
+              </p>
+            </div>
+
+            <div>
+              <label for="phone" class="block text-sm font-medium text-secondary">Phone</label>
+              <input id="phone" formControlName="phone" type="tel"
+                     class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                     [ngClass]="{'border-error': getFieldError('userInfo.phone')}"
+                     placeholder="(XX) XXXXX-XXXX">
+              <p *ngIf="getFieldError('userInfo.phone')" class="mt-2 text-sm text-red-600">
+                {{ getFieldError('userInfo.phone') }}
+              </p>
+            </div>
+
+            <div>
+              <button type="button" (click)="onNextStep()"
+                      [disabled]="checkoutForm.get('userInfo')?.invalid"
+                      class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-input text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                Next
+              </button>
+            </div>
           </div>
-          <div class="mb-4">
-            <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-            <input type="tel" id="phone" formControlName="phone" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-          </div>
-          <div class="mb-4">
-            <label for="zipCode" class="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>
-            <input cepFormat type="text" id="zipCode" formControlName="zipCode" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-          </div>
-          <div class="mb-4">
-            <label for="country" class="block text-sm font-medium text-gray-700 mb-1">Country</label>
-            <input type="text" id="country" formControlName="country" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-          </div>
-          <div class="mb-4">
-            <label for="state" class="block text-sm font-medium text-gray-700 mb-1">State</label>
-            <input type="text" id="state" formControlName="state" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-          </div>
-          <div class="mb-4">
-            <label for="city" class="block text-sm font-medium text-gray-700 mb-1">City</label>
-            <input type="text" id="city" formControlName="city" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-          </div>
-          <div class="mb-4">
-            <label for="neighborhood" class="block text-sm font-medium text-gray-700 mb-1">Neighborhood</label>
-            <input type="text" id="neighborhood" formControlName="neighborhood" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-          </div>
-          <div class="mb-4">
-            <label for="street" class="block text-sm font-medium text-gray-700 mb-1">Street</label>
-            <input type="text" id="street" formControlName="street" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-          </div>
-          <div class="mb-4">
-            <label for="complement" class="block text-sm font-medium text-gray-700 mb-1">Street</label>
-            <input type="text" id="complement" formControlName="complement" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+          <!-- Step 2: Profile Information -->
+          <div *ngIf="currentStep === 2" [@slideInRight] formGroupName="shippingInfo" class="space-y-6">
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+
+              <div>
+                <label for="zipCode" class="block text-sm font-medium text-secondary">Zip Code</label>
+                <input id="zipCode" formControlName="zipCode" type="text" required
+                       class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                       [ngClass]="{'border-error': getFieldError('shippingInfo.zipCode')}"
+                       placeholder="XXXXX-XXX"
+                       cepFormat
+                       (input)="onZipCodeChange()">
+                <p *ngIf="getFieldError('shippingInfo.zipCode')" class="mt-2 text-sm text-red-600">
+                  {{ getFieldError('shippingInfo.zipCode') }}
+                </p>
+              </div>
+            </div>
+
+            <div *ngIf="isLoadingAddress" class="text-center">
+              <app-loading-spinner></app-loading-spinner>
+              <p class="mt-2 text-sm text-secondary-light">Loading address...</p>
+            </div>
+
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div>
+                <label for="country" class="block text-sm font-medium text-secondary">Country</label>
+                <input readonly id="country" formControlName="country" type="text"
+                       class="mt-1 block w-full px-3 py-2 bg-gray-100 border border-primary rounded-md shadow-input text-secondary-light focus:outline-none sm:text-sm"
+                       placeholder="Country">
+              </div>
+
+              <div>
+                <label for="state" class="block text-sm font-medium text-secondary">State</label>
+                <input id="state" formControlName="state" type="text" required
+                       class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                       [ngClass]="{'border-error': getFieldError('shippingInfo.state')}"
+                       placeholder="State">
+                <p *ngIf="getFieldError('shippingInfo.state')" class="mt-2 text-sm text-red-600">
+                  {{ getFieldError('shippingInfo.state') }}
+                </p>
+              </div>
+
+              <div>
+                <label for="city" class="block text-sm font-medium text-secondary">City</label>
+                <input id="city" formControlName="city" type="text" required
+                       class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                       [ngClass]="{'border-error': getFieldError('shippingInfo.city')}"
+                       placeholder="City">
+                <p *ngIf="getFieldError('shippingInfo.city')" class="mt-2 text-sm text-red-600">
+                  {{ getFieldError('shippingInfo.city') }}
+                </p>
+              </div>
+
+              <div>
+                <label for="neighborhood" class="block text-sm font-medium text-secondary">Neighborhood</label>
+                <input id="neighborhood" formControlName="neighborhood" type="text" required
+                       class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                       [ngClass]="{'border-error': getFieldError('shippingInfo.neighborhood')}"
+                       placeholder="neighborhood">
+                <p *ngIf="getFieldError('shippingInfo.neighborhood')" class="mt-2 text-sm text-red-600">
+                  {{ getFieldError('shippingInfo.neighborhood') }}
+                </p>
+              </div>
+
+              <div>
+                <label for="street" class="block text-sm font-medium text-secondary">Street</label>
+                <input id="street" formControlName="street" type="text" required
+                       class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                       [ngClass]="{'border-error': getFieldError('shippingInfo.street')}"
+                       placeholder="123 Main St">
+                <p *ngIf="getFieldError('shippingInfo.street')" class="mt-2 text-sm text-red-600">
+                  {{ getFieldError('shippingInfo.street') }}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label for="complement" class="block text-sm font-medium text-secondary">Address Complement</label>
+              <input id="complement" formControlName="complement" type="text"
+                     class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                     placeholder="Apartment, suite, unit, building, floor, etc.">
+            </div>
+
+            <div class="flex justify-between space-x-4">
+              <button type="button"
+                      (click)="onPreviousStep()"
+                      class="flex-1 py-2 px-4 border border-primary rounded-md shadow-input text-sm font-medium text-primary bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300">
+                Previous
+              </button>
+              <button type="submit"
+                      [disabled]="checkoutForm.invalid"
+                      class="flex-1 py-2 px-4 border border-transparent rounded-md shadow-input text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                Sign Up
+              </button>
+            </div>
           </div>
         </form>
       </div>

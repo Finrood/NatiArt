@@ -2,7 +2,7 @@ import {Injectable} from '@angular/core';
 import {HttpClient, HttpHeaders} from "@angular/common/http";
 import {Observable} from "rxjs";
 import {Category} from "../models/category.model";
-import {TokenService} from "./token.service";
+import {AuthenticationService} from "./authentication.service";
 import {environment} from "../../environments/environment";
 
 @Injectable({
@@ -11,10 +11,10 @@ import {environment} from "../../environments/environment";
 export class CategoryService {
   private readonly apiUrl: string = `${environment.productApiUrl}/categories`;
 
-  constructor(private http: HttpClient, private tokenService: TokenService) {}
+  constructor(private http: HttpClient, private authenticationService: AuthenticationService) {}
 
   private getHeaders(): HttpHeaders {
-    const accessToken = this.tokenService.getAccessToken();
+    const accessToken = this.authenticationService.getAccessToken();
     return new HttpHeaders({
       'Authorization': `Bearer ${accessToken}`
     });

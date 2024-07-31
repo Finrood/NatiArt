@@ -93,6 +93,7 @@ public class UserAuthenticationProvider {
         return savedToken.getToken();
     }
 
+    @Transactional
     public void refreshToken(HttpServletRequest request, HttpServletResponse response) throws IOException, IllegalAccessException {
         final String header = request.getHeader(HttpHeaders.AUTHORIZATION);
 
@@ -130,7 +131,12 @@ public class UserAuthenticationProvider {
         }
 
         final String role = decodedJWT.getClaim("roles").asString();
-        final GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
+        final GrantedAuthority authority;
+        if (role != null) {
+            authority = new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
+        } else {
+            authority = new SimpleGrantedAuthority("ROLE_"+ dbToken.get().getUser().getRole().getLabel());
+        }
 
         return new UsernamePasswordAuthenticationToken(UserDto.from(dbToken.get().getUser()), null, Collections.singletonList(authority));
     }

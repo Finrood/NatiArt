@@ -1,7 +1,7 @@
 import {Injectable} from '@angular/core';
-import {HttpClient} from "@angular/common/http";
+import {HttpClient, HttpHeaders} from "@angular/common/http";
 import {Router} from "@angular/router";
-import {RoleName} from "../models/user.model";
+import {RoleName, User} from "../models/user.model";
 import {environment} from "../../environments/environment";
 import {BehaviorSubject, map, Observable} from "rxjs";
 import {SignupRequest} from "./signup.service";
@@ -10,18 +10,43 @@ import {Credentials} from "../models/credentials.model";
 @Injectable({
   providedIn: 'root'
 })
-export class TokenService {
+export class AuthenticationService {
+  private readonly apiUrl: string = `${environment.directoryApiUrl}`;
+
+  private tokenExpiryCheckIntervalId: any;
+
   private isLoggedInSubject = new BehaviorSubject<boolean>(false);
   isLoggedIn$ = this.isLoggedInSubject.asObservable();
-
-  private readonly apiUrl: string = `${environment.directoryApiUrl}`;
+  private currentUserSubject = new BehaviorSubject<User | null>(null);
+  currentUser$ = this.currentUserSubject.asObservable();
 
   private accessTokenKey = 'accessToken';
   private refreshTokenKey = 'refreshToken';
 
   constructor(private http: HttpClient, private router: Router) {
     this.isLoggedInSubject.next(this.getAccessToken() !== null);
+    this.startTokenExpiryCheck();
+  }
 
+  private getHeaders(): HttpHeaders {
+    const accessToken = this.getAccessToken();
+    return new HttpHeaders({
+      'Authorization': `Bearer ${accessToken}`
+    });
+  }
+
+  getCurrentUser(): void {
+    const headers = this.getHeaders();
+    this.http.get<User>(`${this.apiUrl}/users/current`, { headers: headers })
+      .subscribe({
+        next: (user) => {
+          this.isLoggedInSubject.next(true);
+          this.currentUserSubject.next(user);
+        },
+        error: (error) => {
+          console.error('Error fetching user profile:', error);
+        }
+      })
   }
 
   getAccessToken(): string | null | undefined {
@@ -53,6 +78,7 @@ export class TokenService {
   }
 
   clearTokens(): void {
+    this.currentUserSubject.next(null);
     localStorage.removeItem(this.accessTokenKey);
     localStorage.removeItem(this.refreshTokenKey);
   }
@@ -64,12 +90,12 @@ export class TokenService {
         'Authorization': `Bearer ${refreshToken}`
       };
 
-      this.http.post<{ accessToken: string, refreshToken: string }>(`${this.apiUrl}/refresh-token`, null, { headers })
+      this.http.post<{ accessToken: string, refreshToken: string }>(`${this.apiUrl}/refresh-token`, null, { headers: headers })
         .subscribe({
           next: (response) => {
             this.setAccessToken(response.accessToken);
             this.setRefreshToken(response.refreshToken);
-            this.isLoggedInSubject.next(true);
+            this.getCurrentUser();
           },
           error: (error) => {
             console.log(error);
@@ -86,16 +112,14 @@ export class TokenService {
   isAccessTokenExpired(): boolean {
     const accessToken = this.getAccessToken();
     if (!accessToken) {
-      this.isLoggedInSubject.next(false);
       return true;
     }
     const accessTokenPayload = this.getDecodedToken(this.getAccessToken());
     const expirationTime = accessTokenPayload.exp * 1000; // Convert to milliseconds
     if(expirationTime < Date.now()) {
-      this.isLoggedInSubject.next(true);
       return true;
     } else {
-      this.isLoggedInSubject.next(false);
+      this.isLoggedInSubject.next(true);
       return false;
     }
   }
@@ -107,13 +131,7 @@ export class TokenService {
     }
     const accessTokenPayload = this.getDecodedToken(this.getRefreshToken());
     const expirationTime = accessTokenPayload.exp * 1000; // Convert to milliseconds
-    if(expirationTime < Date.now()) {
-      this.isLoggedInSubject.next(true);
-      return true;
-    } else {
-      this.isLoggedInSubject.next(false);
-      return false;
-    }
+    return expirationTime < Date.now();
   }
 
   getDecodedToken(token: string | null | undefined): any {
@@ -150,5 +168,16 @@ export class TokenService {
         return response;
       })
     );
+  }
+
+  public startTokenExpiryCheck(): void {
+    if (!this.tokenExpiryCheckIntervalId) {
+      this.tokenExpiryCheckIntervalId = setInterval(() => {
+        if (this.getAccessToken() && this.isAccessTokenExpired()) {
+          console.log("Tokens have expired. Trying to renew them");
+          this.refreshToken();
+        }
+      }, 10000); // Every second
+    }
   }
 }

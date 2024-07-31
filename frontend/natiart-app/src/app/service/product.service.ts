@@ -1,7 +1,7 @@
 import {Injectable} from '@angular/core';
 import {HttpClient, HttpHeaders} from "@angular/common/http";
 import {Observable} from "rxjs";
-import {TokenService} from "./token.service";
+import {AuthenticationService} from "./authentication.service";
 import {environment} from "../../environments/environment";
 
 @Injectable({
@@ -12,10 +12,10 @@ export class ProductService {
   private readonly apiUrlImages: string = `${environment.productApiUrl}`;
 
 
-  constructor(private http: HttpClient, private tokenService: TokenService) {}
+  constructor(private http: HttpClient, private authenticationService: AuthenticationService) {}
 
   private getHeaders(): HttpHeaders {
-    const accessToken: string | null | undefined = this.tokenService.getAccessToken();
+    const accessToken: string | null | undefined = this.authenticationService.getAccessToken();
     if (accessToken === null || accessToken === undefined) {
       return new HttpHeaders();
     } else {

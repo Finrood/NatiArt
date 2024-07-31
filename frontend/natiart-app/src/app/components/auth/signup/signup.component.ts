@@ -9,6 +9,7 @@ import {SignupService, ViaCEPResponse} from "../../../service/signup.service";
 import { UserRegistration } from "../../../models/user-registration.model";
 import { Profile } from "../../../models/profile.model";
 import {CepFormatDirective} from "../../customer/shipping-estimation/cep-format-directive.directive";
+import {LoadingSpinnerComponent} from "../../shared/loading-spinner/loading-spinner.component";
 
 @Component({
   selector: 'app-signup',
@@ -34,7 +35,8 @@ import {CepFormatDirective} from "../../customer/shipping-estimation/cep-format-
     NgClass,
     ReactiveFormsModule,
     NgIf,
-    CepFormatDirective
+    CepFormatDirective,
+    LoadingSpinnerComponent
   ],
 })
 export class SignupComponent implements OnInit {

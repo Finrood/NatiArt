@@ -4,9 +4,8 @@ import {HttpClient} from "@angular/common/http";
 import {Router} from "@angular/router";
 import {FormsModule} from "@angular/forms";
 import {NgClass, NgIf} from "@angular/common";
-import {TokenService} from "../../../service/token.service";
+import {AuthenticationService} from "../../../service/authentication.service";
 import {Credentials} from "../../../models/credentials.model";
-import {UserService} from "../../../service/user.service";
 
 @Component({
   selector: 'app-login',
@@ -64,11 +63,15 @@ export class LoginComponent implements OnInit {
   };
   errorMessage: string = '';
 
-  constructor(private http: HttpClient, private router: Router, private tokenService: TokenService, private userService: UserService) {}
+  constructor(
+    private http: HttpClient,
+    private router: Router,
+    private authenticationService: AuthenticationService
+  ) {}
 
   ngOnInit(): void {
-    if (this.tokenService.getAccessToken()) {
-      this.userService.getCurrentUser();
+    if (this.authenticationService.getAccessToken()) {
+      this.authenticationService.getCurrentUser();
       this.router.navigate(['/dashboard'])
         .then(() => {});
     }
@@ -79,12 +82,12 @@ export class LoginComponent implements OnInit {
   }
 
   onSubmit() {
-    this.tokenService.login(this.credentials)
+    this.authenticationService.login(this.credentials)
       .subscribe({
         next: (response) => {
-          this.tokenService.setAccessToken(response.accessToken);
-          this.tokenService.setRefreshToken(response.refreshToken);
-          this.userService.getCurrentUser();
+          this.authenticationService.setAccessToken(response.accessToken);
+          this.authenticationService.setRefreshToken(response.refreshToken);
+          this.authenticationService.getCurrentUser();
           this.router.navigate(['/dashboard'])
             .then(() => {});
         },

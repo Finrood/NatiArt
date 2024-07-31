@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import {environment} from "../../environments/environment";
 import {HttpClient, HttpHeaders} from "@angular/common/http";
 import {Observable} from "rxjs";
-import {TokenService} from "./token.service";
+import {AuthenticationService} from "./authentication.service";
 import {Package} from "../models/package.model";
 
 @Injectable({
@@ -11,10 +11,10 @@ import {Package} from "../models/package.model";
 export class PackageService {
   private readonly apiUrl: string = `${environment.productApiUrl}/packages`
 
-  constructor(private http: HttpClient, private tokenService: TokenService) { }
+  constructor(private http: HttpClient, private authenticationService: AuthenticationService) { }
 
   private getHeaders(): HttpHeaders {
-    const accessToken = this.tokenService.getAccessToken();
+    const accessToken = this.authenticationService.getAccessToken();
     return new HttpHeaders({
       'Authorization': `Bearer ${accessToken}`
     });

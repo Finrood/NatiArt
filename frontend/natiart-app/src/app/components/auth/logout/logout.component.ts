@@ -1,7 +1,7 @@
 import {Component, OnInit} from '@angular/core';
 import {HttpClient} from "@angular/common/http";
 import {Router} from "@angular/router";
-import {TokenService} from "../../../service/token.service";
+import {AuthenticationService} from "../../../service/authentication.service";
 
 @Component({
   selector: 'app-logout',
@@ -11,11 +11,11 @@ import {TokenService} from "../../../service/token.service";
   styleUrl: './logout.component.css'
 })
 export class LogoutComponent implements OnInit {
-  constructor(private http: HttpClient, private router: Router, private tokenService: TokenService) {}
+  constructor(private http: HttpClient, private router: Router, private authenticationService: AuthenticationService) {}
 
   ngOnInit(): void {
-    this.tokenService.clearTokens();
-    this.tokenService.logout().subscribe({
+    this.authenticationService.clearTokens();
+    this.authenticationService.logout().subscribe({
       next: () => {
         this.router.navigate(['/login'])
           .then(() => {});
