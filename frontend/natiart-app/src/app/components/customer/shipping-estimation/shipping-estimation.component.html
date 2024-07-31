@@ -1,7 +1,7 @@
-<section class="bg-white rounded-lg shadow-md p-6 mt-8" aria-labelledby="shipping-estimation-title">
+<section class="bg-white rounded-lg shadow-md p-6 mt-8 relative" aria-labelledby="shipping-estimation-title">
   <h2 id="shipping-estimation-title" class="text-2xl font-semibold mb-4 text-gray-800">Shipping Estimation</h2>
 
-  <form [formGroup]="shippingForm" (ngSubmit)="estimateShipping()" class="space-y-4">
+  <form [formGroup]="shippingForm" class="space-y-4">
     <div>
       <label for="cep" class="block text-sm font-medium text-gray-700">CEP (Postal Code)</label>
       <input
@@ -9,7 +9,7 @@
         id="cep"
         formControlName="cep"
         cepFormat
-        class="mt-1 block w-full rounded-md border-gray-300 shadow-input focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+        class="appearance-none rounded-none relative block w-full px-3 py-2 sm:py-3 border border-primary placeholder-secondary-light text-secondary rounded-t-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 text-sm sm:text-base"
         placeholder="00000-000"
         aria-describedby="cep-error"
       >
@@ -21,31 +21,70 @@
         Please enter a valid CEP (8 digits).
       </p>
     </div>
-
-    <button
-      type="submit"
-      [disabled]="shippingForm.invalid || isLoading"
-      class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors disabled:opacity-50"
-    >
-      {{ isLoading ? 'Estimating...' : 'Estimate Shipping' }}
-    </button>
   </form>
 
-  <div *ngIf="isLoading" class="flex justify-center mt-4" aria-live="polite">
-    <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-    </svg>
-  </div>
+  <ng-container *ngIf="shippingState$ | async as state">
+    <div [ngSwitch]="state.status" class="mt-4">
+      <div *ngSwitchCase="'idle'" class="text-gray-600">
+        Enter a CEP above to estimate shipping costs.
+      </div>
 
-  <div *ngIf="cheapestOption$ | async as option" class="mt-6" aria-live="polite">
-    <h3 class="text-lg font-semibold text-gray-800 mb-2">Cheapest Shipping Option:</h3>
-    <div class="bg-gray-100 p-4 rounded-md">
-      <p class="font-medium">{{ option.service }}</p>
-      <p>Price: R$ {{ option.price.toFixed(2) }}</p>
-      <p>Estimated Delivery: {{ option.estimatedDeliveryDays }} days</p>
+      <div *ngSwitchCase="'loading'" class="absolute inset-0 bg-gray-500 bg-opacity-75 flex justify-center items-center" aria-live="polite">
+        <div class="bg-white p-4 rounded-lg shadow-md text-center">
+          <app-loading-spinner></app-loading-spinner>
+          <span class="text-gray-800 font-medium mt-2 block">Estimating shipping...</span>
+        </div>
+      </div>
+
+      <div *ngSwitchCase="'success'" class="bg-green-50 border-l-4 border-green-400 p-4" aria-live="polite">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-green-800">Cheapest Shipping Option</h3>
+            <div class="mt-2 text-sm text-green-700">
+              <p><strong>Service:</strong> {{ state.cheapestOption?.service }}</p>
+              <p><strong>Price:</strong> R$ {{ state.cheapestOption?.price!.toFixed(2) }}</p>
+              <p><strong>Estimated Delivery:</strong> {{ state.cheapestOption?.estimatedDeliveryDays }} days</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div *ngSwitchCase="'no-options'" class="bg-yellow-50 border-l-4 border-yellow-400 p-4" aria-live="polite">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-yellow-800">No Shipping Options</h3>
+            <div class="mt-2 text-sm text-yellow-700">
+              <p>No shipping options are available for the provided CEP.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div *ngSwitchCase="'error'" class="bg-red-50 border-l-4 border-red-400 p-4" aria-live="assertive">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">Error</h3>
+            <div class="mt-2 text-sm text-red-700">
+              <p>{{ state.error }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
-
-  <p *ngIf="errorMessage" class="mt-4 text-red-600" aria-live="assertive">{{ errorMessage }}</p>
+  </ng-container>
 </section>

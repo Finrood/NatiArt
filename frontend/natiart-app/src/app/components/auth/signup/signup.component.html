@@ -97,7 +97,7 @@
             <input id="phone" formControlName="phone" type="tel"
                    class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                    [ngClass]="{'border-error': getFieldError('profile.phone')}"
-                   placeholder="(123) 456-7890">
+                   placeholder="(XX) XXXXX-XXXX">
             <p *ngIf="getFieldError('profile.phone')" class="mt-2 text-sm text-red-600">
               {{ getFieldError('profile.phone') }}
             </p>
@@ -108,7 +108,7 @@
             <input id="zipCode" formControlName="zipCode" type="text" required
                    class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                    [ngClass]="{'border-error': getFieldError('profile.zipCode')}"
-                   placeholder="12345"
+                   placeholder="XXXXX-XXX"
                    cepFormat
                    (input)="onZipCodeChange()">
             <p *ngIf="getFieldError('profile.zipCode')" class="mt-2 text-sm text-red-600">

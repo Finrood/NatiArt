@@ -9,6 +9,7 @@ import {OrderService} from "../../../service/order.service";
 import {UserService} from "../../../service/user.service";
 import {TokenService} from "../../../service/token.service";
 import {RouterLink} from "@angular/router";
+import {CepFormatDirective} from "../shipping-estimation/cep-format-directive.directive";
 
 @Component({
   selector: 'app-checkout',
@@ -19,7 +20,8 @@ import {RouterLink} from "@angular/router";
     RouterLink,
     ReactiveFormsModule,
     CurrencyPipe,
-    NgForOf
+    NgForOf,
+    CepFormatDirective
   ],
   templateUrl: './checkout.component.html',
   styleUrl: './checkout.component.css'
@@ -42,6 +44,7 @@ export class CheckoutComponent implements OnInit {
     this.checkoutForm = this.fb.group({
       firstname: ['', Validators.required],
       lastname: ['', Validators.required],
+      email: ['', [Validators.required, Validators.email]],
       phone: ['', Validators.pattern('[0-9]*')],
       country: ['Brazil', Validators.required],
       state: ['', Validators.required],
@@ -63,20 +66,17 @@ export class CheckoutComponent implements OnInit {
     this.currentUser$.subscribe(user => {
       if (user) {
         this.checkoutForm.patchValue({
-          name: user.profile.firstname,
-          email: user.username
-        });
-      }
-    });
-  }
-
-  useProfileAddress(): void {
-    this.currentUser$.subscribe(user => {
-      if (user && user.profile.country) {
-        this.checkoutForm.patchValue({
-          address: user.profile.street,
+          firstname: user.profile.firstname,
+          lastname: user.profile.lastname,
+          email: user.username,
+          phone: user.profile.phone,
+          country: user.profile.country,
+          state: user.profile.state,
           city: user.profile.city,
-          postalCode: user.profile.zipCode
+          neighborhood: user.profile.neighborhood,
+          zipCode: user.profile.zipCode,
+          street: user.profile.street,
+          complement: user.profile.complement
         });
       }
     });
