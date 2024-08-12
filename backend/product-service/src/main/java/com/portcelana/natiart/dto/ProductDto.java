@@ -2,6 +2,7 @@ package com.portcelana.natiart.dto;
 
 import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.model.Product;
+import jakarta.persistence.Column;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -18,6 +19,9 @@ public class ProductDto {
     private int stockQuantity;
     private String categoryId;
     private String packageId;
+    private Boolean hasGold;
+    private boolean canPersonaliseGold;
+    private boolean canPersonaliseImage;
     private Set<String> tags = new HashSet<>();
     private List<String> images = new ArrayList<>();
     private boolean newProduct;
@@ -33,6 +37,9 @@ public class ProductDto {
                 .setStockQuantity(product.getStockQuantity())
                 .setCategory(product.getCategory().getId())
                 .setPackageId(product.getPackaging().map(Package::getId).orElse(null))
+                .setCanPersonaliseGold(product.isCanPersonaliseGold())
+                .setHasGold(product.getHasGold().orElse(null))
+                .setCanPersonaliseImage(product.isCanPersonaliseImage())
                 .setTags(product.getTags())
                 .setImages(product.getImages())
                 .setNewProduct(product.isNewProduct())
@@ -114,6 +121,33 @@ public class ProductDto {
 
     public ProductDto setPackageId(String packageId) {
         this.packageId = packageId;
+        return this;
+    }
+
+    public Boolean getHasGold() {
+        return hasGold;
+    }
+
+    public ProductDto setHasGold(Boolean hasGold) {
+        this.hasGold = hasGold;
+        return this;
+    }
+
+    public boolean isCanPersonaliseGold() {
+        return canPersonaliseGold;
+    }
+
+    public ProductDto setCanPersonaliseGold(boolean canPersonaliseGold) {
+        this.canPersonaliseGold = canPersonaliseGold;
+        return this;
+    }
+
+    public boolean isCanPersonaliseImage() {
+        return canPersonaliseImage;
+    }
+
+    public ProductDto setCanPersonaliseImage(boolean canPersonaliseImage) {
+        this.canPersonaliseImage = canPersonaliseImage;
         return this;
     }
 

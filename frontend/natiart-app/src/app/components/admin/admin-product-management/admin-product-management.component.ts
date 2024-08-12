@@ -66,6 +66,9 @@ export class ProductManagementComponent implements OnInit {
       stockQuantity: [0, [Validators.required, Validators.min(0)]],
       categoryId: ['', Validators.required],
       packageId: [''],
+      hasGold: [''],
+      canPersonaliseGold: [false],
+      canPersonaliseImage: [false],
       tags: [new Set<string>()],
       images: [[]],
       active: [true]

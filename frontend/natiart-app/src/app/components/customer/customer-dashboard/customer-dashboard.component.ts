@@ -8,6 +8,7 @@ import {BehaviorSubject, Subscription} from "rxjs";
 import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
 import {RouterLink} from "@angular/router";
 import {CartService} from "../../../service/cart.service";
+import {PersonalizationModalComponent} from "../personalization-modal/personalization-modal.component";
 
 @Component({
   selector: 'app-customer-dashboard',
@@ -19,7 +20,8 @@ import {CartService} from "../../../service/cart.service";
     NgIf,
     AsyncPipe,
     RouterLink,
-    CurrencyPipe
+    CurrencyPipe,
+    PersonalizationModalComponent
   ],
   templateUrl: './customer-dashboard.component.html',
   styleUrl: './customer-dashboard.component.css'
@@ -44,6 +46,9 @@ export class CustomerDashboardComponent {
 
   imageUrls: { [productId: string]: SafeUrl | null } = {};
   private subscriptions: Subscription[] = [];
+
+  showPersonalizationModal = false;
+  selectedProduct: Product | null = null;
 
   constructor(
     private productService: ProductService,
@@ -118,7 +123,28 @@ export class CustomerDashboardComponent {
   }
 
   addToCart(product: Product) {
-    this.cartService.addToCart(product, 1);
+    if (product.canPersonaliseGold || product.canPersonaliseImage) {
+      this.openPersonalizationModal(product);
+    } else {
+      this.cartService.addToCart(product, 1);
+    }
+  }
+
+  openPersonalizationModal(product: Product) {
+    this.selectedProduct = product;
+    this.showPersonalizationModal = true;
+  }
+
+  closePersonalizationModal() {
+    this.showPersonalizationModal = false;
+    this.selectedProduct = null;
+  }
+
+  onPersonalizationComplete(result: { goldBorder?: boolean, customImage?: File }) {
+    if (this.selectedProduct) {
+      this.cartService.addToCart(this.selectedProduct, 1, result.goldBorder, result.customImage);
+    }
+    this.closePersonalizationModal();
   }
 
   private startBannerInterval() {

@@ -144,3 +144,10 @@
     </div>
   </main>
 </div>
+
+<app-personalization-modal
+  [show]="showPersonalizationModal"
+  [product]="selectedProduct"
+  (close)="closePersonalizationModal()"
+  (personalize)="onPersonalizationComplete($event)">
+</app-personalization-modal>

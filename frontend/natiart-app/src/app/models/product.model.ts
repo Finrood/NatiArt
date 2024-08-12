@@ -6,7 +6,9 @@ export interface Product {
   markedPrice: number;
   stockQuantity: number;
   categoryId: string;
-  productId: string;
+  hasGold?: boolean;
+  canPersonaliseGold: boolean;
+  canPersonaliseImage: boolean;
   tags?: Set<string>;
   images: string[];
   active?: boolean;

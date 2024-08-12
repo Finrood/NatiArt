@@ -39,6 +39,12 @@ public class Product {
     @JoinColumn(name = "package_id")
     private Package packaging;
 
+    private Boolean hasGold;
+    @Column(nullable = false)
+    private boolean canPersonaliseGold;
+    @Column(nullable = false)
+    private boolean canPersonaliseImage;
+
     @Column(length = 1000)
     @Convert(converter = SetStringJpaConverter.class)
     private Set<String> tags = new HashSet<>();
@@ -71,6 +77,8 @@ public class Product {
         this.label = label;
         this.originalPrice = originalPrice;
         this.active = true;
+        this.canPersonaliseGold = false;
+        this.canPersonaliseImage = false;
     }
 
     public String getId() {
@@ -137,6 +145,33 @@ public class Product {
 
     public Product setPackaging(Package packaging) {
         this.packaging = packaging;
+        return this;
+    }
+
+    public Optional<Boolean> getHasGold() {
+        return Optional.ofNullable(hasGold);
+    }
+
+    public Product setHasGold(Boolean hasGold) {
+        this.hasGold = hasGold;
+        return this;
+    }
+
+    public boolean isCanPersonaliseGold() {
+        return canPersonaliseGold;
+    }
+
+    public Product setCanPersonaliseGold(boolean canPersonaliseGold) {
+        this.canPersonaliseGold = canPersonaliseGold;
+        return this;
+    }
+
+    public boolean isCanPersonaliseImage() {
+        return canPersonaliseImage;
+    }
+
+    public Product setCanPersonaliseImage(boolean canPersonaliseImage) {
+        this.canPersonaliseImage = canPersonaliseImage;
         return this;
     }
 

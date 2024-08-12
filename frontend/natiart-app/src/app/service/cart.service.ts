@@ -24,12 +24,12 @@ export class CartService {
     return this.cartItemsSubject.asObservable();
   }
 
-  addToCart(product: Product, quantity: number): Observable<void> {
-    const existingItem = this.cartItems.find(item => item.product.id === product.id);
+  addToCart(product: Product, quantity: number, goldBorder?: boolean, image?: File): Observable<void> {
+    const existingItem = this.cartItems.find(item => item.product.id === product.id && item.goldBorder === goldBorder);
     if (existingItem) {
       existingItem.quantity += quantity;
     } else {
-      this.cartItems.push({ product, quantity });
+      this.cartItems.push({ product, goldBorder, image, quantity });
     }
     this.updateCart();
     return of(undefined); // Returning observable of void to indicate operation completion
