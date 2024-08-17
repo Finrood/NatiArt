@@ -4,9 +4,10 @@ import {HttpClient} from "@angular/common/http";
 import {Router} from "@angular/router";
 import {FormsModule} from "@angular/forms";
 import {NgClass, NgIf} from "@angular/common";
-import {AuthenticationService} from "../../../service/authentication.service";
 import {Credentials} from "../../../models/credentials.model";
 import {RedirectService} from "../../../service/redirect.service";
+import {AuthenticationService} from "../../../service/authentication.service";
+import {LoginResponse} from "../../../models/loginResponse.model";
 
 @Component({
   selector: 'app-login',
@@ -85,7 +86,7 @@ export class LoginComponent implements OnInit {
   onSubmit() {
     this.authenticationService.login(this.credentials)
       .subscribe({
-        next: (response) => {
+        next: (response: LoginResponse) => {
           this.authenticationService.setAccessToken(response.accessToken);
           this.authenticationService.setRefreshToken(response.refreshToken);
           this.authenticationService.getCurrentUser();
