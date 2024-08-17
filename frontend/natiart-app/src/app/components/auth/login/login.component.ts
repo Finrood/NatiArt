@@ -6,6 +6,7 @@ import {FormsModule} from "@angular/forms";
 import {NgClass, NgIf} from "@angular/common";
 import {AuthenticationService} from "../../../service/authentication.service";
 import {Credentials} from "../../../models/credentials.model";
+import {RedirectService} from "../../../service/redirect.service";
 
 @Component({
   selector: 'app-login',
@@ -66,14 +67,14 @@ export class LoginComponent implements OnInit {
   constructor(
     private http: HttpClient,
     private router: Router,
-    private authenticationService: AuthenticationService
+    private authenticationService: AuthenticationService,
+    private redirectService: RedirectService
   ) {}
 
   ngOnInit(): void {
     if (this.authenticationService.getAccessToken()) {
       this.authenticationService.getCurrentUser();
-      this.router.navigate(['/dashboard'])
-        .then(() => {});
+      this.redirectToSavedUrlOrDashboard();
     }
   }
 
@@ -88,12 +89,22 @@ export class LoginComponent implements OnInit {
           this.authenticationService.setAccessToken(response.accessToken);
           this.authenticationService.setRefreshToken(response.refreshToken);
           this.authenticationService.getCurrentUser();
-          this.router.navigate(['/dashboard'])
-            .then(() => {});
+          this.redirectToSavedUrlOrDashboard();
         },
         error: () => {
           this.errorMessage = 'Invalid email or password. Please try again.';
         }
       });
+  }
+
+  private redirectToSavedUrlOrDashboard() {
+    const redirectUrl = this.redirectService.getRedirectUrl();
+    if (redirectUrl) {
+      this.router.navigateByUrl(redirectUrl)
+        .then(() => {});
+    } else {
+      this.router.navigate(['/dashboard'])
+        .then(() => {});
+    }
   }
 }

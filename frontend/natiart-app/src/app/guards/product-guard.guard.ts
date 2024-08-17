@@ -16,14 +16,16 @@ export const productGuard: CanDeactivateFn<ProductDetailComponent> = (
 
   const id = currentRoute.paramMap.get('id');
   if (!id) {
-    router.navigate(['/dashboard']);
+    router.navigate(['/dashboard'])
+      .then(() => {});
     return false;
   }
 
   return productService.getProduct(id).pipe(
     map(() => true),
     catchError(() => {
-      router.navigate(['/dashboard']);
+      router.navigate(['/dashboard'])
+        .then(() => {});
       return of(false);
     })
   );
