@@ -16,7 +16,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-devtools")
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	runtimeOnly("com.h2database:h2")
-    implementation("org.postgresql:postgresql:42.7.3")
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.3")
-	testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.3")
+    implementation("org.postgresql:postgresql:42.7.4")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.11.0")
+	testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.0")
 }
