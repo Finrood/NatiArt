@@ -8,7 +8,6 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     implementation("org.springframework.boot:spring-boot-starter-web")
-    testImplementation("org.springframework:spring-test")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("com.auth0:java-jwt:4.4.0")
@@ -20,6 +19,4 @@ dependencies {
     implementation("commons-io:commons-io:2.16.1")
     implementation("org.apache.poi:poi:5.3.0")
     implementation("org.sejda.imageio:webp-imageio:0.1.6")
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.11.0")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.0")
 }

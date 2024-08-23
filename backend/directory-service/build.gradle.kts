@@ -8,7 +8,6 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	implementation("org.springframework.boot:spring-boot-starter-web")
-	testImplementation("org.springframework:spring-test")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("com.auth0:java-jwt:4.4.0")
@@ -17,6 +16,4 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	runtimeOnly("com.h2database:h2")
     implementation("org.postgresql:postgresql:42.7.4")
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.11.0")
-	testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.0")
 }
