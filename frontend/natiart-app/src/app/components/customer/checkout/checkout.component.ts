@@ -1,18 +1,18 @@
-import {Component, OnInit} from '@angular/core';
-import {AsyncPipe, CurrencyPipe, NgClass, NgForOf, NgIf} from "@angular/common";
-import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from "@angular/forms";
-import {Observable} from "rxjs";
-import {CartItem} from "../../../models/CartItem.model";
-import {User} from "../../../models/user.model";
-import {CartService} from "../../../service/cart.service";
-import {OrderService} from "../../../service/order.service";
-import {AuthenticationService} from "../../../service/authentication.service";
-import {RouterLink} from "@angular/router";
-import {CepFormatDirective} from "../shipping-estimation/cep-format-directive.directive";
-import {animate, style, transition, trigger} from "@angular/animations";
-import {finalize} from "rxjs/operators";
-import {SignupService, ViaCEPResponse} from "../../../service/signup.service";
-import {LoadingSpinnerComponent} from "../../shared/loading-spinner/loading-spinner.component";
+import { Component, OnInit } from '@angular/core';
+import { AsyncPipe, CurrencyPipe, NgClass, NgForOf, NgIf } from '@angular/common';
+import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
+import { Observable } from 'rxjs';
+import { CartItem } from '../../../models/CartItem.model';
+import { User } from '../../../models/user.model';
+import { CartService } from '../../../service/cart.service';
+import { OrderService } from '../../../service/order.service';
+import { AuthenticationService } from '../../../service/authentication.service';
+import { RouterLink } from '@angular/router';
+import { CepFormatDirective } from '../shipping-estimation/cep-format-directive.directive';
+import { animate, style, transition, trigger } from '@angular/animations';
+import { finalize } from 'rxjs/operators';
+import { SignupService, ViaCEPResponse } from '../../../service/signup.service';
+import { LoadingSpinnerComponent } from '../../shared/loading-spinner/loading-spinner.component';
 
 @Component({
   selector: 'app-checkout',
@@ -26,7 +26,8 @@ import {LoadingSpinnerComponent} from "../../shared/loading-spinner/loading-spin
     NgForOf,
     CepFormatDirective,
     NgClass,
-    LoadingSpinnerComponent
+    LoadingSpinnerComponent,
+    FormsModule
   ],
   animations: [
     trigger('fadeIn', [
@@ -49,12 +50,14 @@ export class CheckoutComponent implements OnInit {
   checkoutForm: FormGroup;
   currentStep = 1;
   errorMessage = '';
-  isLoadingAddress = false;
+  isLoadingShippingAddress = false;
+  isLoadingBillingAddress = false;
   cartItems$: Observable<CartItem[]>;
   cartTotal$: Observable<number>;
   isLoggedIn$: Observable<boolean>;
   currentUser$: Observable<User | null>;
   isLoading$: Observable<boolean>;
+  sameShippingAsBilling = true;
 
   constructor(
     private fb: FormBuilder,
@@ -78,7 +81,23 @@ export class CheckoutComponent implements OnInit {
         zipCode: ['', Validators.required],
         street: ['', Validators.required],
         complement: [''],
-      })
+      }),
+      billingInfo: this.fb.group({
+        country: ['Brazil', Validators.required],
+        state: ['', Validators.required],
+        city: ['', Validators.required],
+        neighborhood: ['', Validators.required],
+        zipCode: ['', Validators.required],
+        street: ['', Validators.required],
+        complement: [''],
+      }),
+      paymentInfo: this.fb.group({
+        paymentMethod: ['', Validators.required],
+        cardNumber: ['', Validators.required],
+        expirationDate: ['', Validators.required],
+        cvv: ['', Validators.required],
+        pixKey: ['', Validators.required],
+      }),
     });
 
     this.cartItems$ = this.cartService.getCartItems();
@@ -107,23 +126,58 @@ export class CheckoutComponent implements OnInit {
             zipCode: user.profile.zipCode,
             street: user.profile.street,
             complement: user.profile.complement,
-          }
+          },
+          billingInfo: {
+            country: user.profile.country,
+            state: user.profile.state,
+            city: user.profile.city,
+            neighborhood: user.profile.neighborhood,
+            zipCode: user.profile.zipCode,
+            street: user.profile.street,
+            complement: user.profile.complement,
+          },
         });
       }
     });
   }
 
-  onNextStep(): void {
-    if (this.checkoutForm.get('userInfo')?.invalid) {
-      this.checkoutForm.get('userInfo')?.markAllAsTouched();
-      return;
+  isCurrentStepValid(): boolean | undefined {
+    switch (this.currentStep) {
+      case 1:
+        return this.checkoutForm.get('userInfo')?.valid;
+      case 2:
+        return this.checkoutForm.get('shippingInfo')?.valid;
+      case 3:
+        return this.checkoutForm.get('paymentInfo')?.valid;
+      default:
+        return true;
     }
-    this.currentStep = 2;
+  }
+
+  onNextStep(): void {
+    if (this.currentStep === 1) {
+      if (this.checkoutForm.get('userInfo')?.invalid) {
+        this.checkoutForm.get('userInfo')?.markAllAsTouched();
+        return;
+      }
+    } else if (this.currentStep === 2) {
+      if (this.checkoutForm.get('shippingInfo')?.invalid) {
+        this.checkoutForm.get('shippingInfo')?.markAllAsTouched();
+        return;
+      }
+      if (!this.sameShippingAsBilling) {
+        if (this.checkoutForm.get('billingInfo')?.invalid) {
+          this.checkoutForm.get('billingInfo')?.markAllAsTouched();
+          return;
+        }
+      }
+    }
+    this.currentStep++;
     this.clearErrorMessage();
   }
 
   onPreviousStep(): void {
-    this.currentStep = 1;
+    this.currentStep--;
     this.clearErrorMessage();
   }
 
@@ -133,16 +187,33 @@ export class CheckoutComponent implements OnInit {
         ...this.checkoutForm.value,
         //items: this.cartService.getCartItemsSnapshot()
       };
-      this.orderService.createOrder(orderData).subscribe({
-        next: () => {
-          // Handle successful order placement (e.g., navigate to confirmation page)
-          console.log('Order placed successfully');
-        },
-        error: (error: any) => {
-        // Handle error (e.g., show error message)
-        console.error('Error placing order:', error);
+
+      const paymentMethod = this.checkoutForm.get('paymentInfo.paymentMethod')?.value;
+      if (paymentMethod === 'credit_card' || paymentMethod === 'debit_card') {
+        // Process credit/debit card payment
+        // this.orderService.processCardPayment(orderData).subscribe({
+        //   next: () => {
+        //     // Handle successful order placement (e.g., navigate to confirmation page)
+        //     console.log('Order placed successfully');
+        //   },
+        //   error: (error: any) => {
+        //     // Handle error (e.g., show error message)
+        //     console.error('Error placing order:', error);
+        //   }
+        // });
+      } else if (paymentMethod === 'pix') {
+        // Process PIX payment
+        // this.orderService.processPixPayment(orderData).subscribe({
+        //   next: () => {
+        //     // Handle successful order placement (e.g., navigate to confirmation page)
+        //     console.log('Order placed successfully');
+        //   },
+        //   error: (error: any) => {
+        //     // Handle error (e.g., show error message)
+        //     console.error('Error placing order:', error);
+        //   }
+        // });
       }
-    });
     }
   }
 
@@ -151,7 +222,7 @@ export class CheckoutComponent implements OnInit {
     if (field?.invalid && (field.dirty || field.touched)) {
       if (field.errors?.['required']) return 'This field is required.';
       if (field.errors?.['email']) return 'Please enter a valid email address.';
-      if (field.errors?.['pattern']) return 'Please enter a valid phone number.';
+      if (field.errors?.['pattern']) return 'Please enter a valid phone number or card number.';
     }
     return '';
   }
@@ -164,30 +235,57 @@ export class CheckoutComponent implements OnInit {
     this.errorMessage = '';
   }
 
-  onZipCodeChange(): void {
-    const zipCode = this.checkoutForm.get('shippingInfo.zipCode')?.value?.replace(/\D/g, '');
+  onZipCodeChange(section: 'shippingInfo' | 'billingInfo'): void {
+    const zipCode = this.checkoutForm.get(`${section}.zipCode`)?.value?.replace(/\D/g, '');
     if (zipCode?.length !== 8) {
       return;
     }
 
-    this.isLoadingAddress = true;
+    if (section === 'shippingInfo') {
+      this.isLoadingShippingAddress = true;
+    } else {
+      this.isLoadingBillingAddress = true;
+    }
+
     this.signupService.getAddressFromZipCode(zipCode)
-      .pipe(finalize(() => this.isLoadingAddress = false))
+      .pipe(finalize(() => {
+        this.isLoadingShippingAddress = false;
+        this.isLoadingBillingAddress = false;
+      }))
       .subscribe({
         next: (data: ViaCEPResponse) => {
-          this.checkoutForm.patchValue({
-            shippingInfo: {
-              street: data.logradouro,
-              city: data.localidade,
-              neighborhood: data.bairro,
-              state: data.uf,
-              country: "Brazil",
-            },
-          });
+          const addressData = {
+            street: data.logradouro,
+            city: data.localidade,
+            neighborhood: data.bairro,
+            state: data.uf,
+            country: "Brazil",
+          };
+
+          const updatedFormValue = {
+            [section]: addressData
+          };
+
+          this.checkoutForm.patchValue(updatedFormValue);
         },
         error: () => {
           this.setErrorMessage('Error fetching address. Please enter manually.');
         }
       });
+  }
+
+  toggleSameShippingAsBilling(event: Event): void {
+    this.sameShippingAsBilling = (event.target as HTMLInputElement).checked;
+    if (this.sameShippingAsBilling) {
+      this.checkoutForm.get('billingInfo')?.patchValue({
+        country: this.checkoutForm.get('shippingInfo.country')?.value,
+        state: this.checkoutForm.get('shippingInfo.state')?.value,
+        city: this.checkoutForm.get('shippingInfo.city')?.value,
+        neighborhood: this.checkoutForm.get('shippingInfo.neighborhood')?.value,
+        zipCode: this.checkoutForm.get('shippingInfo.zipCode')?.value,
+        street: this.checkoutForm.get('shippingInfo.street')?.value,
+        complement: this.checkoutForm.get('shippingInfo.complement')?.value,
+      });
+    }
   }
 }
