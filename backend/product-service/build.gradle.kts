@@ -16,7 +16,7 @@ dependencies {
     runtimeOnly("com.h2database:h2")
     implementation("org.postgresql:postgresql:42.7.4")
     implementation("org.apache.commons:commons-lang3:3.17.0")
-    implementation("commons-io:commons-io:2.16.1")
+    implementation("commons-io:commons-io:2.17.0")
     implementation("org.apache.poi:poi:5.3.0")
     implementation("org.sejda.imageio:webp-imageio:0.1.6")
 }
