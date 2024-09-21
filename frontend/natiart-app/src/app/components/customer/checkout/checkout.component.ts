@@ -13,6 +13,9 @@ import { animate, style, transition, trigger } from '@angular/animations';
 import { finalize } from 'rxjs/operators';
 import { SignupService, ViaCEPResponse } from '../../../service/signup.service';
 import { LoadingSpinnerComponent } from '../../shared/loading-spinner/loading-spinner.component';
+import {PaymentService} from "../../../service/payment.service";
+import {PaymentCreationRequest} from "../../../models/paymentCreationRequest.model";
+import {PaymentCreationResponse} from "../../../models/paymentCreationResonse.model";
 
 @Component({
   selector: 'app-checkout',
@@ -64,6 +67,7 @@ export class CheckoutComponent implements OnInit {
     private cartService: CartService,
     private authenticationService: AuthenticationService,
     private orderService: OrderService,
+    private paymentService: PaymentService,
     private signupService: SignupService
   ) {
     this.checkoutForm = this.fb.group({
@@ -181,6 +185,34 @@ export class CheckoutComponent implements OnInit {
     this.clearErrorMessage();
   }
 
+  processPixPayment(orderData: any) {
+    const pixPaymentData: PaymentCreationRequest = {
+      paymentProcessor: "ASAAS",
+      customerId: orderData.userInfo.email,
+      billingType: 'PIX',
+      value: this.cartService.getCartTotalSnapshot(),
+    };
+
+    this.paymentService.createPixPayment(pixPaymentData).subscribe({
+      next: (response: PaymentCreationResponse) => {
+        this.paymentService.getPixQrCode(response.paymentId).subscribe({
+          next: (qrCodeData) => {
+            console.log(qrCodeData);
+            // You might want to navigate to a confirmation page or show a modal here
+          },
+          error: (error) => {
+            console.error('Error fetching PIX QR code:', error);
+            this.setErrorMessage('Error generating PIX QR code. Please try again.');
+          }
+        });
+      },
+      error: (error) => {
+        console.error('Error creating PIX payment:', error);
+        this.setErrorMessage('Error creating PIX payment. Please try again.');
+      }
+    });
+  }
+
   onSubmit(): void {
     if (this.checkoutForm.valid) {
       const orderData = {
@@ -202,6 +234,7 @@ export class CheckoutComponent implements OnInit {
         //   }
         // });
       } else if (paymentMethod === 'pix') {
+
         // Process PIX payment
         // this.orderService.processPixPayment(orderData).subscribe({
         //   next: () => {

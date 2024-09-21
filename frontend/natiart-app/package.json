@@ -10,6 +10,7 @@
   },
   "private": true,
   "dependencies": {
+    "@adyen/adyen-web": "^6.1.1",
     "@angular/animations": "^18.1.1",
     "@angular/cdk": "^18.1.1",
     "@angular/common": "^18.1.1",

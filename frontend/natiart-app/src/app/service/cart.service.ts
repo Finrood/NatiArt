@@ -76,4 +76,9 @@ export class CartService {
       map(items => items.reduce((sum, item) => sum + item.product.markedPrice * item.quantity, 0))
     );
   }
+
+  getCartTotalSnapshot(): number {
+    const items = this.cartItemsSubject.getValue();
+    return items.reduce((sum, item) => sum + item.product.markedPrice * item.quantity, 0);
+  }
 }

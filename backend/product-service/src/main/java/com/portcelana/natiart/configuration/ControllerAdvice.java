@@ -2,6 +2,7 @@ package com.portcelana.natiart.configuration;
 
 import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
+import com.portcelana.natiart.controller.helper.UserNotAllowedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -32,6 +33,12 @@ public class ControllerAdvice {
 
     @ExceptionHandler(ResourceAlreadyExistsException.class)
     public ResponseEntity<Object> handleResourceAlreadyExistsException(ResourceAlreadyExistsException e) {
+        logger.debug("Exception caught in controller: ", e);
+        return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
+    }
+
+    @ExceptionHandler(UserNotAllowedException.class)
+    public ResponseEntity<Object> handleResourceUserNotAllowedException(UserNotAllowedException e) {
         logger.debug("Exception caught in controller: ", e);
         return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
     }

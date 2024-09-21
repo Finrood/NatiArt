@@ -1,6 +1,6 @@
 package com.portcelana.natiart.service.support;
 
-import com.portcelana.natiart.dto.ShippingEstimateRequest;
+import com.portcelana.natiart.dto.shipping.ShippingEstimateRequest;
 
 import java.util.Collections;
 import java.util.List;

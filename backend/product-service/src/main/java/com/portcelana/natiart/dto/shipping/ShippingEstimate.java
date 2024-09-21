@@ -1,4 +1,4 @@
-package com.portcelana.natiart.dto;
+package com.portcelana.natiart.dto.shipping;
 
 import java.math.BigDecimal;
 

@@ -1,7 +1,7 @@
 package com.portcelana.natiart.controller;
 
-import com.portcelana.natiart.dto.ShippingEstimate;
-import com.portcelana.natiart.dto.ShippingEstimateRequest;
+import com.portcelana.natiart.dto.shipping.ShippingEstimate;
+import com.portcelana.natiart.dto.shipping.ShippingEstimateRequest;
 import com.portcelana.natiart.service.ShippingService;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
