@@ -8,6 +8,7 @@ public class UserDto {
     private String username;
     private ProfileDto profile;
     private RoleName role;
+    private String externalId;
 
     public static UserDto from(User user) {
         if (user == null) return null;
@@ -51,6 +52,15 @@ public class UserDto {
 
     public UserDto setRole(RoleName role) {
         this.role = role;
+        return this;
+    }
+
+    public String getExternalId() {
+        return externalId;
+    }
+
+    public UserDto setExternalId(String externalId) {
+        this.externalId = externalId;
         return this;
     }
 }

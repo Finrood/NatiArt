@@ -22,6 +22,8 @@ public class Profile {
 
 	private String lastname;
 
+	private String cpf;
+
 	private String phone;
 
 	private String country;
@@ -52,10 +54,11 @@ public class Profile {
 	  // FOR JPA
 	}
 
-	public Profile(String firstname, String lastname, String country, String state, String city, String zipCode, String street, User user) {
+	public Profile(String firstname, String lastname, String cpf, String country, String state, String city, String zipCode, String street, User user) {
 		this.id = UUID.randomUUID().toString();
 		this.firstname = firstname;
 		this.lastname = lastname;
+		this.cpf = cpf;
 		this.country = country;
 		this.state = state;
 		this.city = city;
@@ -87,6 +90,15 @@ public class Profile {
 
 	public Profile setLastname(String lastname) {
 		this.lastname = lastname;
+		return this;
+	}
+
+	public String getCpf() {
+		return cpf;
+	}
+
+	public Profile setCpf(String cpf) {
+		this.cpf = cpf;
 		return this;
 	}
 

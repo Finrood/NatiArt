@@ -3,10 +3,9 @@ package com.saas.directory.service;
 import com.saas.directory.controller.helper.ResourceAlreadyExistsException;
 import com.saas.directory.controller.helper.ResourceNotFoundException;
 import com.saas.directory.dto.UserRegistrationDto;
-import com.saas.directory.model.Profile;
-import com.saas.directory.model.Role;
-import com.saas.directory.model.RoleName;
-import com.saas.directory.model.User;
+import com.saas.directory.model.*;
+import com.saas.directory.model.helper.PaymentProcessor;
+import com.saas.directory.repository.ExternalUserRepository;
 import com.saas.directory.repository.RoleRepository;
 import com.saas.directory.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -15,20 +14,24 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import javax.management.relation.RoleNotFoundException;
+import javax.swing.text.html.Option;
 import java.util.Optional;
 
 @Service
 public class UserManager {
 	private final UserRepository userRepository;
+	private final ExternalUserRepository externalUserRepository;
 	private final RoleRepository roleRepository;
 	private final ProfileManager profileManager;
 	private final PasswordEncoder passwordEncoder;
 
 	public UserManager(UserRepository userRepository,
+					   ExternalUserRepository externalUserRepository,
 					   RoleRepository roleRepository,
 					   ProfileManager profileManager,
 					   PasswordEncoder passwordEncoder) {
 		this.userRepository = userRepository;
+		this.externalUserRepository = externalUserRepository;
 		this.roleRepository = roleRepository;
 		this.profileManager = profileManager;
 		this.passwordEncoder = passwordEncoder;
@@ -69,5 +72,22 @@ public class UserManager {
 		final Profile profile = profileManager.createProfile(newUser, userRegistrationDto.profile());
 		newUser.setProfile(profile);
 		return userRepository.save(newUser);
+	}
+
+	@Transactional(readOnly = true)
+	public Optional<ExternalUser> getAsaasCustomer(String username) {
+		return externalUserRepository.findByUser_Id(username);
+	}
+
+	@Transactional(readOnly = true)
+	public ExternalUser getAsaasCustomerOrDie(String username) {
+		return getAsaasCustomer(username)
+				.orElseThrow(() -> new ResourceNotFoundException(String.format("Asaas customer [%s] not found", username)));
+	}
+
+	@Transactional
+	public ExternalUser addAsaasCustomerIdToUser(String username, String asaasCustomerId) {
+		final User user = getUserOrDie(username);
+		return externalUserRepository.save(new ExternalUser(user, PaymentProcessor.ASAAS, asaasCustomerId));
 	}
 }

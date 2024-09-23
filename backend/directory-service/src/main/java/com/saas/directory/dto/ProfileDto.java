@@ -6,6 +6,7 @@ public class ProfileDto {
     private String id;
     private String firstname;
     private String lastname;
+    private String cpf;
     private String phone;
     private String country;
     private String state;
@@ -21,6 +22,7 @@ public class ProfileDto {
                 .setId(profile.getId())
                 .setFirstname(profile.getFirstname())
                 .setLastname(profile.getLastname())
+                .setCpf(profile.getCpf())
                 .setPhone(profile.getPhone())
                 .setCountry(profile.getCountry())
                 .setState(profile.getState())
@@ -55,6 +57,15 @@ public class ProfileDto {
 
     public ProfileDto setLastname(String lastname) {
         this.lastname = lastname;
+        return this;
+    }
+
+    public String getCpf() {
+        return cpf;
+    }
+
+    public ProfileDto setCpf(String cpf) {
+        this.cpf = cpf;
         return this;
     }
 

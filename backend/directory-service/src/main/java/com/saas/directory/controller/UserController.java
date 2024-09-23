@@ -26,6 +26,7 @@ public class UserController {
 			return ResponseEntity.ok(null);
 		}
 		final UserDto userDto = UserDto.from(userManager.getUserOrDie(username));
+		userDto.setExternalId(userManager.getAsaasCustomerOrDie(username).getExternalId());
 		return ResponseEntity.ok(userDto);
 	}
 }
