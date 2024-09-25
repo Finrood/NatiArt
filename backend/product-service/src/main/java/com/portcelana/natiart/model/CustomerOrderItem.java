@@ -4,18 +4,19 @@ import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.util.Objects;
+import java.util.UUID;
 
 @Entity
-public class OrderItem {
+public class CustomerOrderItem {
     @Id
     private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false)
-    private Order order;
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", referencedColumnName = "id", nullable = false)
+    private CustomerOrder customerOrder;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id", referencedColumnName = "id", nullable = false)
     private Product product;
 
     @Column(nullable = false)
@@ -24,21 +25,20 @@ public class OrderItem {
     @Column(precision = 10, scale = 2, nullable = false)
     private BigDecimal price;
 
+    public CustomerOrderItem() {
+        this.id = UUID.randomUUID().toString();
+    }
+
     public String getId() {
         return id;
     }
 
-    public OrderItem setId(String id) {
-        this.id = id;
-        return this;
+    public CustomerOrder getCustomerOrder() {
+        return customerOrder;
     }
 
-    public Order getOrder() {
-        return order;
-    }
-
-    public OrderItem setOrder(Order order) {
-        this.order = order;
+    public CustomerOrderItem setCustomerOrder(CustomerOrder customerOrder) {
+        this.customerOrder = customerOrder;
         return this;
     }
 
@@ -46,7 +46,7 @@ public class OrderItem {
         return product;
     }
 
-    public OrderItem setProduct(Product product) {
+    public CustomerOrderItem setProduct(Product product) {
         this.product = product;
         return this;
     }
@@ -55,7 +55,7 @@ public class OrderItem {
         return quantity;
     }
 
-    public OrderItem setQuantity(Integer quantity) {
+    public CustomerOrderItem setQuantity(Integer quantity) {
         this.quantity = quantity;
         return this;
     }
@@ -64,7 +64,7 @@ public class OrderItem {
         return price;
     }
 
-    public OrderItem setPrice(BigDecimal price) {
+    public CustomerOrderItem setPrice(BigDecimal price) {
         this.price = price;
         return this;
     }
@@ -73,8 +73,8 @@ public class OrderItem {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        OrderItem orderItem = (OrderItem) o;
-        return Objects.equals(id, orderItem.id);
+        CustomerOrderItem customerOrderItem = (CustomerOrderItem) o;
+        return Objects.equals(id, customerOrderItem.id);
     }
 
     @Override

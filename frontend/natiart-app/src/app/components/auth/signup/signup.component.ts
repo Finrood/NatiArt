@@ -10,6 +10,7 @@ import { UserRegistration } from "../../../models/user-registration.model";
 import { Profile } from "../../../models/profile.model";
 import {CepFormatDirective} from "../../customer/shipping-estimation/cep-format-directive.directive";
 import {LoadingSpinnerComponent} from "../../shared/loading-spinner/loading-spinner.component";
+import {CpfFormatDirectiveDirective} from "./cpf-format-directive.directive";
 
 @Component({
   selector: 'app-signup',
@@ -36,7 +37,8 @@ import {LoadingSpinnerComponent} from "../../shared/loading-spinner/loading-spin
     ReactiveFormsModule,
     NgIf,
     CepFormatDirective,
-    LoadingSpinnerComponent
+    LoadingSpinnerComponent,
+    CpfFormatDirectiveDirective
   ],
 })
 export class SignupComponent implements OnInit {
@@ -65,6 +67,7 @@ export class SignupComponent implements OnInit {
       profile: this.fb.group({
         firstname: ['', Validators.required],
         lastname: ['', Validators.required],
+        cpf: ['', Validators.required, Validators.pattern('[0-9]*')],
         phone: ['', Validators.pattern('[0-9]*')],
         country: ['Brazil', Validators.required],
         state: ['', Validators.required],

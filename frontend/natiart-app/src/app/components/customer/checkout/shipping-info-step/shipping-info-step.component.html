@@ -1,0 +1,172 @@
+<div [formGroup]="checkoutForm">
+  <div class="space-y-6" formGroupName="shippingInfo">
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div>
+        <label for="zipCode" class="block text-sm font-medium text-secondary">Zip Code</label>
+        <input id="zipCode" formControlName="zipCode" type="text" required
+               class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+               [ngClass]="{'border-error': getFieldError('shippingInfo.zipCode')}"
+               placeholder="XXXXX-XXX"
+               cepFormat
+               (input)="onZipCodeChange('shippingInfo')">
+        <p *ngIf="getFieldError('shippingInfo.zipCode')" class="mt-2 text-sm text-red-600">
+          {{ getFieldError('shippingInfo.zipCode') }}
+        </p>
+      </div>
+    </div>
+
+    <div *ngIf="isLoadingShippingAddress" class="text-center">
+      <app-loading-spinner></app-loading-spinner>
+      <p class="mt-2 text-sm text-secondary-light">Loading address...</p>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div>
+        <label for="country" class="block text-sm font-medium text-secondary">Country</label>
+        <input readonly id="country" formControlName="country" type="text"
+               class="mt-1 block w-full px-3 py-2 bg-gray-100 border border-primary rounded-md shadow-input text-secondary-light focus:outline-none sm:text-sm"
+               placeholder="Country">
+      </div>
+
+      <div>
+        <label for="state" class="block text-sm font-medium text-secondary">State</label>
+        <input id="state" formControlName="state" type="text" required
+               class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+               [ngClass]="{'border-error': getFieldError('shippingInfo.state')}"
+               placeholder="State">
+        <p *ngIf="getFieldError('shippingInfo.state')" class="mt-2 text-sm text-red-600">
+          {{ getFieldError('shippingInfo.state') }}
+        </p>
+      </div>
+
+      <div>
+        <label for="city" class="block text-sm font-medium text-secondary">City</label>
+        <input id="city" formControlName="city" type="text" required
+               class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+               [ngClass]="{'border-error': getFieldError('shippingInfo.city')}"
+               placeholder="City">
+        <p *ngIf="getFieldError('shippingInfo.city')" class="mt-2 text-sm text-red-600">
+          {{ getFieldError('shippingInfo.city') }}
+        </p>
+      </div>
+
+      <div>
+        <label for="neighborhood" class="block text-sm font-medium text-secondary">Neighborhood</label>
+        <input id="neighborhood" formControlName="neighborhood" type="text" required
+               class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+               [ngClass]="{'border-error': getFieldError('shippingInfo.neighborhood')}"
+               placeholder="neighborhood">
+        <p *ngIf="getFieldError('shippingInfo.neighborhood')" class="mt-2 text-sm text-red-600">
+          {{ getFieldError('shippingInfo.neighborhood') }}
+        </p>
+      </div>
+
+      <div>
+        <label for="street" class="block text-sm font-medium text-secondary">Street</label>
+        <input id="street" formControlName="street" type="text" required
+               class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+               [ngClass]="{'border-error': getFieldError('shippingInfo.street')}"
+               placeholder="123 Main St">
+        <p *ngIf="getFieldError('shippingInfo.street')" class="mt-2 text-sm text-red-600">
+          {{ getFieldError('shippingInfo.street') }}
+        </p>
+      </div>
+    </div>
+
+    <div>
+      <label for="complement" class="block text-sm font-medium text-secondary">Address Complement</label>
+      <input id="complement" formControlName="complement" type="text"
+             class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+             placeholder="Apartment, suite, unit, building, floor, etc.">
+    </div>
+
+    <div class="flex items-center space-x-2">
+      <input type="checkbox" class="form-checkbox h-5 w-5 text-primary"
+             [checked]="sameShippingAsBilling"
+             (change)="toggleSameShippingAsBilling($event)">
+      <label class="text-sm font-medium text-secondary">Same as shipping address</label>
+    </div>
+
+    <div *ngIf="!sameShippingAsBilling" [@slideInRight] formGroupName="billingInfo" class="space-y-6">
+      <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div>
+          <label for="billingzipCode" class="block text-sm font-medium text-secondary">Zip Code</label>
+          <input id="billingzipCode" formControlName="zipCode" type="text" required
+                 class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                 [ngClass]="{'border-error': getFieldError('billingInfo.zipCode')}"
+                 placeholder="XXXXX-XXX"
+                 cepFormat
+                 (input)="onZipCodeChange('billingInfo')">
+          <p *ngIf="getFieldError('billingInfo.zipCode')" class="mt-2 text-sm text-red-600">
+            {{ getFieldError('billingInfo.zipCode') }}
+          </p>
+        </div>
+      </div>
+
+      <div *ngIf="isLoadingBillingAddress" class="text-center">
+        <app-loading-spinner></app-loading-spinner>
+        <p class="mt-2 text-sm text-secondary-light">Loading address...</p>
+      </div>
+
+      <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div>
+          <label for="billingcountry" class="block text-sm font-medium text-secondary">Country</label>
+          <input readonly id="billingcountry" formControlName="country" type="text"
+                 class="mt-1 block w-full px-3 py-2 bg-gray-100 border border-primary rounded-md shadow-input text-secondary-light focus:outline-none sm:text-sm"
+                 placeholder="Country">
+        </div>
+
+        <div>
+          <label for="billingstate" class="block text-sm font-medium text-secondary">State</label>
+          <input id="billingstate" formControlName="state" type="text" required
+                 class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                 [ngClass]="{'border-error': getFieldError('billingInfo.state')}"
+                 placeholder="State">
+          <p *ngIf="getFieldError('billingInfo.state')" class="mt-2 text-sm text-red-600">
+            {{ getFieldError('billingInfo.state') }}
+          </p>
+        </div>
+
+        <div>
+          <label for="billingcity" class="block text-sm font-medium text-secondary">City</label>
+          <input id="billingcity" formControlName="city" type="text" required
+                 class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                 [ngClass]="{'border-error': getFieldError('billingInfo.city')}"
+                 placeholder="City">
+          <p *ngIf="getFieldError('billingInfo.city')" class="mt-2 text-sm text-red-600">
+            {{ getFieldError('billingInfo.city') }}
+          </p>
+        </div>
+
+        <div>
+          <label for="billingneighborhood" class="block text-sm font-medium text-secondary">Neighborhood</label>
+          <input id="billingneighborhood" formControlName="neighborhood" type="text" required
+                 class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                 [ngClass]="{'border-error': getFieldError('billingInfo.neighborhood')}"
+                 placeholder="neighborhood">
+          <p *ngIf="getFieldError('billingInfo.neighborhood')" class="mt-2 text-sm text-red-600">
+            {{ getFieldError('billingInfo.neighborhood') }}
+          </p>
+        </div>
+
+        <div>
+          <label for="billingstreet" class="block text-sm font-medium text-secondary">Street</label>
+          <input id="billingstreet" formControlName="street" type="text" required
+                 class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                 [ngClass]="{'border-error': getFieldError('billingInfo.street')}"
+                 placeholder="123 Main St">
+          <p *ngIf="getFieldError('billingInfo.street')" class="mt-2 text-sm text-red-600">
+            {{ getFieldError('billingInfo.street') }}
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <label for="billingcomplement" class="block text-sm font-medium text-secondary">Address Complement</label>
+        <input id="billingcomplement" formControlName="complement" type="text"
+               class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+               placeholder="Apartment, suite, unit, building, floor, etc.">
+      </div>
+    </div>
+  </div>
+</div>

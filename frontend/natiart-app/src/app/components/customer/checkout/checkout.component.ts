@@ -10,12 +10,15 @@ import { AuthenticationService } from '../../../service/authentication.service';
 import { RouterLink } from '@angular/router';
 import { CepFormatDirective } from '../shipping-estimation/cep-format-directive.directive';
 import { animate, style, transition, trigger } from '@angular/animations';
-import { finalize } from 'rxjs/operators';
-import { SignupService, ViaCEPResponse } from '../../../service/signup.service';
 import { LoadingSpinnerComponent } from '../../shared/loading-spinner/loading-spinner.component';
 import {PaymentService} from "../../../service/payment.service";
 import {PaymentCreationRequest} from "../../../models/paymentCreationRequest.model";
 import {PaymentCreationResponse} from "../../../models/paymentCreationResonse.model";
+import {OrderSummaryComponent} from "./order-summary/order-summary.component";
+import {CheckoutStepperComponent} from "./checkout-stepper/checkout-stepper.component";
+import {UserInfoStepComponent} from "./user-info-step/user-info-step.component";
+import {ShippingInfoStepComponent} from "./shipping-info-step/shipping-info-step.component";
+import {PaymentInfoStepComponent} from "./payment-info-step/payment-info-step.component";
 
 @Component({
   selector: 'app-checkout',
@@ -25,12 +28,12 @@ import {PaymentCreationResponse} from "../../../models/paymentCreationResonse.mo
     AsyncPipe,
     RouterLink,
     ReactiveFormsModule,
-    CurrencyPipe,
-    NgForOf,
-    CepFormatDirective,
-    NgClass,
-    LoadingSpinnerComponent,
-    FormsModule
+    FormsModule,
+    OrderSummaryComponent,
+    CheckoutStepperComponent,
+    UserInfoStepComponent,
+    ShippingInfoStepComponent,
+    PaymentInfoStepComponent
   ],
   animations: [
     trigger('fadeIn', [
@@ -53,8 +56,6 @@ export class CheckoutComponent implements OnInit {
   checkoutForm: FormGroup;
   currentStep = 1;
   errorMessage = '';
-  isLoadingShippingAddress = false;
-  isLoadingBillingAddress = false;
   cartItems$: Observable<CartItem[]>;
   cartTotal$: Observable<number>;
   isLoggedIn$: Observable<boolean>;
@@ -67,8 +68,7 @@ export class CheckoutComponent implements OnInit {
     private cartService: CartService,
     private authenticationService: AuthenticationService,
     private orderService: OrderService,
-    private paymentService: PaymentService,
-    private signupService: SignupService
+    private paymentService: PaymentService
   ) {
     this.checkoutForm = this.fb.group({
       userInfo: this.fb.group({
@@ -145,6 +145,12 @@ export class CheckoutComponent implements OnInit {
     });
   }
 
+  logFormState() {
+    console.log('Form Value:', this.checkoutForm.value);
+    console.log('Form Valid:', this.checkoutForm.valid);
+    console.log('Form Errors:', this.checkoutForm.errors);
+  }
+
   isCurrentStepValid(): boolean | undefined {
     switch (this.currentStep) {
       case 1:
@@ -188,7 +194,7 @@ export class CheckoutComponent implements OnInit {
   processPixPayment(orderData: any) {
     const pixPaymentData: PaymentCreationRequest = {
       paymentProcessor: "ASAAS",
-      customerId: orderData.userInfo.email,
+      customerId: "6218382",
       billingType: 'PIX',
       value: this.cartService.getCartTotalSnapshot(),
     };
@@ -250,75 +256,11 @@ export class CheckoutComponent implements OnInit {
     }
   }
 
-  getFieldError(fieldName: string): string {
-    const field = this.checkoutForm.get(fieldName);
-    if (field?.invalid && (field.dirty || field.touched)) {
-      if (field.errors?.['required']) return 'This field is required.';
-      if (field.errors?.['email']) return 'Please enter a valid email address.';
-      if (field.errors?.['pattern']) return 'Please enter a valid phone number or card number.';
-    }
-    return '';
-  }
-
   private setErrorMessage(message: string): void {
     this.errorMessage = message;
   }
 
   private clearErrorMessage(): void {
     this.errorMessage = '';
-  }
-
-  onZipCodeChange(section: 'shippingInfo' | 'billingInfo'): void {
-    const zipCode = this.checkoutForm.get(`${section}.zipCode`)?.value?.replace(/\D/g, '');
-    if (zipCode?.length !== 8) {
-      return;
-    }
-
-    if (section === 'shippingInfo') {
-      this.isLoadingShippingAddress = true;
-    } else {
-      this.isLoadingBillingAddress = true;
-    }
-
-    this.signupService.getAddressFromZipCode(zipCode)
-      .pipe(finalize(() => {
-        this.isLoadingShippingAddress = false;
-        this.isLoadingBillingAddress = false;
-      }))
-      .subscribe({
-        next: (data: ViaCEPResponse) => {
-          const addressData = {
-            street: data.logradouro,
-            city: data.localidade,
-            neighborhood: data.bairro,
-            state: data.uf,
-            country: "Brazil",
-          };
-
-          const updatedFormValue = {
-            [section]: addressData
-          };
-
-          this.checkoutForm.patchValue(updatedFormValue);
-        },
-        error: () => {
-          this.setErrorMessage('Error fetching address. Please enter manually.');
-        }
-      });
-  }
-
-  toggleSameShippingAsBilling(event: Event): void {
-    this.sameShippingAsBilling = (event.target as HTMLInputElement).checked;
-    if (this.sameShippingAsBilling) {
-      this.checkoutForm.get('billingInfo')?.patchValue({
-        country: this.checkoutForm.get('shippingInfo.country')?.value,
-        state: this.checkoutForm.get('shippingInfo.state')?.value,
-        city: this.checkoutForm.get('shippingInfo.city')?.value,
-        neighborhood: this.checkoutForm.get('shippingInfo.neighborhood')?.value,
-        zipCode: this.checkoutForm.get('shippingInfo.zipCode')?.value,
-        street: this.checkoutForm.get('shippingInfo.street')?.value,
-        complement: this.checkoutForm.get('shippingInfo.complement')?.value,
-      });
-    }
   }
 }

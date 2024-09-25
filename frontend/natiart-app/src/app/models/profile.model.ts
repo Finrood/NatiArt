@@ -2,6 +2,7 @@ export interface Profile {
   id?: string;
   firstname: string;
   lastname: string;
+  cpf: string;
   phone?: string;
   country: string;
   state: string;

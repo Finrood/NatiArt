@@ -1,9 +1,7 @@
 package com.portcelana.natiart.dto;
 
-import com.portcelana.natiart.model.Order;
-import com.portcelana.natiart.model.OrderItem;
+import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.support.OrderStatus;
-import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -29,27 +27,27 @@ public class OrderDto {
     private BigDecimal totalAmount;
     private OrderStatus status;
 
-    public static OrderDto from(Order order) {
+    public static OrderDto from(CustomerOrder customerOrder) {
         return new OrderDto()
-                .setId(order.getId())
-                .setFirstname(order.getFirstname())
-                .setLastname(order.getLastname())
-                .setEmail(order.getEmail())
-                .setPhone(order.getPhone())
-                .setCountry(order.getCountry())
-                .setState(order.getState())
-                .setCity(order.getCity())
-                .setNeighborhood(order.getNeighborhood())
-                .setZipCode(order.getZipCode())
-                .setStreet(order.getStreet())
-                .setComplement(order.getComplement())
-                .setOrderDate(order.getOrderDate())
-                .setItems(order.getItems().stream()
+                .setId(customerOrder.getId())
+                .setFirstname(customerOrder.getFirstname())
+                .setLastname(customerOrder.getLastname())
+                .setEmail(customerOrder.getEmail())
+                .setPhone(customerOrder.getPhone())
+                .setCountry(customerOrder.getCountry())
+                .setState(customerOrder.getState())
+                .setCity(customerOrder.getCity())
+                .setNeighborhood(customerOrder.getNeighborhood())
+                .setZipCode(customerOrder.getZipCode())
+                .setStreet(customerOrder.getStreet())
+                .setComplement(customerOrder.getComplement())
+                .setOrderDate(customerOrder.getOrderDate())
+                .setItems(customerOrder.getItems().stream()
                         .map(OrderItemDto::from)
                         .toList())
-                .setDeliveryAmount(order.getDeliveryAmount())
-                .setTotalAmount(order.getTotalAmount())
-                .setStatus(order.getStatus());
+                .setDeliveryAmount(customerOrder.getDeliveryAmount())
+                .setTotalAmount(customerOrder.getTotalAmount())
+                .setStatus(customerOrder.getStatus());
     }
 
     public OrderDto() {

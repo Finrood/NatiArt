@@ -93,6 +93,18 @@
           </div>
 
           <div>
+            <label for="cpf" class="block text-sm font-medium text-secondary">CPF</label>
+            <input id="cpf" formControlName="cpf" type="text" required
+                   class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                   [ngClass]="{'border-error': getFieldError('profile.cpf')}"
+                   placeholder="000.000.000-00"
+                   CpfFormat>
+            <p *ngIf="getFieldError('profile.cpf')" class="mt-2 text-sm text-red-600">
+              {{ getFieldError('profile.cpf') }}
+            </p>
+          </div>
+
+          <div>
             <label for="phone" class="block text-sm font-medium text-secondary">Phone</label>
             <input id="phone" formControlName="phone" type="tel"
                    class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"

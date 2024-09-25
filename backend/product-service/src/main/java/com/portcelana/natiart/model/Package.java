@@ -30,7 +30,7 @@ public class Package {
     @Column(nullable = false)
     private float depth;
 
-    @OneToMany(mappedBy = "packaging", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "packaging", cascade = CascadeType.ALL, orphanRemoval = true)
     private final Set<Product> products = new HashSet<>();
 
     @Column(nullable = false)

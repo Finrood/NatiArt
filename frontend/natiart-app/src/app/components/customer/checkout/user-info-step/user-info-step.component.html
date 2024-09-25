@@ -1,0 +1,47 @@
+<div [formGroup]="checkoutForm">
+  <div formGroupName="userInfo" class="space-y-6">
+    <div>
+      <label for="email" class="block text-sm font-medium text-secondary">Email address</label>
+      <input id="email" formControlName="email" type="email" required
+             class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+             [ngClass]="{'border-error': getFieldError('userInfo.email')}"
+             placeholder="you@yourbest.com">
+      <p *ngIf="getFieldError('userInfo.email')" class="mt-2 text-sm text-red-600">
+        {{ getFieldError('userInfo.email') }}
+      </p>
+    </div>
+
+    <div>
+      <label for="firstname" class="block text-sm font-medium text-secondary">First Name</label>
+      <input id="firstname" formControlName="firstname" type="text" required
+             class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+             [ngClass]="{'border-error': getFieldError('userInfo.firstname')}"
+             placeholder="John">
+      <p *ngIf="getFieldError('userInfo.firstname')" class="mt-2 text-sm text-red-600">
+        {{ getFieldError('userInfo.firstname') }}
+      </p>
+    </div>
+
+    <div>
+      <label for="lastname" class="block text-sm font-medium text-secondary">Last Name</label>
+      <input id="lastname" formControlName="lastname" type="text" required
+             class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+             [ngClass]="{'border-error': getFieldError('userInfo.lastname')}"
+             placeholder="Doe">
+      <p *ngIf="getFieldError('userInfo.lastname')" class="mt-2 text-sm text-red-600">
+        {{ getFieldError('userInfo.lastname') }}
+      </p>
+    </div>
+
+    <div>
+      <label for="phone" class="block text-sm font-medium text-secondary">Phone</label>
+      <input id="phone" formControlName="phone" type="tel"
+             class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+             [ngClass]="{'border-error': getFieldError('userInfo.phone')}"
+             placeholder="(XX) XXXXX-XXXX">
+      <p *ngIf="getFieldError('userInfo.phone')" class="mt-2 text-sm text-red-600">
+        {{ getFieldError('userInfo.phone') }}
+      </p>
+    </div>
+  </div>
+</div>

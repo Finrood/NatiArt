@@ -32,11 +32,11 @@ public class Product {
     private int stockQuantity;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "category_id")
+    @JoinColumn(name = "category_id", referencedColumnName = "id")
     private Category category;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "package_id")
+    @JoinColumn(name = "package_id", referencedColumnName = "id")
     private Package packaging;
 
     private Boolean hasGold;

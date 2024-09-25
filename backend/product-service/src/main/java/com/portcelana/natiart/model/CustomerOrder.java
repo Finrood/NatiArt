@@ -8,9 +8,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 @Entity
-public class Order {
+public class CustomerOrder {
     @Id
     private String id;
 
@@ -45,8 +46,8 @@ public class Order {
     @Column(nullable = false)
     private Instant orderDate;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<OrderItem> items = new ArrayList<>();
+    @OneToMany(mappedBy = "customerOrder", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CustomerOrderItem> items = new ArrayList<>();
 
     @Column(precision = 10, scale = 2, nullable = false)
     private BigDecimal deliveryAmount;
@@ -57,20 +58,19 @@ public class Order {
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
 
-    public String getId() {
-        return id;
+    public CustomerOrder() {
+        this.id = UUID.randomUUID().toString();
     }
 
-    public Order setId(String id) {
-        this.id = id;
-        return this;
+    public String getId() {
+        return id;
     }
 
     public Long getVersion() {
         return version;
     }
 
-    public Order setVersion(Long version) {
+    public CustomerOrder setVersion(Long version) {
         this.version = version;
         return this;
     }
@@ -79,7 +79,7 @@ public class Order {
         return firstname;
     }
 
-    public Order setFirstname(String firstname) {
+    public CustomerOrder setFirstname(String firstname) {
         this.firstname = firstname;
         return this;
     }
@@ -88,7 +88,7 @@ public class Order {
         return lastname;
     }
 
-    public Order setLastname(String lastname) {
+    public CustomerOrder setLastname(String lastname) {
         this.lastname = lastname;
         return this;
     }
@@ -97,7 +97,7 @@ public class Order {
         return email;
     }
 
-    public Order setEmail(String email) {
+    public CustomerOrder setEmail(String email) {
         this.email = email;
         return this;
     }
@@ -106,7 +106,7 @@ public class Order {
         return phone;
     }
 
-    public Order setPhone(String phone) {
+    public CustomerOrder setPhone(String phone) {
         this.phone = phone;
         return this;
     }
@@ -115,7 +115,7 @@ public class Order {
         return country;
     }
 
-    public Order setCountry(String country) {
+    public CustomerOrder setCountry(String country) {
         this.country = country;
         return this;
     }
@@ -124,7 +124,7 @@ public class Order {
         return state;
     }
 
-    public Order setState(String state) {
+    public CustomerOrder setState(String state) {
         this.state = state;
         return this;
     }
@@ -133,7 +133,7 @@ public class Order {
         return city;
     }
 
-    public Order setCity(String city) {
+    public CustomerOrder setCity(String city) {
         this.city = city;
         return this;
     }
@@ -142,7 +142,7 @@ public class Order {
         return neighborhood;
     }
 
-    public Order setNeighborhood(String neighborhood) {
+    public CustomerOrder setNeighborhood(String neighborhood) {
         this.neighborhood = neighborhood;
         return this;
     }
@@ -151,7 +151,7 @@ public class Order {
         return zipCode;
     }
 
-    public Order setZipCode(String zipCode) {
+    public CustomerOrder setZipCode(String zipCode) {
         this.zipCode = zipCode;
         return this;
     }
@@ -160,7 +160,7 @@ public class Order {
         return street;
     }
 
-    public Order setStreet(String street) {
+    public CustomerOrder setStreet(String street) {
         this.street = street;
         return this;
     }
@@ -169,7 +169,7 @@ public class Order {
         return complement;
     }
 
-    public Order setComplement(String complement) {
+    public CustomerOrder setComplement(String complement) {
         this.complement = complement;
         return this;
     }
@@ -178,16 +178,16 @@ public class Order {
         return orderDate;
     }
 
-    public Order setOrderDate(Instant orderDate) {
+    public CustomerOrder setOrderDate(Instant orderDate) {
         this.orderDate = orderDate;
         return this;
     }
 
-    public List<OrderItem> getItems() {
+    public List<CustomerOrderItem> getItems() {
         return items;
     }
 
-    public Order setItems(List<OrderItem> items) {
+    public CustomerOrder setItems(List<CustomerOrderItem> items) {
         this.items = items;
         return this;
     }
@@ -196,7 +196,7 @@ public class Order {
         return deliveryAmount;
     }
 
-    public Order setDeliveryAmount(BigDecimal deliveryAmount) {
+    public CustomerOrder setDeliveryAmount(BigDecimal deliveryAmount) {
         this.deliveryAmount = deliveryAmount;
         return this;
     }
@@ -205,7 +205,7 @@ public class Order {
         return totalAmount;
     }
 
-    public Order setTotalAmount(BigDecimal totalAmount) {
+    public CustomerOrder setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
         return this;
     }
@@ -214,27 +214,27 @@ public class Order {
         return status;
     }
 
-    public Order setStatus(OrderStatus status) {
+    public CustomerOrder setStatus(OrderStatus status) {
         this.status = status;
         return this;
     }
 
-    public void addOrderItem(OrderItem item) {
+    public void addOrderItem(CustomerOrderItem item) {
         items.add(item);
-        item.setOrder(this);
+        item.setCustomerOrder(this);
     }
 
-    public void removeOrderItem(OrderItem item) {
+    public void removeOrderItem(CustomerOrderItem item) {
         items.remove(item);
-        item.setOrder(null);
+        item.setCustomerOrder(null);
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        final Order order = (Order) o;
-        return Objects.equals(id, order.id);
+        final CustomerOrder customerOrder = (CustomerOrder) o;
+        return Objects.equals(id, customerOrder.id);
     }
 
     @Override

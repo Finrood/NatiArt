@@ -2,7 +2,7 @@ package com.portcelana.natiart.service;
 
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.OrderDto;
-import com.portcelana.natiart.model.Order;
+import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
@@ -27,20 +27,20 @@ public class OrderManagerImpl implements OrderManager {
 
     @Override
     @Transactional(readOnly = true)
-    public Order getOrderById(String orderId) {
+    public CustomerOrder getOrderById(String orderId) {
         return orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order with id " + orderId + " not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("CustomerOrder with id " + orderId + " not found"));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Order> getAllOrders() {
+    public List<CustomerOrder> getAllOrders() {
         return orderRepository.findAll();
     }
 
     @Override
     @Transactional
-    public Order createOrder(OrderDto orderDto) {
+    public CustomerOrder createOrder(OrderDto orderDto) {
         final BigDecimal totalItemsAmount = orderDto.getItems().stream()
                 .peek(item -> {
                     final Product product = productManager.decreaseProductStockQuantityBy(item.getProductId(), item.getQuantity());
@@ -49,8 +49,8 @@ public class OrderManagerImpl implements OrderManager {
                 .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        final Order order = new Order();
-        order.setOrderDate(Instant.now())
+        final CustomerOrder customerOrder = new CustomerOrder();
+        customerOrder.setOrderDate(Instant.now())
                 .setStatus(OrderStatus.PENDING)
                 .setFirstname(orderDto.getFirstname())
                 .setLastname(orderDto.getLastname())
@@ -64,15 +64,15 @@ public class OrderManagerImpl implements OrderManager {
                 .setStreet(orderDto.getStreet())
                 .setComplement(orderDto.getComplement())
                 .setDeliveryAmount(orderDto.getDeliveryAmount())
-                .setTotalAmount(totalItemsAmount.add(order.getDeliveryAmount()));
-        return orderRepository.save(order);
+                .setTotalAmount(totalItemsAmount.add(customerOrder.getDeliveryAmount()));
+        return orderRepository.save(customerOrder);
     }
 
     @Override
     @Transactional
-    public Order updateOrderStatus(String orderId, OrderStatus status) {
-        final Order order = getOrderById(orderId);
-        order.setStatus(status);
-        return orderRepository.save(order);
+    public CustomerOrder updateOrderStatus(String orderId, OrderStatus status) {
+        final CustomerOrder customerOrder = getOrderById(orderId);
+        customerOrder.setStatus(status);
+        return orderRepository.save(customerOrder);
     }
 }

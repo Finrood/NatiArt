@@ -20,6 +20,7 @@ public class ProfileManager {
         final Profile profile = new Profile(
                 profileDto.getFirstname(),
                 profileDto.getLastname(),
+                profileDto.getCpf(),
                 profileDto.getCountry(),
                 profileDto.getState(),
                 profileDto.getCity(),

@@ -38,7 +38,7 @@ public class ProfileManagerTest {
                 .setComplement("Apartment 123");
 
         // Mock the repository behavior
-        final Profile expectedProfile = new Profile("John", "Doe", "USA", "California", "Los Angeles", "12345", "Main Street", user);
+        final Profile expectedProfile = new Profile("John", "Doe", "00000000011", "USA", "California", "Los Angeles", "12345", "Main Street", user);
         when(profileRepository.save(any(Profile.class))).thenReturn(expectedProfile);
 
         // Act

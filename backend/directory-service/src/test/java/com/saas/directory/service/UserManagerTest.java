@@ -8,6 +8,7 @@ import com.saas.directory.model.Profile;
 import com.saas.directory.model.Role;
 import com.saas.directory.model.RoleName;
 import com.saas.directory.model.User;
+import com.saas.directory.repository.ExternalUserRepository;
 import com.saas.directory.repository.RoleRepository;
 import com.saas.directory.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +28,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class UserManagerTest {
     private final UserRepository userRepository = mock(UserRepository.class);
+    private final ExternalUserRepository externalUserRepository = mock(ExternalUserRepository.class);
     private final RoleRepository roleRepository  = mock(RoleRepository.class);
     private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
     private final ProfileManager profileManager = mock(ProfileManager.class);
@@ -37,6 +39,7 @@ public class UserManagerTest {
     public void initContext() {
          userManager = new UserManager(
                  userRepository,
+                 externalUserRepository,
                  roleRepository,
                  profileManager,
                  passwordEncoder
@@ -62,7 +65,7 @@ public class UserManagerTest {
         final User user = new User("new_username", "password");
         when(userRepository.existsUserByUsernameIgnoreCase("new_username")).thenReturn(false);
         when(userRepository.save(any())).thenReturn(user);
-        final Profile profile = new Profile("John", "Doe", "USA", "USA", "Los Angeles", "90001", "123 Main St", user)
+        final Profile profile = new Profile("John", "Doe", "00000000011", "USA", "USA", "Los Angeles", "90001", "123 Main St", user)
                 .setPhone("+1234567890")
                 .setComplement("Apt 101");
         when(profileManager.createProfile(any(User.class), any(ProfileDto.class))).thenReturn(profile);
@@ -116,7 +119,7 @@ public class UserManagerTest {
         final User user = new User("new_username", "password");
         when(userRepository.existsUserByUsernameIgnoreCase("new_username")).thenReturn(false);
         when(userRepository.save(any())).thenReturn(user);
-        final Profile profile = new Profile("John", "Doe", "USA", "USA", "Los Angeles", "90001", "123 Main St", user)
+        final Profile profile = new Profile("John", "Doe", "00000000011", "USA", "USA", "Los Angeles", "90001", "123 Main St", user)
                 .setPhone("+1234567890")
                 .setComplement("Apt 101");
         when(profileManager.createProfile(any(User.class), any(ProfileDto.class))).thenReturn(profile);
@@ -210,7 +213,7 @@ public class UserManagerTest {
         final User user = new User("new_username", "password");
         when(userRepository.existsUserByUsernameIgnoreCase("new_username")).thenReturn(false);
         when(userRepository.save(any())).thenReturn(user);
-        final Profile profile = new Profile("", "", "", "", "", "", "", user)
+        final Profile profile = new Profile("", "", "", "", "", "", "", "", user)
                 .setPhone("")
                 .setComplement("");
         when(profileManager.createProfile(any(User.class), any(ProfileDto.class))).thenReturn(profile);

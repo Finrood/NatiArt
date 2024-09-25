@@ -28,11 +28,12 @@ INSERT INTO public.users (id, version, username, password_hash, email_confirmed,
              'q7r8s9t0-u1v2-w3x4-y5z6-a7b8c9d0e1f2'
          );
 
-INSERT INTO public.profile (id, version, firstname, lastname, phone, country, state, city, zip_code, street, complement, user_id, created_at, updated_at) VALUES (
+INSERT INTO public.profile (id, version, firstname, lastname, cpf, phone, country, state, city, zip_code, street, complement, user_id, created_at, updated_at) VALUES (
              '1d17854b-ca2b-42f1-a1fc-07d1bcce85f9', -- id
              0,                                      -- version
              'John',                                 -- firstname
              'Doe',                                  -- lastname
+             '00000000011',                              -- cpf
              '123-456-7890',                         -- phone
              'USA',                                  -- country
              'CA',                                   -- state

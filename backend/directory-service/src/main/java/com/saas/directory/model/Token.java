@@ -19,7 +19,7 @@ public class Token {
     private TokenType tokenType;
     @Column(nullable = false)
     private Instant expiry;
-    @ManyToOne
+    @ManyToOne(optional = false)
     @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false)
     private User user;
 
