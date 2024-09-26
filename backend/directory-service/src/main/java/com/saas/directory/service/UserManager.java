@@ -76,7 +76,7 @@ public class UserManager {
 
 	@Transactional(readOnly = true)
 	public Optional<ExternalUser> getAsaasCustomer(String username) {
-		return externalUserRepository.findByUser_Id(username);
+		return externalUserRepository.findByUser(getUserOrDie(username));
 	}
 
 	@Transactional(readOnly = true)

@@ -35,7 +35,7 @@
 
           <!-- Step 3: Payment Information -->
           <div *ngIf="currentStep === 3" [@slideInRight]>
-            <app-payment-info-step [checkoutForm]="checkoutForm"></app-payment-info-step>
+            <app-payment-info-step [checkoutForm]="checkoutForm" (processPixPayment)="processPixPayment($event)"></app-payment-info-step>
           </div>
 
           <div class="flex justify-between mt-6">

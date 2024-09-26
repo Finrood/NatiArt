@@ -4,13 +4,11 @@
       <label for="paymentMethod" class="block text-sm font-medium text-secondary">Payment Method</label>
       <select id="paymentMethod" formControlName="paymentMethod" class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
         <option value="">Select payment method</option>
-        <option value="credit_card">Credit Card</option>
-        <option value="debit_card">Debit Card</option>
-        <option value="pix">PIX</option>
+        <option *ngFor="let method of paymentMethods" [value]="method.value">{{ method.label }}</option>
       </select>
     </div>
 
-    <ng-container *ngIf="checkoutForm.get('paymentInfo.paymentMethod')?.value === 'credit_card' || checkoutForm.get('paymentInfo.paymentMethod')?.value === 'debit_card'">
+    <ng-container *ngIf="isCardPayment()">
       <div>
         <label for="cardNumber" class="block text-sm font-medium text-secondary">Card Number</label>
         <input id="cardNumber" formControlName="cardNumber" type="text" required
@@ -48,7 +46,7 @@
     </ng-container>
 
     <ng-container *ngIf="checkoutForm.get('paymentInfo.paymentMethod')?.value === 'pix'">
-      <button (click)="onProcessPixPayment()">Pay</button>
+      <button (click)="onProcessPixPayment()">Pay with PIX</button>
     </ng-container>
   </div>
 </div>

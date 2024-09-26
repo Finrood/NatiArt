@@ -1,6 +1,6 @@
-import {Component, Input} from '@angular/core';
+import {Component, EventEmitter, Input, Output} from '@angular/core';
 import {FormGroup, ReactiveFormsModule} from "@angular/forms";
-import {NgClass, NgIf} from "@angular/common";
+import {NgClass, NgForOf, NgIf} from "@angular/common";
 
 @Component({
   selector: 'app-payment-info-step',
@@ -8,13 +8,15 @@ import {NgClass, NgIf} from "@angular/common";
   imports: [
     ReactiveFormsModule,
     NgClass,
-    NgIf
+    NgIf,
+    NgForOf
   ],
   templateUrl: './payment-info-step.component.html',
   styleUrl: './payment-info-step.component.css'
 })
 export class PaymentInfoStepComponent {
   @Input() checkoutForm!: FormGroup;
+  @Output() processPixPayment = new EventEmitter<void>();
 
   getFieldError(fieldName: string): string {
     const field = this.checkoutForm.get(fieldName);
@@ -26,7 +28,18 @@ export class PaymentInfoStepComponent {
   }
 
   onProcessPixPayment() {
-    // Emit an event to the parent component to handle PIX payment
-    // You might want to use @Output() and EventEmitter for this
+    this.processPixPayment.emit();
   }
+
+  paymentMethods = [
+    { value: 'credit_card', label: 'Credit Card' },
+    { value: 'debit_card', label: 'Debit Card' },
+    { value: 'pix', label: 'PIX' }
+  ];
+
+  isCardPayment(): boolean {
+    const paymentMethod = this.checkoutForm.get('paymentInfo.paymentMethod')?.value;
+    return paymentMethod === 'credit_card' || paymentMethod === 'debit_card';
+  }
+
 }

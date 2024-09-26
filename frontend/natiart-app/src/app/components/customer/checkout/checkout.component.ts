@@ -19,6 +19,9 @@ import {CheckoutStepperComponent} from "./checkout-stepper/checkout-stepper.comp
 import {UserInfoStepComponent} from "./user-info-step/user-info-step.component";
 import {ShippingInfoStepComponent} from "./shipping-info-step/shipping-info-step.component";
 import {PaymentInfoStepComponent} from "./payment-info-step/payment-info-step.component";
+import {SignupService} from "../../../service/signup.service";
+import {UserRegistration} from "../../../models/user-registration.model";
+import {Profile} from "../../../models/profile.model";
 
 @Component({
   selector: 'app-checkout',
@@ -68,12 +71,14 @@ export class CheckoutComponent implements OnInit {
     private cartService: CartService,
     private authenticationService: AuthenticationService,
     private orderService: OrderService,
-    private paymentService: PaymentService
+    private paymentService: PaymentService,
+    private signupService: SignupService
   ) {
     this.checkoutForm = this.fb.group({
       userInfo: this.fb.group({
         firstname: ['', Validators.required],
         lastname: ['', Validators.required],
+        cpf: ['', [Validators.required, Validators.pattern('[0-9]*')]],
         email: ['', [Validators.required, Validators.email]],
         phone: ['', Validators.pattern('[0-9]*')],
       }),
@@ -189,6 +194,46 @@ export class CheckoutComponent implements OnInit {
   onPreviousStep(): void {
     this.currentStep--;
     this.clearErrorMessage();
+  }
+
+  private generateGuestPassword(): string {
+    // You can generate a random password or use a fixed pattern for guest users
+    return Math.random().toString(36).slice(-8); // Example random password generator
+  }
+
+  createUserIfGuestCheckout(): void {
+    if (!this.isLoggedIn$) {
+      const formValue = this.checkoutForm.get('userInfo')?.value;
+      const profile: Profile = {
+        firstname: formValue.firstname,
+        lastname: formValue.lastname,
+        cpf: '',
+        phone: formValue.phone,
+        country: formValue.country,
+        state: formValue.state,
+        city: formValue.city,
+        neighborhood: formValue.neighborhood,
+        zipCode: formValue.zipCode,
+        street: formValue.street,
+        complement: formValue.complement,
+      };
+
+      const userRegistration: UserRegistration = {
+        username: formValue.email,
+        password: 'temporaryPassword', // Handle this securely
+        profile: profile,
+      };
+
+      this.signupService.registerUser(userRegistration).subscribe({
+        next: () => {
+          console.log('User registered as guest');
+        },
+        error: (error: any) => {
+          this.setErrorMessage('Registration failed. Please try again.');
+          console.error('Registration error:', error);
+        }
+      });
+    }
   }
 
   processPixPayment(orderData: any) {

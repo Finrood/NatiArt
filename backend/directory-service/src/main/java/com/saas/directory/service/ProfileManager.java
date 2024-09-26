@@ -20,7 +20,7 @@ public class ProfileManager {
         final Profile profile = new Profile(
                 profileDto.getFirstname(),
                 profileDto.getLastname(),
-                profileDto.getCpf(),
+                profileDto.getCpf().replaceAll("[^0-9]", ""),
                 profileDto.getCountry(),
                 profileDto.getState(),
                 profileDto.getCity(),

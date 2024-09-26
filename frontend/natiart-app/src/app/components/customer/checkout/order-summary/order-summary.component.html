@@ -1,20 +1,21 @@
 <div class="bg-white rounded-lg shadow-md p-6 mb-6">
   <h2 class="text-xl font-semibold mb-4">Order Summary</h2>
-  <div class="space-y-4">
-    <ng-container *ngFor="let item of cartItems">
-      <div class="flex justify-between items-center">
-        <div>
-          <p class="font-medium">{{ item.product.label }}</p>
-          <p class="text-sm text-gray-600">Quantity: {{ item.quantity }}</p>
-        </div>
-        <p class="font-medium">{{ item.product.markedPrice * item.quantity | currency:'BRL' }}</p>
+  <div *ngIf="cartItems?.length; else emptyCart" class="space-y-4">
+    <div *ngFor="let item of cartItems" class="flex justify-between items-center">
+      <div>
+        <p class="font-medium">{{ item.product.label }}</p>
+        <p class="text-sm text-gray-600">Quantity: {{ item.quantity }}</p>
       </div>
-    </ng-container>
+      <p class="font-medium">{{ item.product.markedPrice * item.quantity | currency:'BRL' }}</p>
+    </div>
   </div>
-  <div class="border-t mt-4 pt-4">
+  <div *ngIf="cartItems?.length" class="border-t mt-4 pt-4">
     <div class="flex justify-between items-center font-semibold">
       <p>Total</p>
       <p>{{ cartTotal | currency:'BRL' }}</p>
     </div>
   </div>
+  <ng-template #emptyCart>
+    <p class="text-center text-gray-500">Your cart is empty</p>
+  </ng-template>
 </div>

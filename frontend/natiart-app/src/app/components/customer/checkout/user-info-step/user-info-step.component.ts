@@ -1,11 +1,6 @@
-import {Component, Input} from '@angular/core';
-import {NgClass, NgIf} from "@angular/common";
-import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from "@angular/forms";
-import {CartService} from "../../../../service/cart.service";
-import {AuthenticationService} from "../../../../service/authentication.service";
-import {OrderService} from "../../../../service/order.service";
-import {PaymentService} from "../../../../service/payment.service";
-import {SignupService} from "../../../../service/signup.service";
+import { Component, Input } from '@angular/core';
+import { NgClass, NgForOf, NgIf } from "@angular/common";
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from "@angular/forms";
 
 @Component({
   selector: 'app-user-info-step',
@@ -13,13 +8,22 @@ import {SignupService} from "../../../../service/signup.service";
   imports: [
     NgIf,
     ReactiveFormsModule,
-    NgClass
+    NgClass,
+    NgForOf
   ],
   templateUrl: './user-info-step.component.html',
-  styleUrl: './user-info-step.component.css'
+  styleUrls: ['./user-info-step.component.css']  // Fixed here
 })
 export class UserInfoStepComponent {
   @Input() checkoutForm!: FormGroup;
+
+  formFields = [
+    { id: 'email', name: 'email', label: 'Email address', type: 'email', placeholder: 'you@yourbest.com', required: true },
+    { id: 'firstname', name: 'firstname', label: 'First Name', type: 'text', placeholder: 'John', required: true },
+    { id: 'lastname', name: 'lastname', label: 'Last Name', type: 'text', placeholder: 'Doe', required: true },
+    { id: 'cpf', name: 'cpf', label: 'CPF', type: 'text', placeholder: '000.000.000-11', required: false },
+    { id: 'phone', name: 'phone', label: 'Phone', type: 'tel', placeholder: '(XX) XXXXX-XXXX', required: false }
+  ];
 
   getFieldError(fieldName: string): string {
     const field = this.checkoutForm.get(fieldName);

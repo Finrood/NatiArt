@@ -1,11 +1,13 @@
 import {Component, Input} from '@angular/core';
-import {NgClass} from "@angular/common";
+import {NgClass, NgForOf, NgIf} from "@angular/common";
 
 @Component({
   selector: 'app-checkout-stepper',
   standalone: true,
   imports: [
-    NgClass
+    NgClass,
+    NgIf,
+    NgForOf
   ],
   templateUrl: './checkout-stepper.component.html',
   styleUrl: './checkout-stepper.component.css'
