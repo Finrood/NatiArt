@@ -1,6 +1,6 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 
-import { LeftMenuComponent } from './left-menu.component';
+import {LeftMenuComponent} from './left-menu.component';
 
 describe('LeftMenuComponent', () => {
   let component: LeftMenuComponent;
@@ -10,7 +10,7 @@ describe('LeftMenuComponent', () => {
     await TestBed.configureTestingModule({
       imports: [LeftMenuComponent]
     })
-    .compileComponents();
+      .compileComponents();
 
     fixture = TestBed.createComponent(LeftMenuComponent);
     component = fixture.componentInstance;

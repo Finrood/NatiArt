@@ -17,8 +17,8 @@
 
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
   <div *ngFor="let pack of packages | async"
-       class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
-       [ngClass]="{'opacity-50': !pack.active}">
+       [ngClass]="{'opacity-50': !pack.active}"
+       class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
     <h3 class="text-xl font-semibold mb-2">{{ pack.label }}</h3>
     <p class="text-gray-600 mb-4">{{ pack.height }}cmx{{ pack.width }}cmx{{ pack.depth }}cm</p>
 
@@ -36,49 +36,64 @@
 </div>
 
 <!-- Modal -->
-<div id="packageModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-  <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4 transform transition-transform duration-300 ease-in-out">
+<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50" id="packageModal">
+  <div
+    class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4 transform transition-transform duration-300 ease-in-out">
     <h3 class="text-2xl mb-4 font-light">{{ isEditingPackage.value ? 'Edit Package' : 'Add Package' }}</h3>
-    <form [formGroup]="packageForm" (ngSubmit)="submitForm()">
+    <form (ngSubmit)="submitForm()" [formGroup]="packageForm">
       <div class="mb-4">
-        <label for="packageLabel" class="block text-sm font-medium text-gray-700 mb-1">Label</label>
-        <input formControlName="label" type="text" id="packageLabel" name="packageLabel"
-               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
-        <div *ngIf="packageForm.get('label')?.invalid && packageForm.get('label')?.touched" class="text-red-600 text-sm mt-1">
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="packageLabel">Label</label>
+        <input
+          class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm"
+          formControlName="label" id="packageLabel" name="packageLabel"
+          type="text">
+        <div *ngIf="packageForm.get('label')?.invalid && packageForm.get('label')?.touched"
+             class="text-red-600 text-sm mt-1">
           Label is required.
         </div>
       </div>
       <div class="mb-4">
-        <label for="packageHeight" class="block text-sm font-medium text-gray-700 mb-1">Height</label>
-        <input type="number" step="0.01" formControlName="height" id="packageHeight" name="packageHeight"
-                  class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
-        <div *ngIf="packageForm.get('height')?.invalid && packageForm.get('height')?.touched" class="text-red-600 text-sm mt-1">
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="packageHeight">Height</label>
+        <input
+          class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm"
+          formControlName="height" id="packageHeight" name="packageHeight" step="0.01"
+          type="number">
+        <div *ngIf="packageForm.get('height')?.invalid && packageForm.get('height')?.touched"
+             class="text-red-600 text-sm mt-1">
           Height is required.
         </div>
       </div>
       <div class="mb-4">
-        <label for="packageWidth" class="block text-sm font-medium text-gray-700 mb-1">Width</label>
-        <input type="number" step="0.01" formControlName="width" id="packageWidth" name="packageWidth"
-               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
-        <div *ngIf="packageForm.get('width')?.invalid && packageForm.get('width')?.touched" class="text-red-600 text-sm mt-1">
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="packageWidth">Width</label>
+        <input
+          class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm"
+          formControlName="width" id="packageWidth" name="packageWidth" step="0.01"
+          type="number">
+        <div *ngIf="packageForm.get('width')?.invalid && packageForm.get('width')?.touched"
+             class="text-red-600 text-sm mt-1">
           Width is required.
         </div>
       </div>
       <div class="mb-4">
-        <label for="packageDepth" class="block text-sm font-medium text-gray-700 mb-1">Depth</label>
-        <input type="number" step="0.01" formControlName="depth" id="packageDepth" name="packageDepth"
-               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
-        <div *ngIf="packageForm.get('depth')?.invalid && packageForm.get('depth')?.touched" class="text-red-600 text-sm mt-1">
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="packageDepth">Depth</label>
+        <input
+          class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm"
+          formControlName="depth" id="packageDepth" name="packageDepth" step="0.01"
+          type="number">
+        <div *ngIf="packageForm.get('depth')?.invalid && packageForm.get('depth')?.touched"
+             class="text-red-600 text-sm mt-1">
           Depth is required.
         </div>
       </div>
       <div class="flex justify-end space-x-2">
-        <button type="button" (click)="closeModal()"
-                class="bg-gray-300 text-gray-700 px-4 py-2 rounded-full hover:bg-gray-400 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50">
+        <button (click)="closeModal()"
+                class="bg-gray-300 text-gray-700 px-4 py-2 rounded-full hover:bg-gray-400 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
+                type="button">
           Cancel
         </button>
-        <button type="submit"
-                class="bg-primary text-white px-4 py-2 rounded-full hover:bg-primary-dark transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+        <button
+          class="bg-primary text-white px-4 py-2 rounded-full hover:bg-primary-dark transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50"
+          type="submit">
           {{ isEditingPackage.value ? 'Update' : 'Add' }}
         </button>
       </div>

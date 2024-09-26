@@ -17,14 +17,14 @@ import java.util.UUID;
 public class TokenManager {
     private final TokenRepository tokenRepository;
 
+    public TokenManager(TokenRepository tokenRepository) {
+        this.tokenRepository = tokenRepository;
+    }
+
     public static boolean isTokenValid(Optional<Token> token) {
         return token
                 .map(t -> !t.isExpired())
                 .orElse(false);
-    }
-
-    public TokenManager(TokenRepository tokenRepository) {
-        this.tokenRepository = tokenRepository;
     }
 
     @Transactional(readOnly = true)
@@ -43,7 +43,7 @@ public class TokenManager {
     public Token getValidTokenTokenAndTokenTypeOrDie(String token, TokenType tokenType) {
         final Optional<Token> dbToken = tokenRepository.findByTokenAndTokenType(token, tokenType);
 
-        if (! isTokenValid(dbToken)) {
+        if (!isTokenValid(dbToken)) {
             throw new IllegalArgumentException(String.format("Token [%s] is invalid", token));
         }
         return dbToken.get();

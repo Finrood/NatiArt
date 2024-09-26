@@ -8,10 +8,16 @@ import java.util.Optional;
 
 public interface CategoryManager {
     Optional<Category> getCategory(String categoryId);
+
     Category getCategoryOrDie(String categoryId);
+
     List<Category> getCategories();
+
     Category createCategory(CategoryDto categoryDto);
+
     Category updateCategory(CategoryDto categoryDto);
+
     Category inverseVisibility(String categoryId);
+
     void deleteCategory(String categoryId);
 }

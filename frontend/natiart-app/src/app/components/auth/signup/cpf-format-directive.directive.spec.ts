@@ -1,4 +1,4 @@
-import { CpfFormatDirectiveDirective } from './cpf-format-directive.directive';
+import {CpfFormatDirectiveDirective} from './cpf-format-directive.directive';
 
 describe('CpfFormatDirectiveDirective', () => {
   it('should create an instance', () => {

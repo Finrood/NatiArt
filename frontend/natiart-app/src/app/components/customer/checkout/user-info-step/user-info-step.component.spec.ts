@@ -1,6 +1,6 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 
-import { UserInfoStepComponent } from './user-info-step.component';
+import {UserInfoStepComponent} from './user-info-step.component';
 
 describe('UserInfoStepComponent', () => {
   let component: UserInfoStepComponent;
@@ -10,7 +10,7 @@ describe('UserInfoStepComponent', () => {
     await TestBed.configureTestingModule({
       imports: [UserInfoStepComponent]
     })
-    .compileComponents();
+      .compileComponents();
 
     fixture = TestBed.createComponent(UserInfoStepComponent);
     component = fixture.componentInstance;

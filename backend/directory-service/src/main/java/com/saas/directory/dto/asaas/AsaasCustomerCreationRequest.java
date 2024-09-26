@@ -22,6 +22,11 @@ public class AsaasCustomerCreationRequest {
     private String groupName;
     private String company;
 
+    public AsaasCustomerCreationRequest(String name, String cpfCnpj) {
+        this.name = name;
+        this.cpfCnpj = cpfCnpj;
+    }
+
     public static AsaasCustomerCreationRequest from(UserDto userDto) {
         final String customerFullName = userDto.getProfile().getFirstname() + " " + userDto.getProfile().getLastname();
         return new AsaasCustomerCreationRequest(customerFullName, userDto.getProfile().getCpf())
@@ -31,11 +36,6 @@ public class AsaasCustomerCreationRequest {
                 .setProvince(userDto.getProfile().getNeighborhood())
                 .setComplement(userDto.getProfile().getComplement())
                 .setAddress(userDto.getProfile().getStreet());
-    }
-
-    public AsaasCustomerCreationRequest(String name, String cpfCnpj) {
-        this.name = name;
-        this.cpfCnpj = cpfCnpj;
     }
 
     public String getName() {

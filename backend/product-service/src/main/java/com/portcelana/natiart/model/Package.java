@@ -1,6 +1,12 @@
 package com.portcelana.natiart.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Version;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -14,25 +20,20 @@ import java.util.UUID;
 @Entity
 @EntityListeners(AuditingEntityListener.class)
 public class Package {
+    @OneToMany(mappedBy = "packaging", cascade = CascadeType.ALL, orphanRemoval = true)
+    private final Set<Product> products = new HashSet<>();
     @Id
     private String id;
-
     @Version
     private long version;
-
     @Column(nullable = false, unique = true)
     private String label;
-
     @Column(nullable = false)
     private float height;
     @Column(nullable = false)
     private float width;
     @Column(nullable = false)
     private float depth;
-
-    @OneToMany(mappedBy = "packaging", cascade = CascadeType.ALL, orphanRemoval = true)
-    private final Set<Product> products = new HashSet<>();
-
     @Column(nullable = false)
     private boolean active;
 
@@ -141,15 +142,15 @@ public class Package {
     }
 
     @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         final Package category = (Package) o;
         return Objects.equals(id, category.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hashCode(id);
     }
 }

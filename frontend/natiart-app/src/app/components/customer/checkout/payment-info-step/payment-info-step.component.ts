@@ -17,6 +17,11 @@ import {NgClass, NgForOf, NgIf} from "@angular/common";
 export class PaymentInfoStepComponent {
   @Input() checkoutForm!: FormGroup;
   @Output() processPixPayment = new EventEmitter<void>();
+  paymentMethods = [
+    {value: 'credit_card', label: 'Credit Card'},
+    {value: 'debit_card', label: 'Debit Card'},
+    {value: 'pix', label: 'PIX'}
+  ];
 
   getFieldError(fieldName: string): string {
     const field = this.checkoutForm.get(fieldName);
@@ -30,12 +35,6 @@ export class PaymentInfoStepComponent {
   onProcessPixPayment() {
     this.processPixPayment.emit();
   }
-
-  paymentMethods = [
-    { value: 'credit_card', label: 'Credit Card' },
-    { value: 'debit_card', label: 'Debit Card' },
-    { value: 'pix', label: 'PIX' }
-  ];
 
   isCardPayment(): boolean {
     const paymentMethod = this.checkoutForm.get('paymentInfo.paymentMethod')?.value;

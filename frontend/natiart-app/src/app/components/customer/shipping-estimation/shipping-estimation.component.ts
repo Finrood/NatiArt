@@ -1,10 +1,20 @@
-import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
-import { AsyncPipe, NgIf, NgSwitch, NgSwitchCase } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Observable, Subject, BehaviorSubject } from 'rxjs';
-import { catchError, debounceTime, distinctUntilChanged, filter, map, switchMap, takeUntil, tap, startWith } from 'rxjs/operators';
-import { ShippingEstimate, ShippingService } from '../../../service/shipping.service';
-import { CepFormatDirective } from "./cep-format-directive.directive";
+import {ChangeDetectionStrategy, Component, OnDestroy, OnInit} from '@angular/core';
+import {AsyncPipe, NgIf, NgSwitch, NgSwitchCase} from '@angular/common';
+import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
+import {BehaviorSubject, Observable, Subject} from 'rxjs';
+import {
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  filter,
+  map,
+  startWith,
+  switchMap,
+  takeUntil,
+  tap
+} from 'rxjs/operators';
+import {ShippingEstimate, ShippingService} from '../../../service/shipping.service';
+import {CepFormatDirective} from "./cep-format-directive.directive";
 import {LoadingSpinnerComponent} from "../../shared/loading-spinner/loading-spinner.component";
 
 interface ShippingState {
@@ -23,7 +33,11 @@ interface ShippingState {
 })
 export class ShippingEstimationComponent implements OnInit, OnDestroy {
   shippingForm: FormGroup;
-  private shippingStateSubject = new BehaviorSubject<ShippingState>({ status: 'idle', cheapestOption: null, error: null });
+  private shippingStateSubject = new BehaviorSubject<ShippingState>({
+    status: 'idle',
+    cheapestOption: null,
+    error: null
+  });
   shippingState$: Observable<ShippingState> = this.shippingStateSubject.asObservable();
   private destroy$ = new Subject<void>();
 
@@ -43,7 +57,7 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
       distinctUntilChanged(),
       filter(cep => this.shippingForm.valid),
       tap(() => {
-        this.shippingStateSubject.next({ status: 'loading', cheapestOption: null, error: null });
+        this.shippingStateSubject.next({status: 'loading', cheapestOption: null, error: null});
         this.shippingForm.get('cep')?.disable();
       }),
       switchMap(cep => this.estimateShipping(cep)),
@@ -55,7 +69,7 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
       },
       error => {
         console.error('Error in shipping estimation:', error);
-        this.shippingStateSubject.next({ status: 'error', cheapestOption: null, error: 'An unexpected error occurred.' });
+        this.shippingStateSubject.next({status: 'error', cheapestOption: null, error: 'An unexpected error occurred.'});
         this.shippingForm.get('cep')?.enable();
       }
     );
@@ -69,7 +83,7 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
   private estimateShipping(cep: string): Observable<ShippingState> {
     if (!cep) {
       return new Observable(observer => {
-        observer.next({ status: 'idle', cheapestOption: null, error: null });
+        observer.next({status: 'idle', cheapestOption: null, error: null});
         observer.complete();
       });
     }
@@ -93,10 +107,10 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
 
   private processShippingOptions(options: ShippingEstimate[]): ShippingState {
     if (options.length === 0) {
-      return { status: 'no-options', cheapestOption: null, error: null };
+      return {status: 'no-options', cheapestOption: null, error: null};
     }
     const cheapestOption = options.reduce((prev, curr) => prev.price < curr.price ? prev : curr);
-    return { status: 'success', cheapestOption, error: null };
+    return {status: 'success', cheapestOption, error: null};
   }
 
   private handleError(error: any): Observable<ShippingState> {

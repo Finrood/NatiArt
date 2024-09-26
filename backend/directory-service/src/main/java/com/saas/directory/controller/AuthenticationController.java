@@ -16,28 +16,28 @@ import java.io.IOException;
 
 @RestController
 public class AuthenticationController {
-	private final AuthenticationManager authenticationManager;
-	private final UserAuthenticationProvider userAuthenticationProvider;
+    private final AuthenticationManager authenticationManager;
+    private final UserAuthenticationProvider userAuthenticationProvider;
 
-	public AuthenticationController(AuthenticationManager authenticationManager, UserAuthenticationProvider userAuthenticationProvider) {
-		this.authenticationManager = authenticationManager;
-		this.userAuthenticationProvider = userAuthenticationProvider;
-	}
+    public AuthenticationController(AuthenticationManager authenticationManager, UserAuthenticationProvider userAuthenticationProvider) {
+        this.authenticationManager = authenticationManager;
+        this.userAuthenticationProvider = userAuthenticationProvider;
+    }
 
-	@PostMapping("/login")
-	public ResponseEntity<UserAuthDto> authenticateUser(@RequestBody CredentialsDto credentialsDto) {
-		final UserAuthDto userAuthDto = authenticationManager.login(credentialsDto);
-		return ResponseEntity.ok(userAuthDto);
-	}
+    @PostMapping("/login")
+    public ResponseEntity<UserAuthDto> authenticateUser(@RequestBody CredentialsDto credentialsDto) {
+        final UserAuthDto userAuthDto = authenticationManager.login(credentialsDto);
+        return ResponseEntity.ok(userAuthDto);
+    }
 
-	@PostMapping("/refresh-token")
-	public void refreshToken(HttpServletRequest request, HttpServletResponse response) throws IOException, IllegalAccessException {
-		userAuthenticationProvider.refreshToken(request, response);
-	}
+    @PostMapping("/refresh-token")
+    public void refreshToken(HttpServletRequest request, HttpServletResponse response) throws IOException, IllegalAccessException {
+        userAuthenticationProvider.refreshToken(request, response);
+    }
 
-	@PostMapping("/signout")
-	public ResponseEntity<Boolean> logout(HttpServletRequest request) {
-		authenticationManager.logout(request);
-		return ResponseEntity.ok(true);
-	}
+    @PostMapping("/signout")
+    public ResponseEntity<Boolean> logout(HttpServletRequest request) {
+        authenticationManager.logout(request);
+        return ResponseEntity.ok(true);
+    }
 }

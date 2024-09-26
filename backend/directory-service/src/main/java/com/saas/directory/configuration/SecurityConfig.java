@@ -14,26 +14,26 @@ import org.springframework.web.cors.CorsConfigurationSource;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
-	private final UserAuthenticationProvider userAuthenticationProvider;
-	private final CorsConfigurationSource corsFilter;
+    private final UserAuthenticationProvider userAuthenticationProvider;
+    private final CorsConfigurationSource corsFilter;
 
-	public SecurityConfig(UserAuthenticationProvider userAuthenticationProvider, CorsConfigurationSource corsFilter) {
-		this.userAuthenticationProvider = userAuthenticationProvider;
-		this.corsFilter = corsFilter;
-	}
+    public SecurityConfig(UserAuthenticationProvider userAuthenticationProvider, CorsConfigurationSource corsFilter) {
+        this.userAuthenticationProvider = userAuthenticationProvider;
+        this.corsFilter = corsFilter;
+    }
 
-	@Bean
-	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-		http
-				.csrf(AbstractHttpConfigurer::disable)
-				.addFilterBefore(new JwtAuthFilter(userAuthenticationProvider), BasicAuthenticationFilter.class)
-				.sessionManagement(customizer -> customizer.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.cors(cors -> cors.configurationSource(corsFilter))
-				.authorizeHttpRequests(request -> request
-						.requestMatchers(HttpMethod.POST, "/login").permitAll()
-						.requestMatchers(HttpMethod.POST, "/register-user").permitAll()
-						.anyRequest().authenticated());
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(AbstractHttpConfigurer::disable)
+                .addFilterBefore(new JwtAuthFilter(userAuthenticationProvider), BasicAuthenticationFilter.class)
+                .sessionManagement(customizer -> customizer.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .cors(cors -> cors.configurationSource(corsFilter))
+                .authorizeHttpRequests(request -> request
+                        .requestMatchers(HttpMethod.POST, "/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/register-user").permitAll()
+                        .anyRequest().authenticated());
 
-		return http.build();
-	}
+        return http.build();
+    }
 }

@@ -1,7 +1,5 @@
 import {Component} from '@angular/core';
-import {CategoryManagementComponent} from "../admin-category-management/admin-category-management.component";
-import {ProductManagementComponent} from "../admin-product-management/admin-product-management.component";
-import {NgForOf, NgSwitch, NgSwitchCase} from "@angular/common";
+import {NgForOf} from "@angular/common";
 import {RouterLink, RouterLinkActive, RouterOutlet} from "@angular/router";
 
 @Component({
@@ -27,13 +25,13 @@ import {RouterLink, RouterLinkActive, RouterOutlet} from "@angular/router";
     </div>
   `,
   standalone: true,
-  imports: [CategoryManagementComponent, ProductManagementComponent, NgSwitch, NgForOf, NgSwitchCase, RouterLink, RouterLinkActive, RouterOutlet]
+  imports: [NgForOf, RouterLink, RouterLinkActive, RouterOutlet]
 })
 export class AdminDashboardComponent {
   menuItems = [
-    { path: 'categories', label: 'Categories' },
-    { path: 'products', label: 'Products' },
-    { path: 'packages', label: 'Packages' }
+    {path: 'categories', label: 'Categories'},
+    {path: 'products', label: 'Products'},
+    {path: 'packages', label: 'Packages'}
   ];
 
   getButtonClasses(isActive: boolean): string {

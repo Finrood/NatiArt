@@ -20,7 +20,7 @@ import {AsyncPipe, NgClass, NgForOf, NgIf} from "@angular/common";
   styleUrl: './admin-package-management.component.css'
 })
 export class PackageManagementComponent implements OnInit {
-  alert$ = new BehaviorSubject<Alert | null> (null);
+  alert$ = new BehaviorSubject<Alert | null>(null);
   packages = new BehaviorSubject<Package[]>([]);
   isEditingPackage = new BehaviorSubject(false);
   packageForm: FormGroup;
@@ -40,13 +40,6 @@ export class PackageManagementComponent implements OnInit {
     this.getPackages();
   }
 
-  private getPackages(): void {
-    this.packageService.getPackages().subscribe({
-      next: (response) => this.packages.next(response),
-      error: (error) => console.error('Error getting packages:', error)
-    })
-  }
-
   openModal(pack?: Package): void {
     if (pack) {
       this.isEditingPackage.next(true);
@@ -60,7 +53,7 @@ export class PackageManagementComponent implements OnInit {
       });
     } else {
       this.isEditingPackage.next(false);
-      this.packageForm.reset({ active: true });
+      this.packageForm.reset({active: true});
     }
     const modal = document.getElementById('packageModal');
     modal?.classList.remove('hidden');
@@ -82,17 +75,6 @@ export class PackageManagementComponent implements OnInit {
     } else {
       this.validateAllFormFields(this.packageForm);
     }
-  }
-
-  private validateAllFormFields(formGroup: FormGroup): void {
-    Object.keys(formGroup.controls).forEach(field => {
-      const control = formGroup.get(field);
-      if (control instanceof FormControl) {
-        control.markAsTouched({ onlySelf: true });
-      } else if (control instanceof FormGroup) {
-        this.validateAllFormFields(control);
-      }
-    });
   }
 
   addPackage(): void {
@@ -142,8 +124,26 @@ export class PackageManagementComponent implements OnInit {
     });
   }
 
+  private getPackages(): void {
+    this.packageService.getPackages().subscribe({
+      next: (response) => this.packages.next(response),
+      error: (error) => console.error('Error getting packages:', error)
+    })
+  }
+
+  private validateAllFormFields(formGroup: FormGroup): void {
+    Object.keys(formGroup.controls).forEach(field => {
+      const control = formGroup.get(field);
+      if (control instanceof FormControl) {
+        control.markAsTouched({onlySelf: true});
+      } else if (control instanceof FormGroup) {
+        this.validateAllFormFields(control);
+      }
+    });
+  }
+
   private showAlert(message: string, type: 'success' | 'error'): void {
-    this.alert$.next({ message, type });
+    this.alert$.next({message, type});
     setTimeout(() => this.alert$.next(null), 5000);
   }
 }

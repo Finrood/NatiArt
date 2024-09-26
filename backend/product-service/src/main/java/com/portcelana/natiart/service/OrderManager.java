@@ -8,7 +8,10 @@ import java.util.List;
 
 public interface OrderManager {
     CustomerOrder getOrderById(String orderId);
+
     List<CustomerOrder> getAllOrders();
+
     CustomerOrder createOrder(OrderDto order);
+
     CustomerOrder updateOrderStatus(String orderId, OrderStatus status);
 }

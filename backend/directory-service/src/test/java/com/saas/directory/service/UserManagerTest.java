@@ -20,7 +20,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import javax.management.relation.RoleNotFoundException;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -29,7 +32,7 @@ import static org.mockito.Mockito.when;
 public class UserManagerTest {
     private final UserRepository userRepository = mock(UserRepository.class);
     private final ExternalUserRepository externalUserRepository = mock(ExternalUserRepository.class);
-    private final RoleRepository roleRepository  = mock(RoleRepository.class);
+    private final RoleRepository roleRepository = mock(RoleRepository.class);
     private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
     private final ProfileManager profileManager = mock(ProfileManager.class);
 
@@ -37,13 +40,13 @@ public class UserManagerTest {
 
     @BeforeEach
     public void initContext() {
-         userManager = new UserManager(
-                 userRepository,
-                 externalUserRepository,
-                 roleRepository,
-                 profileManager,
-                 passwordEncoder
-         );
+        userManager = new UserManager(
+                userRepository,
+                externalUserRepository,
+                roleRepository,
+                profileManager,
+                passwordEncoder
+        );
     }
 
     @Test

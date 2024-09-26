@@ -1,15 +1,16 @@
-<div class="absolute top-full right-0 mt-2 bg-primary-lighter border-2 border-primary-light p-4 rounded-lg shadow-lg shadow-primary-dark w-80 z-50">
+<div
+  class="absolute top-full right-0 mt-2 bg-primary-lighter border-2 border-primary-light p-4 rounded-lg shadow-lg shadow-primary-dark w-80 z-50">
   <h2 class="text-xl font-bold mb-4">Your Cart</h2>
 
   <ng-container *ngIf="(cartItems$ | async) as cartItems">
     <div *ngIf="cartItems.length; else emptyCart">
       <div *ngFor="let item of cartItems" class="flex items-center mb-4 pb-4 border-b">
         <div class="w-16 h-16 mr-4 overflow-hidden rounded">
-          <img *ngIf="imageUrls[item.product.id!]"
-               [src]="imageUrls[item.product.id!]"
+          <img (error)="onImageError(item.product.id!)"
+               *ngIf="imageUrls[item.product.id!]"
                [alt]="item.product.label"
-               class="w-full h-full object-cover"
-               (error)="onImageError(item.product.id!)">
+               [src]="imageUrls[item.product.id!]"
+               class="w-full h-full object-cover">
           <div *ngIf="!imageUrls[item.product.id!]" class="w-full h-full bg-gray-200 flex items-center justify-center">
             <span class="text-gray-400">No image</span>
           </div>
@@ -18,14 +19,17 @@
           <p class="font-semibold">{{ item.product.label }}</p>
           <p *ngIf="item.goldBorder" class="mt-1 text-sm font-medium text-yellow-600">With Gold Border</p>
           <div class="flex items-center mt-1">
-            <input type="number" [(ngModel)]="item.quantity" (change)="updateQuantity(item, item.quantity)"
-                   class="w-16 p-1 border rounded mr-2" [min]="1" [max]="item.product.stockQuantity">
+            <input (change)="updateQuantity(item, item.quantity)" [(ngModel)]="item.quantity"
+                   [max]="item.product.stockQuantity"
+                   [min]="1" class="w-16 p-1 border rounded mr-2" type="number">
             <p>{{ item.product.markedPrice * item.quantity | currency:'BRL' }}</p>
           </div>
         </div>
         <button (click)="removeItem(item, $event)" class="text-error hover:text-red-700">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+          <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  fill-rule="evenodd"/>
           </svg>
         </button>
       </div>
@@ -38,7 +42,9 @@
       </div>
 
       <div class="mt-4">
-        <a routerLink="/cart" class="block w-full bg-primary text-white text-center px-6 py-3 rounded-full font-medium hover:bg-primary-dark transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+        <a
+          class="block w-full bg-primary text-white text-center px-6 py-3 rounded-full font-medium hover:bg-primary-dark transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50"
+          routerLink="/cart">
           Go to Cart
         </a>
       </div>

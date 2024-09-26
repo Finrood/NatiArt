@@ -27,6 +27,9 @@ public class OrderDto {
     private BigDecimal totalAmount;
     private OrderStatus status;
 
+    public OrderDto() {
+    }
+
     public static OrderDto from(CustomerOrder customerOrder) {
         return new OrderDto()
                 .setId(customerOrder.getId())
@@ -48,9 +51,6 @@ public class OrderDto {
                 .setDeliveryAmount(customerOrder.getDeliveryAmount())
                 .setTotalAmount(customerOrder.getTotalAmount())
                 .setStatus(customerOrder.getStatus());
-    }
-
-    public OrderDto() {
     }
 
     public String getId() {

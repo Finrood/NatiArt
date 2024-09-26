@@ -12,9 +12,9 @@ import {CartComponent} from "./components/customer/cart/cart.component";
 import {CheckoutComponent} from "./components/customer/checkout/checkout.component";
 
 export const routes: Routes = [
-  { path: 'login', component: LoginComponent },
-  { path: 'logout', component: LogoutComponent },
-  { path: 'register', component: SignupComponent },
+  {path: 'login', component: LoginComponent},
+  {path: 'logout', component: LogoutComponent},
+  {path: 'register', component: SignupComponent},
   {
     path: 'dashboard',
     component: CustomerDashboardComponent,
@@ -61,9 +61,9 @@ export const routes: Routes = [
         loadComponent: () => import('./components/admin/admin-package-management/admin-package-management.component')
           .then(m => m.PackageManagementComponent)
       },
-      { path: '', redirectTo: 'categories', pathMatch: 'full' }
+      {path: '', redirectTo: 'categories', pathMatch: 'full'}
     ]
   },
-  { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
-  { path: '**', redirectTo: '/dashboard' }
+  {path: '', redirectTo: '/dashboard', pathMatch: 'full'},
+  {path: '**', redirectTo: '/dashboard'}
 ];

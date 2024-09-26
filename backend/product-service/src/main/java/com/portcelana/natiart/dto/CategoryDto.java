@@ -8,19 +8,19 @@ public class CategoryDto {
     private String description;
     private boolean active;
 
+    public CategoryDto() {
+    }
+
+    public CategoryDto(String label) {
+        this.label = label;
+    }
+
     public static CategoryDto from(Category category) {
         if (category == null) return null;
         return new CategoryDto(category.getLabel())
                 .setId(category.getId())
                 .setDescription(category.getDescription())
                 .setActive(category.isActive());
-    }
-
-    public CategoryDto() {
-    }
-
-    public CategoryDto(String label) {
-        this.label = label;
     }
 
     public String getId() {

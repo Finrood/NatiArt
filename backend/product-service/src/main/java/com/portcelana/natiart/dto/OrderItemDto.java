@@ -11,6 +11,9 @@ public class OrderItemDto {
     private Integer quantity;
     private BigDecimal price;
 
+    public OrderItemDto() {
+    }
+
     public static OrderItemDto from(CustomerOrderItem customerOrderItem) {
         return new OrderItemDto()
                 .setId(customerOrderItem.getId())
@@ -18,9 +21,6 @@ public class OrderItemDto {
                 .setProductId(customerOrderItem.getProduct().getId())
                 .setQuantity(customerOrderItem.getQuantity())
                 .setPrice(customerOrderItem.getPrice());
-    }
-
-    public OrderItemDto() {
     }
 
     public String getId() {

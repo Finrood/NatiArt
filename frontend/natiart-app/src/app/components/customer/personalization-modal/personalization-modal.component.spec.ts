@@ -1,6 +1,6 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 
-import { PersonalizationModalComponent } from './personalization-modal.component';
+import {PersonalizationModalComponent} from './personalization-modal.component';
 
 describe('PersonalizationModalComponent', () => {
   let component: PersonalizationModalComponent;
@@ -10,7 +10,7 @@ describe('PersonalizationModalComponent', () => {
     await TestBed.configureTestingModule({
       imports: [PersonalizationModalComponent]
     })
-    .compileComponents();
+      .compileComponents();
 
     fixture = TestBed.createComponent(PersonalizationModalComponent);
     component = fixture.componentInstance;

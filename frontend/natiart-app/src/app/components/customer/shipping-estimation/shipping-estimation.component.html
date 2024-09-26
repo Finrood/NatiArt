@@ -1,22 +1,22 @@
-<section class="bg-white rounded-lg shadow-md p-6 mt-8 relative" aria-labelledby="shipping-estimation-title">
-  <h2 id="shipping-estimation-title" class="text-2xl font-semibold mb-4 text-gray-800">Shipping Estimation</h2>
+<section aria-labelledby="shipping-estimation-title" class="bg-white rounded-lg shadow-md p-6 mt-8 relative">
+  <h2 class="text-2xl font-semibold mb-4 text-gray-800" id="shipping-estimation-title">Shipping Estimation</h2>
 
   <form [formGroup]="shippingForm" class="space-y-4">
     <div>
-      <label for="cep" class="block text-sm font-medium text-gray-700">CEP (Postal Code)</label>
+      <label class="block text-sm font-medium text-gray-700" for="cep">CEP (Postal Code)</label>
       <input
-        type="text"
-        id="cep"
-        formControlName="cep"
+        aria-describedby="cep-error"
         cepFormat
         class="appearance-none rounded-none relative block w-full px-3 py-2 sm:py-3 border border-primary placeholder-secondary-light text-secondary rounded-t-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 text-sm sm:text-base"
+        formControlName="cep"
+        id="cep"
         placeholder="00000-000"
-        aria-describedby="cep-error"
+        type="text"
       >
       <p
-        id="cep-error"
-        class="mt-2 text-sm text-red-600"
         *ngIf="shippingForm.get('cep')?.invalid && (shippingForm.get('cep')?.dirty || shippingForm.get('cep')?.touched)"
+        class="mt-2 text-sm text-red-600"
+        id="cep-error"
       >
         Please enter a valid CEP (8 digits).
       </p>
@@ -29,18 +29,22 @@
         Enter a CEP above to estimate shipping costs.
       </div>
 
-      <div *ngSwitchCase="'loading'" class="absolute inset-0 bg-gray-500 bg-opacity-75 flex justify-center items-center" aria-live="polite">
+      <div *ngSwitchCase="'loading'" aria-live="polite"
+           class="absolute inset-0 bg-gray-500 bg-opacity-75 flex justify-center items-center">
         <div class="bg-white p-4 rounded-lg shadow-md text-center">
           <app-loading-spinner></app-loading-spinner>
           <span class="text-gray-800 font-medium mt-2 block">Estimating shipping...</span>
         </div>
       </div>
 
-      <div *ngSwitchCase="'success'" class="bg-green-50 border-l-4 border-green-400 p-4" aria-live="polite">
+      <div *ngSwitchCase="'success'" aria-live="polite" class="bg-green-50 border-l-4 border-green-400 p-4">
         <div class="flex">
           <div class="flex-shrink-0">
-            <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            <svg aria-hidden="true" class="h-5 w-5 text-green-400" fill="currentColor"
+                 viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+              <path clip-rule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    fill-rule="evenodd"/>
             </svg>
           </div>
           <div class="ml-3">
@@ -54,11 +58,14 @@
         </div>
       </div>
 
-      <div *ngSwitchCase="'no-options'" class="bg-yellow-50 border-l-4 border-yellow-400 p-4" aria-live="polite">
+      <div *ngSwitchCase="'no-options'" aria-live="polite" class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
         <div class="flex">
           <div class="flex-shrink-0">
-            <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+            <svg aria-hidden="true" class="h-5 w-5 text-yellow-400" fill="currentColor"
+                 viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+              <path clip-rule="evenodd"
+                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                    fill-rule="evenodd"/>
             </svg>
           </div>
           <div class="ml-3">
@@ -70,11 +77,14 @@
         </div>
       </div>
 
-      <div *ngSwitchCase="'error'" class="bg-red-50 border-l-4 border-red-400 p-4" aria-live="assertive">
+      <div *ngSwitchCase="'error'" aria-live="assertive" class="bg-red-50 border-l-4 border-red-400 p-4">
         <div class="flex">
           <div class="flex-shrink-0">
-            <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+            <svg aria-hidden="true" class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20"
+                 xmlns="http://www.w3.org/2000/svg">
+              <path clip-rule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    fill-rule="evenodd"/>
             </svg>
           </div>
           <div class="ml-3">

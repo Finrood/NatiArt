@@ -38,16 +38,14 @@ import java.util.Optional;
 @Component
 public class UserAuthenticationProvider {
     private static final Logger logger = LoggerFactory.getLogger(UserAuthenticationProvider.class);
-
+    private final TokenRepository tokenRepository;
+    private final UserManager userManager;
     @Value("${saas.security.jwt.key.secret}")
     private String secretKey;
     @Value("${saas.security.jwt.expiration}")
     private Long accessTokenExpiration;
     @Value("${saas.security.jwt.refresh.expiration}")
     private Long refreshTokenExpiration;
-
-    private final TokenRepository tokenRepository;
-    private final UserManager userManager;
 
     public UserAuthenticationProvider(TokenRepository tokenRepository, UserManager userManager) {
         this.tokenRepository = tokenRepository;
@@ -119,13 +117,13 @@ public class UserAuthenticationProvider {
         final boolean isTokenValid = dbToken
                 .map(t -> !t.isExpired())
                 .orElse(false);
-        if (! isTokenValid) {
+        if (!isTokenValid) {
             throw new IllegalAccessException(String.format("Authentication Token [%s] is not valid", token));
         }
 
         final DecodedJWT decodedJWT = decodeJWT(token);
 
-        if (! dbToken.get().getUser().getUsername().equals(decodedJWT.getIssuer())) {
+        if (!dbToken.get().getUser().getUsername().equals(decodedJWT.getIssuer())) {
             invalidateToken(token);
             throw new IllegalAccessException(String.format("User [%s] is not the authentication token issuer for token [%s]", decodedJWT.getIssuer(), token));
         }
@@ -135,7 +133,7 @@ public class UserAuthenticationProvider {
         if (role != null) {
             authority = new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
         } else {
-            authority = new SimpleGrantedAuthority("ROLE_"+ dbToken.get().getUser().getRole().getLabel());
+            authority = new SimpleGrantedAuthority("ROLE_" + dbToken.get().getUser().getRole().getLabel());
         }
 
         return new UsernamePasswordAuthenticationToken(UserDto.from(dbToken.get().getUser()), null, Collections.singletonList(authority));

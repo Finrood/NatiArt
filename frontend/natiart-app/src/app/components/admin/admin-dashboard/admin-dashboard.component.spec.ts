@@ -10,7 +10,7 @@ describe('AdminDashboardComponent', () => {
     await TestBed.configureTestingModule({
       imports: [AdminDashboardComponent]
     })
-    .compileComponents();
+      .compileComponents();
 
     fixture = TestBed.createComponent(AdminDashboardComponent);
     component = fixture.componentInstance;

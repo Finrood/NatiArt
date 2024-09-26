@@ -1,6 +1,6 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 
-import { CartModalComponent } from './cart-modal.component';
+import {CartModalComponent} from './cart-modal.component';
 
 describe('CartModalComponent', () => {
   let component: CartModalComponent;
@@ -10,7 +10,7 @@ describe('CartModalComponent', () => {
     await TestBed.configureTestingModule({
       imports: [CartModalComponent]
     })
-    .compileComponents();
+      .compileComponents();
 
     fixture = TestBed.createComponent(CartModalComponent);
     component = fixture.componentInstance;

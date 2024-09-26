@@ -4,7 +4,6 @@ import {Router} from "@angular/router";
 import {RoleName, User} from "../models/user.model";
 import {environment} from "../../environments/environment";
 import {BehaviorSubject, map, Observable} from "rxjs";
-import {SignupRequest} from "./signup.service";
 import {Credentials} from "../models/credentials.model";
 
 @Injectable({
@@ -28,16 +27,9 @@ export class AuthenticationService {
     this.startTokenExpiryCheck();
   }
 
-  private getHeaders(): HttpHeaders {
-    const accessToken = this.getAccessToken();
-    return new HttpHeaders({
-      'Authorization': `Bearer ${accessToken}`
-    });
-  }
-
   getCurrentUser(): void {
     const headers = this.getHeaders();
-    this.http.get<User>(`${this.apiUrl}/users/current`, { headers: headers })
+    this.http.get<User>(`${this.apiUrl}/users/current`, {headers: headers})
       .subscribe({
         next: (user) => {
           this.isLoggedInSubject.next(true);
@@ -90,7 +82,10 @@ export class AuthenticationService {
         'Authorization': `Bearer ${refreshToken}`
       };
 
-      this.http.post<{ accessToken: string, refreshToken: string }>(`${this.apiUrl}/refresh-token`, null, { headers: headers })
+      this.http.post<{
+        accessToken: string,
+        refreshToken: string
+      }>(`${this.apiUrl}/refresh-token`, null, {headers: headers})
         .subscribe({
           next: (response) => {
             this.setAccessToken(response.accessToken);
@@ -100,12 +95,14 @@ export class AuthenticationService {
           error: (error) => {
             console.log(error);
             this.router.navigate(['/logout'])
-              .then(() => {});
+              .then(() => {
+              });
           }
         });
     } else {
       this.router.navigate(['/logout'])
-        .then(() => {});
+        .then(() => {
+        });
     }
   }
 
@@ -116,7 +113,7 @@ export class AuthenticationService {
     }
     const accessTokenPayload = this.getDecodedToken(this.getAccessToken());
     const expirationTime = accessTokenPayload.exp * 1000; // Convert to milliseconds
-    if(expirationTime < Date.now()) {
+    if (expirationTime < Date.now()) {
       return true;
     } else {
       this.isLoggedInSubject.next(true);
@@ -179,5 +176,12 @@ export class AuthenticationService {
         }
       }, 10000); // Every second
     }
+  }
+
+  private getHeaders(): HttpHeaders {
+    const accessToken = this.getAccessToken();
+    return new HttpHeaders({
+      'Authorization': `Bearer ${accessToken}`
+    });
   }
 }

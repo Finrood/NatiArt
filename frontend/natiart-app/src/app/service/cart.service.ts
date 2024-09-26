@@ -1,8 +1,8 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, of } from "rxjs";
-import { map } from "rxjs/operators";
-import { Product } from "../models/product.model";
-import { CartItem } from "../models/CartItem.model";
+import {Injectable} from '@angular/core';
+import {BehaviorSubject, Observable, of} from "rxjs";
+import {map} from "rxjs/operators";
+import {Product} from "../models/product.model";
+import {CartItem} from "../models/CartItem.model";
 
 @Injectable({
   providedIn: 'root'
@@ -29,7 +29,7 @@ export class CartService {
     if (existingItem) {
       existingItem.quantity += quantity;
     } else {
-      this.cartItems.push({ product, goldBorder, image, quantity });
+      this.cartItems.push({product, goldBorder, image, quantity});
     }
     this.updateCart();
     return of(undefined); // Returning observable of void to indicate operation completion
@@ -60,11 +60,6 @@ export class CartService {
     return of(undefined); // Returning observable of void to indicate operation completion
   }
 
-  private updateCart(): void {
-    this.cartItemsSubject.next(this.cartItems);
-    localStorage.setItem('cart', JSON.stringify(this.cartItems));
-  }
-
   getCartCount(): Observable<number> {
     return this.cartItemsSubject.pipe(
       map(items => items.reduce((total, item) => total + item.quantity, 0))
@@ -80,5 +75,10 @@ export class CartService {
   getCartTotalSnapshot(): number {
     const items = this.cartItemsSubject.getValue();
     return items.reduce((sum, item) => sum + item.product.markedPrice * item.quantity, 0);
+  }
+
+  private updateCart(): void {
+    this.cartItemsSubject.next(this.cartItems);
+    localStorage.setItem('cart', JSON.stringify(this.cartItems));
   }
 }

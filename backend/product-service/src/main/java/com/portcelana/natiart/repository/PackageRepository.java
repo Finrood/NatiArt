@@ -7,6 +7,6 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface PackageRepository extends JpaRepository<Package, String>  {
+public interface PackageRepository extends JpaRepository<Package, String> {
     Optional<Package> findPackageByLabel(String label);
 }

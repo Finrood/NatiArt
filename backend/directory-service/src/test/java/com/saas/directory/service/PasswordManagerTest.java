@@ -18,7 +18,10 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class PasswordManagerTest {
@@ -32,12 +35,12 @@ public class PasswordManagerTest {
 
     @BeforeEach
     public void initContext() {
-         passwordManager = new PasswordManager(
-                 userManager,
-                 userRepository,
-                 tokenManager,
-                 passwordEncoder
-         );
+        passwordManager = new PasswordManager(
+                userManager,
+                userRepository,
+                tokenManager,
+                passwordEncoder
+        );
     }
 
     @Test
@@ -68,7 +71,7 @@ public class PasswordManagerTest {
     public void test_getValidPasswordResetTokenOrDie_returns_token_when_found_and_valid() {
         // Arrange
         String tokenValue = "some_valid_token";
-        Token token = new Token(tokenValue,  new User("username1", "password"), TokenType.PASSWORD_RESET, Instant.now().plusSeconds(3600));
+        Token token = new Token(tokenValue, new User("username1", "password"), TokenType.PASSWORD_RESET, Instant.now().plusSeconds(3600));
         when(tokenManager.getValidTokenTokenAndTokenTypeOrDie(tokenValue, TokenType.PASSWORD_RESET)).thenReturn(token);
 
         // Act
@@ -92,7 +95,7 @@ public class PasswordManagerTest {
     public void test_getValidPasswordResetTokenOrDie_throws_IllegalArgumentException_when_token_expired() {
         // Arrange
         String tokenValue = "expired_token";
-        Token token = new Token(tokenValue,  new User("username1", "password"), TokenType.PASSWORD_RESET, Instant.now().minusSeconds(3600));
+        Token token = new Token(tokenValue, new User("username1", "password"), TokenType.PASSWORD_RESET, Instant.now().minusSeconds(3600));
         when(tokenManager.getValidTokenTokenAndTokenTypeOrDie(tokenValue, TokenType.PASSWORD_RESET)).thenThrow(IllegalArgumentException.class);
 
         // Act and Assert
@@ -118,7 +121,7 @@ public class PasswordManagerTest {
         String tokenValue = "valid_token";
         String newPassword = "new_password";
         ResetPasswordDto resetPasswordDto = new ResetPasswordDto(newPassword, newPassword);
-        Token token = new Token(tokenValue,  new User("username1", "password"), TokenType.PASSWORD_RESET, Instant.now().plusSeconds(3600));
+        Token token = new Token(tokenValue, new User("username1", "password"), TokenType.PASSWORD_RESET, Instant.now().plusSeconds(3600));
         User user = new User("username", "old_password"); // Existing user
         token.setUser(user);
         when(tokenManager.getTokenByTokenAndTokenTypeOrDie(tokenValue, TokenType.PASSWORD_RESET)).thenReturn(token);

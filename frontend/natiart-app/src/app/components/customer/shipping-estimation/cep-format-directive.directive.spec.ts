@@ -1,4 +1,4 @@
-import { CepFormatDirectiveDirective } from './cep-format-directive.directive';
+import {CepFormatDirectiveDirective} from './cep-format-directive.directive';
 
 describe('CepFormatDirectiveDirective', () => {
   it('should create an instance', () => {

@@ -1,6 +1,6 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 
-import { AdminPackageManagementComponent } from './admin-package-management.component';
+import {AdminPackageManagementComponent} from './admin-package-management.component';
 
 describe('AdminPackageManagementComponent', () => {
   let component: AdminPackageManagementComponent;
@@ -10,7 +10,7 @@ describe('AdminPackageManagementComponent', () => {
     await TestBed.configureTestingModule({
       imports: [AdminPackageManagementComponent]
     })
-    .compileComponents();
+      .compileComponents();
 
     fixture = TestBed.createComponent(AdminPackageManagementComponent);
     component = fixture.componentInstance;

@@ -39,10 +39,6 @@ export class ShippingInfoStepComponent {
     return '';
   }
 
-  private setErrorMessage(message: string): void {
-    this.errorMessage = message;
-  }
-
   onZipCodeChange(section: 'shippingInfo' | 'billingInfo'): void {
     const zipCode = this.checkoutForm.get(`${section}.zipCode`)?.value?.replace(/\D/g, '');
     if (zipCode?.length !== 8) {
@@ -95,5 +91,9 @@ export class ShippingInfoStepComponent {
         complement: this.checkoutForm.get('shippingInfo.complement')?.value,
       });
     }
+  }
+
+  private setErrorMessage(message: string): void {
+    this.errorMessage = message;
   }
 }

@@ -1,8 +1,11 @@
 <div [formGroup]="checkoutForm">
-  <div formGroupName="paymentInfo" class="space-y-6">
+  <div class="space-y-6" formGroupName="paymentInfo">
     <div>
-      <label for="paymentMethod" class="block text-sm font-medium text-secondary">Payment Method</label>
-      <select id="paymentMethod" formControlName="paymentMethod" class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
+      <label class="block text-sm font-medium text-secondary" for="paymentMethod">Payment Method</label>
+      <select
+        class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+        formControlName="paymentMethod"
+        id="paymentMethod">
         <option value="">Select payment method</option>
         <option *ngFor="let method of paymentMethods" [value]="method.value">{{ method.label }}</option>
       </select>
@@ -10,11 +13,13 @@
 
     <ng-container *ngIf="isCardPayment()">
       <div>
-        <label for="cardNumber" class="block text-sm font-medium text-secondary">Card Number</label>
-        <input id="cardNumber" formControlName="cardNumber" type="text" required
+        <label class="block text-sm font-medium text-secondary" for="cardNumber">Card Number</label>
+        <input [ngClass]="{'border-error': getFieldError('paymentInfo.cardNumber')}"
                class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-               [ngClass]="{'border-error': getFieldError('paymentInfo.cardNumber')}"
-               placeholder="XXXX XXXX XXXX XXXX">
+               formControlName="cardNumber" id="cardNumber"
+               placeholder="XXXX XXXX XXXX XXXX"
+               required
+               type="text">
         <p *ngIf="getFieldError('paymentInfo.cardNumber')" class="mt-2 text-sm text-red-600">
           {{ getFieldError('paymentInfo.cardNumber') }}
         </p>
@@ -22,22 +27,26 @@
 
       <div class="grid grid-cols-2 gap-6">
         <div>
-          <label for="expirationDate" class="block text-sm font-medium text-secondary">Expiration Date</label>
-          <input id="expirationDate" formControlName="expirationDate" type="text" required
+          <label class="block text-sm font-medium text-secondary" for="expirationDate">Expiration Date</label>
+          <input [ngClass]="{'border-error': getFieldError('paymentInfo.expirationDate')}"
                  class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                 [ngClass]="{'border-error': getFieldError('paymentInfo.expirationDate')}"
-                 placeholder="MM/YY">
+                 formControlName="expirationDate" id="expirationDate"
+                 placeholder="MM/YY"
+                 required
+                 type="text">
           <p *ngIf="getFieldError('paymentInfo.expirationDate')" class="mt-2 text-sm text-red-600">
             {{ getFieldError('paymentInfo.expirationDate') }}
           </p>
         </div>
 
         <div>
-          <label for="cvv" class="block text-sm font-medium text-secondary">CVV</label>
-          <input id="cvv" formControlName="cvv" type="text" required
+          <label class="block text-sm font-medium text-secondary" for="cvv">CVV</label>
+          <input [ngClass]="{'border-error': getFieldError('paymentInfo.cvv')}"
                  class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                 [ngClass]="{'border-error': getFieldError('paymentInfo.cvv')}"
-                 placeholder="123">
+                 formControlName="cvv" id="cvv"
+                 placeholder="123"
+                 required
+                 type="text">
           <p *ngIf="getFieldError('paymentInfo.cvv')" class="mt-2 text-sm text-red-600">
             {{ getFieldError('paymentInfo.cvv') }}
           </p>

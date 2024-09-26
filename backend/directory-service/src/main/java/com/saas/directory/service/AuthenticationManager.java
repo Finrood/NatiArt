@@ -14,37 +14,37 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthenticationManager {
-	private final UserManager userManager;
-	private final PasswordEncoder passwordEncoder;
-	private final UserAuthenticationProvider userAuthenticationProvider;
+    private final UserManager userManager;
+    private final PasswordEncoder passwordEncoder;
+    private final UserAuthenticationProvider userAuthenticationProvider;
 
-	public AuthenticationManager(UserManager userManager,
+    public AuthenticationManager(UserManager userManager,
                                  PasswordEncoder passwordEncoder,
-								 UserAuthenticationProvider userAuthenticationProvider) {
-		this.userManager = userManager;
-		this.passwordEncoder = passwordEncoder;
-		this.userAuthenticationProvider = userAuthenticationProvider;
-	}
+                                 UserAuthenticationProvider userAuthenticationProvider) {
+        this.userManager = userManager;
+        this.passwordEncoder = passwordEncoder;
+        this.userAuthenticationProvider = userAuthenticationProvider;
+    }
 
-	@Transactional
-	public UserAuthDto login(CredentialsDto credentialsDto) {
-		final User user = userManager.getUserOrDie(credentialsDto.username());
-		if (passwordEncoder.matches(credentialsDto.password(), user.getPasswordHash())) {
-			final UserDto userDto = UserDto.from(user);
-			return new UserAuthDto(userAuthenticationProvider.createAccessToken(userDto), userAuthenticationProvider.createRefreshToken(userDto));
-		} else {
-			throw new ResourceNotFoundException("Password is invalid. Try again", HttpStatus.BAD_REQUEST);
-		}
-	}
+    @Transactional
+    public UserAuthDto login(CredentialsDto credentialsDto) {
+        final User user = userManager.getUserOrDie(credentialsDto.username());
+        if (passwordEncoder.matches(credentialsDto.password(), user.getPasswordHash())) {
+            final UserDto userDto = UserDto.from(user);
+            return new UserAuthDto(userAuthenticationProvider.createAccessToken(userDto), userAuthenticationProvider.createRefreshToken(userDto));
+        } else {
+            throw new ResourceNotFoundException("Password is invalid. Try again", HttpStatus.BAD_REQUEST);
+        }
+    }
 
-	@Transactional
-	public void logout(HttpServletRequest request) {
-		request.getSession().invalidate();
+    @Transactional
+    public void logout(HttpServletRequest request) {
+        request.getSession().invalidate();
 
-		final String authorizationHeader = request.getHeader("Authorization");
-		if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-			final String jwtToken = authorizationHeader.substring(7);
-			userAuthenticationProvider.invalidateToken(jwtToken);
-		}
-	}
+        final String authorizationHeader = request.getHeader("Authorization");
+        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            final String jwtToken = authorizationHeader.substring(7);
+            userAuthenticationProvider.invalidateToken(jwtToken);
+        }
+    }
 }

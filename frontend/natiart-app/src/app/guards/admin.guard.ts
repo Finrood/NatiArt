@@ -18,7 +18,8 @@ export const adminGuard: CanActivateFn = (route, state): boolean | UrlTree => {
   } else {
     redirectService.setRedirectUrl(state.url);
     router.navigate(['/login'])
-      .then(() => {});
+      .then(() => {
+      });
     return false;
   }
 };

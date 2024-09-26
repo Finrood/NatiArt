@@ -14,13 +14,12 @@ import {Alert} from '../../../models/alert.model';
   styleUrls: ['./admin-category-management.component.css']
 })
 export class CategoryManagementComponent implements OnInit {
-  private categoryService = inject(CategoryService);
-  private fb = inject(FormBuilder);
-
   alert$ = new BehaviorSubject<Alert | null>(null);
   categories = new BehaviorSubject<Category[]>([]);
   isEditingCategory = new BehaviorSubject(false);
   categoryForm: FormGroup;
+  private categoryService = inject(CategoryService);
+  private fb = inject(FormBuilder);
 
   constructor() {
     this.categoryForm = this.fb.group({
@@ -35,13 +34,6 @@ export class CategoryManagementComponent implements OnInit {
     this.getCategories();
   }
 
-  private getCategories(): void {
-    this.categoryService.getCategories().subscribe({
-      next: (response) => this.categories.next(response),
-      error: (error) => console.error('Error getting categories:', error)
-    });
-  }
-
   openModal(category?: Category): void {
     if (category) {
       this.isEditingCategory.next(true);
@@ -53,7 +45,7 @@ export class CategoryManagementComponent implements OnInit {
       });
     } else {
       this.isEditingCategory.next(false);
-      this.categoryForm.reset({ active: true });
+      this.categoryForm.reset({active: true});
     }
     const modal = document.getElementById('categoryModal');
     modal?.classList.remove('hidden');
@@ -75,17 +67,6 @@ export class CategoryManagementComponent implements OnInit {
     } else {
       this.validateAllFormFields(this.categoryForm);
     }
-  }
-
-  private validateAllFormFields(formGroup: FormGroup): void {
-    Object.keys(formGroup.controls).forEach(field => {
-      const control = formGroup.get(field);
-      if (control instanceof FormControl) {
-        control.markAsTouched({ onlySelf: true });
-      } else if (control instanceof FormGroup) {
-        this.validateAllFormFields(control);
-      }
-    });
   }
 
   addCategory(): void {
@@ -144,8 +125,26 @@ export class CategoryManagementComponent implements OnInit {
     });
   }
 
+  private getCategories(): void {
+    this.categoryService.getCategories().subscribe({
+      next: (response) => this.categories.next(response),
+      error: (error) => console.error('Error getting categories:', error)
+    });
+  }
+
+  private validateAllFormFields(formGroup: FormGroup): void {
+    Object.keys(formGroup.controls).forEach(field => {
+      const control = formGroup.get(field);
+      if (control instanceof FormControl) {
+        control.markAsTouched({onlySelf: true});
+      } else if (control instanceof FormGroup) {
+        this.validateAllFormFields(control);
+      }
+    });
+  }
+
   private showAlert(message: string, type: 'success' | 'error'): void {
-    this.alert$.next({ message, type });
+    this.alert$.next({message, type});
     setTimeout(() => this.alert$.next(null), 5000);
   }
 }

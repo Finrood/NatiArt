@@ -2,7 +2,6 @@ package com.portcelana.natiart.dto;
 
 import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.model.Product;
-import jakarta.persistence.Column;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -28,6 +27,11 @@ public class ProductDto {
     private boolean featuredProduct;
     private boolean active;
 
+    public ProductDto(String label, BigDecimal originalPrice) {
+        this.label = label;
+        this.originalPrice = originalPrice;
+    }
+
     public static ProductDto from(Product product) {
         if (product == null) return null;
         return new ProductDto(product.getLabel(), product.getOriginalPrice())
@@ -45,11 +49,6 @@ public class ProductDto {
                 .setNewProduct(product.isNewProduct())
                 .setFeaturedProduct(product.isFeaturedProduct())
                 .setActive(product.isActive());
-    }
-
-    public ProductDto(String label, BigDecimal originalPrice) {
-        this.label = label;
-        this.originalPrice = originalPrice;
     }
 
     public String getId() {

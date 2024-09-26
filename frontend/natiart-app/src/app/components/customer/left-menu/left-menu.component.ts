@@ -1,8 +1,7 @@
-import { NgClass, NgIf } from '@angular/common';
-import { Component, OnInit, HostListener } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { Category } from '../../../models/category.model';
-import { CategoryService } from '../../../service/category.service';
+import {CommonModule} from '@angular/common';
+import {Component, HostListener, OnInit} from '@angular/core';
+import {Category} from '../../../models/category.model';
+import {CategoryService} from '../../../service/category.service';
 
 @Component({
   selector: 'app-left-menu',
@@ -16,7 +15,8 @@ export class LeftMenuComponent implements OnInit {
   isOpen = true;
   isMobile = false;
 
-  constructor(private categoryService: CategoryService) {}
+  constructor(private categoryService: CategoryService) {
+  }
 
   ngOnInit(): void {
     this.loadCategories();
@@ -26,20 +26,6 @@ export class LeftMenuComponent implements OnInit {
   @HostListener('window:resize', ['$event'])
   onResize() {
     this.checkScreenSize();
-  }
-
-  private checkScreenSize(): void {
-    this.isMobile = window.innerWidth < 768; // md breakpoint
-    if (this.isMobile) {
-      this.isOpen = true; // Open menu by default on mobile
-    }
-  }
-
-  private loadCategories(): void {
-    this.categoryService.getCategories().subscribe({
-      next: (response) => this.categories = response,
-      error: (error) => console.error('Error getting categories:', error)
-    });
   }
 
   toggleMenu(): void {
@@ -64,5 +50,19 @@ export class LeftMenuComponent implements OnInit {
     const rotateClass = !this.isOpen ? 'rotate-180' : '';
     const sizeClass = this.isMobile ? 'h-8 w-8' : 'h-6 w-6';
     return `${baseClasses} ${rotateClass} ${sizeClass}`;
+  }
+
+  private checkScreenSize(): void {
+    this.isMobile = window.innerWidth < 768; // md breakpoint
+    if (this.isMobile) {
+      this.isOpen = true; // Open menu by default on mobile
+    }
+  }
+
+  private loadCategories(): void {
+    this.categoryService.getCategories().subscribe({
+      next: (response) => this.categories = response,
+      error: (error) => console.error('Error getting categories:', error)
+    });
   }
 }

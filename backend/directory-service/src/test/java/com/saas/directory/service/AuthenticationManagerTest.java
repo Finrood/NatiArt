@@ -26,11 +26,11 @@ public class AuthenticationManagerTest {
 
     @BeforeEach
     public void initContext() {
-         authenticationManager = new AuthenticationManager(
-                 userManager,
-                 passwordEncoder,
-                 userAuthenticationProvider
-         );
+        authenticationManager = new AuthenticationManager(
+                userManager,
+                passwordEncoder,
+                userAuthenticationProvider
+        );
     }
 
     // Should handle null password in credentialsDto and throw UserNotFoundException for wrong password

@@ -6,7 +6,11 @@ import org.apache.poi.util.IOUtils;
 import org.apache.poi.util.TempFile;
 import org.springframework.stereotype.Component;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -20,19 +24,19 @@ public class StorageFileSystem implements Storage {
     private final static String DEFAULT_LOCATION = "/tmp";
 
     @Override
-    public boolean support(URI uri) {
-        return "file".equals(uri.getScheme());
-    }
-
-    @Override
     public String getName() {
         return "file";
     }
 
     @Override
-    public InputStream openFile(URI path){
+    public boolean support(URI uri) {
+        return "file".equals(uri.getScheme());
+    }
+
+    @Override
+    public InputStream openFile(URI path) {
         final File file = new File(path);
-        if (! file.exists()) {
+        if (!file.exists()) {
             throw new ResourceNotFoundException("Unable to found file on file system for path: " + path);
         }
         try {
@@ -110,13 +114,13 @@ public class StorageFileSystem implements Storage {
                 zipOut.closeEntry();
             }
             final File[] children = fileToZip.listFiles();
-            if(children != null){
+            if (children != null) {
                 for (File childFile : children) {
                     zipFileRecursively(childFile, fileName + "/" + childFile.getName(), zipOut);
                 }
             }
         } else {
-            addZipEntry(zipOut,fileName,fileToZip);
+            addZipEntry(zipOut, fileName, fileToZip);
         }
     }
 

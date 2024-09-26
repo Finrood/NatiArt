@@ -1,16 +1,14 @@
-import { Component, OnInit } from '@angular/core';
-import { AsyncPipe, CurrencyPipe, NgClass, NgForOf, NgIf } from '@angular/common';
+import {Component, OnInit} from '@angular/core';
+import {AsyncPipe, NgIf} from '@angular/common';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
-import { Observable } from 'rxjs';
-import { CartItem } from '../../../models/CartItem.model';
-import { User } from '../../../models/user.model';
-import { CartService } from '../../../service/cart.service';
-import { OrderService } from '../../../service/order.service';
-import { AuthenticationService } from '../../../service/authentication.service';
-import { RouterLink } from '@angular/router';
-import { CepFormatDirective } from '../shipping-estimation/cep-format-directive.directive';
-import { animate, style, transition, trigger } from '@angular/animations';
-import { LoadingSpinnerComponent } from '../../shared/loading-spinner/loading-spinner.component';
+import {Observable} from 'rxjs';
+import {CartItem} from '../../../models/CartItem.model';
+import {User} from '../../../models/user.model';
+import {CartService} from '../../../service/cart.service';
+import {OrderService} from '../../../service/order.service';
+import {AuthenticationService} from '../../../service/authentication.service';
+import {RouterLink} from '@angular/router';
+import {animate, style, transition, trigger} from '@angular/animations';
 import {PaymentService} from "../../../service/payment.service";
 import {PaymentCreationRequest} from "../../../models/paymentCreationRequest.model";
 import {PaymentCreationResponse} from "../../../models/paymentCreationResonse.model";
@@ -41,14 +39,14 @@ import {Profile} from "../../../models/profile.model";
   animations: [
     trigger('fadeIn', [
       transition(':enter', [
-        style({ opacity: 0 }),
-        animate('300ms', style({ opacity: 1 })),
+        style({opacity: 0}),
+        animate('300ms', style({opacity: 1})),
       ]),
     ]),
     trigger('slideInRight', [
       transition(':enter', [
-        style({ transform: 'translateX(100%)', opacity: 0 }),
-        animate('300ms', style({ transform: 'translateX(0)', opacity: 1 })),
+        style({transform: 'translateX(100%)', opacity: 0}),
+        animate('300ms', style({transform: 'translateX(0)', opacity: 1})),
       ]),
     ]),
   ],
@@ -196,11 +194,6 @@ export class CheckoutComponent implements OnInit {
     this.clearErrorMessage();
   }
 
-  private generateGuestPassword(): string {
-    // You can generate a random password or use a fixed pattern for guest users
-    return Math.random().toString(36).slice(-8); // Example random password generator
-  }
-
   createUserIfGuestCheckout(): void {
     if (!this.isLoggedIn$) {
       const formValue = this.checkoutForm.get('userInfo')?.value;
@@ -299,6 +292,11 @@ export class CheckoutComponent implements OnInit {
         // });
       }
     }
+  }
+
+  private generateGuestPassword(): string {
+    // You can generate a random password or use a fixed pattern for guest users
+    return Math.random().toString(36).slice(-8); // Example random password generator
   }
 
   private setErrorMessage(message: string): void {

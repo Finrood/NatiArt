@@ -8,9 +8,14 @@ import java.util.Optional;
 
 public interface PackageManager {
     Optional<Package> getPackage(String packageId);
+
     Package getPackageOrDie(String packageId);
+
     List<Package> getPackages();
+
     Package createPackage(PackageDto packageDto);
+
     Package updatePackage(PackageDto packageDto);
+
     void deletePackage(String packageId);
 }

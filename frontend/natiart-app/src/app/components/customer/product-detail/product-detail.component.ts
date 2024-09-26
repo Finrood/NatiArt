@@ -1,13 +1,13 @@
-import {Component, OnInit, OnDestroy, ViewChild, ElementRef, Renderer2} from '@angular/core';
-import {AsyncPipe, NgForOf, NgIf, CurrencyPipe, KeyValuePipe, NgStyle} from "@angular/common";
-import { FormsModule } from "@angular/forms";
-import { Observable, BehaviorSubject, Subscription } from "rxjs";
-import { Product } from "../../../models/product.model";
-import { ActivatedRoute } from "@angular/router";
-import { ProductService } from "../../../service/product.service";
-import { DomSanitizer, SafeUrl } from "@angular/platform-browser";
-import { TopMenuComponent } from "../top-menu/top-menu.component";
-import { LeftMenuComponent } from "../left-menu/left-menu.component";
+import {Component, ElementRef, OnDestroy, OnInit, Renderer2, ViewChild} from '@angular/core';
+import {AsyncPipe, CurrencyPipe, KeyValuePipe, NgForOf, NgIf, NgStyle} from "@angular/common";
+import {FormsModule} from "@angular/forms";
+import {BehaviorSubject, Subscription} from "rxjs";
+import {Product} from "../../../models/product.model";
+import {ActivatedRoute} from "@angular/router";
+import {ProductService} from "../../../service/product.service";
+import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
+import {TopMenuComponent} from "../top-menu/top-menu.component";
+import {LeftMenuComponent} from "../left-menu/left-menu.component";
 import {CartService} from "../../../service/cart.service";
 
 @Component({
@@ -33,15 +33,13 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   relatedProducts$ = new BehaviorSubject<Product[]>([]);
   selectedImageIndex: number = 0;
   imageUrls: { [index: number]: SafeUrl | null } = {};
-  private subscriptions: Subscription[] = [];
-
   isZoomed: boolean = false;
   zoomFactor: number = 5;
   lensSize: number = 100;
-
   @ViewChild('imageContainer') imageContainer!: ElementRef<HTMLDivElement>;
   @ViewChild('zoomLens') zoomLens!: ElementRef<HTMLDivElement>;
   @ViewChild('mainImage') mainImage!: ElementRef<HTMLImageElement>;
+  private subscriptions: Subscription[] = [];
 
   constructor(
     private route: ActivatedRoute,
@@ -49,7 +47,12 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     private sanitizer: DomSanitizer,
     private renderer: Renderer2,
     private cartService: CartService
-  ) {}
+  ) {
+  }
+
+  get transformScale(): string {
+    return `scale(${this.zoomFactor})`;
+  }
 
   ngOnInit() {
     const productId = this.route.snapshot.paramMap.get('id');
@@ -60,63 +63,6 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.subscriptions.forEach(subscription => subscription.unsubscribe());
-  }
-
-  private loadProduct(productId: string): void {
-    const subscription = this.productService.getProduct(productId).subscribe({
-      next: (product) => {
-        this.product$.next(product);
-        this.updateProductImages(product);
-        this.loadRelatedProducts(product.categoryId);
-      },
-      error: (error) => console.error('Error loading product:', error)
-    });
-    this.subscriptions.push(subscription);
-  }
-
-  private updateProductImages(product: Product): void {
-    product.images.forEach((imagePath, index) => {
-      this.fetchImage(index, imagePath);
-    });
-  }
-
-  private fetchImage(index: number, imagePath: string): void {
-    const subscription = this.productService.getImage(imagePath).subscribe(blob => {
-      const objectUrl = URL.createObjectURL(blob);
-      this.imageUrls[index] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
-      this.product$.next(this.product$.value);
-    });
-    this.subscriptions.push(subscription);
-  }
-
-  private loadRelatedProducts(categoryId: string): void {
-    const subscription = this.productService.getProductsByCategory(categoryId).subscribe({
-      next: (products: Product[]) => {
-        this.relatedProducts$.next(products.filter(p => p.id !== this.product$.value?.id).slice(0, 4));
-        this.updateRelatedProductImages(products);
-      },
-      error: (error) => console.error('Error loading related products:', error)
-    });
-    this.subscriptions.push(subscription);
-  }
-
-  private updateRelatedProductImages(products: Product[]): void {
-    products.forEach(product => {
-      if (product.images && product.images.length > 0) {
-        this.fetchRelatedProductImage(product.id!, product.images[0]);
-      }
-    });
-  }
-
-  private fetchRelatedProductImage(productId: string, imagePath: string): void {
-    const subscription = this.productService.getImage(imagePath).subscribe(blob => {
-      const objectUrl = URL.createObjectURL(blob);
-      const updatedProducts = this.relatedProducts$.value.map(p =>
-        p.id === productId ? { ...p, imageUrl: this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl) } : p
-      );
-      this.relatedProducts$.next(updatedProducts);
-    });
-    this.subscriptions.push(subscription);
   }
 
   selectImage(index: number) {
@@ -172,7 +118,60 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     this.renderer.setStyle(image, 'transform-origin', `${zoomX}% ${zoomY}%`);
   }
 
-  get transformScale(): string {
-    return `scale(${this.zoomFactor})`;
+  private loadProduct(productId: string): void {
+    const subscription = this.productService.getProduct(productId).subscribe({
+      next: (product) => {
+        this.product$.next(product);
+        this.updateProductImages(product);
+        this.loadRelatedProducts(product.categoryId);
+      },
+      error: (error) => console.error('Error loading product:', error)
+    });
+    this.subscriptions.push(subscription);
+  }
+
+  private updateProductImages(product: Product): void {
+    product.images.forEach((imagePath, index) => {
+      this.fetchImage(index, imagePath);
+    });
+  }
+
+  private fetchImage(index: number, imagePath: string): void {
+    const subscription = this.productService.getImage(imagePath).subscribe(blob => {
+      const objectUrl = URL.createObjectURL(blob);
+      this.imageUrls[index] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
+      this.product$.next(this.product$.value);
+    });
+    this.subscriptions.push(subscription);
+  }
+
+  private loadRelatedProducts(categoryId: string): void {
+    const subscription = this.productService.getProductsByCategory(categoryId).subscribe({
+      next: (products: Product[]) => {
+        this.relatedProducts$.next(products.filter(p => p.id !== this.product$.value?.id).slice(0, 4));
+        this.updateRelatedProductImages(products);
+      },
+      error: (error) => console.error('Error loading related products:', error)
+    });
+    this.subscriptions.push(subscription);
+  }
+
+  private updateRelatedProductImages(products: Product[]): void {
+    products.forEach(product => {
+      if (product.images && product.images.length > 0) {
+        this.fetchRelatedProductImage(product.id!, product.images[0]);
+      }
+    });
+  }
+
+  private fetchRelatedProductImage(productId: string, imagePath: string): void {
+    const subscription = this.productService.getImage(imagePath).subscribe(blob => {
+      const objectUrl = URL.createObjectURL(blob);
+      const updatedProducts = this.relatedProducts$.value.map(p =>
+        p.id === productId ? {...p, imageUrl: this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl)} : p
+      );
+      this.relatedProducts$.next(updatedProducts);
+    });
+    this.subscriptions.push(subscription);
   }
 }

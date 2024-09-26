@@ -1,5 +1,5 @@
 <div class="min-h-screen bg-background flex items-center justify-center px-4 sm:px-6 lg:px-8">
-  <div class="w-full max-w-md space-y-8" [@fadeIn]>
+  <div [@fadeIn] class="w-full max-w-md space-y-8">
     <div>
       <h1 class="mt-6 text-center text-3xl font-light text-secondary">
         Join Porcelain Elegance
@@ -11,118 +11,133 @@
 
     <!-- Step indicator -->
     <div class="flex justify-center items-center space-x-4">
-      <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-medium"
-           [ngClass]="{'bg-primary': currentStep === 1, 'bg-primary-light': currentStep === 2}">
+      <div [ngClass]="{'bg-primary': currentStep === 1, 'bg-primary-light': currentStep === 2}"
+           class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-medium">
         1
       </div>
-      <div class="w-16 h-1 bg-primary-light" [ngClass]="{'bg-primary': currentStep === 2}"></div>
-      <div class="w-8 h-8 rounded-full bg-primary-light text-white flex items-center justify-center text-sm font-medium"
-           [ngClass]="{'bg-primary': currentStep === 2}">
+      <div [ngClass]="{'bg-primary': currentStep === 2}" class="w-16 h-1 bg-primary-light"></div>
+      <div [ngClass]="{'bg-primary': currentStep === 2}"
+           class="w-8 h-8 rounded-full bg-primary-light text-white flex items-center justify-center text-sm font-medium">
         2
       </div>
     </div>
 
-    <form [formGroup]="signupForm" (ngSubmit)="onSubmit()" class="mt-8 space-y-6">
+    <form (ngSubmit)="onSubmit()" [formGroup]="signupForm" class="mt-8 space-y-6">
       <!-- Step 1: Email and Password -->
-      <div *ngIf="currentStep === 1" [@slideInRight] formGroupName="credentials" class="space-y-6">
+      <div *ngIf="currentStep === 1" [@slideInRight] class="space-y-6" formGroupName="credentials">
         <div>
-          <label for="email" class="block text-sm font-medium text-secondary">Email address</label>
-          <input id="email" formControlName="username" type="email" required
+          <label class="block text-sm font-medium text-secondary" for="email">Email address</label>
+          <input [ngClass]="{'border-error': getFieldError('credentials.username')}"
                  class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                 [ngClass]="{'border-error': getFieldError('credentials.username')}"
-                 placeholder="you@example.com">
+                 formControlName="username" id="email"
+                 placeholder="you@example.com"
+                 required
+                 type="email">
           <p *ngIf="getFieldError('credentials.username')" class="mt-2 text-sm text-red-600">
             {{ getFieldError('credentials.username') }}
           </p>
         </div>
 
         <div>
-          <label for="password" class="block text-sm font-medium text-secondary">Password</label>
-          <input id="password" formControlName="password" type="password" required
+          <label class="block text-sm font-medium text-secondary" for="password">Password</label>
+          <input [ngClass]="{'border-error': getFieldError('credentials.password')}"
                  class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                 [ngClass]="{'border-error': getFieldError('credentials.password')}"
-                 placeholder="••••••••">
+                 formControlName="password" id="password"
+                 placeholder="••••••••"
+                 required
+                 type="password">
           <p *ngIf="getFieldError('credentials.password')" class="mt-2 text-sm text-red-600">
             {{ getFieldError('credentials.password') }}
           </p>
         </div>
 
         <div>
-          <label for="confirmPassword" class="block text-sm font-medium text-secondary">Confirm Password</label>
-          <input id="confirmPassword" formControlName="confirmPassword" type="password" required
+          <label class="block text-sm font-medium text-secondary" for="confirmPassword">Confirm Password</label>
+          <input [ngClass]="{'border-error': getPasswordMatchError()}"
                  class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                 [ngClass]="{'border-error': getPasswordMatchError()}"
-                 placeholder="••••••••">
+                 formControlName="confirmPassword" id="confirmPassword"
+                 placeholder="••••••••"
+                 required
+                 type="password">
           <p *ngIf="getPasswordMatchError()" class="mt-2 text-sm text-red-600">
             {{ getPasswordMatchError() }}
           </p>
         </div>
 
         <div>
-          <button type="button" (click)="onNextStep()"
-                  [disabled]="signupForm.get('credentials')?.invalid"
-                  class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-input text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+          <button (click)="onNextStep()" [disabled]="signupForm.get('credentials')?.invalid"
+                  class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-input text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="button">
             Next
           </button>
         </div>
       </div>
 
       <!-- Step 2: Profile Information -->
-      <div *ngIf="currentStep === 2" [@slideInRight] formGroupName="profile" class="space-y-6">
+      <div *ngIf="currentStep === 2" [@slideInRight] class="space-y-6" formGroupName="profile">
         <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
-            <label for="firstname" class="block text-sm font-medium text-secondary">First Name</label>
-            <input id="firstname" formControlName="firstname" type="text" required
+            <label class="block text-sm font-medium text-secondary" for="firstname">First Name</label>
+            <input [ngClass]="{'border-error': getFieldError('profile.firstname')}"
                    class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                   [ngClass]="{'border-error': getFieldError('profile.firstname')}"
-                   placeholder="John">
+                   formControlName="firstname" id="firstname"
+                   placeholder="John"
+                   required
+                   type="text">
             <p *ngIf="getFieldError('profile.firstname')" class="mt-2 text-sm text-red-600">
               {{ getFieldError('profile.firstname') }}
             </p>
           </div>
 
           <div>
-            <label for="lastname" class="block text-sm font-medium text-secondary">Last Name</label>
-            <input id="lastname" formControlName="lastname" type="text" required
+            <label class="block text-sm font-medium text-secondary" for="lastname">Last Name</label>
+            <input [ngClass]="{'border-error': getFieldError('profile.lastname')}"
                    class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                   [ngClass]="{'border-error': getFieldError('profile.lastname')}"
-                   placeholder="Doe">
+                   formControlName="lastname" id="lastname"
+                   placeholder="Doe"
+                   required
+                   type="text">
             <p *ngIf="getFieldError('profile.lastname')" class="mt-2 text-sm text-red-600">
               {{ getFieldError('profile.lastname') }}
             </p>
           </div>
 
           <div>
-            <label for="cpf" class="block text-sm font-medium text-secondary">CPF</label>
-            <input id="cpf" formControlName="cpf" type="text" required
+            <label class="block text-sm font-medium text-secondary" for="cpf">CPF</label>
+            <input CpfFormat [ngClass]="{'border-error': getFieldError('profile.cpf')}"
                    class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                   [ngClass]="{'border-error': getFieldError('profile.cpf')}"
+                   formControlName="cpf"
+                   id="cpf"
                    placeholder="000.000.000-00"
-                   CpfFormat>
+                   required
+                   type="text">
             <p *ngIf="getFieldError('profile.cpf')" class="mt-2 text-sm text-red-600">
               {{ getFieldError('profile.cpf') }}
             </p>
           </div>
 
           <div>
-            <label for="phone" class="block text-sm font-medium text-secondary">Phone</label>
-            <input id="phone" formControlName="phone" type="tel"
+            <label class="block text-sm font-medium text-secondary" for="phone">Phone</label>
+            <input [ngClass]="{'border-error': getFieldError('profile.phone')}"
                    class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                   [ngClass]="{'border-error': getFieldError('profile.phone')}"
-                   placeholder="(XX) XXXXX-XXXX">
+                   formControlName="phone"
+                   id="phone"
+                   placeholder="(XX) XXXXX-XXXX"
+                   type="tel">
             <p *ngIf="getFieldError('profile.phone')" class="mt-2 text-sm text-red-600">
               {{ getFieldError('profile.phone') }}
             </p>
           </div>
 
           <div>
-            <label for="zipCode" class="block text-sm font-medium text-secondary">Zip Code</label>
-            <input id="zipCode" formControlName="zipCode" type="text" required
+            <label class="block text-sm font-medium text-secondary" for="zipCode">Zip Code</label>
+            <input (input)="onZipCodeChange()" [ngClass]="{'border-error': getFieldError('profile.zipCode')}" cepFormat
                    class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                   [ngClass]="{'border-error': getFieldError('profile.zipCode')}"
+                   formControlName="zipCode"
+                   id="zipCode"
                    placeholder="XXXXX-XXX"
-                   cepFormat
-                   (input)="onZipCodeChange()">
+                   required
+                   type="text">
             <p *ngIf="getFieldError('profile.zipCode')" class="mt-2 text-sm text-red-600">
               {{ getFieldError('profile.zipCode') }}
             </p>
@@ -136,51 +151,61 @@
 
         <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
-            <label for="country" class="block text-sm font-medium text-secondary">Country</label>
-            <input readonly id="country" formControlName="country" type="text"
-                   class="mt-1 block w-full px-3 py-2 bg-gray-100 border border-primary rounded-md shadow-input text-secondary-light focus:outline-none sm:text-sm"
-                   placeholder="Country">
+            <label class="block text-sm font-medium text-secondary" for="country">Country</label>
+            <input
+              class="mt-1 block w-full px-3 py-2 bg-gray-100 border border-primary rounded-md shadow-input text-secondary-light focus:outline-none sm:text-sm"
+              formControlName="country" id="country" placeholder="Country"
+              readonly
+              type="text">
           </div>
 
           <div>
-            <label for="state" class="block text-sm font-medium text-secondary">State</label>
-            <input id="state" formControlName="state" type="text" required
+            <label class="block text-sm font-medium text-secondary" for="state">State</label>
+            <input [ngClass]="{'border-error': getFieldError('profile.state')}"
                    class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                   [ngClass]="{'border-error': getFieldError('profile.state')}"
-                   placeholder="State">
+                   formControlName="state" id="state"
+                   placeholder="State"
+                   required
+                   type="text">
             <p *ngIf="getFieldError('profile.state')" class="mt-2 text-sm text-red-600">
               {{ getFieldError('profile.state') }}
             </p>
           </div>
 
           <div>
-            <label for="city" class="block text-sm font-medium text-secondary">City</label>
-            <input id="city" formControlName="city" type="text" required
+            <label class="block text-sm font-medium text-secondary" for="city">City</label>
+            <input [ngClass]="{'border-error': getFieldError('profile.city')}"
                    class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                   [ngClass]="{'border-error': getFieldError('profile.city')}"
-                   placeholder="City">
+                   formControlName="city" id="city"
+                   placeholder="City"
+                   required
+                   type="text">
             <p *ngIf="getFieldError('profile.city')" class="mt-2 text-sm text-red-600">
               {{ getFieldError('profile.city') }}
             </p>
           </div>
 
           <div>
-            <label for="neighborhood" class="block text-sm font-medium text-secondary">Neighborhood</label>
-            <input id="neighborhood" formControlName="neighborhood" type="text" required
+            <label class="block text-sm font-medium text-secondary" for="neighborhood">Neighborhood</label>
+            <input [ngClass]="{'border-error': getFieldError('profile.neighborhood')}"
                    class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                   [ngClass]="{'border-error': getFieldError('profile.neighborhood')}"
-                   placeholder="neighborhood">
+                   formControlName="neighborhood" id="neighborhood"
+                   placeholder="neighborhood"
+                   required
+                   type="text">
             <p *ngIf="getFieldError('profile.neighborhood')" class="mt-2 text-sm text-red-600">
               {{ getFieldError('profile.neighborhood') }}
             </p>
           </div>
 
           <div>
-            <label for="street" class="block text-sm font-medium text-secondary">Street</label>
-            <input id="street" formControlName="street" type="text" required
+            <label class="block text-sm font-medium text-secondary" for="street">Street</label>
+            <input [ngClass]="{'border-error': getFieldError('profile.street')}"
                    class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                   [ngClass]="{'border-error': getFieldError('profile.street')}"
-                   placeholder="123 Main St">
+                   formControlName="street" id="street"
+                   placeholder="123 Main St"
+                   required
+                   type="text">
             <p *ngIf="getFieldError('profile.street')" class="mt-2 text-sm text-red-600">
               {{ getFieldError('profile.street') }}
             </p>
@@ -188,21 +213,23 @@
         </div>
 
         <div>
-          <label for="complement" class="block text-sm font-medium text-secondary">Address Complement</label>
-          <input id="complement" formControlName="complement" type="text"
-                 class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                 placeholder="Apartment, suite, unit, building, floor, etc.">
+          <label class="block text-sm font-medium text-secondary" for="complement">Address Complement</label>
+          <input
+            class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+            formControlName="complement" id="complement"
+            placeholder="Apartment, suite, unit, building, floor, etc."
+            type="text">
         </div>
 
         <div class="flex justify-between space-x-4">
-          <button type="button"
-                  (click)="onPreviousStep()"
-                  class="flex-1 py-2 px-4 border border-primary rounded-md shadow-input text-sm font-medium text-primary bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300">
+          <button (click)="onPreviousStep()"
+                  class="flex-1 py-2 px-4 border border-primary rounded-md shadow-input text-sm font-medium text-primary bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300"
+                  type="button">
             Previous
           </button>
-          <button type="submit"
-                  [disabled]="signupForm.invalid"
-                  class="flex-1 py-2 px-4 border border-transparent rounded-md shadow-input text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+          <button [disabled]="signupForm.invalid"
+                  class="flex-1 py-2 px-4 border border-transparent rounded-md shadow-input text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="submit">
             Sign Up
           </button>
         </div>
@@ -211,7 +238,9 @@
 
     <p class="mt-2 text-center text-sm text-secondary-light">
       Already have an account?
-      <a href="/login" class="font-medium text-primary hover:text-primary-dark transition-colors duration-300 focus:outline-none focus:underline">
+      <a
+        class="font-medium text-primary hover:text-primary-dark transition-colors duration-300 focus:outline-none focus:underline"
+        href="/login">
         Sign in
       </a>
     </p>

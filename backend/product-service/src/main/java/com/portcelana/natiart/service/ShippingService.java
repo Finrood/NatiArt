@@ -7,7 +7,11 @@ import com.portcelana.natiart.service.support.MelhorenvioShippingCalculationResp
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -42,7 +46,8 @@ public class ShippingService {
                 apiUrl,
                 HttpMethod.POST,
                 new HttpEntity<>(createMelhorEnvioRequest(shippingEstimateRequest), headers),
-                new ParameterizedTypeReference<>() {}
+                new ParameterizedTypeReference<>() {
+                }
         );
 
         return parseAndFilterResponse(response.getBody());

@@ -10,16 +10,18 @@
           <p class="mb-4">Welcome back, {{ (currentUser$ | async)?.username }}!</p>
         </ng-container>
         <ng-template #guestCheckout>
-          <p class="mb-4">Checking out as a guest? You can also <a routerLink="/login" class="text-blue-500 hover:underline">log in</a> to use your saved information.</p>
+          <p class="mb-4">Checking out as a guest? You can also <a class="text-blue-500 hover:underline"
+                                                                   routerLink="/login">log in</a> to
+            use your saved information.</p>
         </ng-template>
 
         <app-checkout-stepper
           [currentStep]="currentStep"
         ></app-checkout-stepper>
 
-        <button type="button" (click)="logFormState()">Log Form State</button>
+        <button (click)="logFormState()" type="button">Log Form State</button>
 
-        <form [formGroup]="checkoutForm" (ngSubmit)="onSubmit()" class="mt-8 space-y-6">
+        <form (ngSubmit)="onSubmit()" [formGroup]="checkoutForm" class="mt-8 space-y-6">
           <!-- Step 1: Personal information -->
           <div *ngIf="currentStep === 1" [@slideInRight]>
             <app-user-info-step [checkoutForm]="checkoutForm"></app-user-info-step>
@@ -35,23 +37,24 @@
 
           <!-- Step 3: Payment Information -->
           <div *ngIf="currentStep === 3" [@slideInRight]>
-            <app-payment-info-step [checkoutForm]="checkoutForm" (processPixPayment)="processPixPayment($event)"></app-payment-info-step>
+            <app-payment-info-step (processPixPayment)="processPixPayment($event)"
+                                   [checkoutForm]="checkoutForm"></app-payment-info-step>
           </div>
 
           <div class="flex justify-between mt-6">
-            <button type="button" (click)="onPreviousStep()"
-                    [disabled]="currentStep === 1"
-                    class="flex justify-center py-2 px-4 border border-primary rounded-md shadow-input text-sm font-medium text-primary hover:bg-primary-light focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+            <button (click)="onPreviousStep()" [disabled]="currentStep === 1"
+                    class="flex justify-center py-2 px-4 border border-primary rounded-md shadow-input text-sm font-medium text-primary hover:bg-primary-light focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    type="button">
               Previous
             </button>
-            <button type="button" (click)="onNextStep()" *ngIf="currentStep < 3"
-                    [disabled]="!isCurrentStepValid()"
-                    class="flex justify-center py-2 px-4 border border-transparent rounded-md shadow-input text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+            <button (click)="onNextStep()" *ngIf="currentStep < 3" [disabled]="!isCurrentStepValid()"
+                    class="flex justify-center py-2 px-4 border border-transparent rounded-md shadow-input text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    type="button">
               Next
             </button>
-            <button type="submit" *ngIf="currentStep === 3"
-                    [disabled]="!isCurrentStepValid()"
-                    class="flex justify-center py-2 px-4 border border-transparent rounded-md shadow-input text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+            <button *ngIf="currentStep === 3" [disabled]="!isCurrentStepValid()"
+                    class="flex justify-center py-2 px-4 border border-transparent rounded-md shadow-input text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    type="submit">
               Place Order
             </button>
           </div>

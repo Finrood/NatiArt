@@ -1,12 +1,9 @@
 package com.portcelana.natiart.dto.payment;
 
 import com.portcelana.natiart.dto.payment.helper.PaymentMethod;
-import com.portcelana.natiart.dto.payment.helper.PaymentProcessor;
 import com.portcelana.natiart.dto.payment.helper.PaymentStatus;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 public class PaymentCreationResponse {
     private final String paymentId;

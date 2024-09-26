@@ -30,7 +30,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         final String token = extractToken(request);
         if (token != null) {
             final DecodedJWT jwt = JWT.decode(token);
-            if (jwt.getClaims() != null && ! jwt.getClaims().isEmpty()) {
+            if (jwt.getClaims() != null && !jwt.getClaims().isEmpty()) {
                 final String username = jwt.getIssuer();
                 final String role = jwt.getClaim("roles").asString();
                 final GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());

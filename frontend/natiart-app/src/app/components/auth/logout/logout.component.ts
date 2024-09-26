@@ -11,19 +11,22 @@ import {AuthenticationService} from "../../../service/authentication.service";
   styleUrl: './logout.component.css'
 })
 export class LogoutComponent implements OnInit {
-  constructor(private http: HttpClient, private router: Router, private authenticationService: AuthenticationService) {}
+  constructor(private http: HttpClient, private router: Router, private authenticationService: AuthenticationService) {
+  }
 
   ngOnInit(): void {
     this.authenticationService.clearTokens();
     this.authenticationService.logout().subscribe({
       next: () => {
         this.router.navigate(['/login'])
-          .then(() => {});
+          .then(() => {
+          });
       },
       error: (error) => {
         console.error('Logout error', error);
         this.router.navigate(['/login'])
-          .then(() => {});
+          .then(() => {
+          });
       }
     });
   }

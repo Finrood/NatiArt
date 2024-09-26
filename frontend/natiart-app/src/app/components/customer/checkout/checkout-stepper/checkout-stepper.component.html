@@ -1,11 +1,11 @@
 <div class="flex justify-center items-center space-x-4">
   <ng-container *ngFor="let step of [1, 2, 3]; let i = index">
-    <div class="w-8 h-8 rounded-full text-white flex items-center justify-center text-sm font-medium"
-         [ngClass]="{'bg-primary': currentStep === step, 'bg-primary-light': currentStep !== step}">
+    <div [ngClass]="{'bg-primary': currentStep === step, 'bg-primary-light': currentStep !== step}"
+         class="w-8 h-8 rounded-full text-white flex items-center justify-center text-sm font-medium">
       {{ step }}
     </div>
-    <div *ngIf="i < 2" class="w-16 h-1 bg-primary-light"
-         [ngClass]="{'bg-primary': currentStep === (step + 1)}">
+    <div *ngIf="i < 2" [ngClass]="{'bg-primary': currentStep === (step + 1)}"
+         class="w-16 h-1 bg-primary-light">
     </div>
   </ng-container>
 </div>

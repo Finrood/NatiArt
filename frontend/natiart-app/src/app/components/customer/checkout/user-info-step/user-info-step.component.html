@@ -1,12 +1,14 @@
 <div [formGroup]="checkoutForm">
-  <div formGroupName="userInfo" class="space-y-6">
+  <div class="space-y-6" formGroupName="userInfo">
     <ng-container *ngFor="let field of formFields">
       <div>
         <label [for]="field.id" class="block text-sm font-medium text-secondary">{{ field.label }}</label>
-        <input [id]="field.id" [formControlName]="field.name" [type]="field.type" [required]="field.required ? true : false"
-               class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+        <input [formControlName]="field.name" [id]="field.id"
                [ngClass]="{'border-error': getFieldError('userInfo.' + field.name)}"
-               [placeholder]="field.placeholder">
+               [placeholder]="field.placeholder"
+               [required]="field.required ? true : false"
+               [type]="field.type"
+               class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
         <p *ngIf="getFieldError('userInfo.' + field.name)" class="mt-2 text-sm text-red-600">
           {{ getFieldError('userInfo.' + field.name) }}
         </p>

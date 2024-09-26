@@ -38,7 +38,8 @@ export interface ViaCEPResponse {
 export class SignupService {
   private readonly apiUrl: string = `${environment.directoryApiUrl}/register-user`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+  }
 
   registerUser(signupRequest: SignupRequest): Observable<any> {
     return this.http.post<any>(this.apiUrl, signupRequest);

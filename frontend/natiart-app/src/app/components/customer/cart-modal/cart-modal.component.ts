@@ -1,11 +1,11 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { AsyncPipe, CurrencyPipe, NgForOf, NgIf } from "@angular/common";
-import { CartItem } from "../../../models/CartItem.model";
-import { Observable, Subscription } from "rxjs";
-import { CartService } from "../../../service/cart.service";
-import { FormsModule } from "@angular/forms";
-import { ProductService } from "../../../service/product.service";
-import { DomSanitizer, SafeUrl } from "@angular/platform-browser";
+import {Component, OnDestroy, OnInit} from '@angular/core';
+import {AsyncPipe, CurrencyPipe, NgForOf, NgIf} from "@angular/common";
+import {CartItem} from "../../../models/CartItem.model";
+import {Observable, Subscription} from "rxjs";
+import {CartService} from "../../../service/cart.service";
+import {FormsModule} from "@angular/forms";
+import {ProductService} from "../../../service/product.service";
+import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
 import {RouterLink} from "@angular/router";
 
 @Component({
@@ -45,7 +45,7 @@ export class CartModalComponent implements OnInit, OnDestroy {
   }
 
   updateQuantity(item: CartItem, newQuantity: number) {
-    if(newQuantity < 1) {
+    if (newQuantity < 1) {
       newQuantity = 1;
     } else if (newQuantity > item.product.stockQuantity) {
       newQuantity = item.product.stockQuantity;
@@ -56,6 +56,10 @@ export class CartModalComponent implements OnInit, OnDestroy {
   removeItem(item: CartItem, event: Event) {
     event.stopPropagation()
     this.cartService.removeFromCart(item.product.id!);
+  }
+
+  onImageError(productId: string): void {
+    this.imageUrls[productId] = null;
   }
 
   private loadProductImages(): void {
@@ -75,9 +79,5 @@ export class CartModalComponent implements OnInit, OnDestroy {
       this.imageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
     });
     this.subscriptions.push(subscription);
-  }
-
-  onImageError(productId: string): void {
-    this.imageUrls[productId] = null;
   }
 }

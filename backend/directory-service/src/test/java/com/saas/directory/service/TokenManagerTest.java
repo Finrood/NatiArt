@@ -16,7 +16,11 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -61,7 +65,7 @@ public class TokenManagerTest {
 
     @Test
     void testGetValidTokenTokenAndTokenTypeOrDie_ValidToken() {
-        Token token = new Token("testToken", new User("user1", "password"), TokenType.AUTH_ACCESS,Instant.now().plus(1, ChronoUnit.HOURS));
+        Token token = new Token("testToken", new User("user1", "password"), TokenType.AUTH_ACCESS, Instant.now().plus(1, ChronoUnit.HOURS));
         when(tokenRepository.findByTokenAndTokenType("testToken", TokenType.AUTH_ACCESS)).thenReturn(Optional.of(token));
 
         Token result = tokenManager.getValidTokenTokenAndTokenTypeOrDie("testToken", TokenType.AUTH_ACCESS);

@@ -1,13 +1,13 @@
-import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { CustomPasswordValidators } from './CustomPasswordValidators';
-import { animate, style, transition, trigger } from '@angular/animations';
-import { Router, RouterLink } from '@angular/router';
-import { finalize } from 'rxjs/operators';
-import { NgClass, NgIf } from '@angular/common';
+import {Component, OnInit} from '@angular/core';
+import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
+import {CustomPasswordValidators} from './CustomPasswordValidators';
+import {animate, style, transition, trigger} from '@angular/animations';
+import {Router} from '@angular/router';
+import {finalize} from 'rxjs/operators';
+import {NgClass, NgIf} from '@angular/common';
 import {SignupService, ViaCEPResponse} from "../../../service/signup.service";
-import { UserRegistration } from "../../../models/user-registration.model";
-import { Profile } from "../../../models/profile.model";
+import {UserRegistration} from "../../../models/user-registration.model";
+import {Profile} from "../../../models/profile.model";
 import {CepFormatDirective} from "../../customer/shipping-estimation/cep-format-directive.directive";
 import {LoadingSpinnerComponent} from "../../shared/loading-spinner/loading-spinner.component";
 import {CpfFormatDirectiveDirective} from "./cpf-format-directive.directive";
@@ -20,19 +20,18 @@ import {CpfFormatDirectiveDirective} from "./cpf-format-directive.directive";
   animations: [
     trigger('fadeIn', [
       transition(':enter', [
-        style({ opacity: 0 }),
-        animate('300ms', style({ opacity: 1 })),
+        style({opacity: 0}),
+        animate('300ms', style({opacity: 1})),
       ]),
     ]),
     trigger('slideInRight', [
       transition(':enter', [
-        style({ transform: 'translateX(100%)', opacity: 0 }),
-        animate('300ms', style({ transform: 'translateX(0)', opacity: 1 })),
+        style({transform: 'translateX(100%)', opacity: 0}),
+        animate('300ms', style({transform: 'translateX(0)', opacity: 1})),
       ]),
     ]),
   ],
   imports: [
-    RouterLink,
     NgClass,
     ReactiveFormsModule,
     NgIf,
@@ -55,29 +54,7 @@ export class SignupComponent implements OnInit {
     this.signupForm = this.initForm();
   }
 
-  ngOnInit(): void {}
-
-  private initForm(): FormGroup {
-    return this.fb.group({
-      credentials: this.fb.group({
-        username: ['', [Validators.required, Validators.email]],
-        password: ['', [Validators.required, CustomPasswordValidators.passwordComplexity()]],
-        confirmPassword: ['', Validators.required],
-      }, { validators: CustomPasswordValidators.passwordMatchValidator }),
-      profile: this.fb.group({
-        firstname: ['', Validators.required],
-        lastname: ['', Validators.required],
-        cpf: ['', Validators.required, Validators.pattern('[0-9]*')],
-        phone: ['', Validators.pattern('[0-9]*')],
-        country: ['Brazil', Validators.required],
-        state: ['', Validators.required],
-        city: ['', Validators.required],
-        neighborhood: ['', Validators.required],
-        zipCode: ['', Validators.required],
-        street: ['', Validators.required],
-        complement: [''],
-      }),
-    });
+  ngOnInit(): void {
   }
 
   onNextStep(): void {
@@ -112,7 +89,8 @@ export class SignupComponent implements OnInit {
       .subscribe({
         next: () => {
           this.router.navigate(['/login'])
-            .then(() => {});
+            .then(() => {
+            });
         },
         error: (error: any) => {
           this.setErrorMessage('Registration failed. Please try again.');
@@ -165,6 +143,29 @@ export class SignupComponent implements OnInit {
       return 'Passwords do not match.';
     }
     return '';
+  }
+
+  private initForm(): FormGroup {
+    return this.fb.group({
+      credentials: this.fb.group({
+        username: ['', [Validators.required, Validators.email]],
+        password: ['', [Validators.required, CustomPasswordValidators.passwordComplexity()]],
+        confirmPassword: ['', Validators.required],
+      }, {validators: CustomPasswordValidators.passwordMatchValidator}),
+      profile: this.fb.group({
+        firstname: ['', Validators.required],
+        lastname: ['', Validators.required],
+        cpf: ['', Validators.required, Validators.pattern('[0-9]*')],
+        phone: ['', Validators.pattern('[0-9]*')],
+        country: ['Brazil', Validators.required],
+        state: ['', Validators.required],
+        city: ['', Validators.required],
+        neighborhood: ['', Validators.required],
+        zipCode: ['', Validators.required],
+        street: ['', Validators.required],
+        complement: [''],
+      }),
+    });
   }
 
   private setErrorMessage(message: string): void {

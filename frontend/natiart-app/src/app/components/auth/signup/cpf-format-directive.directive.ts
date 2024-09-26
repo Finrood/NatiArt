@@ -10,7 +10,8 @@ export class CpfFormatDirectiveDirective {
     private el: ElementRef,
     private renderer: Renderer2,
     private control: NgControl
-  ) {}
+  ) {
+  }
 
   @HostListener('input', ['$event'])
   onInputChange(event: Event) {
@@ -40,7 +41,7 @@ export class CpfFormatDirectiveDirective {
 
   private updateValue(value: string) {
     this.renderer.setProperty(this.el.nativeElement, 'value', value);
-    this.control.control?.setValue(value, { emitEvent: false });
+    this.control.control?.setValue(value, {emitEvent: false});
     this.control.control?.markAsTouched();
   }
 }

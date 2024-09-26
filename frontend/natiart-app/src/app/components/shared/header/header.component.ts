@@ -4,9 +4,9 @@ import {NgIf} from "@angular/common";
 @Component({
   selector: 'app-header',
   standalone: true,
-    imports: [
-        NgIf
-    ],
+  imports: [
+    NgIf
+  ],
   templateUrl: './header.component.html',
   styleUrl: './header.component.css'
 })

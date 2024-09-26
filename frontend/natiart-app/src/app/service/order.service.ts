@@ -1,7 +1,7 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject } from 'rxjs';
-import { map, tap } from 'rxjs/operators';
+import {Injectable} from '@angular/core';
+import {HttpClient} from '@angular/common/http';
+import {BehaviorSubject, Observable} from 'rxjs';
+import {tap} from 'rxjs/operators';
 import {environment} from "../../environments/environment";
 import {OrderDto} from "../models/order.model";
 
@@ -13,7 +13,8 @@ export class OrderService {
   private orderProcessingSubject = new BehaviorSubject<boolean>(false);
   orderProcessing$ = this.orderProcessingSubject.asObservable();
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient) {
+  }
 
   createOrder(order: OrderDto): Observable<OrderDto> {
     this.orderProcessingSubject.next(true);
@@ -31,6 +32,6 @@ export class OrderService {
   }
 
   updateOrderStatus(id: number, status: string): Observable<OrderDto> {
-    return this.http.put<OrderDto>(`${this.apiUrl}/${id}/status`, { status });
+    return this.http.put<OrderDto>(`${this.apiUrl}/${id}/status`, {status});
   }
 }

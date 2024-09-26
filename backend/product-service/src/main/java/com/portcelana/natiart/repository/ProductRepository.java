@@ -8,9 +8,11 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface ProductRepository extends JpaRepository<Product, String>  {
+public interface ProductRepository extends JpaRepository<Product, String> {
     List<Product> findAllByCategory(Category category);
+
     List<Product> findAllByNewProduct(boolean newProduct);
+
     List<Product> findAllByFeaturedProduct(boolean featuredProduct);
 
 }

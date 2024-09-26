@@ -1,5 +1,5 @@
-import { Directive, HostListener, ElementRef, Renderer2 } from '@angular/core';
-import { NgControl } from '@angular/forms';
+import {Directive, ElementRef, HostListener, Renderer2} from '@angular/core';
+import {NgControl} from '@angular/forms';
 
 @Directive({
   standalone: true,
@@ -10,7 +10,8 @@ export class CepFormatDirective {
     private el: ElementRef,
     private renderer: Renderer2,
     private control: NgControl
-  ) {}
+  ) {
+  }
 
   @HostListener('input', ['$event'])
   onInputChange(event: Event) {
@@ -36,7 +37,7 @@ export class CepFormatDirective {
 
   private updateValue(value: string) {
     this.renderer.setProperty(this.el.nativeElement, 'value', value);
-    this.control.control?.setValue(value, { emitEvent: false });
+    this.control.control?.setValue(value, {emitEvent: false});
     this.control.control?.markAsTouched();
   }
 }

@@ -10,7 +10,7 @@ describe('LogoutComponent', () => {
     await TestBed.configureTestingModule({
       imports: [LogoutComponent]
     })
-    .compileComponents();
+      .compileComponents();
 
     fixture = TestBed.createComponent(LogoutComponent);
     component = fixture.componentInstance;

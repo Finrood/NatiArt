@@ -145,18 +145,18 @@ public class ProductManagerImpl implements ProductManager {
     }
 
     @Override
+    public InputStreamResource getProductImage(String path) throws URISyntaxException {
+        final URI uri = new URI(path);
+        final InputStream inputStream = storageService.openFile(uri);
+        return new InputStreamResource(inputStream);
+    }
+
+    @Override
     @Transactional
     public Product inverseVisibility(String productId) {
         final Product product = getProductOrDie(productId);
         product.setActive(!product.isActive());
         return productRepository.save(product);
-    }
-
-    @Override
-    public InputStreamResource getProductImage(String path) throws URISyntaxException {
-        final URI uri = new URI(path);
-        final InputStream inputStream = storageService.openFile(uri);
-        return new InputStreamResource(inputStream);
     }
 
     private List<String> processImages(Product product, List<String> existingImages, List<InputFile> newImages) {

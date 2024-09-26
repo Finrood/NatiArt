@@ -22,8 +22,8 @@ import {LoginResponse} from "../../../models/loginResponse.model";
   animations: [
     trigger('fadeIn', [
       transition(':enter', [
-        style({ opacity: 0, transform: 'translateY(10px)' }),
-        animate('0.5s ease-out', style({ opacity: 1, transform: 'translateY(0)' })),
+        style({opacity: 0, transform: 'translateY(10px)'}),
+        animate('0.5s ease-out', style({opacity: 1, transform: 'translateY(0)'})),
       ]),
     ]),
     trigger('inputFocus', [
@@ -70,7 +70,8 @@ export class LoginComponent implements OnInit {
     private router: Router,
     private authenticationService: AuthenticationService,
     private redirectService: RedirectService
-  ) {}
+  ) {
+  }
 
   ngOnInit(): void {
     if (this.authenticationService.getAccessToken()) {
@@ -102,10 +103,12 @@ export class LoginComponent implements OnInit {
     const redirectUrl = this.redirectService.getRedirectUrl();
     if (redirectUrl) {
       this.router.navigateByUrl(redirectUrl)
-        .then(() => {});
+        .then(() => {
+        });
     } else {
       this.router.navigate(['/dashboard'])
-        .then(() => {});
+        .then(() => {
+        });
     }
   }
 }

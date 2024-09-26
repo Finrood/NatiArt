@@ -1,6 +1,6 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 
-import { CheckoutStepperComponent } from './checkout-stepper.component';
+import {CheckoutStepperComponent} from './checkout-stepper.component';
 
 describe('CheckoutStepperComponent', () => {
   let component: CheckoutStepperComponent;
@@ -10,7 +10,7 @@ describe('CheckoutStepperComponent', () => {
     await TestBed.configureTestingModule({
       imports: [CheckoutStepperComponent]
     })
-    .compileComponents();
+      .compileComponents();
 
     fixture = TestBed.createComponent(CheckoutStepperComponent);
     component = fixture.componentInstance;

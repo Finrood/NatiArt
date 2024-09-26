@@ -4,9 +4,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.portcelana.natiart.dto.payment.PaymentCreationRequest;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -37,6 +34,13 @@ public class AsaasPaymentCreationRequest {
     private List<Split> split;
     private Callback callback;
 
+    private AsaasPaymentCreationRequest(String customer, String billingType, Double value, String dueDate) {
+        this.customer = customer;
+        this.billingType = billingType;
+        this.value = value;
+        this.dueDate = dueDate;
+    }
+
     public static AsaasPaymentCreationRequest from(PaymentCreationRequest paymentCreationRequest) {
         return new AsaasPaymentCreationRequest(
                 paymentCreationRequest.getCustomerId(),
@@ -44,13 +48,6 @@ public class AsaasPaymentCreationRequest {
                 paymentCreationRequest.getValue(),
                 paymentCreationRequest.getDueDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         );
-    }
-
-    private AsaasPaymentCreationRequest(String customer, String billingType, Double value, String dueDate) {
-        this.customer = customer;
-        this.billingType = billingType;
-        this.value = value;
-        this.dueDate = dueDate;
     }
 
     public String getCustomer() {

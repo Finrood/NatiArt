@@ -1,6 +1,6 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 
-import { OrderSummaryComponent } from './order-summary.component';
+import {OrderSummaryComponent} from './order-summary.component';
 
 describe('OrderSummaryComponent', () => {
   let component: OrderSummaryComponent;
@@ -10,7 +10,7 @@ describe('OrderSummaryComponent', () => {
     await TestBed.configureTestingModule({
       imports: [OrderSummaryComponent]
     })
-    .compileComponents();
+      .compileComponents();
 
     fixture = TestBed.createComponent(OrderSummaryComponent);
     component = fixture.componentInstance;

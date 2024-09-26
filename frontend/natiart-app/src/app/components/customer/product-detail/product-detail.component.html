@@ -3,42 +3,46 @@
 <div class="flex">
   <app-left-menu class="w-64 min-h-screen hidden lg:block"></app-left-menu>
   <main class="flex-grow">
-    <div class="container mx-auto px-4 py-8" *ngIf="product$ | async as product">
+    <div *ngIf="product$ | async as product" class="container mx-auto px-4 py-8">
       <div class="flex flex-wrap -mx-4">
         <!-- Product Images -->
         <div class="w-full md:w-1/2 px-4 mb-8 md:mb-0">
-          <div #imageContainer class="relative overflow-hidden cursor-zoom-in"
-               [class.cursor-zoom-out]="isZoomed"
-               (mousemove)="updateZoomPosition($event)"
+          <div #imageContainer (click)="toggleZoom($event)"
                (mouseleave)="isZoomed = false"
-               (click)="toggleZoom($event)">
+               (mousemove)="updateZoomPosition($event)"
+               [class.cursor-zoom-out]="isZoomed"
+               class="relative overflow-hidden cursor-zoom-in">
             <img #mainImage
+                 [ngStyle]="{ transform: isZoomed ? transformScale : 'scale(1)' }"
                  [src]="imageUrls[selectedImageIndex]"
                  alt="Product Image"
-                 class="w-full h-auto transition-transform duration-200 ease-in-out"
-                 [ngStyle]="{ transform: isZoomed ? transformScale : 'scale(1)' }">
+                 class="w-full h-auto transition-transform duration-200 ease-in-out">
             <div #zoomLens
-                 class="absolute w-[100px] h-[100px] border-2 border-blue-500 rounded-full pointer-events-none transition-opacity duration-200"
                  [class.opacity-0]="!isZoomed"
-                 [class.opacity-100]="isZoomed">
+                 [class.opacity-100]="isZoomed"
+                 class="absolute w-[100px] h-[100px] border-2 border-blue-500 rounded-full pointer-events-none transition-opacity duration-200">
             </div>
-            <div class="absolute inset-0 flex items-center justify-center pointer-events-none"
-                 [class.opacity-0]="isZoomed"
-                 [class.opacity-100]="!isZoomed">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-white bg-black bg-opacity-50 rounded-full p-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+            <div [class.opacity-0]="isZoomed"
+                 [class.opacity-100]="!isZoomed"
+                 class="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <svg class="h-12 w-12 text-white bg-black bg-opacity-50 rounded-full p-2"
+                   fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                   xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"/>
               </svg>
             </div>
           </div>
           <div class="flex mt-4 space-x-2">
-            <img *ngFor="let imageUrl of imageUrls | keyvalue; let i = index"
-                 [src]="imageUrl.value"
-                 alt="Product Thumbnail"
-                 class="w-20 h-20 cursor-pointer border transition-colors duration-200"
+            <img (click)="selectImage(i)"
+                 *ngFor="let imageUrl of imageUrls | keyvalue; let i = index"
                  [class.border-blue-500]="selectedImageIndex === i"
                  [class.border-gray-300]="selectedImageIndex !== i"
                  [class.hover:border-blue-300]="selectedImageIndex !== i"
-                 (click)="selectImage(i)">
+                 [src]="imageUrl.value"
+                 alt="Product Thumbnail"
+                 class="w-20 h-20 cursor-pointer border transition-colors duration-200">
           </div>
         </div>
 
@@ -60,21 +64,23 @@
             <label class="block text-sm font-medium text-gray-700 mr-4">Quantity</label>
             <button
               (click)="decrementQuantity()"
-              class="px-2 py-1 border rounded-l-md"
               [disabled]="quantity === 1"
-            >-</button>
+              class="px-2 py-1 border rounded-l-md"
+            >-
+            </button>
             <input
-              type="number"
               [(ngModel)]="quantity"
-              min="1"
               [max]="product.stockQuantity"
               class="w-16 text-center border-t border-b [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              min="1"
+              type="number"
             >
             <button
               (click)="incrementQuantity(product)"
-              class="px-2 py-1 border rounded-r-md"
               [disabled]="quantity === product.stockQuantity"
-            >+</button>
+              class="px-2 py-1 border rounded-r-md"
+            >+
+            </button>
           </div>
 
           <!-- Add to Cart -->
@@ -103,7 +109,8 @@
         <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div *ngFor="let relatedProduct of relatedProducts$ | async" class="group">
             <div class="relative pb-[100%] bg-gray-100 mb-4 rounded-lg overflow-hidden">
-              <img [src]="relatedProduct.images[0] || ''" [alt]="relatedProduct.label" class="absolute top-0 left-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+              <img [alt]="relatedProduct.label" [src]="relatedProduct.images[0] || ''"
+                   class="absolute top-0 left-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
             </div>
             <h3 class="text-lg font-medium mb-2">{{ relatedProduct.label }}</h3>
             <p class="text-primary font-semibold">{{ relatedProduct.markedPrice | currency:'BRL' }}</p>

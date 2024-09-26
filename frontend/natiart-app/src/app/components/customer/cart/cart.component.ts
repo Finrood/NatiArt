@@ -1,10 +1,10 @@
-import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
-import { Observable, BehaviorSubject, Subject, combineLatest } from 'rxjs';
-import { map, switchMap, takeUntil, catchError, finalize, startWith } from 'rxjs/operators';
-import { CartItem } from '../../../models/CartItem.model';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
-import { CartService } from '../../../service/cart.service';
-import { ProductService } from '../../../service/product.service';
+import {ChangeDetectionStrategy, Component, OnDestroy, OnInit} from '@angular/core';
+import {BehaviorSubject, combineLatest, Observable, Subject} from 'rxjs';
+import {catchError, finalize, map, startWith, switchMap, takeUntil} from 'rxjs/operators';
+import {CartItem} from '../../../models/CartItem.model';
+import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
+import {CartService} from '../../../service/cart.service';
+import {ProductService} from '../../../service/product.service';
 import {Router, RouterLink} from '@angular/router';
 import {ConfirmationModalComponent} from "../../shared/confirmation-modal/confirmation-modal.component";
 import {AsyncPipe, CurrencyPipe, NgForOf, NgIf} from "@angular/common";
@@ -35,14 +35,14 @@ export class CartComponent implements OnInit, OnDestroy {
   imageUrls: { [productId: string]: SafeUrl } = {};
   isLoading$ = new BehaviorSubject<boolean>(false);
   error$ = new BehaviorSubject<string | null>(null);
-  private destroy$ = new Subject<void>();
-
   modalConfig = {
     isOpen: false,
     title: '',
     message: '',
-    confirmAction: () => {}
+    confirmAction: () => {
+    }
   };
+  private destroy$ = new Subject<void>();
 
   constructor(
     private cartService: CartService,
@@ -59,7 +59,7 @@ export class CartComponent implements OnInit, OnDestroy {
         total,
         isEmpty: items.length === 0
       })),
-      startWith({ items: [], total: 0, isEmpty: true })
+      startWith({items: [], total: 0, isEmpty: true})
     );
   }
 
@@ -99,10 +99,6 @@ export class CartComponent implements OnInit, OnDestroy {
     });
   }
 
-  private openModal(title: string, message: string, confirmAction: () => void): void {
-    this.modalConfig = { isOpen: true, title, message, confirmAction };
-  }
-
   confirmModal(): void {
     this.modalConfig.isOpen = false;
     this.modalConfig.confirmAction();
@@ -110,6 +106,10 @@ export class CartComponent implements OnInit, OnDestroy {
 
   cancelModal(): void {
     this.modalConfig.isOpen = false;
+  }
+
+  private openModal(title: string, message: string, confirmAction: () => void): void {
+    this.modalConfig = {isOpen: true, title, message, confirmAction};
   }
 
   private performAction(action: () => Observable<any>, errorMessage: string): void {

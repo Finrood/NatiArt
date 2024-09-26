@@ -28,9 +28,6 @@ import {PersonalizationModalComponent} from "../personalization-modal/personaliz
 })
 export class CustomerDashboardComponent {
   currentBannerIndex: number = 0;
-  private bannerInterval: any;
-  private readonly SLIDE_DURATION: number = 3500;
-  private readonly TRANSITION_DURATION: number = 1000;
   bannerImages: string[] = [
     "assets/img/a1.webp",
     "assets/img/a2.jpg",
@@ -40,21 +37,22 @@ export class CustomerDashboardComponent {
   ];
   featuredProducts = new BehaviorSubject<Product[]>([]);
   newProducts = new BehaviorSubject<Product[]>([]);
-
   featuredScrollPosition = 0;
   newProductsScrollPosition = 0;
-
   imageUrls: { [productId: string]: SafeUrl | null } = {};
-  private subscriptions: Subscription[] = [];
-
   showPersonalizationModal = false;
   selectedProduct: Product | null = null;
+  private bannerInterval: any;
+  private readonly SLIDE_DURATION: number = 3500;
+  private readonly TRANSITION_DURATION: number = 1000;
+  private subscriptions: Subscription[] = [];
 
   constructor(
     private productService: ProductService,
     private cartService: CartService,
     private sanitizer: DomSanitizer
-  ) {}
+  ) {
+  }
 
   ngOnInit() {
     this.startBannerInterval();
@@ -67,44 +65,6 @@ export class CustomerDashboardComponent {
       clearInterval(this.bannerInterval);
     }
     this.subscriptions.forEach(subscription => subscription.unsubscribe());
-  }
-
-  private getFeaturedProducts(): void {
-    this.productService.getFeaturedProducts().subscribe({
-      next: (response) => {
-        this.featuredProducts.next(response);
-        this.updateProductImages(response);
-      },
-      error: (error) => console.error('Error getting featured products:', error)
-    });
-  }
-
-  private getNewProducts(): void {
-    this.productService.getNewProducts().subscribe({
-      next: (response) => {
-        this.newProducts.next(response);
-        this.updateProductImages(response);
-      },
-      error: (error) => console.error('Error getting new products:', error)
-    });
-  }
-
-  private updateProductImages(products: Product[]): void {
-    products.forEach(product => {
-      if (product.images && product.images.length > 0) {
-        this.fetchImage(product.id!, product.images[0]);
-      }
-    });
-  }
-
-  private fetchImage(productId: string, imagePath: string): void {
-    const subscription = this.productService.getImage(imagePath).subscribe(blob => {
-      const objectUrl = URL.createObjectURL(blob);
-      this.imageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
-      this.featuredProducts.next([...this.featuredProducts.value]);
-      this.newProducts.next([...this.newProducts.value]);
-    });
-    this.subscriptions.push(subscription);
   }
 
   isOriginalPriceHidden(product: Product): boolean {
@@ -147,19 +107,6 @@ export class CustomerDashboardComponent {
     this.closePersonalizationModal();
   }
 
-  private startBannerInterval() {
-    this.stopBannerInterval(); // Ensure any existing interval is stopped
-    this.bannerInterval = setInterval(() => {
-      this.nextSlide();
-    }, this.SLIDE_DURATION + this.TRANSITION_DURATION);
-  }
-
-  private stopBannerInterval() {
-    if (this.bannerInterval) {
-      clearInterval(this.bannerInterval);
-    }
-  }
-
   prevSlide() {
     this.currentBannerIndex = (this.currentBannerIndex - 1 + this.bannerImages.length) % this.bannerImages.length;
     this.resetBannerInterval();
@@ -173,6 +120,57 @@ export class CustomerDashboardComponent {
   goToSlide(index: number) {
     this.currentBannerIndex = index;
     this.resetBannerInterval();
+  }
+
+  private getFeaturedProducts(): void {
+    this.productService.getFeaturedProducts().subscribe({
+      next: (response) => {
+        this.featuredProducts.next(response);
+        this.updateProductImages(response);
+      },
+      error: (error) => console.error('Error getting featured products:', error)
+    });
+  }
+
+  private getNewProducts(): void {
+    this.productService.getNewProducts().subscribe({
+      next: (response) => {
+        this.newProducts.next(response);
+        this.updateProductImages(response);
+      },
+      error: (error) => console.error('Error getting new products:', error)
+    });
+  }
+
+  private updateProductImages(products: Product[]): void {
+    products.forEach(product => {
+      if (product.images && product.images.length > 0) {
+        this.fetchImage(product.id!, product.images[0]);
+      }
+    });
+  }
+
+  private fetchImage(productId: string, imagePath: string): void {
+    const subscription = this.productService.getImage(imagePath).subscribe(blob => {
+      const objectUrl = URL.createObjectURL(blob);
+      this.imageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
+      this.featuredProducts.next([...this.featuredProducts.value]);
+      this.newProducts.next([...this.newProducts.value]);
+    });
+    this.subscriptions.push(subscription);
+  }
+
+  private startBannerInterval() {
+    this.stopBannerInterval(); // Ensure any existing interval is stopped
+    this.bannerInterval = setInterval(() => {
+      this.nextSlide();
+    }, this.SLIDE_DURATION + this.TRANSITION_DURATION);
+  }
+
+  private stopBannerInterval() {
+    if (this.bannerInterval) {
+      clearInterval(this.bannerInterval);
+    }
   }
 
   private resetBannerInterval() {

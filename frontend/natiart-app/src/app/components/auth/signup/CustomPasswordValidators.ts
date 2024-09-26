@@ -15,7 +15,7 @@ export class CustomPasswordValidators {
         value.length >= 6     // is valid length
       ].every(Boolean);
 
-      return isValid ? null : { passwordComplexity: true };
+      return isValid ? null : {passwordComplexity: true};
     };
   }
 
@@ -27,6 +27,6 @@ export class CustomPasswordValidators {
       return null; // No error if one of the controls is missing
     }
 
-    return password.value === confirmPassword.value ? null : { passwordMismatch: true };
+    return password.value === confirmPassword.value ? null : {passwordMismatch: true};
   };
 }

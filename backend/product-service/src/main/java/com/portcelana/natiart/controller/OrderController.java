@@ -1,7 +1,6 @@
 package com.portcelana.natiart.controller;
 
 import com.portcelana.natiart.dto.OrderDto;
-import com.portcelana.natiart.dto.OrderItemDto;
 import com.portcelana.natiart.service.OrderManager;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
