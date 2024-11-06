@@ -29,6 +29,7 @@ public class ProfileManagerTest {
         ProfileDto profileDto = new ProfileDto()
                 .setFirstname("John")
                 .setLastname("Doe")
+                .setCpf("000000000")
                 .setPhone("123456789")
                 .setCountry("USA")
                 .setState("California")
