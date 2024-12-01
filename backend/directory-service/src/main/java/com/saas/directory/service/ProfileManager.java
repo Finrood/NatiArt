@@ -18,17 +18,23 @@ public class ProfileManager {
     @Transactional
     public Profile createProfile(User user, ProfileDto profileDto) {
         final Profile profile = new Profile(
-                profileDto.getFirstname(),
-                profileDto.getLastname(),
-                profileDto.getCpf().replaceAll("[^0-9]", ""),
-                profileDto.getCountry(),
-                profileDto.getState(),
-                profileDto.getCity(),
-                profileDto.getZipCode(),
-                profileDto.getStreet(),
+                profileDto.getFirstname().trim(),
+                profileDto.getLastname().trim(),
+                profileDto.getCpf().replaceAll("[^0-9]", "").trim(),
+                profileDto.getCountry().trim(),
+                profileDto.getState().trim(),
+                profileDto.getCity().trim(),
+                profileDto.getNeighborhood().trim(),
+                profileDto.getZipCode().trim(),
+                profileDto.getStreet().trim(),
                 user);
-        profile.setPhone(profileDto.getPhone());
-        profile.setComplement(profileDto.getComplement());
+        if (profileDto.getPhone() != null) {
+            profile.setPhone(profileDto.getPhone().trim());
+        }
+        if (profileDto.getComplement() != null) {
+            profile.setComplement(profileDto.getComplement().trim());
+        }
+
         return profileRepository.save(profile);
     }
 }

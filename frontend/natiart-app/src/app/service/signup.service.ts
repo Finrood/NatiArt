@@ -36,13 +36,17 @@ export interface ViaCEPResponse {
   providedIn: 'root'
 })
 export class SignupService {
-  private readonly apiUrl: string = `${environment.directoryApiUrl}/register-user`;
+  private readonly apiUrl: string = `${environment.directoryApiUrl}`;
 
   constructor(private http: HttpClient) {
   }
 
   registerUser(signupRequest: SignupRequest): Observable<any> {
-    return this.http.post<any>(this.apiUrl, signupRequest);
+    return this.http.post<any>(`${this.apiUrl}/register-user`, signupRequest);
+  }
+
+  registerGhostUser(signupRequest: SignupRequest): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/register-ghost-user`, signupRequest);
   }
 
   getAddressFromZipCode(zipCode: string): Observable<ViaCEPResponse> {

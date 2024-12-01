@@ -10,4 +10,5 @@ export interface User {
   username: string;
   profile: Profile;
   role: RoleName;
+  externalId: string;
 }

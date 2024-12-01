@@ -3,11 +3,7 @@ package com.saas.directory.service;
 import com.saas.directory.controller.helper.ResourceAlreadyExistsException;
 import com.saas.directory.controller.helper.ResourceNotFoundException;
 import com.saas.directory.dto.UserRegistrationDto;
-import com.saas.directory.model.ExternalUser;
-import com.saas.directory.model.Profile;
-import com.saas.directory.model.Role;
-import com.saas.directory.model.RoleName;
-import com.saas.directory.model.User;
+import com.saas.directory.model.*;
 import com.saas.directory.model.helper.PaymentProcessor;
 import com.saas.directory.repository.ExternalUserRepository;
 import com.saas.directory.repository.RoleRepository;
@@ -19,6 +15,7 @@ import org.springframework.util.StringUtils;
 
 import javax.management.relation.RoleNotFoundException;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class UserManager {
@@ -69,8 +66,27 @@ public class UserManager {
                 .orElseThrow(() -> new RoleNotFoundException(String.format("Role [%s] not found", RoleName.USER)));
 
         final User newUser = userRepository.save(
-                new User(userRegistrationDto.username(), userRegistrationDto.password())
+                new User(userRegistrationDto.username().trim(), userRegistrationDto.password())
                         .setRole(role)
+        );
+        final Profile profile = profileManager.createProfile(newUser, userRegistrationDto.profile());
+        newUser.setProfile(profile);
+        return userRepository.save(newUser);
+    }
+
+    @Transactional
+    public User registerGhostUser(UserRegistrationDto userRegistrationDto) throws RoleNotFoundException {
+        if (userExist(userRegistrationDto.username())) {
+            throw new ResourceAlreadyExistsException(String.format("User [%s] already exist", userRegistrationDto.username()));
+        }
+
+        final Role role = roleRepository.findRoleByLabel(RoleName.USER)
+                .orElseThrow(() -> new RoleNotFoundException(String.format("Role [%s] not found", RoleName.USER)));
+
+        final User newUser = userRepository.save(
+                new User(userRegistrationDto.username().trim(), UUID.randomUUID().toString())
+                        .setRole(role)
+                        .setUserType(UserType.GHOST)
         );
         final Profile profile = profileManager.createProfile(newUser, userRegistrationDto.profile());
         newUser.setProfile(profile);

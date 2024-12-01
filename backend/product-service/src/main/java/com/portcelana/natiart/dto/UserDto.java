@@ -4,6 +4,7 @@ public class UserDto {
     private String id;
     private String username;
     private String role;
+    private String externalId;
 
     public UserDto() {
     }
@@ -33,5 +34,13 @@ public class UserDto {
     public UserDto setRole(String role) {
         this.role = role;
         return this;
+    }
+
+    public String getExternalId() {
+        return externalId;
+    }
+
+    public void setExternalId(String externalId) {
+        this.externalId = externalId;
     }
 }

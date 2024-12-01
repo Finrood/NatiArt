@@ -1,17 +1,6 @@
 package com.saas.directory.model;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
-import jakarta.persistence.Version;
+import jakarta.persistence.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -46,6 +35,9 @@ public class User {
     @JoinColumn(name = "role_id", referencedColumnName = "id", nullable = false)
     private Role role;
 
+    @Enumerated(EnumType.STRING)
+    private UserType userType;
+
     @CreatedDate
     @Column(updatable = false)
     private Instant createdAt;
@@ -64,10 +56,11 @@ public class User {
 
     public User(String username, String password) {
         this.id = UUID.randomUUID().toString();
-        this.username = username.toLowerCase();
+        this.username = username.toLowerCase().trim();
         this.passwordHash = encoder.encode(password);
         this.emailConfirmed = false;
         this.active = true;
+        this.userType = UserType.ACTIVE;
     }
 
 
@@ -117,6 +110,15 @@ public class User {
 
     public User setRole(Role role) {
         this.role = role;
+        return this;
+    }
+
+    public UserType getUserType() {
+        return userType;
+    }
+
+    public User setUserType(UserType userType) {
+        this.userType = userType;
         return this;
     }
 

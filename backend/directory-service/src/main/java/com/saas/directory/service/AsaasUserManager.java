@@ -6,10 +6,10 @@ import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
@@ -25,25 +25,32 @@ public class AsaasUserManager {
         this.restTemplate = restTemplateBuilder.build();
     }
 
-    public AsaasCustomerCreationResponse registerUser(UserDto userDto) {
+    public AsaasCustomerCreationResponse registerUser(UserDto userDto) throws Exception {
         final HttpHeaders headers = getRequestHeaders();
 
         final HttpEntity<AsaasCustomerCreationRequest> asaasPaymentCreationRequestHttpEntity = new HttpEntity<>(AsaasCustomerCreationRequest.from(userDto), headers);
-        final ResponseEntity<AsaasCustomerCreationResponse> response = restTemplate.postForEntity(asaasCustomerUrl, asaasPaymentCreationRequestHttpEntity, AsaasCustomerCreationResponse.class);
 
-        if (response.getStatusCode() == HttpStatus.OK) {
-            final Optional<AsaasCustomerCreationResponse> asaasCustomerCreationResponse = Optional.ofNullable(response.getBody());
-            return asaasCustomerCreationResponse
-                    .orElseThrow(() -> new IllegalArgumentException("Received a null response body from " + asaasCustomerUrl));
+        final ResponseEntity<AsaasCustomerCreationResponse> response;
+        try {
+            response = restTemplate.postForEntity(asaasCustomerUrl, asaasPaymentCreationRequestHttpEntity, AsaasCustomerCreationResponse.class);
+
+            return Optional.ofNullable(response.getBody())
+                    .orElseThrow(() -> new RuntimeException("Received a null response body from " + asaasCustomerUrl));
+        } catch (HttpClientErrorException e) {
+            throw new IllegalArgumentException(String.format("Received [%s] status from [%s] with message [%s]",
+                    e.getStatusCode(),
+                    asaasCustomerUrl,
+                    e.getResponseBodyAsString()));
+        } catch (Exception e) {
+            throw new Exception("Unexpected error during asaas user registration: " + e);
         }
-        return null;
     }
 
     private HttpHeaders getRequestHeaders() {
         final HttpHeaders headers = new HttpHeaders();
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("access_token", "$aact_YTU5YTE0M2M2N2I4MTliNzk0YTI5N2U5MzdjNWZmNDQ6OjAwMDAwMDAwMDAwMDAwODkyMTA6OiRhYWNoX2Y0YjhkZDZjLTViMTgtNDU1OC1hZDYxLTZiMTUwMzdkM2I5Zg==");
+        headers.set("access_token", "$aact_YTU5YTE0M2M2N2I4MTliNzk0YTI5N2U5MzdjNWZmNDQ6OjAwMDAwMDAwMDAwMDAwODkyMTA6OiRhYWNoXzNkMjk5MDNmLTc4MjMtNGJjNy1hMjQyLWEzNzBmNDQyOTE4NA==");
 
         return headers;
     }

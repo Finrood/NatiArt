@@ -1,17 +1,16 @@
 import {Component, OnInit} from '@angular/core';
 import {AsyncPipe, NgIf} from '@angular/common';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
-import {Observable} from 'rxjs';
+import {catchError, firstValueFrom, map, Observable, throwError} from 'rxjs';
 import {CartItem} from '../../../models/CartItem.model';
 import {User} from '../../../models/user.model';
 import {CartService} from '../../../service/cart.service';
 import {OrderService} from '../../../service/order.service';
 import {AuthenticationService} from '../../../service/authentication.service';
-import {RouterLink} from '@angular/router';
+import {Router, RouterLink} from '@angular/router';
 import {animate, style, transition, trigger} from '@angular/animations';
 import {PaymentService} from "../../../service/payment.service";
 import {PaymentCreationRequest} from "../../../models/paymentCreationRequest.model";
-import {PaymentCreationResponse} from "../../../models/paymentCreationResonse.model";
 import {OrderSummaryComponent} from "./order-summary/order-summary.component";
 import {CheckoutStepperComponent} from "./checkout-stepper/checkout-stepper.component";
 import {UserInfoStepComponent} from "./user-info-step/user-info-step.component";
@@ -20,6 +19,7 @@ import {PaymentInfoStepComponent} from "./payment-info-step/payment-info-step.co
 import {SignupService} from "../../../service/signup.service";
 import {UserRegistration} from "../../../models/user-registration.model";
 import {Profile} from "../../../models/profile.model";
+import {switchMap} from "rxjs/operators";
 
 @Component({
   selector: 'app-checkout',
@@ -70,7 +70,8 @@ export class CheckoutComponent implements OnInit {
     private authenticationService: AuthenticationService,
     private orderService: OrderService,
     private paymentService: PaymentService,
-    private signupService: SignupService
+    private signupService: SignupService,
+    private router: Router
   ) {
     this.checkoutForm = this.fb.group({
       userInfo: this.fb.group({
@@ -123,6 +124,7 @@ export class CheckoutComponent implements OnInit {
             firstname: user.profile.firstname,
             lastname: user.profile.lastname,
             email: user.username,
+            cpf: user.profile.cpf,
             phone: user.profile.phone,
           },
           shippingInfo: {
@@ -194,67 +196,89 @@ export class CheckoutComponent implements OnInit {
     this.clearErrorMessage();
   }
 
-  createUserIfGuestCheckout(): void {
-    if (!this.isLoggedIn$) {
-      const formValue = this.checkoutForm.get('userInfo')?.value;
-      const profile: Profile = {
-        firstname: formValue.firstname,
-        lastname: formValue.lastname,
-        cpf: '',
-        phone: formValue.phone,
-        country: formValue.country,
-        state: formValue.state,
-        city: formValue.city,
-        neighborhood: formValue.neighborhood,
-        zipCode: formValue.zipCode,
-        street: formValue.street,
-        complement: formValue.complement,
-      };
+  createUserIfGuestCheckout(): Observable<User> {
+    return this.isLoggedIn$.pipe(
+      switchMap(isLoggedIn => {
+        if (!isLoggedIn) {
+          const formValue = this.checkoutForm.get('userInfo')?.value;
+          const profile: Profile = {
+            firstname: formValue.firstname,
+            lastname: formValue.lastname,
+            cpf: formValue.cpf,
+            phone: formValue.phone,
+            country: formValue.country,
+            state: formValue.state,
+            city: formValue.city,
+            neighborhood: formValue.neighborhood,
+            zipCode: formValue.zipCode,
+            street: formValue.street,
+            complement: formValue.complement,
+          };
 
-      const userRegistration: UserRegistration = {
-        username: formValue.email,
-        password: 'temporaryPassword', // Handle this securely
-        profile: profile,
-      };
+          const userRegistration: UserRegistration = {
+            username: formValue.email,
+            password: '',
+            profile: profile,
+          };
 
-      this.signupService.registerUser(userRegistration).subscribe({
-        next: () => {
-          console.log('User registered as guest');
-        },
-        error: (error: any) => {
-          this.setErrorMessage('Registration failed. Please try again.');
-          console.error('Registration error:', error);
+          return this.signupService.registerGhostUser(userRegistration).pipe(
+            switchMap(() => this.currentUser$),
+            map(user => {
+              if (user === null) {
+                throw new Error('User registration failed');
+              }
+              return user;
+            }),
+            catchError(error => {
+              this.setErrorMessage('Registration failed. Please try again.');
+              console.error('Registration error:', error);
+              return throwError(() => error);
+            })
+          );
+        } else {
+          return this.currentUser$.pipe(
+            map(user => {
+              if (user === null) {
+                throw new Error('No logged-in user found');
+              }
+              return user;
+            })
+          );
         }
-      });
-    }
+      })
+    );
   }
 
-  processPixPayment(orderData: any) {
-    const pixPaymentData: PaymentCreationRequest = {
-      paymentProcessor: "ASAAS",
-      customerId: "6218382",
-      billingType: 'PIX',
-      value: this.cartService.getCartTotalSnapshot(),
-    };
-
-    this.paymentService.createPixPayment(pixPaymentData).subscribe({
-      next: (response: PaymentCreationResponse) => {
-        this.paymentService.getPixQrCode(response.paymentId).subscribe({
-          next: (qrCodeData) => {
-            console.log(qrCodeData);
-            // You might want to navigate to a confirmation page or show a modal here
-          },
-          error: (error) => {
-            console.error('Error fetching PIX QR code:', error);
-            this.setErrorMessage('Error generating PIX QR code. Please try again.');
-          }
-        });
-      },
-      error: (error) => {
-        console.error('Error creating PIX payment:', error);
-        this.setErrorMessage('Error creating PIX payment. Please try again.');
+  async onProcessPixPayment() {
+    try {
+      // Fetch current user or create a new guest user
+      this.authenticationService.getCurrentUser();
+      let user = await firstValueFrom(this.authenticationService.currentUser$);
+      if (!user) {
+        user = await firstValueFrom(this.createUserIfGuestCheckout());
       }
-    });
+
+      // Prepare payment data
+      const pixPaymentData: PaymentCreationRequest = {
+        paymentProcessor: 'ASAAS',
+        customerId: user.externalId,
+        billingType: 'PIX',
+        value: this.cartService.getCartTotalSnapshot(),
+      };
+
+      // Create payment and fetch QR code data
+      const paymentResponse = await firstValueFrom(
+        this.paymentService.createPixPayment(pixPaymentData)
+      );
+
+      // Navigate to QR Code display page
+      this.router.navigate(['/pix-payment', paymentResponse.paymentId]);
+
+    } catch (error) {
+      console.error('Error processing PIX payment:', error);
+      // Show user-friendly error message
+      this.setErrorMessage('Could not process PIX payment. Please try again.');
+    }
   }
 
   onSubmit(): void {
@@ -292,11 +316,6 @@ export class CheckoutComponent implements OnInit {
         // });
       }
     }
-  }
-
-  private generateGuestPassword(): string {
-    // You can generate a random password or use a fixed pattern for guest users
-    return Math.random().toString(36).slice(-8); // Example random password generator
   }
 
   private setErrorMessage(message: string): void {

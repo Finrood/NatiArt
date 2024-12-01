@@ -3,7 +3,7 @@ import {HttpClient, HttpHeaders} from "@angular/common/http";
 import {Router} from "@angular/router";
 import {RoleName, User} from "../models/user.model";
 import {environment} from "../../environments/environment";
-import {BehaviorSubject, map, Observable} from "rxjs";
+import {BehaviorSubject, catchError, EMPTY, map, Observable} from "rxjs";
 import {Credentials} from "../models/credentials.model";
 
 @Injectable({
@@ -30,13 +30,23 @@ export class AuthenticationService {
   getCurrentUser(): void {
     const headers = this.getHeaders();
     this.http.get<User>(`${this.apiUrl}/users/current`, {headers: headers})
+      .pipe(
+        catchError((error) => {
+          if (error.status === 401) {
+            this.isLoggedInSubject.next(false);
+            this.currentUserSubject.next(null);
+          } else {
+            console.error('Error fetching user profile:', error);
+            this.isLoggedInSubject.next(false);
+            this.currentUserSubject.next(null);
+          }
+          return EMPTY;
+        })
+      )
       .subscribe({
         next: (user) => {
           this.isLoggedInSubject.next(true);
           this.currentUserSubject.next(user);
-        },
-        error: (error) => {
-          console.error('Error fetching user profile:', error);
         }
       })
   }

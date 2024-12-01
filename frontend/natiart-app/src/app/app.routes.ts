@@ -10,6 +10,9 @@ import {ProductDetailComponent} from "./components/customer/product-detail/produ
 import {productGuard} from "./guards/product-guard.guard";
 import {CartComponent} from "./components/customer/cart/cart.component";
 import {CheckoutComponent} from "./components/customer/checkout/checkout.component";
+import {
+  PixPaymentConfirmationComponent
+} from "./components/customer/checkout/pix-payment-confirmation/pix-payment-confirmation.component";
 
 export const routes: Routes = [
   {path: 'login', component: LoginComponent},
@@ -34,6 +37,11 @@ export const routes: Routes = [
   {
     path: 'checkout',
     component: CheckoutComponent,
+    canActivate: [authGuard]
+  },
+  {
+    path: 'pix-payment/:paymentId',
+    component: PixPaymentConfirmationComponent,
     canActivate: [authGuard]
   },
   {

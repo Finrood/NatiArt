@@ -1,11 +1,6 @@
 package com.saas.directory.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Version;
+import jakarta.persistence.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -59,7 +54,7 @@ public class Profile {
         // FOR JPA
     }
 
-    public Profile(String firstname, String lastname, String cpf, String country, String state, String city, String zipCode, String street, User user) {
+    public Profile(String firstname, String lastname, String cpf, String country, String state, String city, String neighborhood, String zipCode, String street, User user) {
         this.id = UUID.randomUUID().toString();
         this.firstname = firstname;
         this.lastname = lastname;
@@ -67,6 +62,7 @@ public class Profile {
         this.country = country;
         this.state = state;
         this.city = city;
+        this.neighborhood = neighborhood;
         this.zipCode = zipCode;
         this.street = street;
         this.user = user;

@@ -37,7 +37,7 @@
 
           <!-- Step 3: Payment Information -->
           <div *ngIf="currentStep === 3" [@slideInRight]>
-            <app-payment-info-step (processPixPayment)="processPixPayment($event)"
+            <app-payment-info-step (processPixPayment)="onProcessPixPayment()"
                                    [checkoutForm]="checkoutForm"></app-payment-info-step>
           </div>
 

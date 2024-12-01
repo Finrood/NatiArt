@@ -13,12 +13,7 @@ import com.portcelana.natiart.dto.payment.asaas.AsaasPaymentStatusResponse;
 import com.portcelana.natiart.dto.payment.helper.PaymentMethod;
 import com.portcelana.natiart.dto.payment.helper.PaymentStatus;
 import org.springframework.boot.web.client.RestTemplateBuilder;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -41,7 +36,11 @@ public class AsaasPaymentService implements PaymentService {
         final HttpHeaders headers = getRequestHeaders();
 
         final HttpEntity<AsaasPaymentCreationRequest> asaasPaymentCreationRequestHttpEntity = new HttpEntity<>(AsaasPaymentCreationRequest.from(paymentCreationRequest), headers);
-        final ResponseEntity<AsaasPaymentCreationResponse> response = restTemplate.postForEntity(asaasPaymentUrl, asaasPaymentCreationRequestHttpEntity, AsaasPaymentCreationResponse.class);
+        final ResponseEntity<AsaasPaymentCreationResponse> response = restTemplate.postForEntity(
+                asaasPaymentUrl,
+                asaasPaymentCreationRequestHttpEntity,
+                AsaasPaymentCreationResponse.class
+        );
 
         if (response.getStatusCode() == HttpStatus.OK) {
             final Optional<AsaasPaymentCreationResponse> asaasPaymentCreationResponse = Optional.ofNullable(response.getBody());
@@ -124,7 +123,7 @@ public class AsaasPaymentService implements PaymentService {
         final HttpHeaders headers = new HttpHeaders();
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("access_token", "$aact_YTU5YTE0M2M2N2I4MTliNzk0YTI5N2U5MzdjNWZmNDQ6OjAwMDAwMDAwMDAwMDAwODkyMTA6OiRhYWNoX2Y0YjhkZDZjLTViMTgtNDU1OC1hZDYxLTZiMTUwMzdkM2I5Zg==");
+        headers.set("access_token", "$aact_YTU5YTE0M2M2N2I4MTliNzk0YTI5N2U5MzdjNWZmNDQ6OjAwMDAwMDAwMDAwMDAwODkyMTA6OiRhYWNoXzNkMjk5MDNmLTc4MjMtNGJjNy1hMjQyLWEzNzBmNDQyOTE4NA==");
 
         return headers;
     }

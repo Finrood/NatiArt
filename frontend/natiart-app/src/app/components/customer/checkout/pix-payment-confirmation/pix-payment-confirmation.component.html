@@ -1,0 +1,15 @@
+<div *ngIf="qrCodeData; else loading">
+  <h1 class="text-xl font-bold mb-4">Scan the QR Code to Pay</h1>
+  <img [src]="qrCodeData.encodedImage" alt="PIX QR Code" class="w-64 h-64 mx-auto mb-6"/>
+  <p>
+    Payment Status: <strong>{{ paymentStatus }}</strong>
+  </p>
+  <p>
+    Expires at:
+    <strong>{{ qrCodeData.expirationDate | date: 'medium' }}</strong>
+  </p>
+</div>
+
+<ng-template #loading>
+  <p>Loading payment details...</p>
+</ng-template>

@@ -28,7 +28,7 @@ export class UserInfoStepComponent {
     },
     {id: 'firstname', name: 'firstname', label: 'First Name', type: 'text', placeholder: 'John', required: true},
     {id: 'lastname', name: 'lastname', label: 'Last Name', type: 'text', placeholder: 'Doe', required: true},
-    {id: 'cpf', name: 'cpf', label: 'CPF', type: 'text', placeholder: '000.000.000-11', required: false},
+    {id: 'cpf', name: 'cpf', label: 'CPF', type: 'text', placeholder: '000.000.000-11', required: true},
     {id: 'phone', name: 'phone', label: 'Phone', type: 'tel', placeholder: '(XX) XXXXX-XXXX', required: false}
   ];
 
