@@ -11,20 +11,19 @@ import {AsyncPipe, CurrencyPipe, NgForOf, NgIf} from "@angular/common";
 import {ShippingEstimationComponent} from "../shipping-estimation/shipping-estimation.component";
 
 @Component({
-  selector: 'app-cart',
-  templateUrl: './cart.component.html',
-  styleUrls: ['./cart.component.css'],
-  standalone: true,
-  imports: [
-    ConfirmationModalComponent,
-    RouterLink,
-    NgIf,
-    AsyncPipe,
-    CurrencyPipe,
-    ShippingEstimationComponent,
-    NgForOf
-  ],
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'app-cart',
+    templateUrl: './cart.component.html',
+    styleUrls: ['./cart.component.css'],
+    imports: [
+        ConfirmationModalComponent,
+        RouterLink,
+        NgIf,
+        AsyncPipe,
+        CurrencyPipe,
+        ShippingEstimationComponent,
+        NgForOf
+    ],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CartComponent implements OnInit, OnDestroy {
   cartState$: Observable<{

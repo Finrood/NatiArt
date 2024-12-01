@@ -7,11 +7,10 @@ import {BehaviorSubject} from 'rxjs';
 import {Alert} from '../../../models/alert.model';
 
 @Component({
-  selector: 'app-admin-category-management',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
-  templateUrl: './admin-category-management.component.html',
-  styleUrls: ['./admin-category-management.component.css']
+    selector: 'app-admin-category-management',
+    imports: [CommonModule, ReactiveFormsModule],
+    templateUrl: './admin-category-management.component.html',
+    styleUrls: ['./admin-category-management.component.css']
 })
 export class CategoryManagementComponent implements OnInit {
   alert$ = new BehaviorSubject<Alert | null>(null);

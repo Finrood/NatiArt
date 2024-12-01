@@ -3,8 +3,8 @@ import {NgForOf} from "@angular/common";
 import {RouterLink, RouterLinkActive, RouterOutlet} from "@angular/router";
 
 @Component({
-  selector: 'app-admin-dashboard',
-  template: `
+    selector: 'app-admin-dashboard',
+    template: `
     <div class="container mx-auto px-4 py-8">
       <h1 class="text-3xl font-light mb-8 text-gray-800">Admin Dashboard</h1>
 
@@ -24,8 +24,7 @@ import {RouterLink, RouterLinkActive, RouterOutlet} from "@angular/router";
       <router-outlet></router-outlet>
     </div>
   `,
-  standalone: true,
-  imports: [NgForOf, RouterLink, RouterLinkActive, RouterOutlet]
+    imports: [NgForOf, RouterLink, RouterLinkActive, RouterOutlet]
 })
 export class AdminDashboardComponent {
   menuItems = [

@@ -3,16 +3,15 @@ import {FormGroup, ReactiveFormsModule} from "@angular/forms";
 import {NgClass, NgForOf, NgIf} from "@angular/common";
 
 @Component({
-  selector: 'app-payment-info-step',
-  standalone: true,
-  imports: [
-    ReactiveFormsModule,
-    NgClass,
-    NgIf,
-    NgForOf
-  ],
-  templateUrl: './payment-info-step.component.html',
-  styleUrl: './payment-info-step.component.css'
+    selector: 'app-payment-info-step',
+    imports: [
+        ReactiveFormsModule,
+        NgClass,
+        NgIf,
+        NgForOf
+    ],
+    templateUrl: './payment-info-step.component.html',
+    styleUrl: './payment-info-step.component.css'
 })
 export class PaymentInfoStepComponent {
   @Input() checkoutForm!: FormGroup;

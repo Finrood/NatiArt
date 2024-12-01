@@ -6,14 +6,13 @@ import {ActivatedRoute} from "@angular/router";
 import {DatePipe, NgIf} from "@angular/common";
 
 @Component({
-  selector: 'app-pix-payment-confirmation',
-  standalone: true,
-  imports: [
-    DatePipe,
-    NgIf
-  ],
-  templateUrl: './pix-payment-confirmation.component.html',
-  styleUrl: './pix-payment-confirmation.component.css'
+    selector: 'app-pix-payment-confirmation',
+    imports: [
+        DatePipe,
+        NgIf
+    ],
+    templateUrl: './pix-payment-confirmation.component.html',
+    styleUrl: './pix-payment-confirmation.component.css'
 })
 export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   paymentId: string | null = null;

@@ -11,20 +11,19 @@ import {CartService} from "../../../service/cart.service";
 import {PersonalizationModalComponent} from "../personalization-modal/personalization-modal.component";
 
 @Component({
-  selector: 'app-customer-dashboard',
-  standalone: true,
-  imports: [
-    TopMenuComponent,
-    LeftMenuComponent,
-    NgForOf,
-    NgIf,
-    AsyncPipe,
-    RouterLink,
-    CurrencyPipe,
-    PersonalizationModalComponent
-  ],
-  templateUrl: './customer-dashboard.component.html',
-  styleUrl: './customer-dashboard.component.css'
+    selector: 'app-customer-dashboard',
+    imports: [
+        TopMenuComponent,
+        LeftMenuComponent,
+        NgForOf,
+        NgIf,
+        AsyncPipe,
+        RouterLink,
+        CurrencyPipe,
+        PersonalizationModalComponent
+    ],
+    templateUrl: './customer-dashboard.component.html',
+    styleUrl: './customer-dashboard.component.css'
 })
 export class CustomerDashboardComponent {
   currentBannerIndex: number = 0;

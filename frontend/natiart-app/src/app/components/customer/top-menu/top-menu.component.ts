@@ -5,15 +5,14 @@ import {Observable} from "rxjs";
 import {CartModalComponent} from "../cart-modal/cart-modal.component";
 
 @Component({
-  selector: 'app-top-menu',
-  standalone: true,
-  imports: [
-    NgIf,
-    CartModalComponent,
-    AsyncPipe
-  ],
-  templateUrl: './top-menu.component.html',
-  styleUrl: './top-menu.component.css'
+    selector: 'app-top-menu',
+    imports: [
+        NgIf,
+        CartModalComponent,
+        AsyncPipe
+    ],
+    templateUrl: './top-menu.component.html',
+    styleUrl: './top-menu.component.css'
 })
 export class TopMenuComponent implements OnInit {
   isLoggedIn = false;

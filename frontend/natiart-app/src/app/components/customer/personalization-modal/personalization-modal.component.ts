@@ -4,10 +4,9 @@ import {FormsModule} from '@angular/forms';
 import {Product} from '../../../models/product.model';
 
 @Component({
-  selector: 'app-personalization-modal',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  template: `
+    selector: 'app-personalization-modal',
+    imports: [CommonModule, FormsModule],
+    template: `
     <div *ngIf="show"
          class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
       <div class="bg-white p-5 rounded-lg shadow-xl max-w-md w-full">

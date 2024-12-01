@@ -7,17 +7,16 @@ import {Package} from "../../../models/package.model";
 import {AsyncPipe, NgClass, NgForOf, NgIf} from "@angular/common";
 
 @Component({
-  selector: 'app-admin-package-management',
-  standalone: true,
-  imports: [
-    AsyncPipe,
-    NgForOf,
-    NgIf,
-    ReactiveFormsModule,
-    NgClass
-  ],
-  templateUrl: './admin-package-management.component.html',
-  styleUrl: './admin-package-management.component.css'
+    selector: 'app-admin-package-management',
+    imports: [
+        AsyncPipe,
+        NgForOf,
+        NgIf,
+        ReactiveFormsModule,
+        NgClass
+    ],
+    templateUrl: './admin-package-management.component.html',
+    styleUrl: './admin-package-management.component.css'
 })
 export class PackageManagementComponent implements OnInit {
   alert$ = new BehaviorSubject<Alert | null>(null);

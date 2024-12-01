@@ -3,15 +3,14 @@ import {CurrencyPipe, NgForOf, NgIf} from "@angular/common";
 import {CartItem} from "../../../../models/CartItem.model";
 
 @Component({
-  selector: 'app-order-summary',
-  standalone: true,
-  imports: [
-    CurrencyPipe,
-    NgForOf,
-    NgIf
-  ],
-  templateUrl: './order-summary.component.html',
-  styleUrl: './order-summary.component.css'
+    selector: 'app-order-summary',
+    imports: [
+        CurrencyPipe,
+        NgForOf,
+        NgIf
+    ],
+    templateUrl: './order-summary.component.html',
+    styleUrl: './order-summary.component.css'
 })
 export class OrderSummaryComponent {
   @Input() cartItems: CartItem[] | null = null;

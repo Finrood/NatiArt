@@ -11,21 +11,20 @@ import {LeftMenuComponent} from "../left-menu/left-menu.component";
 import {CartService} from "../../../service/cart.service";
 
 @Component({
-  selector: 'app-product-detail',
-  standalone: true,
-  imports: [
-    AsyncPipe,
-    NgForOf,
-    FormsModule,
-    NgIf,
-    CurrencyPipe,
-    TopMenuComponent,
-    LeftMenuComponent,
-    KeyValuePipe,
-    NgStyle
-  ],
-  templateUrl: './product-detail.component.html',
-  styleUrls: ['./product-detail.component.css']
+    selector: 'app-product-detail',
+    imports: [
+        AsyncPipe,
+        NgForOf,
+        FormsModule,
+        NgIf,
+        CurrencyPipe,
+        TopMenuComponent,
+        LeftMenuComponent,
+        KeyValuePipe,
+        NgStyle
+    ],
+    templateUrl: './product-detail.component.html',
+    styleUrls: ['./product-detail.component.css']
 })
 export class ProductDetailComponent implements OnInit, OnDestroy {
   product$ = new BehaviorSubject<Product | null>(null);

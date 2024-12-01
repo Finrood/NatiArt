@@ -22,36 +22,35 @@ import {Profile} from "../../../models/profile.model";
 import {switchMap} from "rxjs/operators";
 
 @Component({
-  selector: 'app-checkout',
-  standalone: true,
-  imports: [
-    NgIf,
-    AsyncPipe,
-    RouterLink,
-    ReactiveFormsModule,
-    FormsModule,
-    OrderSummaryComponent,
-    CheckoutStepperComponent,
-    UserInfoStepComponent,
-    ShippingInfoStepComponent,
-    PaymentInfoStepComponent
-  ],
-  animations: [
-    trigger('fadeIn', [
-      transition(':enter', [
-        style({opacity: 0}),
-        animate('300ms', style({opacity: 1})),
-      ]),
-    ]),
-    trigger('slideInRight', [
-      transition(':enter', [
-        style({transform: 'translateX(100%)', opacity: 0}),
-        animate('300ms', style({transform: 'translateX(0)', opacity: 1})),
-      ]),
-    ]),
-  ],
-  templateUrl: './checkout.component.html',
-  styleUrl: './checkout.component.css'
+    selector: 'app-checkout',
+    imports: [
+        NgIf,
+        AsyncPipe,
+        RouterLink,
+        ReactiveFormsModule,
+        FormsModule,
+        OrderSummaryComponent,
+        CheckoutStepperComponent,
+        UserInfoStepComponent,
+        ShippingInfoStepComponent,
+        PaymentInfoStepComponent
+    ],
+    animations: [
+        trigger('fadeIn', [
+            transition(':enter', [
+                style({ opacity: 0 }),
+                animate('300ms', style({ opacity: 1 })),
+            ]),
+        ]),
+        trigger('slideInRight', [
+            transition(':enter', [
+                style({ transform: 'translateX(100%)', opacity: 0 }),
+                animate('300ms', style({ transform: 'translateX(0)', opacity: 1 })),
+            ]),
+        ]),
+    ],
+    templateUrl: './checkout.component.html',
+    styleUrl: './checkout.component.css'
 })
 export class CheckoutComponent implements OnInit {
   checkoutForm: FormGroup;

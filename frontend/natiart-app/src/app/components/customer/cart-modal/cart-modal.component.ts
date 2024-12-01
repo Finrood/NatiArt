@@ -9,17 +9,16 @@ import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
 import {RouterLink} from "@angular/router";
 
 @Component({
-  selector: 'app-cart-modal',
-  standalone: true,
-  imports: [
-    AsyncPipe,
-    CurrencyPipe,
-    NgIf,
-    NgForOf,
-    FormsModule,
-    RouterLink
-  ],
-  templateUrl: './cart-modal.component.html'
+    selector: 'app-cart-modal',
+    imports: [
+        AsyncPipe,
+        CurrencyPipe,
+        NgIf,
+        NgForOf,
+        FormsModule,
+        RouterLink
+    ],
+    templateUrl: './cart-modal.component.html'
 })
 export class CartModalComponent implements OnInit, OnDestroy {
   cartItems$: Observable<CartItem[]>;

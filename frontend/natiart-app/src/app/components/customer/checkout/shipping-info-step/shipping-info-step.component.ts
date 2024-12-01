@@ -7,18 +7,17 @@ import {finalize} from "rxjs/operators";
 import {SignupService, ViaCEPResponse} from "../../../../service/signup.service";
 
 @Component({
-  selector: 'app-shipping-info-step',
-  standalone: true,
-  imports: [
-    CepFormatDirective,
-    FormsModule,
-    LoadingSpinnerComponent,
-    NgIf,
-    ReactiveFormsModule,
-    NgClass
-  ],
-  templateUrl: './shipping-info-step.component.html',
-  styleUrl: './shipping-info-step.component.css'
+    selector: 'app-shipping-info-step',
+    imports: [
+        CepFormatDirective,
+        FormsModule,
+        LoadingSpinnerComponent,
+        NgIf,
+        ReactiveFormsModule,
+        NgClass
+    ],
+    templateUrl: './shipping-info-step.component.html',
+    styleUrl: './shipping-info-step.component.css'
 })
 export class ShippingInfoStepComponent {
   @Input() checkoutForm!: FormGroup;

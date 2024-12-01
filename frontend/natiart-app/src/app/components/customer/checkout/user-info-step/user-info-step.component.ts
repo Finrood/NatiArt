@@ -3,16 +3,15 @@ import {NgClass, NgForOf, NgIf} from "@angular/common";
 import {FormGroup, ReactiveFormsModule} from "@angular/forms";
 
 @Component({
-  selector: 'app-user-info-step',
-  standalone: true,
-  imports: [
-    NgIf,
-    ReactiveFormsModule,
-    NgClass,
-    NgForOf
-  ],
-  templateUrl: './user-info-step.component.html',
-  styleUrls: ['./user-info-step.component.css']  // Fixed here
+    selector: 'app-user-info-step',
+    imports: [
+        NgIf,
+        ReactiveFormsModule,
+        NgClass,
+        NgForOf
+    ],
+    templateUrl: './user-info-step.component.html',
+    styleUrls: ['./user-info-step.component.css'] // Fixed here
 })
 export class UserInfoStepComponent {
   @Input() checkoutForm!: FormGroup;

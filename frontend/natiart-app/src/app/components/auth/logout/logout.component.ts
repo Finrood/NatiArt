@@ -4,11 +4,10 @@ import {Router} from "@angular/router";
 import {AuthenticationService} from "../../../service/authentication.service";
 
 @Component({
-  selector: 'app-logout',
-  standalone: true,
-  imports: [],
-  templateUrl: './logout.component.html',
-  styleUrl: './logout.component.css'
+    selector: 'app-logout',
+    imports: [],
+    templateUrl: './logout.component.html',
+    styleUrl: './logout.component.css'
 })
 export class LogoutComponent implements OnInit {
   constructor(private http: HttpClient, private router: Router, private authenticationService: AuthenticationService) {

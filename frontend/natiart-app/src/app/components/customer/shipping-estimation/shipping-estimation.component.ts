@@ -24,12 +24,11 @@ interface ShippingState {
 }
 
 @Component({
-  selector: 'app-shipping-estimation',
-  standalone: true,
-  imports: [AsyncPipe, NgIf, ReactiveFormsModule, CepFormatDirective, NgSwitchCase, NgSwitch, LoadingSpinnerComponent],
-  templateUrl: './shipping-estimation.component.html',
-  styleUrls: ['./shipping-estimation.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'app-shipping-estimation',
+    imports: [AsyncPipe, NgIf, ReactiveFormsModule, CepFormatDirective, NgSwitchCase, NgSwitch, LoadingSpinnerComponent],
+    templateUrl: './shipping-estimation.component.html',
+    styleUrls: ['./shipping-estimation.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ShippingEstimationComponent implements OnInit, OnDestroy {
   shippingForm: FormGroup;

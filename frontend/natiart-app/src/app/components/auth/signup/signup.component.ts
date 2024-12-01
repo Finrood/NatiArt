@@ -13,32 +13,31 @@ import {LoadingSpinnerComponent} from "../../shared/loading-spinner/loading-spin
 import {CpfFormatDirectiveDirective} from "./cpf-format-directive.directive";
 
 @Component({
-  selector: 'app-signup',
-  standalone: true,
-  templateUrl: './signup.component.html',
-  styleUrls: ['./signup.component.css'],
-  animations: [
-    trigger('fadeIn', [
-      transition(':enter', [
-        style({opacity: 0}),
-        animate('300ms', style({opacity: 1})),
-      ]),
-    ]),
-    trigger('slideInRight', [
-      transition(':enter', [
-        style({transform: 'translateX(100%)', opacity: 0}),
-        animate('300ms', style({transform: 'translateX(0)', opacity: 1})),
-      ]),
-    ]),
-  ],
-  imports: [
-    NgClass,
-    ReactiveFormsModule,
-    NgIf,
-    CepFormatDirective,
-    LoadingSpinnerComponent,
-    CpfFormatDirectiveDirective
-  ],
+    selector: 'app-signup',
+    templateUrl: './signup.component.html',
+    styleUrls: ['./signup.component.css'],
+    animations: [
+        trigger('fadeIn', [
+            transition(':enter', [
+                style({ opacity: 0 }),
+                animate('300ms', style({ opacity: 1 })),
+            ]),
+        ]),
+        trigger('slideInRight', [
+            transition(':enter', [
+                style({ transform: 'translateX(100%)', opacity: 0 }),
+                animate('300ms', style({ transform: 'translateX(0)', opacity: 1 })),
+            ]),
+        ]),
+    ],
+    imports: [
+        NgClass,
+        ReactiveFormsModule,
+        NgIf,
+        CepFormatDirective,
+        LoadingSpinnerComponent,
+        CpfFormatDirectiveDirective
+    ]
 })
 export class SignupComponent implements OnInit {
   signupForm: FormGroup;

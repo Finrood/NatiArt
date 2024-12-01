@@ -4,11 +4,10 @@ import {Category} from '../../../models/category.model';
 import {CategoryService} from '../../../service/category.service';
 
 @Component({
-  selector: 'app-left-menu',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './left-menu.component.html',
-  styles: [] // Empty styles array as we're using only Tailwind classes
+    selector: 'app-left-menu',
+    imports: [CommonModule],
+    templateUrl: './left-menu.component.html',
+    styles: [] // Empty styles array as we're using only Tailwind classes
 })
 export class LeftMenuComponent implements OnInit {
   categories: Category[] = [];

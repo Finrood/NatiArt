@@ -20,11 +20,10 @@ interface ImagePreview {
 }
 
 @Component({
-  selector: 'app-admin-product-management',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DragDropModule],
-  templateUrl: './admin-product-management.component.html',
-  styleUrls: ['./admin-product-management.component.css']
+    selector: 'app-admin-product-management',
+    imports: [CommonModule, ReactiveFormsModule, DragDropModule],
+    templateUrl: './admin-product-management.component.html',
+    styleUrls: ['./admin-product-management.component.css']
 })
 export class ProductManagementComponent implements OnInit {
   alert$ = new BehaviorSubject<Alert | null>(null);
