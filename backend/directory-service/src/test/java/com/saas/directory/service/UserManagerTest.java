@@ -20,10 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import javax.management.relation.RoleNotFoundException;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -68,7 +65,7 @@ public class UserManagerTest {
         final User user = new User("new_username", "password");
         when(userRepository.existsUserByUsernameIgnoreCase("new_username")).thenReturn(false);
         when(userRepository.save(any())).thenReturn(user);
-        final Profile profile = new Profile("John", "Doe", "00000000011", "USA", "USA", "Los Angeles", "90001", "123 Main St", user)
+        final Profile profile = new Profile("John", "Doe", "00000000011", "USA", "USA", "Los Angeles", "Campinas", "90001", "123 Main St", user)
                 .setPhone("+1234567890")
                 .setComplement("Apt 101");
         when(profileManager.createProfile(any(User.class), any(ProfileDto.class))).thenReturn(profile);
@@ -122,7 +119,7 @@ public class UserManagerTest {
         final User user = new User("new_username", "password");
         when(userRepository.existsUserByUsernameIgnoreCase("new_username")).thenReturn(false);
         when(userRepository.save(any())).thenReturn(user);
-        final Profile profile = new Profile("John", "Doe", "00000000011", "USA", "USA", "Los Angeles", "90001", "123 Main St", user)
+        final Profile profile = new Profile("John", "Doe", "00000000011", "USA", "USA", "Los Angeles", "Campinas", "90001", "123 Main St", user)
                 .setPhone("+1234567890")
                 .setComplement("Apt 101");
         when(profileManager.createProfile(any(User.class), any(ProfileDto.class))).thenReturn(profile);
@@ -216,7 +213,7 @@ public class UserManagerTest {
         final User user = new User("new_username", "password");
         when(userRepository.existsUserByUsernameIgnoreCase("new_username")).thenReturn(false);
         when(userRepository.save(any())).thenReturn(user);
-        final Profile profile = new Profile("", "", "", "", "", "", "", "", user)
+        final Profile profile = new Profile("", "", "", "", "", "", "", "", "", user)
                 .setPhone("")
                 .setComplement("");
         when(profileManager.createProfile(any(User.class), any(ProfileDto.class))).thenReturn(profile);

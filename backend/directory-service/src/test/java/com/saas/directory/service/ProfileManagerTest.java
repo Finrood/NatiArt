@@ -34,12 +34,13 @@ public class ProfileManagerTest {
                 .setCountry("USA")
                 .setState("California")
                 .setCity("Los Angeles")
+                .setNeighborhood("Campinas")
                 .setZipCode("12345")
                 .setStreet("Main Street")
                 .setComplement("Apartment 123");
 
         // Mock the repository behavior
-        final Profile expectedProfile = new Profile("John", "Doe", "00000000011", "USA", "California", "Los Angeles", "12345", "Main Street", user);
+        final Profile expectedProfile = new Profile("John", "Doe", "00000000011", "USA", "California", "Los Angeles", "Campinas", "12345", "Main Street", user);
         when(profileRepository.save(any(Profile.class))).thenReturn(expectedProfile);
 
         // Act
