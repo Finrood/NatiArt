@@ -50,4 +50,4 @@ INSERT INTO external_user(id, user_id, payment_processor, external_id)
 VALUES ('889e4567-e89b-12d3-a456-426614174756',
         '789e4567-e89b-12d3-a456-426614174000',
         'ASAAS',
-        'cus_000006222889');
+        'cus_000006360414');
