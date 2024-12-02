@@ -12,6 +12,7 @@ import com.portcelana.natiart.dto.payment.asaas.AsaasPaymentPixQrCodeResponse;
 import com.portcelana.natiart.dto.payment.asaas.AsaasPaymentStatusResponse;
 import com.portcelana.natiart.dto.payment.helper.PaymentMethod;
 import com.portcelana.natiart.dto.payment.helper.PaymentStatus;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,9 @@ public class AsaasPaymentService implements PaymentService {
     private final String asaasPaymentUrl = "https://sandbox.asaas.com/api/v3/payments";
 
     private final RestTemplate restTemplate;
+
+    @Value("${natiart.payment.asaas.apikey}")
+    private String asaasApiKey;
 
     public AsaasPaymentService(RestTemplateBuilder restTemplateBuilder) {
         this.restTemplate = restTemplateBuilder.build();
@@ -123,7 +127,7 @@ public class AsaasPaymentService implements PaymentService {
         final HttpHeaders headers = new HttpHeaders();
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("access_token", "$aact_YTU5YTE0M2M2N2I4MTliNzk0YTI5N2U5MzdjNWZmNDQ6OjAwMDAwMDAwMDAwMDAwODkyMTA6OiRhYWNoXzNkMjk5MDNmLTc4MjMtNGJjNy1hMjQyLWEzNzBmNDQyOTE4NA==");
+        headers.set("access_token", asaasApiKey);
 
         return headers;
     }

@@ -3,6 +3,7 @@ package com.saas.directory.service;
 import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationRequest;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -20,6 +21,9 @@ public class AsaasUserManager {
     private final String asaasCustomerUrl = "https://sandbox.asaas.com/api/v3/customers";
 
     private RestTemplate restTemplate;
+
+    @Value("${natiart.payment.asaas.apikey}")
+    private String asaasApiKey;
 
     public AsaasUserManager(RestTemplateBuilder restTemplateBuilder) {
         this.restTemplate = restTemplateBuilder.build();
@@ -50,7 +54,7 @@ public class AsaasUserManager {
         final HttpHeaders headers = new HttpHeaders();
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("access_token", "$aact_YTU5YTE0M2M2N2I4MTliNzk0YTI5N2U5MzdjNWZmNDQ6OjAwMDAwMDAwMDAwMDAwODkyMTA6OiRhYWNoXzNkMjk5MDNmLTc4MjMtNGJjNy1hMjQyLWEzNzBmNDQyOTE4NA==");
+        headers.set("access_token", asaasApiKey);
 
         return headers;
     }
