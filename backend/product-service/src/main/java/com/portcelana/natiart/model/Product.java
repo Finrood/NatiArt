@@ -1,6 +1,7 @@
 package com.portcelana.natiart.model;
 
 import com.portcelana.natiart.model.support.PersonalizationOption;
+import com.portcelana.natiart.support.SetPersonalizationOptionJpaConverter;
 import com.portcelana.natiart.support.SetStringJpaConverter;
 import jakarta.persistence.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -45,7 +46,7 @@ public class Product {
     private Boolean hasFixedGoldenBorder;  // true = fixed with border, false = fixed without border, null = can be personalized
 
     @Column(length = 1000)
-    @Convert(converter = SetStringJpaConverter.class)
+    @Convert(converter = SetPersonalizationOptionJpaConverter.class)
     private Set<PersonalizationOption> availablePersonalizations = new HashSet<>();
 
     @Column(length = 1000)
