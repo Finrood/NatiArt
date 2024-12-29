@@ -5,20 +5,14 @@ import com.portcelana.natiart.helper.TargetUser;
 import com.portcelana.natiart.service.ImageConversionService;
 import com.portcelana.natiart.service.ProductManager;
 import com.portcelana.natiart.storage.InputFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.Assert;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -29,6 +23,8 @@ import java.util.List;
 
 @RestController
 public class ProductController {
+    public static Logger LOGGER = LoggerFactory.getLogger(ProductController.class);
+
     final private ProductManager productManager;
     private final ImageConversionService imageConversionService;
 
@@ -40,6 +36,8 @@ public class ProductController {
 
     @GetMapping("/products/{productId}")
     public ProductDto getProduct(@PathVariable String productId) {
+        LOGGER.info("Getting product with id [{}]", productId);
+
         return ProductDto.from(productManager.getProductOrDie(productId));
     }
 
@@ -53,6 +51,8 @@ public class ProductController {
 
     @GetMapping("/products/new")
     public List<ProductDto> getNewProducts() {
+        LOGGER.info("Getting new products");
+
         return productManager.getProducts().stream()
                 .map(ProductDto::from)
                 .sorted(Comparator.comparing(ProductDto::getLabel))
@@ -61,6 +61,8 @@ public class ProductController {
 
     @GetMapping("/products/featured")
     public List<ProductDto> getFeaturedProducts() {
+        LOGGER.info("Getting featured products");
+
         return productManager.getProducts().stream()
                 .map(ProductDto::from)
                 .sorted(Comparator.comparing(ProductDto::getLabel))
@@ -70,6 +72,10 @@ public class ProductController {
     @PostMapping(value = "/products/create")
     public ProductDto createProduct(@RequestPart("productDto") ProductDto productDto,
                                     @RequestPart(value = "newImages", required = false) List<MultipartFile> newImages) throws IOException {
+        LOGGER.info("Creating new product with label [{}] description [{}]",
+                productDto.getLabel(),
+                productDto.getDescription());
+
         final List<InputFile> imagesInput = processImages(newImages);
 
         return ProductDto.from(productManager.createProduct(productDto, imagesInput));
@@ -98,6 +104,8 @@ public class ProductController {
 
     @GetMapping("images")
     public ResponseEntity<Resource> getProductImage(@RequestParam String path) throws URISyntaxException, IOException {
+        LOGGER.info("Getting image with path [{}]", path);
+
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("image/webp"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"product-image.webp\"")
