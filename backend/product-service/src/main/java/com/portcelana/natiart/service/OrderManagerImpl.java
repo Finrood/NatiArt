@@ -44,7 +44,7 @@ public class OrderManagerImpl implements OrderManager {
         final BigDecimal totalItemsAmount = orderDto.getItems().stream()
                 .peek(item -> {
                     final Product product = productManager.decreaseProductStockQuantityBy(item.getProductId(), item.getQuantity());
-                    item.setPrice(product.getMarkedPrice());
+                    item.setPrice(product.getMarkedPrice().orElseGet(product::getOriginalPrice));
                 })
                 .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);

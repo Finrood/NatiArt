@@ -1,21 +1,21 @@
 package com.portcelana.natiart.dto.payment.asaas;
 
 public class AsaasPaymentStatusResponse {
-    private String status;
+    private AsaasPaymentStatus status;
 
     AsaasPaymentStatusResponse() {
 
     }
     
-    AsaasPaymentStatusResponse(String status) {
+    AsaasPaymentStatusResponse(AsaasPaymentStatus status) {
         this.status = status;
     }
 
-    public String getStatus() {
+    public AsaasPaymentStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(AsaasPaymentStatus status) {
         this.status = status;
     }
 }

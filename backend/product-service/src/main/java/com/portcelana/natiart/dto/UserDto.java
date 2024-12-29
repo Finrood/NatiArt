@@ -40,7 +40,8 @@ public class UserDto {
         return externalId;
     }
 
-    public void setExternalId(String externalId) {
+    public UserDto setExternalId(String externalId) {
         this.externalId = externalId;
+        return this;
     }
 }

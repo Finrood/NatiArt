@@ -1,7 +1,9 @@
 package com.portcelana.natiart.dto;
 
+import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.model.Product;
+import com.portcelana.natiart.model.support.PersonalizationOption;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -18,9 +20,8 @@ public class ProductDto {
     private int stockQuantity;
     private String categoryId;
     private String packageId;
-    private Boolean hasGold;
-    private boolean canPersonaliseGold;
-    private boolean canPersonaliseImage;
+    private Boolean hasFixedGoldenBorder;
+    private Set<PersonalizationOption> availablePersonalizations = new HashSet<>();
     private Set<String> tags = new HashSet<>();
     private List<String> images = new ArrayList<>();
     private boolean newProduct;
@@ -36,14 +37,20 @@ public class ProductDto {
         if (product == null) return null;
         return new ProductDto(product.getLabel(), product.getOriginalPrice())
                 .setId(product.getId())
-                .setDescription(product.getDescription())
-                .setMarkedPrice(product.getMarkedPrice())
+                .setDescription(product.getDescription()
+                        .orElse(null))
+                .setMarkedPrice(product.getMarkedPrice()
+                        .orElseGet(product::getOriginalPrice))
                 .setStockQuantity(product.getStockQuantity())
-                .setCategory(product.getCategory().getId())
-                .setPackageId(product.getPackaging().map(Package::getId).orElse(null))
-                .setCanPersonaliseGold(product.isCanPersonaliseGold())
-                .setHasGold(product.getHasGold().orElse(null))
-                .setCanPersonaliseImage(product.isCanPersonaliseImage())
+                .setCategoryId(product.getCategory()
+                        .map(Category::getId)
+                        .orElse(null))
+                .setPackageId(product.getPackaging()
+                        .map(Package::getId)
+                        .orElse(null))
+                .setHasFixedGoldenBorder(product.getHasFixedGoldenBorder()
+                        .orElse(null))
+                .setAvailablePersonalizations(product.getAvailablePersonalizations())
                 .setTags(product.getTags())
                 .setImages(product.getImages())
                 .setNewProduct(product.isNewProduct())
@@ -105,11 +112,12 @@ public class ProductDto {
         return this;
     }
 
+
     public String getCategoryId() {
         return categoryId;
     }
 
-    public ProductDto setCategory(String categoryId) {
+    public ProductDto setCategoryId(String categoryId) {
         this.categoryId = categoryId;
         return this;
     }
@@ -123,30 +131,21 @@ public class ProductDto {
         return this;
     }
 
-    public Boolean getHasGold() {
-        return hasGold;
+    public Boolean getHasFixedGoldenBorder() {
+        return hasFixedGoldenBorder;
     }
 
-    public ProductDto setHasGold(Boolean hasGold) {
-        this.hasGold = hasGold;
+    public ProductDto setHasFixedGoldenBorder(Boolean hasFixedGoldenBorder) {
+        this.hasFixedGoldenBorder = hasFixedGoldenBorder;
         return this;
     }
 
-    public boolean isCanPersonaliseGold() {
-        return canPersonaliseGold;
+    public Set<PersonalizationOption> getAvailablePersonalizations() {
+        return availablePersonalizations;
     }
 
-    public ProductDto setCanPersonaliseGold(boolean canPersonaliseGold) {
-        this.canPersonaliseGold = canPersonaliseGold;
-        return this;
-    }
-
-    public boolean isCanPersonaliseImage() {
-        return canPersonaliseImage;
-    }
-
-    public ProductDto setCanPersonaliseImage(boolean canPersonaliseImage) {
-        this.canPersonaliseImage = canPersonaliseImage;
+    public ProductDto setAvailablePersonalizations(Set<PersonalizationOption> availablePersonalizations) {
+        this.availablePersonalizations = availablePersonalizations;
         return this;
     }
 

@@ -1,5 +1,6 @@
 package com.portcelana.natiart.model;
 
+import com.portcelana.natiart.model.support.PersonalizationOption;
 import com.portcelana.natiart.support.SetStringJpaConverter;
 import jakarta.persistence.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -21,6 +22,7 @@ public class Product {
 
     @Column(nullable = false)
     private String label;
+
     private String description;
 
     @Column(precision = 10, scale = 2, nullable = false)
@@ -29,6 +31,7 @@ public class Product {
     @Column(precision = 10, scale = 2)
     private BigDecimal markedPrice;
 
+    @Column(nullable = false)
     private int stockQuantity;
 
     @ManyToOne(optional = false, fetch = FetchType.EAGER)
@@ -39,11 +42,11 @@ public class Product {
     @JoinColumn(name = "package_id", referencedColumnName = "id")
     private Package packaging;
 
-    private Boolean hasGold;
-    @Column(nullable = false)
-    private boolean canPersonaliseGold;
-    @Column(nullable = false)
-    private boolean canPersonaliseImage;
+    private Boolean hasFixedGoldenBorder;  // true = fixed with border, false = fixed without border, null = can be personalized
+
+    @Column(length = 1000)
+    @Convert(converter = SetStringJpaConverter.class)
+    private Set<PersonalizationOption> availablePersonalizations = new HashSet<>();
 
     @Column(length = 1000)
     @Convert(converter = SetStringJpaConverter.class)
@@ -77,8 +80,6 @@ public class Product {
         this.label = label;
         this.originalPrice = originalPrice;
         this.active = true;
-        this.canPersonaliseGold = false;
-        this.canPersonaliseImage = false;
     }
 
     public String getId() {
@@ -94,8 +95,8 @@ public class Product {
         return this;
     }
 
-    public String getDescription() {
-        return description;
+    public Optional<String> getDescription() {
+        return Optional.ofNullable(description);
     }
 
     public Product setDescription(String description) {
@@ -112,8 +113,8 @@ public class Product {
         return this;
     }
 
-    public BigDecimal getMarkedPrice() {
-        return markedPrice;
+    public Optional<BigDecimal> getMarkedPrice() {
+        return Optional.ofNullable(markedPrice);
     }
 
     public Product setMarkedPrice(BigDecimal markedPrice) {
@@ -130,8 +131,8 @@ public class Product {
         return this;
     }
 
-    public Category getCategory() {
-        return category;
+    public Optional<Category> getCategory() {
+        return Optional.ofNullable(category);
     }
 
     public Product setCategory(Category category) {
@@ -148,30 +149,21 @@ public class Product {
         return this;
     }
 
-    public Optional<Boolean> getHasGold() {
-        return Optional.ofNullable(hasGold);
+    public Optional<Boolean> getHasFixedGoldenBorder() {
+        return Optional.ofNullable(hasFixedGoldenBorder);
     }
 
-    public Product setHasGold(Boolean hasGold) {
-        this.hasGold = hasGold;
+    public Product setHasFixedGoldenBorder(Boolean hasFixedGoldenBorder) {
+        this.hasFixedGoldenBorder = hasFixedGoldenBorder;
         return this;
     }
 
-    public boolean isCanPersonaliseGold() {
-        return canPersonaliseGold;
+    public Set<PersonalizationOption> getAvailablePersonalizations() {
+        return availablePersonalizations;
     }
 
-    public Product setCanPersonaliseGold(boolean canPersonaliseGold) {
-        this.canPersonaliseGold = canPersonaliseGold;
-        return this;
-    }
-
-    public boolean isCanPersonaliseImage() {
-        return canPersonaliseImage;
-    }
-
-    public Product setCanPersonaliseImage(boolean canPersonaliseImage) {
-        this.canPersonaliseImage = canPersonaliseImage;
+    public Product setAvailablePersonalizations(Set<PersonalizationOption> availablePersonalizations) {
+        this.availablePersonalizations = availablePersonalizations;
         return this;
     }
 

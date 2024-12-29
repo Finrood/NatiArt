@@ -9,7 +9,7 @@ import java.util.UUID;
 @Entity
 public class CustomerOrderItem {
     @Id
-    private String id;
+    private final String id;
 
     @ManyToOne(optional = false, fetch = FetchType.EAGER)
     @JoinColumn(name = "order_id", referencedColumnName = "id", nullable = false)
@@ -18,6 +18,9 @@ public class CustomerOrderItem {
     @ManyToOne(optional = false, fetch = FetchType.EAGER)
     @JoinColumn(name = "product_id", referencedColumnName = "id", nullable = false)
     private Product product;
+
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    private Personalization personalization;
 
     @Column(nullable = false)
     private Integer quantity;
@@ -48,6 +51,15 @@ public class CustomerOrderItem {
 
     public CustomerOrderItem setProduct(Product product) {
         this.product = product;
+        return this;
+    }
+
+    public Personalization getPersonalization() {
+        return personalization;
+    }
+
+    public CustomerOrderItem setPersonalization(Personalization personalization) {
+        this.personalization = personalization;
         return this;
     }
 

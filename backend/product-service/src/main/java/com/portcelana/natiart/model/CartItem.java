@@ -10,7 +10,7 @@ import java.util.UUID;
 @Entity
 public class CartItem {
     @Id
-    private String id;
+    private final String id;
 
     @Column(nullable = false)
     private String username;
@@ -19,11 +19,15 @@ public class CartItem {
     @JoinColumn(name = "product_id", referencedColumnName = "id")
     private Product product;
 
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    private Personalization personalization;
+
     @Column(nullable = false)
     private int quantity;
 
     protected CartItem() {
         // FOR JPA
+        this.id = UUID.randomUUID().toString();
     }
 
     public CartItem(String username, Product product) {
@@ -55,8 +59,13 @@ public class CartItem {
         return this;
     }
 
-    public void setId(String id) {
-        this.id = id;
+    public Personalization getPersonalization() {
+        return personalization;
+    }
+
+    public CartItem setPersonalization(Personalization personalization) {
+        this.personalization = personalization;
+        return this;
     }
 
     public int getQuantity() {

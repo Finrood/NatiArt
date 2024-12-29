@@ -6,10 +6,7 @@ import com.portcelana.natiart.dto.payment.PaymentCreationRequest;
 import com.portcelana.natiart.dto.payment.PaymentCreationResponse;
 import com.portcelana.natiart.dto.payment.PaymentPixQrCodeResponse;
 import com.portcelana.natiart.dto.payment.PaymentStatusResponse;
-import com.portcelana.natiart.dto.payment.asaas.AsaasPaymentCreationRequest;
-import com.portcelana.natiart.dto.payment.asaas.AsaasPaymentCreationResponse;
-import com.portcelana.natiart.dto.payment.asaas.AsaasPaymentPixQrCodeResponse;
-import com.portcelana.natiart.dto.payment.asaas.AsaasPaymentStatusResponse;
+import com.portcelana.natiart.dto.payment.asaas.*;
 import com.portcelana.natiart.dto.payment.helper.PaymentMethod;
 import com.portcelana.natiart.dto.payment.helper.PaymentStatus;
 import org.springframework.beans.factory.annotation.Value;
@@ -111,7 +108,7 @@ public class AsaasPaymentService implements PaymentService {
             return asaasPaymentStatusResponse
                     .map(responseBody -> new PaymentStatusResponse(
                             paymentId,
-                            PaymentStatus.valueOf(responseBody.getStatus())
+                            convertAsaasPaymentStatusToGeneralPaymentStatus(responseBody.getStatus())
                     ))
                     .orElseThrow(() -> new IllegalArgumentException("Received a null response body from " + asaasPaymentUrl));
         } else if (response.getStatusCode() == HttpStatus.UNAUTHORIZED || response.getStatusCode() == HttpStatus.FORBIDDEN) {
@@ -130,5 +127,17 @@ public class AsaasPaymentService implements PaymentService {
         headers.set("access_token", asaasApiKey);
 
         return headers;
+    }
+
+    private PaymentStatus convertAsaasPaymentStatusToGeneralPaymentStatus(AsaasPaymentStatus asaasPaymentStatus) {
+        switch (asaasPaymentStatus) {
+            case PENDING -> {
+                return PaymentStatus.PENDING;
+            }
+            case RECEIVED, CONFIRMED -> {
+                return PaymentStatus.COMPLETED;
+            }
+            default -> throw new IllegalArgumentException("Unexpected AsaasPaymentStatus: " + asaasPaymentStatus);
+        }
     }
 }
