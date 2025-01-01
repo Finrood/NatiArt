@@ -1,3 +1,5 @@
+import {PersonalizationOption} from "./support/personalization-option";
+
 export interface Product {
   id?: string;
   label: string;
@@ -6,10 +8,10 @@ export interface Product {
   markedPrice: number;
   stockQuantity: number;
   categoryId: string;
-  hasGold?: boolean;
-  canPersonaliseGold: boolean;
-  canPersonaliseImage: boolean;
-  tags?: Set<string>;
+  packageId?: string;
+  hasFixedGoldenBorder?: boolean;
+  availablePersonalizations: Set<PersonalizationOption>;
+  tags: Set<string>;
   images: string[];
   active?: boolean;
 }

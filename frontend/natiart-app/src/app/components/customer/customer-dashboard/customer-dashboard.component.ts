@@ -9,6 +9,7 @@ import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
 import {RouterLink} from "@angular/router";
 import {CartService} from "../../../service/cart.service";
 import {PersonalizationModalComponent} from "../personalization-modal/personalization-modal.component";
+import {PersonalizationOption} from "../../../models/support/personalization-option";
 
 @Component({
     selector: 'app-customer-dashboard',
@@ -82,7 +83,7 @@ export class CustomerDashboardComponent {
   }
 
   addToCart(product: Product) {
-    if (product.canPersonaliseGold || product.canPersonaliseImage) {
+    if (product.availablePersonalizations.has(PersonalizationOption.GOLDEN_BORDER) || product.availablePersonalizations.has(PersonalizationOption.CUSTOM_IMAGE)) {
       this.openPersonalizationModal(product);
     } else {
       this.cartService.addToCart(product, 1);

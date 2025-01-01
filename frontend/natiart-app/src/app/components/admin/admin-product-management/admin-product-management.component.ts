@@ -11,6 +11,7 @@ import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
 import {CdkDragDrop, DragDropModule, moveItemInArray} from '@angular/cdk/drag-drop';
 import heic2any from 'heic2any';
 import {PackageService} from "../../../service/package.service";
+import {PersonalizationOption} from "../../../models/support/personalization-option";
 
 interface ImagePreview {
   url: string | SafeUrl;
@@ -46,6 +47,8 @@ export class ProductManagementComponent implements OnInit {
   private fb = inject(FormBuilder);
   private subscriptions: Subscription[] = [];
 
+  availablePersonalizationOptions = Object.values(PersonalizationOption);
+
   constructor() {
     this.productForm = this.fb.group({
       id: [''],
@@ -56,7 +59,7 @@ export class ProductManagementComponent implements OnInit {
       stockQuantity: [0, [Validators.required, Validators.min(0)]],
       categoryId: ['', Validators.required],
       packageId: [''],
-      hasGold: [''],
+      hasFixedGoldenBorder: [''],
       canPersonaliseGold: [false],
       canPersonaliseImage: [false],
       tags: [new Set<string>()],
@@ -394,5 +397,19 @@ export class ProductManagementComponent implements OnInit {
       this.products.next([...this.products.value]);
     });
     this.subscriptions.push(subscription);
+  }
+
+  // Helper method to map enum values to their corresponding label
+  getPersonalizationOptionLabel(option: string): string {
+    switch (option) {
+      case 'None':
+        return 'No personalization available';
+      case 'CUSTOM_IMAGE':
+        return 'The customer can personalize the image';
+      case 'GOLDEN_BORDER':
+        return 'The customer can choose if the borders are golden or not';
+      default:
+        return option;
+    }
   }
 }

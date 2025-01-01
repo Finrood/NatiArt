@@ -129,29 +129,21 @@
         <div class="mb-4">
           <label class="flex items-center space-x-2">
             <input class="form-checkbox h-5 w-5 text-primary focus:ring-primary focus:ring-opacity-50"
-                   formControlName="hasGold" id="hasGold" name="hasGold"
+                   formControlName="hasFixedGoldenBorder" id="hasFixedGoldenBorder" name="hasFixedGoldenBorder"
                    type="checkbox">
-            <span class="text-sm font-medium text-gray-700">Has gold</span>
+            <span class="text-sm font-medium text-gray-700">Has fixed golden borders</span>
           </label>
         </div>
 
-        <div class="mb-4">
+        <div class="mb-4" *ngFor="let option of availablePersonalizationOptions">
           <label class="flex items-center space-x-2">
             <input class="form-checkbox h-5 w-5 text-primary focus:ring-primary focus:ring-opacity-50"
-                   formControlName="canPersonaliseGold" id="canPersonaliseGold"
-                   name="canPersonaliseGold"
+                   [formControlName]="option" id="{{ option }}"
+                   [name]="option"
                    type="checkbox">
-            <span class="text-sm font-medium text-gray-700">Can choose if there is gold or not</span>
-          </label>
-        </div>
-
-        <div class="mb-4">
-          <label class="flex items-center space-x-2">
-            <input class="form-checkbox h-5 w-5 text-primary focus:ring-primary focus:ring-opacity-50"
-                   formControlName="canPersonaliseImage" id="canPersonaliseImage"
-                   name="canPersonaliseImage"
-                   type="checkbox">
-            <span class="text-sm font-medium text-gray-700">Can personalised the image</span>
+            <span class="text-sm font-medium text-gray-700">
+              {{ getPersonalizationOptionLabel(option) }}
+            </span>
           </label>
         </div>
 

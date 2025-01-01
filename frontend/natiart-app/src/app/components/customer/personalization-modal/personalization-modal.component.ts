@@ -2,6 +2,7 @@ import {Component, EventEmitter, Input, Output} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {Product} from '../../../models/product.model';
+import {PersonalizationOption} from "../../../models/support/personalization-option";
 
 @Component({
     selector: 'app-personalization-modal',
@@ -12,20 +13,6 @@ import {Product} from '../../../models/product.model';
       <div class="bg-white p-5 rounded-lg shadow-xl max-w-md w-full">
         <h2 class="text-xl font-bold mb-4">Personalize Your Product</h2>
         <p class="mb-4">{{ product?.label }}</p>
-        <div *ngIf="product?.canPersonaliseGold" class="mb-4">
-          <label class="inline-flex items-center">
-            <input type="checkbox" class="form-checkbox" [(ngModel)]="goldBorder">
-            <span class="ml-2">Add Gold Border</span>
-          </label>
-        </div>
-        <div *ngIf="product?.canPersonaliseImage" class="mb-4">
-          <label class="block mb-2">Custom Image</label>
-          <input type="file" (change)="onFileSelected($event)" accept="image/*"
-                 class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
-          <p *ngIf="customImage" class="mt-2 text-sm text-gray-600">
-            Selected file: {{ customImage.name }}
-          </p>
-        </div>
         <div class="flex justify-end space-x-2">
           <button (click)="onCancel()"
                   class="flex-1 py-2 px-4  rounded-md shadow-input text-sm font-medium bg-transparent text-primary border border-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -70,7 +57,7 @@ export class PersonalizationModalComponent {
   }
 
   isValid() {
-    if (this.product?.canPersonaliseImage) {
+    if (this.product?.availablePersonalizations.has(PersonalizationOption.CUSTOM_IMAGE)) {
       return this.customImage;
     } else {
       return true;
