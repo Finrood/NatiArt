@@ -20,7 +20,7 @@ import java.util.Optional;
 public class AsaasUserManager {
     private final String asaasCustomerUrl = "https://sandbox.asaas.com/api/v3/customers";
 
-    private RestTemplate restTemplate;
+    private final RestTemplate restTemplate;
 
     @Value("${natiart.payment.asaas.apikey}")
     private String asaasApiKey;
