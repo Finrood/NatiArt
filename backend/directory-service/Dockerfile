@@ -5,8 +5,8 @@ WORKDIR /app
 # Copy only necessary Gradle files (wrapper + build files)
 COPY backend/gradle gradle
 COPY backend/gradlew gradlew
-COPY backend/settings.gradle settings.gradle
-COPY backend/build.gradle build.gradle
+COPY backend/settings.gradle.kts settings.gradle.kts
+COPY backend/build.gradle.kts build.gradle.kts
 COPY backend/directory-service directory-service
 
 # Ensure gradlew is executable
