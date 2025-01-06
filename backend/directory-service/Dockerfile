@@ -14,7 +14,7 @@ RUN chmod +x gradlew
 
 # Run the build for the directory-service subproject, skipping tests
 WORKDIR /app/directory-service
-RUN ./gradlew build -x test && rm -rf ~/.gradle/caches
+RUN ../gradlew build -x test && rm -rf ~/.gradle/caches
 
 # Stage 2: Runtime
 FROM amazoncorretto:21-alpine
