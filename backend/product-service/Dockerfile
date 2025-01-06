@@ -21,7 +21,7 @@ FROM amazoncorretto:21-alpine
 WORKDIR /app
 
 # Copy the built JAR file from the build stage
-COPY --from=build /app/product-service/build/libs/*.jar /app/product-service.jar
+COPY --from=build /app/product-service/build/libs/*.jar /app/
 
 # Run the application
 ENTRYPOINT ["java", "-jar", "/app/product-service.jar"]
