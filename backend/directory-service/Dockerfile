@@ -1,22 +1,27 @@
-# Dockerfile for directory-service
-FROM gradle:jdk21 AS build
+# Stage 1: Build
+FROM gradle:8.12.0-jdk21-alpine AS build
 WORKDIR /app
-# Copy the entire backend directory
-COPY backend .
-# Change to the directory-service directory
-WORKDIR /app/directory-service
-# Run the build for the directory-service subproject
-RUN gradle build -x test
 
+# Copy only necessary Gradle files (wrapper + build files)
+COPY backend/gradle gradle
+COPY backend/gradlew gradlew
+COPY backend/settings.gradle settings.gradle
+COPY backend/build.gradle build.gradle
+COPY backend/directory-service directory-service
+
+# Ensure gradlew is executable
+RUN chmod +x gradlew
+
+# Run the build for the directory-service subproject, skipping tests
+WORKDIR /app/directory-service
+RUN ./gradlew build -x test && rm -rf ~/.gradle/caches
+
+# Stage 2: Runtime
 FROM amazoncorretto:21-alpine
-VOLUME /tmp
-# Create a directory for the JAR
-RUN mkdir -p /app
-# Copy the JAR file(s) to the /app directory
-COPY --from=build /app/directory-service/build/libs/*.jar /app/
-# Set the working directory
 WORKDIR /app
-# Use environment variable to specify the JAR file
-ENV JAR_FILE=directory-service.jar
-# Run the JAR file
-ENTRYPOINT ["sh", "-c", "java -jar ${JAR_FILE}"]
+
+# Copy the built JAR file from the build stage
+COPY --from=build /app/directory-service/build/libs/*.jar /app/directory-service.jar
+
+# Run the application
+ENTRYPOINT ["java", "-jar", "/app/directory-service.jar"]
