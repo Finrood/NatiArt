@@ -1,4 +1,27 @@
-/* You can add global styles to this file, and also import other style files */
+/* You can add global styles to this file and also import other style files */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --primary: 212 165 154;
+  --primary-light: 227 193 184;
+  --primary-lighter: 249 235 224;
+  --primary-dark: 200 159 148;
+  --primary-contrast: 0 0 0;
+
+  --secondary: 74 74 74;
+  --secondary-light: 136 136 136;
+  --secondary-dark: 34 34 34;
+  --secondary-contrast: 255 255 255;
+
+  --background: 253 245 230;
+  --background-variant: 255 251 245;
+
+  --surface: 255 255 255;
+  --surface-variant: 245 245 245;
+  --on-surface: 23 23 23;
+
+  --accent: 59 130 246;
+  --accent-contrast: 255 255 255;
+}

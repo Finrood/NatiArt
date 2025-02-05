@@ -1,0 +1,35 @@
+<div class="min-h-screen bg-gradient-to-br from-background to-background-variant flex items-center justify-center px-4 sm:px-6 lg:px-8">
+  <div class="w-full max-w-2xl space-y-8">
+    <header class="text-center space-y-4">
+      <h1 class="text-5xl font-display text-primary-contrast">Join Porcelain Elegance</h1>
+      <p class="text-surface-contrast/85 text-lg font-serif">Create your account in two simple steps</p>
+    </header>
+
+    <!-- Step Indicator -->
+    <app-step-indicator [currentStep]="currentStep"></app-step-indicator>
+
+    <!-- Signup Forms -->
+    <form (ngSubmit)="doRegisterUser()" [formGroup]="signupForm" class="mt-8 space-y-6">
+      <app-signup-credentials
+        *ngIf="currentStep === 1"
+        [credentialForm]="credentialsForm"
+        (nextStep)="onNextStep()">
+      </app-signup-credentials>
+
+      <app-signup-profile
+        *ngIf="currentStep === 2"
+        [profileForm]="profileForm"
+        [errorMessage] = "errorMessage"
+        (previousStep)="onPreviousStep()"
+        (nextStep)="onNextStep()">
+      </app-signup-profile>
+    </form>
+
+    <p class="text-center text-surface-contrast/85">
+      Already have an account?
+      <a routerLink="/login" class="text-primary hover:text-primary-dark font-semibold underline underline-offset-4 transition-colors">
+        Sign in here
+      </a>
+    </p>
+  </div>
+</div>

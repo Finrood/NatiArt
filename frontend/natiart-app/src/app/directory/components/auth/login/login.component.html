@@ -1,0 +1,67 @@
+<div class="min-h-screen bg-background flex items-center justify-center px-4 sm:px-6 lg:px-8">
+  <div [@fadeIn] class="w-full max-w-xs sm:max-w-sm md:max-w-md space-y-6 sm:space-y-8">
+    <div>
+      <h1 class="mt-6 text-center text-2xl sm:text-3xl md:text-4xl font-light text-secondary">
+        Welcome to Porcelain Elegance
+      </h1>
+      <p class="mt-2 text-center text-xs sm:text-sm md:text-base text-secondary-light">
+        Sign in to your account
+      </p>
+    </div>
+
+    <form (ngSubmit)="doLoginUser()" [formGroup]="loginForm" class="mt-8 space-y-6">
+      <div class="space-y-6" formGroupName="credentials">
+        <app-natiart-form-field label="Email Address" controlName="username" [form]="loginForm">
+          <input type="email" formControlName="username" autocomplete="email" class="w-full px-4 py-3 bg-surface rounded-lg border border-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/30 placeholder:text-surface-contrast/50 transition-all" placeholder="you@example.com">
+        </app-natiart-form-field>
+
+        <app-natiart-form-field label="Password" controlName="password" [isPassword]="true" [form]="loginForm" (showPasswordEmitter)="togglePasswordVisibility()">
+          <input [type]="showPassword ? 'text' : 'password'"
+                 formControlName="password" autocomplete="new-password" placeholder="••••••••" class="w-full px-4 py-3 bg-surface rounded-lg border border-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/30 placeholder:text-surface-contrast/50 transition-all">
+        </app-natiart-form-field>
+
+        <button type="submit" [disabled]="loginForm.invalid"
+                class="w-full py-3 bg-primary hover:bg-primary-dark text-primary-contrast font-semibold rounded-lg transition-all transform hover:scale-[1.01] disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed">
+          Sign in
+        </button>
+      </div>
+    </form>
+
+
+
+    <div *ngIf="errorMessage" class="mt-3 text-center text-xs sm:text-sm text-red-600" role="alert">
+      {{ errorMessage }}
+    </div>
+
+    <div class="mt-6 sm:mt-8">
+      <div class="relative">
+        <div class="absolute inset-0 flex items-center">
+          <div class="w-full border-t border-primary"></div>
+        </div>
+        <div class="relative flex justify-center text-xs sm:text-sm">
+          <span class="px-2 bg-background text-secondary-light">
+            Or continue with
+          </span>
+        </div>
+      </div>
+
+      <div class="mt-6">
+        <button
+          class="w-full flex items-center justify-center px-4 py-2 sm:py-3 border border-primary rounded-md shadow-input text-xs sm:text-sm font-medium text-secondary bg-white hover:bg-gray-50 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+          <img alt="Google logo" class="h-5 w-5 mr-2"
+               src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg">
+          Sign in with Google
+        </button>
+      </div>
+    </div>
+
+    <p class="mt-4 sm:mt-6 text-center text-xs sm:text-sm text-secondary-light">
+      Not a member?
+      <a
+        class="font-medium text-primary hover:text-primary-dark transition-colors duration-300 focus:outline-none focus:underline"
+        href="/register">
+        Sign up now
+      </a>
+    </p>
+  </div>
+</div>

@@ -2,6 +2,7 @@ package com.saas.directory.controller;
 
 import com.saas.directory.dto.UserDto;
 import com.saas.directory.helper.TargetUser;
+import com.saas.directory.model.ExternalUser;
 import com.saas.directory.service.UserManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +28,9 @@ public class UserController {
             return ResponseEntity.ok(null);
         }
         final UserDto userDto = UserDto.from(userManager.getUserOrDie(username));
-        userDto.setExternalId(userManager.getAsaasCustomerOrDie(username).getExternalId());
+        userDto.setExternalId(userManager.getAsaasCustomer(username)
+                .map(ExternalUser::getExternalId)
+                .orElse(null));
         return ResponseEntity.ok(userDto);
     }
 }
