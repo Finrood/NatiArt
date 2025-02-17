@@ -26,6 +26,7 @@ export class TokenService {
   }
 
   clearTokens() {
+    console.log("Clearing tokens")
     this.accessToken = null;
     this.refreshToken = null;
   }

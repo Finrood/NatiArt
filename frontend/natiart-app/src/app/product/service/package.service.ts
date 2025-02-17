@@ -8,7 +8,7 @@ import {environment} from "../../../environments/environment";
   providedIn: 'root'
 })
 export class PackageService {
-  private readonly apiUrl: string = `${environment.api.product}/packages`
+  private readonly apiUrl: string = `${environment.api.product.url}${environment.api.product.endpoints.package}`
 
   constructor(private http: HttpClient) {
   }

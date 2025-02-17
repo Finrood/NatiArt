@@ -9,7 +9,7 @@ import {environment} from "../../../environments/environment";
   providedIn: 'root'
 })
 export class OrderService {
-  private apiUrl = `${environment.api.product}/orders`;
+  private apiUrl = `${environment.api.product.url}${environment.api.product.endpoints.order}`;
   private orderProcessingSubject = new BehaviorSubject<boolean>(false);
   orderProcessing$ = this.orderProcessingSubject.asObservable();
 

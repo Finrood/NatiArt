@@ -1,9 +1,9 @@
-import {Injectable} from '@angular/core';
+import {Injectable, OnInit} from '@angular/core';
 import {HttpClient, HttpErrorResponse, HttpHeaders} from "@angular/common/http";
 import {Router} from "@angular/router";
 import {RoleName, User} from "../models/user.model";
 import {environment} from "../../../environments/environment";
-import {BehaviorSubject, catchError, Observable, throwError, timer} from "rxjs";
+import {BehaviorSubject, catchError, Observable, of, throwError, timer} from "rxjs";
 import {Credentials} from "../models/credentials.model";
 import {map, switchMap, tap} from "rxjs/operators";
 import {LoginResponse} from "../models/loginResponse.model";
@@ -17,18 +17,26 @@ interface AuthState {
 @Injectable({
   providedIn: 'root'
 })
-export class AuthenticationService {
+export class AuthenticationService implements OnInit {
   private readonly apiUrl: string = `${environment.api.directory.url}`;
   private readonly tokenCheckInterval = 60000; // 1 minute
   private readonly tokenRefreshBuffer = 300000; // 5 minutes before expiration
 
-  stateSubject: BehaviorSubject<AuthState> = new BehaviorSubject<AuthState>({
-    isLoggedIn: false,
+  private initialState: AuthState = {
+    isLoggedIn: !!this.tokenService.accessToken,
     user: null
-  });
+  };
+
+  private stateSubject = new BehaviorSubject<User | null>(null);
+  authState$ = this.stateSubject!.asObservable();
 
   constructor(private http: HttpClient, private router: Router, private tokenService: TokenService) {
+
+  }
+
+  ngOnInit() {
     this.initializeAuthState();
+    console.log('inited')
     this.startTokenMonitoring();
   }
 
@@ -54,24 +62,31 @@ export class AuthenticationService {
   }
 
   get isAdmin(): boolean {
-    return this.stateSubject.value.user?.role === RoleName.ADMIN;
+    console.log(this.stateSubject.value)
+    return this.stateSubject.value?.role === RoleName.ADMIN;
   }
 
   fetchCurrentUser(): Observable<User> {
     return this.http.get<User>(
       `${this.apiUrl}${environment.api.directory.endpoints.user}${environment.api.directory.endpoints.current}`,
-      { headers: this.getAuthHeader() }
     ).pipe(
-      tap(user => this.updateState({ user: user, isLoggedIn: true })),
+      tap(user => {
+        console.log(user)
+        this.updateState(user)
+        console.log(this.stateSubject.value)
+      }),
       catchError(error => this.handleError(error, 'Failed to fetch user'))
     );
   }
 
-  private updateState(partialState: Partial<AuthState>) {
-    this.stateSubject.next({ ...this.stateSubject.value, ...partialState });
+  private updateState(authState: User | null) {
+    console.log("updating to " + authState)
+    this.stateSubject.next(authState);
+    console.log(this.stateSubject.value)
   }
 
   private doRefreshToken(): Observable<void> {
+    console.log("Refreshing token")
     if (!this.tokenService.refreshToken || this.isTokenExpired(this.tokenService.refreshToken)) {
       this.resetAuthState();
       return throwError(() => new Error('Refresh token expired'));
@@ -94,12 +109,16 @@ export class AuthenticationService {
     );
   }
 
-  private initializeAuthState() {
+  initializeAuthState(): Observable<void> {
     if (this.tokenService.accessToken && !this.isTokenExpired(this.tokenService.accessToken)) {
-      this.fetchCurrentUser().subscribe();
+      return this.fetchCurrentUser().pipe(
+        map(() => void 0) // Convert to Observable<void>
+      );
     } else {
+      console.log('access token expired')
       this.resetAuthState();
     }
+    return of(void 0);
   }
 
   private startTokenMonitoring() {
@@ -108,10 +127,6 @@ export class AuthenticationService {
         this.doRefreshToken().subscribe();
       }
     });
-  }
-
-  private getAuthHeader(): HttpHeaders {
-    return new HttpHeaders({ Authorization: `Bearer ${this.tokenService.accessToken}` });
   }
 
   private isTokenExpired(token: string | null): boolean {
@@ -136,8 +151,9 @@ export class AuthenticationService {
   }
 
   private resetAuthState() {
+    console.log("resetting auth state")
     this.tokenService.clearTokens();
-    this.updateState({ isLoggedIn: false, user: null });
+    this.updateState(null);
     this.router.navigate(['/login']);
   }
 

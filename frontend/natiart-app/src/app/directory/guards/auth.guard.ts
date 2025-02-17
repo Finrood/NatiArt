@@ -1,18 +1,23 @@
-import {CanActivateFn, UrlTree} from '@angular/router';
+import {CanActivateFn} from '@angular/router';
 import {inject} from '@angular/core';
 import {AuthenticationService} from '../service/authentication.service';
 import {RedirectService} from "../service/redirect.service";
+import {map} from "rxjs";
 
-export const authGuard: CanActivateFn = (route, state): boolean | UrlTree => {
-  const authenticationService = inject(AuthenticationService);
+export const authGuard: CanActivateFn = (route, state) => {
+  const authService = inject(AuthenticationService);
   const redirectService = inject(RedirectService);
 
-  const authState = authenticationService.stateSubject.value;
-
-  if (!authState.isLoggedIn) {
-    console.log(authState)
-    redirectService.setRedirectUrl(state.url);
-    return redirectService.getLoginTree();
-  }
-  return true;
+  // Return an Observable/Promise that resolves after user data is loaded
+  console.log(authService.isAdmin)
+  return authService.authState$.pipe(
+    map((authState) => {
+      console.log(authState)
+      if (!authState) {
+        redirectService.setRedirectUrl(state.url);
+        return redirectService.getLoginTree();
+      }
+      return true;
+    })
+  );
 };

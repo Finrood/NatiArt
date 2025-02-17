@@ -7,8 +7,8 @@ import {environment} from "../../../environments/environment";
   providedIn: 'root'
 })
 export class ProductService {
-  private readonly apiUrl: string = `${environment.api.product}/products`;
-  private readonly apiUrlImages: string = `${environment.api.product}`;
+  private readonly apiUrl: string = `${environment.api.product.url}${environment.api.product.endpoints.product}`;
+  private readonly apiUrlImages: string = `${environment.api.product.url}`;
 
 
   constructor(private http: HttpClient) {

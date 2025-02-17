@@ -6,6 +6,8 @@ import {
   CustomerDashboardComponent
 } from "./product/components/customer/customer-dashboard/customer-dashboard.component";
 import {authGuard} from "./directory/guards/auth.guard";
+import {AdminDashboardComponent} from "./product/components/admin/admin-dashboard/admin-dashboard.component";
+import {adminGuard} from "./directory/guards/admin.guard";
 
 export const routes: Routes = [
   {path: 'login', component: LoginComponent},
@@ -37,34 +39,34 @@ export const routes: Routes = [
   //   component: PixPaymentConfirmationComponent,
   //   canActivate: [authGuard]
   // },
-  // {
-  //   path: 'admin',
-  //   component: AdminDashboardComponent,
-  //   canActivate: [authGuard, adminGuard],
-  //   children: [
-  //     {
-  //       path: 'dashboard',
-  //       redirectTo: 'categories',
-  //       pathMatch: 'full'
-  //     },
-  //     {
-  //       path: 'categories',
-  //       loadComponent: () => import('./components/admin/admin-category-management/admin-category-management.component')
-  //         .then(m => m.CategoryManagementComponent)
-  //     },
-  //     {
-  //       path: 'products',
-  //       loadComponent: () => import('./components/admin/admin-product-management/admin-product-management.component')
-  //         .then(m => m.ProductManagementComponent)
-  //     },
-  //     {
-  //       path: 'packages',
-  //       loadComponent: () => import('./components/admin/admin-package-management/admin-package-management.component')
-  //         .then(m => m.PackageManagementComponent)
-  //     },
-  //     {path: '', redirectTo: 'categories', pathMatch: 'full'}
-  //   ]
-  // },
+  {
+    path: 'admin',
+    component: AdminDashboardComponent,
+    canActivate: [authGuard, adminGuard],
+    children: [
+      {
+        path: 'dashboard',
+        redirectTo: 'categories',
+        pathMatch: 'full'
+      },
+      {
+        path: 'categories',
+        loadComponent: () => import('./product/components/admin/admin-category-management/admin-category-management.component')
+          .then(m => m.CategoryManagementComponent)
+      },
+      {
+        path: 'products',
+        loadComponent: () => import('./product/components/admin/admin-product-management/admin-product-management.component')
+          .then(m => m.ProductManagementComponent)
+      },
+      {
+        path: 'packages',
+        loadComponent: () => import('./product/components/admin/admin-package-management/admin-package-management.component')
+          .then(m => m.PackageManagementComponent)
+      },
+      {path: '', redirectTo: 'categories', pathMatch: 'full'}
+    ]
+  },
   {path: '', redirectTo: '/dashboard', pathMatch: 'full'},
   {path: '**', redirectTo: '/dashboard'}
 ];
