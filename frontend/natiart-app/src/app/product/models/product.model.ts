@@ -10,7 +10,7 @@ export interface Product {
   categoryId: string;
   packageId?: string;
   hasFixedGoldenBorder?: boolean;
-  availablePersonalizations: Set<PersonalizationOption>;
+  availablePersonalizations: PersonalizationOption[];
   tags: Set<string>;
   images: string[];
   active?: boolean;

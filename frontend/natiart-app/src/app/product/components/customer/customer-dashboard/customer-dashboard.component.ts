@@ -83,7 +83,7 @@ export class CustomerDashboardComponent {
   }
 
   addToCart(product: Product) {
-    if (product.availablePersonalizations.has(PersonalizationOption.GOLDEN_BORDER) || product.availablePersonalizations.has(PersonalizationOption.CUSTOM_IMAGE)) {
+    if (product.availablePersonalizations.includes(PersonalizationOption.GOLDEN_BORDER) || product.availablePersonalizations.includes(PersonalizationOption.CUSTOM_IMAGE)) {
       this.openPersonalizationModal(product);
     } else {
       this.cartService.addToCart(product, 1);

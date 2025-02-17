@@ -1,17 +1,17 @@
-import {Component, HostListener, inject, OnInit} from '@angular/core';
+import {Component, HostListener, inject, OnDestroy, OnInit} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {ProductService} from '../../../service/product.service';
 import {CategoryService} from '../../../service/category.service';
+import {PackageService} from '../../../service/package.service';
 import {Category} from '../../../models/category.model';
 import {Product} from '../../../models/product.model';
 import {BehaviorSubject, Subscription} from 'rxjs';
 import {Alert} from '../../../models/alert.model';
-import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
+import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 import {CdkDragDrop, DragDropModule, moveItemInArray} from '@angular/cdk/drag-drop';
-import heic2any from 'heic2any';
-import {PackageService} from "../../../service/package.service";
-import {PersonalizationOption} from "../../../models/support/personalization-option";
+import {PersonalizationOption} from '../../../models/support/personalization-option';
+import {ImageService} from '../../../service/image.service';
 
 interface ImagePreview {
   url: string | SafeUrl;
@@ -21,17 +21,23 @@ interface ImagePreview {
 }
 
 @Component({
-    selector: 'app-admin-product-management',
-    imports: [CommonModule, ReactiveFormsModule, DragDropModule],
-    templateUrl: './admin-product-management.component.html',
-    styleUrls: ['./admin-product-management.component.css']
+  selector: 'app-admin-product-management',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, DragDropModule],
+  templateUrl: './admin-product-management.component.html',
+  styleUrls: ['./admin-product-management.component.css']
 })
-export class ProductManagementComponent implements OnInit {
+export class ProductManagementComponent implements OnInit, OnDestroy {
   alert$ = new BehaviorSubject<Alert | null>(null);
-  products = new BehaviorSubject<Product[]>([]);
+  private _products$ = new BehaviorSubject<Product[]>([]);
+  products$ = this._products$.asObservable();
   categories = new BehaviorSubject<Category[]>([]);
   packages = new BehaviorSubject<Category[]>([]);
-  isEditingProduct = new BehaviorSubject(false);
+
+  // Use plain booleans for modal and editing state
+  isEditingProduct: boolean = false;
+  modalVisible: boolean = false;
+
   productForm: FormGroup;
   imagePreviews: ImagePreview[] = [];
   imageFiles: File[] = [];
@@ -40,11 +46,13 @@ export class ProductManagementComponent implements OnInit {
   isDragging: boolean = false;
   isLoadingImages: boolean = false;
   isSubmitting: boolean = false;
-  protected sanitizer = inject(DomSanitizer);
+
+  private sanitizer = inject(DomSanitizer);
   private productService = inject(ProductService);
   private categoryService = inject(CategoryService);
   private packageService = inject(PackageService);
   private fb = inject(FormBuilder);
+  private imageService = inject(ImageService);
   private subscriptions: Subscription[] = [];
 
   availablePersonalizationOptions = Object.values(PersonalizationOption);
@@ -60,8 +68,8 @@ export class ProductManagementComponent implements OnInit {
       categoryId: ['', Validators.required],
       packageId: [''],
       hasFixedGoldenBorder: [''],
-      canPersonaliseGold: [false],
-      canPersonaliseImage: [false],
+      GOLDEN_BORDER: [{ value: false, disabled: false }],
+      CUSTOM_IMAGE: [false],
       tags: [new Set<string>()],
       images: [[]],
       active: [true]
@@ -69,24 +77,60 @@ export class ProductManagementComponent implements OnInit {
   }
 
   @HostListener('window:resize', ['$event'])
-  onResize(event: Event) {
+  onResize(): void {
     this.isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   }
 
   ngOnInit(): void {
     this.getProducts();
     this.getCategories();
-    this.getPackages()
+    this.getPackages();
     this.isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    this.productForm.get('hasFixedGoldenBorder')?.valueChanges.subscribe((hasFixed) => {
+      const goldenControl = this.productForm.get('GOLDEN_BORDER');
+      if (hasFixed) {
+        goldenControl?.setValue(false);
+        goldenControl?.disable();
+      } else {
+        goldenControl?.enable();
+      }
+    });
   }
 
   ngOnDestroy(): void {
     this.subscriptions.forEach(subscription => subscription.unsubscribe());
   }
 
+  openModal(product?: Product): void {
+    this.isEditingProduct = !!product;
+    if (product) {
+      this.productForm.patchValue(product);
+
+      if (product.availablePersonalizations.includes(PersonalizationOption.GOLDEN_BORDER)) {
+        this.productForm.get('GOLDEN_BORDER')?.setValue(true);
+      }
+
+      if (product.availablePersonalizations.includes(PersonalizationOption.CUSTOM_IMAGE)) {
+        this.productForm.get('CUSTOM_IMAGE')?.setValue(true);
+      }
+
+      this.imagePreviews = (product.images || []).map(imagePath => ({
+        url: imagePath,
+        isExisting: true,
+        originalUrl: imagePath
+      }));
+      this.loadExistingImages(product.images || []);
+    } else {
+      this.productForm.reset({ originalPrice: 0, markedPrice: 0, stockQuantity: 0 });
+      this.imagePreviews = [];
+    }
+    this.imageFiles = [];
+    this.modalVisible = true;
+  }
+
   closeModal(): void {
-    const modal = document.getElementById('productModal');
-    modal?.classList.add('hidden');
+    this.modalVisible = false;
     this.productForm.reset();
     this.imageFiles = [];
     this.imagePreviews = [];
@@ -96,24 +140,31 @@ export class ProductManagementComponent implements OnInit {
     if (this.productForm.valid && !this.isSubmitting) {
       this.isSubmitting = true;
       const formData = new FormData();
-      const product: Product = this.productForm.value;
+      const product: Product = this.productForm.getRawValue();
 
+      product.availablePersonalizations = []
+      if (this.productForm.get('GOLDEN_BORDER')?.getRawValue() === true) {
+        product.availablePersonalizations.push(PersonalizationOption.GOLDEN_BORDER);
+      }
+      if (this.productForm.get('CUSTOM_IMAGE')?.getRawValue() === true) {
+        product.availablePersonalizations.push(PersonalizationOption.CUSTOM_IMAGE);
+      }
+
+        // Get existing image URLs from previews.
       product.images = this.imagePreviews
         .filter(preview => preview.isExisting)
         .map(preview => (preview as any).originalUrl || preview.url as string);
 
-      formData.append('productDto', new Blob([JSON.stringify(product)], {type: 'application/json'}));
+      formData.append('productDto', new Blob([JSON.stringify(product)], { type: 'application/json' }));
+      this.imagePreviews
+        .filter(preview => !preview.isExisting)
+        .forEach(preview => {
+          if (preview.file) {
+            formData.append('newImages', preview.file, preview.file.name);
+          }
+        });
 
-      this.imagePreviews.filter(preview => !preview.isExisting).forEach(preview => {
-        if (preview.file) {
-          const fileToUpload = preview.file.type === 'image/jpeg' && preview.file.name.endsWith('.jpg')
-            ? preview.file
-            : preview.file;
-          formData.append('newImages', fileToUpload, fileToUpload.name);
-        }
-      });
-
-      if (this.isEditingProduct.value) {
+      if (this.isEditingProduct) {
         this.updateProduct(product.id!, formData);
       } else {
         this.addProduct(formData);
@@ -126,7 +177,7 @@ export class ProductManagementComponent implements OnInit {
   deleteProduct(id: string): void {
     this.productService.deleteProduct(id).subscribe({
       next: () => {
-        this.products.next(this.products.value.filter(prod => prod.id !== id));
+        this._products$.next(this._products$.value.filter(prod => prod.id !== id));
         this.showAlert('Product deleted successfully', 'success');
       },
       error: (error) => {
@@ -136,82 +187,19 @@ export class ProductManagementComponent implements OnInit {
     });
   }
 
-  openModal(product?: Product): void {
-    if (product) {
-      this.isEditingProduct.next(true);
-      this.productForm.patchValue(product);
-      this.imagePreviews = product.images?.map(imagePath => ({
-        url: imagePath,
-        isExisting: true
-      })) || [];
-      this.loadExistingImages(product.images || []);
-    } else {
-      this.isEditingProduct.next(false);
-      this.productForm.reset({originalPrice: 0, markedPrice: 0, stockQuantity: 0});
-      this.imagePreviews = [];
-    }
-    this.imageFiles = [];
-    const modal = document.getElementById('productModal');
-    modal?.classList.remove('hidden');
-  }
-
-  async onFileSelected(event: Event): Promise<void> {
-    this.isLoadingImages = true;
-    const element = event.target as HTMLInputElement;
-    const fileList: FileList | null = element.files;
-
-    if (fileList) {
-      const newFiles = Array.from(fileList);
-      this.imageFiles = [...this.imageFiles, ...newFiles];
-      for (const file of newFiles) {
-        await this.readAndAddImagePreview(file);
-      }
-    }
-    this.isLoadingImages = false;
-  }
-
-  removeImage(index: number): void {
-    if (!this.isDragging && index >= 0 && index < this.imagePreviews.length) {
-      const removedPreview = this.imagePreviews.splice(index, 1)[0];
-      if (!removedPreview.isExisting && removedPreview.file) {
-        const fileIndex = this.imageFiles.indexOf(removedPreview.file);
-        if (fileIndex > -1) {
-          this.imageFiles.splice(fileIndex, 1);
-        }
-      }
-      this.updateProductImages();
-    }
-  }
-
-  onImageDrop(event: CdkDragDrop<ImagePreview[]>) {
-    moveItemInArray(this.imagePreviews, event.previousIndex, event.currentIndex);
-    this.updateProductImages();
-  }
-
-  dragStarted() {
-    this.isDragging = true;
-  }
-
-  dragEnded() {
-    setTimeout(() => {
-      this.isDragging = false;
-    }, 0);
-  }
-
   toggleProductVisibility(product: Product): void {
     this.productService.inverseProductVisibility(product.id!).subscribe({
       next: (response: Product) => {
-        this.products.next(this.products.value.map(prod => prod.id === response.id ? response : prod));
+        this._products$.next(this._products$.value.map(prod => prod.id === response.id ? response : prod));
       },
       error: (error) => console.error('Error toggling product visibility:', error)
     });
   }
 
-  addProduct(formData: FormData): void {
+  private addProduct(formData: FormData): void {
     this.productService.addProduct(formData).subscribe({
       next: (response) => {
-        const updatedProducts = [...this.products.value, response];
-        this.products.next(updatedProducts);
+        this._products$.next([...this._products$.value, response]);
         this.updateProductImage(response);
         this.closeModal();
         this.showAlert('Product added successfully', 'success');
@@ -225,11 +213,10 @@ export class ProductManagementComponent implements OnInit {
     });
   }
 
-  updateProduct(productId: string, formData: FormData): void {
+  private updateProduct(productId: string, formData: FormData): void {
     this.productService.updateProduct(productId, formData).subscribe({
       next: (response: Product) => {
-        const updatedProducts = this.products.value.map(prod => prod.id === response.id ? response : prod);
-        this.products.next(updatedProducts);
+        this._products$.next(this._products$.value.map(prod => prod.id === response.id ? response : prod));
         this.updateProductImage(response);
         this.closeModal();
         this.showAlert('Product updated successfully', 'success');
@@ -240,6 +227,17 @@ export class ProductManagementComponent implements OnInit {
         this.showAlert('Error updating product', 'error');
         this.isSubmitting = false;
       }
+    });
+  }
+
+  private getProducts(): void {
+    this.productService.getProducts().subscribe({
+      next: (response: Product[]) => {
+        console.log(response)
+        this._products$.next(response);
+        this.updateAllProductImages(response);
+      },
+      error: (error) => console.error('Error getting products:', error)
     });
   }
 
@@ -261,125 +259,22 @@ export class ProductManagementComponent implements OnInit {
     Object.keys(formGroup.controls).forEach(field => {
       const control = formGroup.get(field);
       if (control instanceof FormControl) {
-        control.markAsTouched({onlySelf: true});
+        control.markAsTouched({ onlySelf: true });
       } else if (control instanceof FormGroup) {
         this.validateAllFormFields(control);
       }
     });
   }
 
-  private isValidImageFile(file: File): boolean {
-    const isImageMimeType = file.type.match(/image\/*/) !== null || file.type.toLowerCase() === 'image/heic';
-    const hasHeicExtension = /\.heic$/i.test(file.name.trim().toLowerCase());
-    return isImageMimeType || hasHeicExtension;
-  }
-
   private showAlert(message: string, type: 'success' | 'error'): void {
-    this.alert$.next({message, type});
+    this.alert$.next({ message, type });
     setTimeout(() => this.alert$.next(null), 5000);
-  }
-
-  private getProducts(): void {
-    this.productService.getProducts().subscribe({
-      next: (response) => {
-        this.products.next(response);
-        this.updateAllProductImages(response);
-      },
-      error: (error) => console.error('Error getting products:', error)
-    });
   }
 
   private updateProductImage(product: Product): void {
     if (product.images && product.images.length > 0) {
       this.fetchImage(product.id!, product.images[0]);
     }
-  }
-
-  private updateProductImages() {
-    const existingImages = this.imagePreviews
-      .filter(preview => preview.isExisting)
-      .map(preview => (preview as any).originalUrl || preview.url as string);
-
-    const newImages = this.imagePreviews
-      .filter(preview => !preview.isExisting)
-      .map(preview => preview.file)
-      .filter((file): file is File => file !== undefined);
-
-    this.productForm.patchValue({
-      images: existingImages
-    });
-
-    this.imageFiles = newImages;
-  }
-
-  private loadExistingImages(imagePaths: string[]): void {
-    imagePaths.forEach((path, index) => {
-      this.fetchImagePreview(path, index);
-    });
-  }
-
-  private fetchImagePreview(imagePath: string, index: number): void {
-    this.productService.getImage(imagePath).subscribe(blob => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        this.imagePreviews[index] = {
-          url: this.sanitizer.bypassSecurityTrustResourceUrl(reader.result as string),
-          isExisting: true,
-          originalUrl: imagePath
-        };
-      };
-      reader.readAsDataURL(blob);
-    });
-  }
-
-  private async readAndAddImagePreview(file: File): Promise<void> {
-    if (this.isValidImageFile(file)) {
-      let previewFile = file;
-      let previewUrl: string | ArrayBuffer | null = null;
-
-      if (file.name.toLowerCase().endsWith('.heic')) {
-        try {
-          const jpegBlob = await heic2any({
-            blob: file,
-            toType: 'image/jpeg',
-            quality: 0.8
-          }) as Blob;
-
-          const singleJpegBlob = Array.isArray(jpegBlob) ? jpegBlob[0] : jpegBlob;
-
-          previewFile = new File([singleJpegBlob], file.name.replace(/\.heic$/i, '.jpg'), {type: 'image/jpeg'});
-          previewUrl = URL.createObjectURL(singleJpegBlob);
-        } catch (error) {
-          console.error('Error converting HEIC to JPEG:', error);
-          return;
-        }
-      }
-
-      if (!previewUrl) {
-        const reader = new FileReader();
-        reader.onload = (e: ProgressEvent<FileReader>) => {
-          const result = e.target?.result;
-          if (result) {
-            this.addImagePreview(result, previewFile);
-          } else {
-            console.error('Failed to read file:', file.name);
-          }
-        };
-        reader.readAsDataURL(previewFile);
-      } else {
-        this.addImagePreview(previewUrl, previewFile);
-      }
-    } else {
-      console.error('File is not a valid image:', file.name);
-    }
-  }
-
-  private addImagePreview(url: string | ArrayBuffer, file: File): void {
-    this.imagePreviews.push({
-      url: this.sanitizer.bypassSecurityTrustResourceUrl(url as string),
-      isExisting: false,
-      file: file
-    });
   }
 
   private updateAllProductImages(products: Product[]): void {
@@ -394,22 +289,99 @@ export class ProductManagementComponent implements OnInit {
     const subscription = this.productService.getImage(imagePath).subscribe(blob => {
       const objectUrl = URL.createObjectURL(blob);
       this.imageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
-      this.products.next([...this.products.value]);
+      this._products$.next([...this._products$.value]);
     });
     this.subscriptions.push(subscription);
   }
 
-  // Helper method to map enum values to their corresponding label
-  getPersonalizationOptionLabel(option: string): string {
-    switch (option) {
-      case 'None':
-        return 'No personalization available';
-      case 'CUSTOM_IMAGE':
-        return 'The customer can personalize the image';
-      case 'GOLDEN_BORDER':
-        return 'The customer can choose if the borders are golden or not';
-      default:
-        return option;
+  private loadExistingImages(imagePaths: string[]): void {
+    imagePaths.forEach((path, index) => {
+      this.fetchImagePreview(path, index);
+    });
+  }
+
+  private fetchImagePreview(imagePath: string, index: number): void {
+    const subscription = this.productService.getImage(imagePath).subscribe(blob => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        this.imagePreviews[index] = {
+          url: this.sanitizer.bypassSecurityTrustResourceUrl(reader.result as string),
+          isExisting: true,
+          originalUrl: imagePath
+        };
+      };
+      reader.readAsDataURL(blob);
+    });
+    this.subscriptions.push(subscription);
+  }
+
+  async onFileSelected(event: Event): Promise<void> {
+    this.isLoadingImages = true;
+    const element = event.target as HTMLInputElement;
+    const fileList: FileList | null = element.files;
+    if (fileList) {
+      const newFiles = Array.from(fileList);
+      for (const file of newFiles) {
+        if (this.imageService.isValidImageFile(file)) {
+          try {
+            const preview = await this.imageService.generateImagePreview(file);
+            this.imagePreviews.push({
+              url: preview.url,
+              isExisting: false,
+              file: preview.file
+            });
+            this.imageFiles.push(preview.file);
+          } catch (error) {
+            console.error('Error processing image:', error);
+          }
+        } else {
+          console.error('Invalid image file:', file.name);
+        }
+      }
+    }
+    this.isLoadingImages = false;
+  }
+
+  onImageDrop(event: CdkDragDrop<ImagePreview[]>): void {
+    moveItemInArray(this.imagePreviews, event.previousIndex, event.currentIndex);
+    this.updateProductImages();
+  }
+
+  removeImage(index: number): void {
+    if (!this.isDragging && index >= 0 && index < this.imagePreviews.length) {
+      this.imagePreviews.splice(index, 1);
+      this.updateProductImages();
     }
   }
+
+  dragStarted(): void {
+    this.isDragging = true;
+  }
+
+  dragEnded(): void {
+    setTimeout(() => {
+      this.isDragging = false;
+    }, 0);
+  }
+
+  private updateProductImages(): void {
+    const existingImages = this.imagePreviews
+      .filter(preview => preview.isExisting)
+      .map(preview => (preview as any).originalUrl || preview.url as string);
+    this.productForm.patchValue({ images: existingImages });
+    this.imageFiles = this.imagePreviews
+      .filter(preview => !preview.isExisting && preview.file)
+      .map(preview => preview.file!) || [];
+  }
+
+  getPersonalizationOptionLabel(option: string): string {
+    switch (option) {
+      case 'None': return 'No personalization available';
+      case 'CUSTOM_IMAGE': return 'Customer can personalize the image';
+      case 'GOLDEN_BORDER': return 'Customer can choose if borders are golden';
+      default: return option;
+    }
+  }
+
+  protected readonly PersonalizationOption = PersonalizationOption;
 }

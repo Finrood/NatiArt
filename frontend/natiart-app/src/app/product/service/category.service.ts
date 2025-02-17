@@ -8,7 +8,7 @@ import {environment} from "../../../environments/environment";
   providedIn: 'root'
 })
 export class CategoryService {
-  private readonly apiUrl: string = `${environment.api.product.url}`;
+  private readonly apiUrl: string = `${environment.api.product.url}${environment.api.product.endpoints.category}`;
 
   constructor(private http: HttpClient) {
   }
@@ -18,18 +18,18 @@ export class CategoryService {
   }
 
   addCategory(newCategory: Partial<Category>): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}${environment.api.product.endpoints.category}/create`, newCategory);
+    return this.http.post<any>(`${this.apiUrl}/create`, newCategory);
   }
 
   updateCategory(id: string, editCategoryData: Category): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}${environment.api.product.endpoints.category}/${id}`, editCategoryData);
+    return this.http.put<any>(`${this.apiUrl}/${id}`, editCategoryData);
   }
 
   deleteCategory(id: string): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}${environment.api.product.endpoints.category}/${id}`);
+    return this.http.delete<any>(`${this.apiUrl}/${id}`);
   }
 
   inverseCategoryVisibility(id: string): Observable<any> {
-    return this.http.patch<any>(`${this.apiUrl}${environment.api.product.endpoints.category}/${id}/visibility/inverse`, null);
+    return this.http.patch<any>(`${this.apiUrl}/${id}/visibility/inverse`, null);
   }
 }

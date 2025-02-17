@@ -5,17 +5,24 @@ import {CategoryService} from '../../../service/category.service';
 import {Category} from '../../../models/category.model';
 import {BehaviorSubject} from 'rxjs';
 import {Alert} from '../../../models/alert.model';
+import {NatiartFormFieldComponent} from "../../../../shared/components/natiart-form-field/natiart-form-field.component";
 
 @Component({
-    selector: 'app-admin-category-management',
-    imports: [CommonModule, ReactiveFormsModule],
-    templateUrl: './admin-category-management.component.html',
-    styleUrls: ['./admin-category-management.component.css']
+  selector: 'app-admin-category-management',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, NatiartFormFieldComponent],
+  templateUrl: './admin-category-management.component.html',
+  styleUrls: ['./admin-category-management.component.css']
 })
 export class CategoryManagementComponent implements OnInit {
   alert$ = new BehaviorSubject<Alert | null>(null);
-  categories = new BehaviorSubject<Category[]>([]);
-  isEditingCategory = new BehaviorSubject(false);
+
+  private _categories$ = new BehaviorSubject<Category[]>([]);
+  categories$ = this._categories$.asObservable();
+
+  isEditingCategory: boolean = false;
+  modalVisible: boolean = false;
+
   categoryForm: FormGroup;
   private categoryService = inject(CategoryService);
   private fb = inject(FormBuilder);
@@ -34,8 +41,8 @@ export class CategoryManagementComponent implements OnInit {
   }
 
   openModal(category?: Category): void {
+    this.isEditingCategory = !!category;
     if (category) {
-      this.isEditingCategory.next(true);
       this.categoryForm.setValue({
         id: category.id || '',
         label: category.label,
@@ -43,61 +50,52 @@ export class CategoryManagementComponent implements OnInit {
         active: category.active ?? true
       });
     } else {
-      this.isEditingCategory.next(false);
-      this.categoryForm.reset({active: true});
+      this.categoryForm.reset({ active: true });
     }
-    const modal = document.getElementById('categoryModal');
-    modal?.classList.remove('hidden');
+    this.modalVisible = true;
   }
 
   closeModal(): void {
-    const modal = document.getElementById('categoryModal');
-    modal?.classList.add('hidden');
+    this.modalVisible = false;
     this.categoryForm.reset();
   }
 
   submitForm(): void {
     if (this.categoryForm.valid) {
-      if (this.isEditingCategory.value) {
-        this.updateCategory();
-      } else {
-        this.addCategory();
-      }
+      this.isEditingCategory ? this.updateCategory() : this.addCategory();
     } else {
       this.validateAllFormFields(this.categoryForm);
     }
   }
 
   addCategory(): void {
-    if (this.categoryForm.valid) {
-      const category: Category = this.categoryForm.value;
-      this.categoryService.addCategory(category).subscribe({
-        next: (response) => {
-          this.categories.next([...this.categories.value, response]);
-          this.closeModal();
-        },
-        error: (error) => console.error('Error adding category:', error)
-      });
-    }
+    const category: Category = this.categoryForm.value;
+    this.categoryService.addCategory(category).subscribe({
+      next: (response) => {
+        this._categories$.next([...this._categories$.value, response]);
+        this.closeModal();
+      },
+      error: (error) => console.error('Error adding category:', error)
+    });
   }
 
   updateCategory(): void {
-    if (this.categoryForm.valid) {
-      const category: Category = this.categoryForm.value;
-      this.categoryService.updateCategory(category.id!, category).subscribe({
-        next: (response: Category) => {
-          this.categories.next(this.categories.value.map(cat => cat.id === response.id ? response : cat));
-          this.closeModal();
-        },
-        error: (error) => console.error('Error updating category:', error)
-      });
-    }
+    const category: Category = this.categoryForm.value;
+    this.categoryService.updateCategory(category.id!, category).subscribe({
+      next: (response: Category) => {
+        this._categories$.next(
+          this._categories$.value.map(cat => cat.id === response.id ? response : cat)
+        );
+        this.closeModal();
+      },
+      error: (error) => console.error('Error updating category:', error)
+    });
   }
 
   deleteCategory(id: string): void {
     this.categoryService.deleteCategory(id).subscribe({
       next: () => {
-        this.categories.next(this.categories.value.filter(cat => cat.id !== id));
+        this._categories$.next(this._categories$.value.filter(cat => cat.id !== id));
         this.showAlert('Category deleted successfully', 'success');
       },
       error: (error: any) => {
@@ -118,7 +116,9 @@ export class CategoryManagementComponent implements OnInit {
   toggleCategoryVisibility(category: Category): void {
     this.categoryService.inverseCategoryVisibility(category.id!).subscribe({
       next: (response: Category) => {
-        this.categories.next(this.categories.value.map(cat => cat.id === response.id ? response : cat));
+        this._categories$.next(
+          this._categories$.value.map(cat => cat.id === response.id ? response : cat)
+        );
       },
       error: (error) => console.error('Error toggling category visibility:', error)
     });
@@ -126,7 +126,7 @@ export class CategoryManagementComponent implements OnInit {
 
   private getCategories(): void {
     this.categoryService.getCategories().subscribe({
-      next: (response) => this.categories.next(response),
+      next: (response) => this._categories$.next(response),
       error: (error) => console.error('Error getting categories:', error)
     });
   }
@@ -135,7 +135,7 @@ export class CategoryManagementComponent implements OnInit {
     Object.keys(formGroup.controls).forEach(field => {
       const control = formGroup.get(field);
       if (control instanceof FormControl) {
-        control.markAsTouched({onlySelf: true});
+        control.markAsTouched({ onlySelf: true });
       } else if (control instanceof FormGroup) {
         this.validateAllFormFields(control);
       }
@@ -143,7 +143,7 @@ export class CategoryManagementComponent implements OnInit {
   }
 
   private showAlert(message: string, type: 'success' | 'error'): void {
-    this.alert$.next({message, type});
+    this.alert$.next({ message, type });
     setTimeout(() => this.alert$.next(null), 5000);
   }
 }

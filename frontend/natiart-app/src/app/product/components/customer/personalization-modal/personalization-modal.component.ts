@@ -57,7 +57,7 @@ export class PersonalizationModalComponent {
   }
 
   isValid() {
-    if (this.product?.availablePersonalizations.has(PersonalizationOption.CUSTOM_IMAGE)) {
+    if (this.product?.availablePersonalizations.includes(PersonalizationOption.CUSTOM_IMAGE)) {
       return this.customImage;
     } else {
       return true;

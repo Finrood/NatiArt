@@ -7,7 +7,6 @@ import {
 } from "./product/components/customer/customer-dashboard/customer-dashboard.component";
 import {authGuard} from "./directory/guards/auth.guard";
 import {AdminDashboardComponent} from "./product/components/admin/admin-dashboard/admin-dashboard.component";
-import {adminGuard} from "./directory/guards/admin.guard";
 
 export const routes: Routes = [
   {path: 'login', component: LoginComponent},
@@ -42,7 +41,7 @@ export const routes: Routes = [
   {
     path: 'admin',
     component: AdminDashboardComponent,
-    canActivate: [authGuard, adminGuard],
+    // canActivate: [authGuard, adminGuard],
     children: [
       {
         path: 'dashboard',
