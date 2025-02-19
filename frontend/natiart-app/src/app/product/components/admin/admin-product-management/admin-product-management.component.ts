@@ -1,4 +1,4 @@
-import {Component, HostListener, inject, OnDestroy, OnInit} from '@angular/core';
+import {Component, HostListener, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {ProductService} from '../../../service/product.service';
@@ -7,11 +7,11 @@ import {PackageService} from '../../../service/package.service';
 import {Category} from '../../../models/category.model';
 import {Product} from '../../../models/product.model';
 import {BehaviorSubject, Subscription} from 'rxjs';
-import {Alert} from '../../../models/alert.model';
 import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 import {CdkDragDrop, DragDropModule, moveItemInArray} from '@angular/cdk/drag-drop';
 import {PersonalizationOption} from '../../../models/support/personalization-option';
 import {ImageService} from '../../../service/image.service';
+import {AlertMessageComponent} from "../../../../shared/components/alert-message/alert-message.component";
 
 interface ImagePreview {
   url: string | SafeUrl;
@@ -23,12 +23,11 @@ interface ImagePreview {
 @Component({
   selector: 'app-admin-product-management',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DragDropModule],
+  imports: [CommonModule, ReactiveFormsModule, DragDropModule, AlertMessageComponent],
   templateUrl: './admin-product-management.component.html',
   styleUrls: ['./admin-product-management.component.css']
 })
 export class ProductManagementComponent implements OnInit, OnDestroy {
-  alert$ = new BehaviorSubject<Alert | null>(null);
   private _products$ = new BehaviorSubject<Product[]>([]);
   products$ = this._products$.asObservable();
   categories = new BehaviorSubject<Category[]>([]);
@@ -46,6 +45,8 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   isDragging: boolean = false;
   isLoadingImages: boolean = false;
   isSubmitting: boolean = false;
+
+  @ViewChild('alertMessages') alertMessageComponent!: AlertMessageComponent;
 
   private sanitizer = inject(DomSanitizer);
   private productService = inject(ProductService);
@@ -267,8 +268,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   }
 
   private showAlert(message: string, type: 'success' | 'error'): void {
-    this.alert$.next({ message, type });
-    setTimeout(() => this.alert$.next(null), 5000);
+    this.alertMessageComponent.showAlert({ message, type });
   }
 
   private updateProductImage(product: Product): void {

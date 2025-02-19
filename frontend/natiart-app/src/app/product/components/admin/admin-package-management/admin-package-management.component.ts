@@ -1,38 +1,44 @@
-import {Component, OnInit} from '@angular/core';
-import {PackageService} from "../../../service/package.service";
-import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from "@angular/forms";
-import {BehaviorSubject} from "rxjs";
-import {Alert} from "../../../models/alert.model";
-import {Package} from "../../../models/package.model";
-import {AsyncPipe, NgClass, NgForOf, NgIf} from "@angular/common";
+import {Component, OnInit, ViewChild} from '@angular/core';
+import {PackageService} from '../../../service/package.service';
+import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
+import {BehaviorSubject} from 'rxjs';
+import {Package} from '../../../models/package.model';
+import {AsyncPipe, NgClass, NgForOf, NgIf} from '@angular/common';
+import {AlertMessageComponent} from "../../../../shared/components/alert-message/alert-message.component";
+import {NatiartFormFieldComponent} from "../../../../shared/components/natiart-form-field/natiart-form-field.component";
 
 @Component({
-    selector: 'app-admin-package-management',
-    imports: [
-        AsyncPipe,
-        NgForOf,
-        NgIf,
-        ReactiveFormsModule,
-        NgClass
-    ],
-    templateUrl: './admin-package-management.component.html',
-    styleUrl: './admin-package-management.component.css'
+  selector: 'app-admin-package-management',
+  standalone: true,
+  imports: [
+    AsyncPipe,
+    NgForOf,
+    NgIf,
+    ReactiveFormsModule,
+    NgClass,
+    AlertMessageComponent,
+    NatiartFormFieldComponent
+  ],
+  templateUrl: './admin-package-management.component.html',
+  styleUrls: ['./admin-package-management.component.css']
 })
 export class PackageManagementComponent implements OnInit {
-  alert$ = new BehaviorSubject<Alert | null>(null);
   packages = new BehaviorSubject<Package[]>([]);
   isEditingPackage = new BehaviorSubject(false);
   packageForm: FormGroup;
+  modalVisible: boolean = false;
+
+  @ViewChild('alertMessages') alertMessagesComponent!: AlertMessageComponent;
 
   constructor(private packageService: PackageService, private fb: FormBuilder) {
     this.packageForm = this.fb.group({
       id: [''],
       label: ['', Validators.required],
-      height: ['', Validators.compose([Validators.required, Validators.min(0)])],
-      width: ['', Validators.compose([Validators.required, Validators.min(0)])],
-      depth: ['', Validators.compose([Validators.required, Validators.min(0)])],
+      height: ['', [Validators.required, Validators.min(0)]],
+      width: ['', [Validators.required, Validators.min(0)]],
+      depth: ['', [Validators.required, Validators.min(0)]],
       active: [true]
-    })
+    });
   }
 
   ngOnInit() {
@@ -52,15 +58,13 @@ export class PackageManagementComponent implements OnInit {
       });
     } else {
       this.isEditingPackage.next(false);
-      this.packageForm.reset({active: true});
+      this.packageForm.reset({ active: true });
     }
-    const modal = document.getElementById('packageModal');
-    modal?.classList.remove('hidden');
+    this.modalVisible = true;
   }
 
   closeModal(): void {
-    const modal = document.getElementById('packageModal');
-    modal?.classList.add('hidden');
+    this.modalVisible = false;
     this.packageForm.reset();
   }
 
@@ -77,44 +81,42 @@ export class PackageManagementComponent implements OnInit {
   }
 
   addPackage(): void {
-    if (this.packageForm.valid) {
-      const pack: Package = this.packageForm.value;
-      this.packageService.addPackage(pack).subscribe({
-        next: (response) => {
-          this.packages.next([...this.packages.value, response]);
-          this.closeModal();
-        },
-        error: (error) => console.error('Error adding package:', error)
-      });
-    }
+    const pack: Package = this.packageForm.value;
+    this.packageService.addPackage(pack).subscribe({
+      next: (response) => {
+        this.packages.next([...this.packages.value, response]);
+        this.closeModal();
+      },
+      error: (error) => console.error('Error adding package:', error)
+    });
   }
 
   updatePackage(): void {
-    if (this.packageForm.valid) {
-      const pack: Package = this.packageForm.value;
-      this.packageService.updatePackage(pack.id!, pack).subscribe({
-        next: (response: Package) => {
-          this.packages.next(this.packages.value.map(pak => pak.id === response.id ? response : pak));
-          this.closeModal();
-        },
-        error: (error) => console.error('Error updating package:', error)
-      });
-    }
+    const pack: Package = this.packageForm.value;
+    this.packageService.updatePackage(pack.id!, pack).subscribe({
+      next: (response: Package) => {
+        this.packages.next(
+          this.packages.value.map(p => p.id === response.id ? response : p)
+        );
+        this.closeModal();
+      },
+      error: (error) => console.error('Error updating package:', error)
+    });
   }
 
   deletePackage(id: string): void {
     this.packageService.deletePackage(id).subscribe({
       next: () => {
-        this.packages.next(this.packages.value.filter(pak => pak.id !== id));
+        this.packages.next(this.packages.value.filter(p => p.id !== id));
         this.showAlert('Package deleted successfully', 'success');
       },
       error: (error: any) => {
         console.error('Error deleting package:', error);
         let errorMessage = 'An error occurred while deleting the package.';
         if (error.status === 400) {
-          errorMessage = 'package contains existing products. Delete them before deleting this package';
+          errorMessage = 'Package contains existing products. Delete them before deleting this package';
         } else if (error.status === 404) {
-          errorMessage = 'package not found. It may have been already deleted.';
+          errorMessage = 'Package not found. It may have been already deleted.';
         } else if (error.status === 403) {
           errorMessage = 'You do not have permission to delete this package.';
         }
@@ -127,14 +129,14 @@ export class PackageManagementComponent implements OnInit {
     this.packageService.getPackages().subscribe({
       next: (response) => this.packages.next(response),
       error: (error) => console.error('Error getting packages:', error)
-    })
+    });
   }
 
   private validateAllFormFields(formGroup: FormGroup): void {
     Object.keys(formGroup.controls).forEach(field => {
       const control = formGroup.get(field);
       if (control instanceof FormControl) {
-        control.markAsTouched({onlySelf: true});
+        control.markAsTouched({ onlySelf: true });
       } else if (control instanceof FormGroup) {
         this.validateAllFormFields(control);
       }
@@ -142,7 +144,6 @@ export class PackageManagementComponent implements OnInit {
   }
 
   private showAlert(message: string, type: 'success' | 'error'): void {
-    this.alert$.next({message, type});
-    setTimeout(() => this.alert$.next(null), 5000);
+    this.alertMessagesComponent.showAlert({ message, type });
   }
 }

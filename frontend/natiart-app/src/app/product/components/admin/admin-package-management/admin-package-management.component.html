@@ -1,12 +1,7 @@
-<div *ngIf="alert$ | async as alert"
-     [ngClass]="{
-           'bg-green-100 border-green-400 text-green-700': alert.type === 'success',
-           'bg-red-100 border-red-400 text-red-700': alert.type === 'error'
-         }"
-     class="border-l-4 p-4 mb-4 transition-transform transform duration-500 ease-in-out">
-  <p>{{ alert.message }}</p>
-</div>
+<!-- Alert Messages Component -->
+<app-alert-messages #alertMessages></app-alert-messages>
 
+<!-- Header with "Add New Package" Button -->
 <div class="flex justify-between items-center mb-4">
   <h2 class="text-2xl sm:text-3xl font-light">Packages</h2>
   <button (click)="openModal()"
@@ -15,13 +10,15 @@
   </button>
 </div>
 
+<!-- Packages Grid -->
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
   <div *ngFor="let pack of packages | async"
        [ngClass]="{'opacity-50': !pack.active}"
        class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
     <h3 class="text-xl font-semibold mb-2">{{ pack.label }}</h3>
-    <p class="text-gray-600 mb-4">{{ pack.height }}cmx{{ pack.width }}cmx{{ pack.depth }}cm</p>
-
+    <p class="text-gray-600 mb-4">
+      {{ pack.height }}cm x {{ pack.width }}cm x {{ pack.depth }}cm
+    </p>
     <div class="flex flex-wrap justify-between gap-2">
       <button (click)="openModal(pack)"
               class="text-primary border border-primary px-3 py-1 rounded-full hover:bg-primary hover:text-white transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
@@ -36,67 +33,48 @@
 </div>
 
 <!-- Modal -->
-<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50" id="packageModal">
-  <div
-    class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4 transform transition-transform duration-300 ease-in-out">
-    <h3 class="text-2xl mb-4 font-light">{{ isEditingPackage.value ? 'Edit Package' : 'Add Package' }}</h3>
+<div *ngIf="modalVisible" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4 transform transition-transform duration-300 ease-in-out">
+    <h3 class="text-2xl mb-4 font-light">
+      {{ isEditingPackage.value ? 'Edit Package' : 'Add Package' }}
+    </h3>
     <form (ngSubmit)="submitForm()" [formGroup]="packageForm">
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1" for="packageLabel">Label</label>
-        <input
-          class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm"
-          formControlName="label" id="packageLabel" name="packageLabel"
-          type="text">
-        <div *ngIf="packageForm.get('label')?.invalid && packageForm.get('label')?.touched"
-             class="text-red-600 text-sm mt-1">
-          Label is required.
-        </div>
-      </div>
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1" for="packageHeight">Height</label>
-        <input
-          class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm"
-          formControlName="height" id="packageHeight" name="packageHeight" step="0.01"
-          type="number">
-        <div *ngIf="packageForm.get('height')?.invalid && packageForm.get('height')?.touched"
-             class="text-red-600 text-sm mt-1">
-          Height is required.
-        </div>
-      </div>
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1" for="packageWidth">Width</label>
-        <input
-          class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm"
-          formControlName="width" id="packageWidth" name="packageWidth" step="0.01"
-          type="number">
-        <div *ngIf="packageForm.get('width')?.invalid && packageForm.get('width')?.touched"
-             class="text-red-600 text-sm mt-1">
-          Width is required.
-        </div>
-      </div>
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1" for="packageDepth">Depth</label>
-        <input
-          class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm"
-          formControlName="depth" id="packageDepth" name="packageDepth" step="0.01"
-          type="number">
-        <div *ngIf="packageForm.get('depth')?.invalid && packageForm.get('depth')?.touched"
-             class="text-red-600 text-sm mt-1">
-          Depth is required.
-        </div>
-      </div>
+      <!-- Label Field -->
+      <app-natiart-form-field label="Label" controlName="label" [form]="packageForm">
+        <input type="text" formControlName="label" placeholder="Package label"
+               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
+      </app-natiart-form-field>
+
+      <!-- Height Field -->
+      <app-natiart-form-field label="Height (cm)" controlName="height" [form]="packageForm">
+        <input type="number" formControlName="height" placeholder="Height" step="0.01"
+               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
+      </app-natiart-form-field>
+
+      <!-- Width Field -->
+      <app-natiart-form-field label="Width (cm)" controlName="width" [form]="packageForm">
+        <input type="number" formControlName="width" placeholder="Width" step="0.01"
+               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
+      </app-natiart-form-field>
+
+      <!-- Depth Field -->
+      <app-natiart-form-field label="Depth (cm)" controlName="depth" [form]="packageForm">
+        <input type="number" formControlName="depth" placeholder="Depth" step="0.01"
+               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
+      </app-natiart-form-field>
+
+      <!-- Form Actions -->
       <div class="flex justify-end space-x-2">
-        <button (click)="closeModal()"
-                class="bg-gray-300 text-gray-700 px-4 py-2 rounded-full hover:bg-gray-400 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
-                type="button">
+        <button type="button" (click)="closeModal()"
+                class="bg-gray-300 text-gray-700 px-4 py-2 rounded-full hover:bg-gray-400 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50">
           Cancel
         </button>
-        <button
-          class="bg-primary text-white px-4 py-2 rounded-full hover:bg-primary-dark transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50"
-          type="submit">
+        <button type="submit"
+                class="bg-primary text-white px-4 py-2 rounded-full hover:bg-primary-dark transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
           {{ isEditingPackage.value ? 'Update' : 'Add' }}
         </button>
       </div>
     </form>
   </div>
 </div>
+

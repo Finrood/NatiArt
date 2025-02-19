@@ -1,22 +1,20 @@
-import {Component, inject, OnInit} from '@angular/core';
+import {Component, inject, OnInit, ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {CategoryService} from '../../../service/category.service';
 import {Category} from '../../../models/category.model';
 import {BehaviorSubject} from 'rxjs';
-import {Alert} from '../../../models/alert.model';
 import {NatiartFormFieldComponent} from "../../../../shared/components/natiart-form-field/natiart-form-field.component";
+import {AlertMessageComponent} from "../../../../shared/components/alert-message/alert-message.component";
 
 @Component({
   selector: 'app-admin-category-management',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, NatiartFormFieldComponent],
+  imports: [CommonModule, ReactiveFormsModule, NatiartFormFieldComponent, AlertMessageComponent],
   templateUrl: './admin-category-management.component.html',
   styleUrls: ['./admin-category-management.component.css']
 })
 export class CategoryManagementComponent implements OnInit {
-  alert$ = new BehaviorSubject<Alert | null>(null);
-
   private _categories$ = new BehaviorSubject<Category[]>([]);
   categories$ = this._categories$.asObservable();
 
@@ -26,6 +24,8 @@ export class CategoryManagementComponent implements OnInit {
   categoryForm: FormGroup;
   private categoryService = inject(CategoryService);
   private fb = inject(FormBuilder);
+
+  @ViewChild('alertMessages') alertMessageComponent!: AlertMessageComponent;
 
   constructor() {
     this.categoryForm = this.fb.group({
@@ -143,7 +143,6 @@ export class CategoryManagementComponent implements OnInit {
   }
 
   private showAlert(message: string, type: 'success' | 'error'): void {
-    this.alert$.next({ message, type });
-    setTimeout(() => this.alert$.next(null), 5000);
+    this.alertMessageComponent.showAlert({ message, type });
   }
 }
