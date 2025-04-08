@@ -1,40 +1,29 @@
 import {Component} from '@angular/core';
 import {TopMenuComponent} from "../top-menu/top-menu.component";
 import {LeftMenuComponent} from "../left-menu/left-menu.component";
-import {AsyncPipe, CurrencyPipe, NgForOf, NgIf} from "@angular/common";
 import {Product} from "../../../models/product.model";
 import {ProductService} from "../../../service/product.service";
 import {BehaviorSubject, Subscription} from "rxjs";
 import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
-import {RouterLink} from "@angular/router";
 import {CartService} from "../../../service/cart.service";
 import {PersonalizationModalComponent} from "../personalization-modal/personalization-modal.component";
 import {PersonalizationOption} from "../../../models/support/personalization-option";
+import {TopBannerComponent} from "../dashboard/top-banner/top-banner.component";
+import {ProductListComponent} from "../dashboard/product-list/product-list.component";
 
 @Component({
     selector: 'app-customer-dashboard',
-    imports: [
-        TopMenuComponent,
-        LeftMenuComponent,
-        NgForOf,
-        NgIf,
-        AsyncPipe,
-        RouterLink,
-        CurrencyPipe,
-        PersonalizationModalComponent
-    ],
+  imports: [
+    TopMenuComponent,
+    LeftMenuComponent,
+    PersonalizationModalComponent,
+    TopBannerComponent,
+    ProductListComponent
+  ],
     templateUrl: './customer-dashboard.component.html',
     styleUrl: './customer-dashboard.component.css'
 })
 export class CustomerDashboardComponent {
-  currentBannerIndex: number = 0;
-  bannerImages: string[] = [
-    "assets/img/a1.webp",
-    "assets/img/a2.jpg",
-    "assets/img/a3.jpg",
-    "assets/img/a4.jpg"
-
-  ];
   featuredProducts = new BehaviorSubject<Product[]>([]);
   newProducts = new BehaviorSubject<Product[]>([]);
   featuredScrollPosition = 0;
@@ -42,9 +31,6 @@ export class CustomerDashboardComponent {
   imageUrls: { [productId: string]: SafeUrl | null } = {};
   showPersonalizationModal = false;
   selectedProduct: Product | null = null;
-  private bannerInterval: any;
-  private readonly SLIDE_DURATION: number = 3500;
-  private readonly TRANSITION_DURATION: number = 1000;
   private subscriptions: Subscription[] = [];
 
   constructor(
@@ -52,19 +38,6 @@ export class CustomerDashboardComponent {
     private cartService: CartService,
     private sanitizer: DomSanitizer
   ) {
-  }
-
-  ngOnInit() {
-    this.startBannerInterval();
-    this.getFeaturedProducts();
-    this.getNewProducts();
-  }
-
-  ngOnDestroy() {
-    if (this.bannerInterval) {
-      clearInterval(this.bannerInterval);
-    }
-    this.subscriptions.forEach(subscription => subscription.unsubscribe());
   }
 
   isOriginalPriceHidden(product: Product): boolean {
@@ -107,21 +80,6 @@ export class CustomerDashboardComponent {
     this.closePersonalizationModal();
   }
 
-  prevSlide() {
-    this.currentBannerIndex = (this.currentBannerIndex - 1 + this.bannerImages.length) % this.bannerImages.length;
-    this.resetBannerInterval();
-  }
-
-  nextSlide() {
-    this.currentBannerIndex = (this.currentBannerIndex + 1) % this.bannerImages.length;
-    this.resetBannerInterval();
-  }
-
-  goToSlide(index: number) {
-    this.currentBannerIndex = index;
-    this.resetBannerInterval();
-  }
-
   private getFeaturedProducts(): void {
     this.productService.getFeaturedProducts().subscribe({
       next: (response) => {
@@ -158,22 +116,5 @@ export class CustomerDashboardComponent {
       this.newProducts.next([...this.newProducts.value]);
     });
     this.subscriptions.push(subscription);
-  }
-
-  private startBannerInterval() {
-    this.stopBannerInterval(); // Ensure any existing interval is stopped
-    this.bannerInterval = setInterval(() => {
-      this.nextSlide();
-    }, this.SLIDE_DURATION + this.TRANSITION_DURATION);
-  }
-
-  private stopBannerInterval() {
-    if (this.bannerInterval) {
-      clearInterval(this.bannerInterval);
-    }
-  }
-
-  private resetBannerInterval() {
-    this.startBannerInterval();
   }
 }

@@ -1,0 +1,52 @@
+<section class="py-8 bg-background">
+  <h2 class="text-2xl font-serif font-light text-secondary text-center mb-6">
+    {{ this.title }}
+  </h2>
+  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 px-4">
+    <div *ngFor="let product of products | async" class="bg-surface rounded-lg border p-4 shadow-elevated">
+      <!-- Product Image -->
+      <div class="relative h-48 mb-4 rounded-md overflow-hidden">
+        <img
+          *ngIf="imageUrls[product.id!]"
+          [src]="imageUrls[product.id!]"
+          [alt]="product.label"
+          class="w-full h-full object-cover"
+          loading="lazy"
+        />
+      </div>
+      <!-- Product Details -->
+      <h3 class="text-lg font-sans font-semibold text-secondary mb-2 truncate">
+        {{ product.label }}
+      </h3>
+      <p class="text-sm text-text-muted mb-4 line-clamp-2">
+        {{ product.description }}
+      </p>
+      <div class="flex justify-between items-center mb-4">
+        <span class="text-lg font-bold text-primary">
+          {{ product.markedPrice | currency:'BRL' }}
+        </span>
+        <span
+          *ngIf="product.originalPrice > product.markedPrice"
+          class="text-sm text-text-muted line-through"
+        >
+          R${{ product.originalPrice.toFixed(2) }}
+        </span>
+      </div>
+      <!-- Buttons -->
+      <div class="flex gap-2">
+        <button
+          (click)="addToCart(product)"
+          class="flex-1 py-2 bg-primary text-white rounded-lg"
+        >
+          Add to Cart
+        </button>
+        <button
+          [routerLink]="['/product', product.id]"
+          class="flex-1 py-2 border border-primary text-primary rounded-lg"
+        >
+          View Details
+        </button>
+      </div>
+    </div>
+  </div>
+</section>

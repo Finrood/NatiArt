@@ -1,11 +1,11 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ['./src/**/*.{html,ts}'],
-  darkMode: 'media', // Consider switching to 'class' for manual dark mode control
+  darkMode: 'media', // Sticking with 'media' as it’s great for automatic dark mode
   theme: {
     extend: {
       colors: {
-        // Primary color palette with CSS variables for dynamic theming
+        // Existing primary, secondary, etc., remain unchanged
         primary: {
           DEFAULT: 'rgb(var(--primary) / <alpha-value>)',
           light: 'rgb(var(--primary-light) / <alpha-value>)',
@@ -13,34 +13,31 @@ module.exports = {
           dark: 'rgb(var(--primary-dark) / <alpha-value>)',
           contrast: 'rgb(var(--primary-contrast) / <alpha-value>)',
         },
-        // Secondary color palette
         secondary: {
           DEFAULT: 'rgb(var(--secondary) / <alpha-value>)',
           light: 'rgb(var(--secondary-light) / <alpha-value>)',
           dark: 'rgb(var(--secondary-dark) / <alpha-value>)',
           contrast: 'rgb(var(--secondary-contrast) / <alpha-value>)',
         },
-        // State colors
         error: '#ef4444',
         success: '#22c55e',
         warning: '#eab308',
         info: '#3b82f6',
-        // Surface colors
         surface: {
           DEFAULT: 'rgb(var(--surface) / <alpha-value>)',
           variant: 'rgb(var(--surface-variant) / <alpha-value>)',
           contrast: 'rgb(var(--on-surface) / <alpha-value>)',
         },
-        // Background colors
         background: {
           DEFAULT: 'rgb(var(--background) / <alpha-value>)',
           variant: 'rgb(var(--background-variant) / <alpha-value>)',
         },
-        // Accent colors
         accent: {
           DEFAULT: 'rgb(var(--accent) / <alpha-value>)',
           contrast: 'rgb(var(--accent-contrast) / <alpha-value>)',
         },
+        // New: muted text color for descriptions
+        'text-muted': 'rgb(var(--text-muted) / <alpha-value>)', // Define --text-muted in CSS
       },
       fontFamily: {
         sans: ['Poppins', 'sans-serif'],
@@ -78,6 +75,8 @@ module.exports = {
         inner: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
         input: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
         focus: '0 0 0 3px rgb(var(--primary) / 0.15)',
+        // New: elevated shadow for product cards
+        'elevated': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
       },
       borderRadius: {
         none: '0',
@@ -94,11 +93,14 @@ module.exports = {
         height: 'height',
         spacing: 'margin, padding',
         size: 'width, height',
+        // New: all properties for smoother hover effects
+        'all': 'all',
       },
       keyframes: {
         fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
+          // Enhanced: added slight vertical movement
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
         slideUp: {
           '0%': { transform: 'translateY(100%)' },
@@ -109,7 +111,8 @@ module.exports = {
         },
       },
       animation: {
-        fadeIn: 'fadeIn 0.3s ease-out',
+        // Updated: adjusted timing for elegance
+        'fade-in': 'fadeIn 0.5s ease-out',
         slideUp: 'slideUp 0.3s ease-out',
         spin: 'spin 1s linear infinite',
       },
@@ -130,10 +133,11 @@ module.exports = {
   },
   variants: {
     extend: {
-      scale: ['active', 'group-hover'],
+      scale: ['active', 'group-hover', 'hover'], // Added hover for card effects
       rotate: ['group-hover'],
       opacity: ['disabled'],
       cursor: ['disabled'],
+      translate: ['hover'], // Added for subtle lifts
     },
   },
   plugins: [

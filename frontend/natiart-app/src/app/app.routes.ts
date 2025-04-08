@@ -5,7 +5,6 @@ import {SignupComponent} from "./directory/components/auth/signup/signup.compone
 import {
   CustomerDashboardComponent
 } from "./product/components/customer/customer-dashboard/customer-dashboard.component";
-import {authGuard} from "./directory/guards/auth.guard";
 import {AdminDashboardComponent} from "./product/components/admin/admin-dashboard/admin-dashboard.component";
 
 export const routes: Routes = [
@@ -15,7 +14,7 @@ export const routes: Routes = [
   {
     path: 'dashboard',
     component: CustomerDashboardComponent,
-    canActivate: [authGuard]
+    // canActivate: [authGuard]
   },
   // {
   //   path: 'product/:id',
