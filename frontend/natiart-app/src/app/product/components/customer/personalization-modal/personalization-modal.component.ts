@@ -2,30 +2,14 @@ import {Component, EventEmitter, Input, Output} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {Product} from '../../../models/product.model';
-import {PersonalizationOption} from "../../../models/support/personalization-option";
+import {PersonalizationOption} from "../../../models/support/personalization-option"; // Ensure this path is correct
 
 @Component({
-    selector: 'app-personalization-modal',
-    imports: [CommonModule, FormsModule],
-    template: `
-    <div *ngIf="show"
-         class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-      <div class="bg-white p-5 rounded-lg shadow-xl max-w-md w-full">
-        <h2 class="text-xl font-bold mb-4">Personalize Your Product</h2>
-        <p class="mb-4">{{ product?.label }}</p>
-        <div class="flex justify-end space-x-2">
-          <button (click)="onCancel()"
-                  class="flex-1 py-2 px-4  rounded-md shadow-input text-sm font-medium bg-transparent text-primary border border-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
-            Cancel
-          </button>
-          <button (click)="onSubmit()" [disabled]="!isValid()"
-                  class="flex-1 py-2 px-4 border border-transparent rounded-md shadow-input text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
-            Add to Cart
-          </button>
-        </div>
-      </div>
-    </div>
-  `
+  selector: 'app-personalization-modal',
+  standalone: true, // Add standalone: true
+  imports: [CommonModule, FormsModule], // CommonModule and FormsModule are needed for *ngIf, [(ngModel)] etc.
+  templateUrl: './personalization-modal.component.html',
+  styleUrl: './personalization-modal.component.css'
 })
 export class PersonalizationModalComponent {
   @Input() show = false;
@@ -33,13 +17,26 @@ export class PersonalizationModalComponent {
   @Output() close = new EventEmitter<void>();
   @Output() personalize = new EventEmitter<{ goldBorder?: boolean, customImage?: File }>();
 
+  // Internal state for the form elements
   goldBorder = false;
   customImage: File | null = null;
+
+  // Helper getters to check available personalizations
+  get canAddGoldBorder(): boolean {
+    return !!this.product?.availablePersonalizations.includes(PersonalizationOption.GOLDEN_BORDER);
+  }
+
+  get canAddCustomImage(): boolean {
+    return !!this.product?.availablePersonalizations.includes(PersonalizationOption.CUSTOM_IMAGE);
+  }
 
   onFileSelected(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (file) {
       this.customImage = file;
+    } else {
+      // Handle case where user cancels file selection
+      this.customImage = null;
     }
   }
 
@@ -49,23 +46,38 @@ export class PersonalizationModalComponent {
   }
 
   onSubmit() {
+    if (!this.isValid()) {
+      // Optional: Add some user feedback if they somehow click submit when invalid
+      console.warn("Submit clicked while form is invalid.");
+      return;
+    }
     this.personalize.emit({
-      goldBorder: this.goldBorder,
-      customImage: this.customImage || undefined
+      // Only include options if they are available for the product
+      goldBorder: this.canAddGoldBorder ? this.goldBorder : undefined,
+      customImage: this.canAddCustomImage ? this.customImage ?? undefined : undefined // Use nullish coalescing for clarity
     });
-    this.resetForm();
+    // Important: Close the modal after submitting
+    this.close.emit();
+    this.resetForm(); // Reset form for next time it opens
   }
 
-  isValid() {
-    if (this.product?.availablePersonalizations.includes(PersonalizationOption.CUSTOM_IMAGE)) {
-      return this.customImage;
-    } else {
-      return true;
+  isValid(): boolean {
+    // If custom image is an available personalization for this product,
+    // then the customImage file MUST be selected.
+    if (this.canAddCustomImage) {
+      return !!this.customImage; // Must have a file selected
     }
+    // Otherwise (only gold border available, or no options), it's always valid.
+    return true;
   }
 
   private resetForm() {
     this.goldBorder = false;
     this.customImage = null;
+    // Reset file input visually if needed (more complex, often not necessary if modal is destroyed/recreated)
+    // const fileInput = document.getElementById('customImage') as HTMLInputElement;
+    // if (fileInput) {
+    //   fileInput.value = '';
+    // }
   }
 }

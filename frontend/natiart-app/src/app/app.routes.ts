@@ -2,10 +2,8 @@ import {Routes} from '@angular/router';
 import {LoginComponent} from "./directory/components/auth/login/login.component";
 import {LogoutComponent} from "./directory/components/auth/logout/logout.component";
 import {SignupComponent} from "./directory/components/auth/signup/signup.component";
-import {
-  CustomerDashboardComponent
-} from "./product/components/customer/customer-dashboard/customer-dashboard.component";
 import {AdminDashboardComponent} from "./product/components/admin/admin-dashboard/admin-dashboard.component";
+import {DashboardComponent} from "./product/components/customer/dashboard/dashboard.component";
 
 export const routes: Routes = [
   {path: 'login', component: LoginComponent},
@@ -13,7 +11,7 @@ export const routes: Routes = [
   {path: 'register', component: SignupComponent},
   {
     path: 'dashboard',
-    component: CustomerDashboardComponent,
+    component: DashboardComponent,
     // canActivate: [authGuard]
   },
   // {

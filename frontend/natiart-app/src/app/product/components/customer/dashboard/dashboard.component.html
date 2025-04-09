@@ -1,1 +1,30 @@
-<p>dashboard works!</p>
+<app-top-menu></app-top-menu>
+
+<app-top-banner></app-top-banner>
+
+<div class="flex">
+  <app-left-menu class="w-64 min-h-screen"></app-left-menu>
+  <main class="flex-grow">
+    <div class="container mx-auto px-4">
+      <app-product-list type="featured" title="Featured Products"></app-product-list>
+      <app-product-list type="new" title="New Products"></app-product-list>
+
+      <!-- About Us -->
+      <section>
+        <div class="bg-white p-6 rounded-lg shadow-md">
+          <h2 class="text-2xl sm:text-3xl font-light mb-4">About Our Porcelain</h2>
+          <p class="text-gray-600 mb-4">
+            Our porcelain products are crafted with the utmost care and attention to detail.
+            We pride ourselves on combining traditional techniques with modern designs to create
+            pieces that are both functional and beautiful. Explore our collection and bring a touch
+            of elegance to your home.
+          </p>
+          <button
+            class="bg-transparent text-primary border border-primary px-4 py-2 rounded-full hover:bg-primary hover:text-white transition-colors text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+            Learn More
+          </button>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>

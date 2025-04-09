@@ -3,7 +3,8 @@
     {{ this.title }}
   </h2>
   <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 px-4">
-    <div *ngFor="let product of products | async" class="bg-surface rounded-lg border p-4 shadow-elevated">
+    <!-- ADD class="product-card" to this div -->
+    <div *ngFor="let product of products | async" class="bg-surface rounded-lg border p-4 shadow-elevated product-card">
       <!-- Product Image -->
       <div class="relative h-48 mb-4 rounded-md overflow-hidden">
         <img
@@ -13,6 +14,8 @@
           class="w-full h-full object-cover"
           loading="lazy"
         />
+        <!-- Add a loading placeholder if needed -->
+        <div *ngIf="!imageUrls[product.id!]" class="w-full h-full bg-gray-200 animate-pulse"></div>
       </div>
       <!-- Product Details -->
       <h3 class="text-lg font-sans font-semibold text-secondary mb-2 truncate">
@@ -29,20 +32,21 @@
           *ngIf="product.originalPrice > product.markedPrice"
           class="text-sm text-text-muted line-through"
         >
-          R${{ product.originalPrice.toFixed(2) }}
+           {{ product.originalPrice | currency:'BRL' }}
         </span>
       </div>
       <!-- Buttons -->
       <div class="flex gap-2">
+        <!-- Pass $event to addToCart -->
         <button
-          (click)="addToCart(product)"
-          class="flex-1 py-2 bg-primary text-white rounded-lg"
+          (click)="addToCart(product, $event)"
+          class="flex-1 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
         >
           Add to Cart
         </button>
         <button
           [routerLink]="['/product', product.id]"
-          class="flex-1 py-2 border border-primary text-primary rounded-lg"
+          class="flex-1 py-2 border border-primary text-primary rounded-lg hover:bg-primary-light transition-colors"
         >
           View Details
         </button>
@@ -50,3 +54,10 @@
     </div>
   </div>
 </section>
+
+<app-personalization-modal
+  (close)="closePersonalizationModal()"
+  (personalize)="onPersonalizationComplete($event)"
+  [product]="selectedProduct"
+  [show]="showPersonalizationModal">
+</app-personalization-modal>
