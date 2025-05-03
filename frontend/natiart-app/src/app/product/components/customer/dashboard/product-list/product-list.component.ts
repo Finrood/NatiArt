@@ -8,11 +8,12 @@ import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
 import {CartService} from "../../../../service/cart.service";
 import {PersonalizationModalComponent} from "../../personalization-modal/personalization-modal.component";
 import {PersonalizationOption} from "../../../../models/support/personalization-option";
+import {AddToCartButtonComponent} from "../../add-to-cart-button/add-to-cart-button.component";
 
 @Component({
   selector: 'app-product-list',
   standalone: true,
-  imports: [AsyncPipe, CurrencyPipe, NgForOf, NgIf, RouterLink, PersonalizationModalComponent],
+  imports: [AsyncPipe, CurrencyPipe, NgForOf, NgIf, RouterLink, PersonalizationModalComponent, AddToCartButtonComponent],
   templateUrl: './product-list.component.html',
   styleUrls: ['./product-list.component.css']
 })
@@ -113,7 +114,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
     this.closePersonalizationModal(); // This will also clear triggerElementForModal
   }
 
-  private triggerFlyAnimation(clickedElement: HTMLElement): void {
+  public triggerFlyAnimation(clickedElement: HTMLElement): void {
     const productCard = clickedElement.closest('.product-card');
     if (!productCard) {
       console.error("Could not find product card element for animation.");

@@ -3,28 +3,35 @@ import {AsyncPipe, CurrencyPipe, KeyValuePipe, NgForOf, NgIf, NgStyle} from "@an
 import {FormsModule} from "@angular/forms";
 import {BehaviorSubject, Subscription} from "rxjs";
 import {Product} from "../../../models/product.model";
-import {ActivatedRoute} from "@angular/router";
+import {ActivatedRoute, RouterLink} from "@angular/router";
 import {ProductService} from "../../../service/product.service";
 import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
 import {TopMenuComponent} from "../top-menu/top-menu.component";
 import {LeftMenuComponent} from "../left-menu/left-menu.component";
 import {CartService} from "../../../service/cart.service";
+import {PersonalizationOption} from "../../../models/support/personalization-option";
+import {PersonalizationModalComponent} from "../personalization-modal/personalization-modal.component";
+import {AddToCartButtonComponent} from "../add-to-cart-button/add-to-cart-button.component";
 
 @Component({
-    selector: 'app-product-detail',
-    imports: [
-        AsyncPipe,
-        NgForOf,
-        FormsModule,
-        NgIf,
-        CurrencyPipe,
-        TopMenuComponent,
-        LeftMenuComponent,
-        KeyValuePipe,
-        NgStyle
-    ],
-    templateUrl: './product-detail.component.html',
-    styleUrls: ['./product-detail.component.css']
+  selector: 'app-product-detail',
+  standalone: true, // Add standalone: true if not already
+  imports: [
+    AsyncPipe,
+    NgForOf,
+    FormsModule,
+    NgIf,
+    CurrencyPipe,
+    TopMenuComponent,
+    LeftMenuComponent,
+    KeyValuePipe,
+    NgStyle,
+    PersonalizationModalComponent,
+    RouterLink,
+    AddToCartButtonComponent,
+  ],
+  templateUrl: './product-detail.component.html',
+  styleUrls: ['./product-detail.component.css']
 })
 export class ProductDetailComponent implements OnInit, OnDestroy {
   product$ = new BehaviorSubject<Product | null>(null);
@@ -40,14 +47,18 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   @ViewChild('mainImage') mainImage!: ElementRef<HTMLImageElement>;
   private subscriptions: Subscription[] = [];
 
+  showPersonalizationModal = false;
+  selectedProductForModal: Product | null = null;
+  triggerElementForModal: HTMLElement | null = null;
+
   constructor(
     private route: ActivatedRoute,
     private productService: ProductService,
     private sanitizer: DomSanitizer,
     private renderer: Renderer2,
     private cartService: CartService
-  ) {
-  }
+  ) {}
+
 
   get transformScale(): string {
     return `scale(${this.zoomFactor})`;
@@ -62,6 +73,14 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.subscriptions.forEach(subscription => subscription.unsubscribe());
+    Object.values(this.imageUrls).forEach(url => {
+      if (url) {
+        const urlString = this.sanitizer.sanitize(4 /* SecurityContext.RESOURCE_URL */, url);
+        if (urlString) {
+          URL.revokeObjectURL(urlString);
+        }
+      }
+    });
   }
 
   selectImage(index: number) {
@@ -80,8 +99,22 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     }
   }
 
-  addToCart(product: Product) {
-    this.cartService.addToCart(product, this.quantity);
+  addToCart(product: Product, event?: MouseEvent) { // Added optional event parameter
+    // Check if personalization is needed
+    const needsPersonalization = product.availablePersonalizations?.some(
+      p => p === PersonalizationOption.GOLDEN_BORDER || p === PersonalizationOption.CUSTOM_IMAGE
+    );
+
+    const triggerElement = event?.currentTarget as HTMLElement | undefined;
+
+    if (needsPersonalization) {
+      this.openPersonalizationModal(product, triggerElement);
+    } else {
+      this.cartService.addToCart(product, this.quantity);
+      if (triggerElement) {
+        this.triggerFlyAnimation(triggerElement);
+      }
+    }
   }
 
   toggleZoom(event: MouseEvent) {
@@ -117,6 +150,82 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     this.renderer.setStyle(image, 'transform-origin', `${zoomX}% ${zoomY}%`);
   }
 
+
+  openPersonalizationModal(product: Product, triggerElement?: HTMLElement) {
+    this.selectedProductForModal = product;
+    this.triggerElementForModal = triggerElement || null;
+    this.showPersonalizationModal = true;
+  }
+
+  closePersonalizationModal() {
+    this.showPersonalizationModal = false;
+    this.selectedProductForModal = null;
+    this.triggerElementForModal = null;
+  }
+
+  onPersonalizationComplete(result: { goldBorder?: boolean, customImage?: File }) {
+    if (this.selectedProductForModal) {
+      this.cartService.addToCart(
+        this.selectedProductForModal,
+        this.quantity,
+        result.goldBorder,
+        result.customImage
+      );
+      if (this.triggerElementForModal) {
+        this.triggerFlyAnimation(this.triggerElementForModal);
+      }
+    }
+    this.closePersonalizationModal();
+  }
+
+  public triggerFlyAnimation(clickedElement: HTMLElement): void {
+    const buttonElement = clickedElement.closest('button');
+    if (!buttonElement) {
+      console.error("Could not find button element for animation start.");
+      return;
+    }
+
+    const buttonRect = buttonElement.getBoundingClientRect();
+
+    const cartContainer = document.querySelector('.cart-container');
+    if (!cartContainer) {
+      console.error("Could not find cart container element (.cart-container) for animation target.");
+      return;
+    }
+    const cartRect = cartContainer.getBoundingClientRect();
+
+    const flyEl = this.renderer.createElement('div');
+    this.renderer.setStyle(flyEl, 'position', 'fixed');
+    this.renderer.setStyle(flyEl, 'top', `${buttonRect.top + buttonRect.height / 2}px`); // Start from button center
+    this.renderer.setStyle(flyEl, 'left', `${buttonRect.left + buttonRect.width / 2}px`); // Start from button center
+    this.renderer.setStyle(flyEl, 'width', `15px`);
+    this.renderer.setStyle(flyEl, 'height', `15px`);
+    this.renderer.setStyle(flyEl, 'backgroundColor', 'var(--color-primary)'); // Use theme color
+    this.renderer.setStyle(flyEl, 'borderRadius', '50%');
+    this.renderer.setStyle(flyEl, 'opacity', '0.8');
+    this.renderer.setStyle(flyEl, 'zIndex', '1000');
+    this.renderer.setStyle(flyEl, 'transition', 'all 0.7s cubic-bezier(0.29, 0.56, 0.41, 1.31)'); // Ease-out-back like effect
+    this.renderer.setStyle(flyEl, 'pointerEvents', 'none');
+
+    this.renderer.appendChild(document.body, flyEl);
+
+    flyEl.offsetWidth;
+
+    const targetX = cartRect.left + cartRect.width / 2;
+    const targetY = cartRect.top + cartRect.height / 2;
+
+    this.renderer.setStyle(flyEl, 'top', `${targetY}px`);
+    this.renderer.setStyle(flyEl, 'left', `${targetX}px`);
+    this.renderer.setStyle(flyEl, 'transform', 'scale(0.1)'); // Shrink
+    this.renderer.setStyle(flyEl, 'opacity', '0');
+
+    setTimeout(() => {
+      if (flyEl.parentNode === document.body) {
+        this.renderer.removeChild(document.body, flyEl);
+      }
+    }, 700);
+  }
+
   private loadProduct(productId: string): void {
     const subscription = this.productService.getProduct(productId).subscribe({
       next: (product) => {
@@ -130,47 +239,92 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   }
 
   private updateProductImages(product: Product): void {
-    product.images.forEach((imagePath, index) => {
+    this.imageUrls = {};
+    (product.images || []).forEach((imagePath, index) => {
       this.fetchImage(index, imagePath);
     });
+    this.selectedImageIndex = 0;
   }
 
+
   private fetchImage(index: number, imagePath: string): void {
-    const subscription = this.productService.getImage(imagePath).subscribe(blob => {
-      const objectUrl = URL.createObjectURL(blob);
-      this.imageUrls[index] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
-      this.product$.next(this.product$.value);
+    // Prevent memory leaks by revoking old URLs if overwriting
+    if (this.imageUrls[index]) {
+      const oldUrl = this.sanitizer.sanitize(4, this.imageUrls[index]);
+      if (oldUrl) URL.revokeObjectURL(oldUrl);
+    }
+
+    const subscription = this.productService.getImage(imagePath).subscribe({
+      next: blob => {
+        const objectUrl = URL.createObjectURL(blob);
+        this.imageUrls[index] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
+        // Trigger change detection if necessary, though BehaviorSubject should handle it
+        // this.product$.next(this.product$.value);
+      },
+      error: err => {
+        console.error(`Failed to load image at index ${index}:`, err);
+        this.imageUrls[index] = 'assets/img/placeholder.png'; // Fallback image URL
+      }
     });
     this.subscriptions.push(subscription);
   }
 
-  private loadRelatedProducts(categoryId: string): void {
+  private loadRelatedProducts(categoryId: string | undefined): void {
+    if (!categoryId) {
+      this.relatedProducts$.next([]);
+      return;
+    };
     const subscription = this.productService.getProductsByCategory(categoryId).subscribe({
       next: (products: Product[]) => {
-        this.relatedProducts$.next(products.filter(p => p.id !== this.product$.value?.id).slice(0, 4));
-        this.updateRelatedProductImages(products);
+        const currentProductId = this.product$.value?.id;
+        const related = products
+          .filter(p => p.id !== currentProductId) // Exclude current product
+          .slice(0, 4); // Limit to 4 related products
+        this.relatedProducts$.next(related);
+        // Load images for related products (simplified: assuming first image)
+        related.forEach(p => {
+          if (p.images && p.images.length > 0) {
+            this.fetchRelatedProductImage(p.id!, p.images[0]); // Fetch only the first image for preview
+          }
+        });
       },
       error: (error) => console.error('Error loading related products:', error)
     });
     this.subscriptions.push(subscription);
   }
 
-  private updateRelatedProductImages(products: Product[]): void {
-    products.forEach(product => {
-      if (product.images && product.images.length > 0) {
-        this.fetchRelatedProductImage(product.id!, product.images[0]);
-      }
-    });
-  }
+  // You might need a separate map for related product image URLs
+  relatedImageUrls: { [productId: string]: SafeUrl | string } = {};
 
   private fetchRelatedProductImage(productId: string, imagePath: string): void {
-    const subscription = this.productService.getImage(imagePath).subscribe(blob => {
-      const objectUrl = URL.createObjectURL(blob);
-      const updatedProducts = this.relatedProducts$.value.map(p =>
-        p.id === productId ? {...p, imageUrl: this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl)} : p
-      );
-      this.relatedProducts$.next(updatedProducts);
+    // Avoid re-fetching if URL already exists
+    if (this.relatedImageUrls[productId]) return;
+
+    const subscription = this.productService.getImage(imagePath).subscribe({
+      next: blob => {
+        const objectUrl = URL.createObjectURL(blob);
+        this.relatedImageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
+        // Update the relatedProducts$ BehaviorSubject to trigger template update
+        // This is a bit inefficient, ideally you'd update just the image URL part
+        const currentRelated = this.relatedProducts$.value.map(p => {
+          if (p.id === productId) {
+            return { ...p, imageUrl: this.relatedImageUrls[productId] }; // Add a temporary imageUrl property perhaps
+          }
+          return p;
+        });
+        // If you modify the Product interface to include an optional 'displayImageUrl',
+        // you could update that here for better binding in the template.
+        // For now, just triggering an update might be enough if the template uses relatedImageUrls map.
+        this.relatedProducts$.next([...this.relatedProducts$.value]); // Trigger update
+      },
+      error: err => {
+        console.error(`Failed to load related image for product ${productId}:`, err);
+        this.relatedImageUrls[productId] = 'assets/img/placeholder.png'; // Fallback
+        this.relatedProducts$.next([...this.relatedProducts$.value]); // Trigger update even on error
+      }
     });
     this.subscriptions.push(subscription);
   }
+
+  protected readonly PersonalizationOption = PersonalizationOption;
 }

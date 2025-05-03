@@ -4,6 +4,8 @@ import {LogoutComponent} from "./directory/components/auth/logout/logout.compone
 import {SignupComponent} from "./directory/components/auth/signup/signup.component";
 import {AdminDashboardComponent} from "./product/components/admin/admin-dashboard/admin-dashboard.component";
 import {DashboardComponent} from "./product/components/customer/dashboard/dashboard.component";
+import {ProductDetailComponent} from "./product/components/customer/product-detail/product-detail.component";
+import {productGuard} from "./product/guards/product-guard.guard";
 
 export const routes: Routes = [
   {path: 'login', component: LoginComponent},
@@ -14,12 +16,12 @@ export const routes: Routes = [
     component: DashboardComponent,
     // canActivate: [authGuard]
   },
-  // {
-  //   path: 'product/:id',
-  //   component: ProductDetailComponent,
-  //   canActivate: [authGuard],
-  //   canDeactivate: [productGuard]
-  // },
+  {
+    path: 'product/:id',
+    component: ProductDetailComponent,
+   // canActivate: [authGuard],
+    canDeactivate: [productGuard]
+  },
   // {
   //   path: 'cart',
   //   component: CartComponent,

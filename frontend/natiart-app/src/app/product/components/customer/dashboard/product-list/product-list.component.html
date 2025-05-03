@@ -38,12 +38,10 @@
       <!-- Buttons -->
       <div class="flex gap-2">
         <!-- Pass $event to addToCart -->
-        <button
-          (click)="addToCart(product, $event)"
-          class="flex-1 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-        >
-          Add to Cart
-        </button>
+        <app-add-to-cart-button
+          [product]="product"
+          (itemAdded)="triggerFlyAnimation($event)">
+        </app-add-to-cart-button>
         <button
           [routerLink]="['/product', product.id]"
           class="flex-1 py-2 border border-primary text-primary rounded-lg hover:bg-primary-light transition-colors"
