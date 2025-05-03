@@ -15,7 +15,7 @@ import {
 } from 'rxjs/operators';
 import {ShippingEstimate, ShippingService} from '../../../service/shipping.service';
 import {CepFormatDirective} from "../../../../directory/directive/cep-format-directive.directive";
-import {LoadingSpinnerComponent} from "../../shared/loading-spinner/loading-spinner.component";
+import {LoadingSpinnerComponent} from "../../../../shared/components/shared/loading-spinner/loading-spinner.component";
 
 interface ShippingState {
   status: 'idle' | 'loading' | 'success' | 'error' | 'no-options';

@@ -6,9 +6,11 @@ import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 import {CartService} from '../../../service/cart.service';
 import {ProductService} from '../../../service/product.service';
 import {Router, RouterLink} from '@angular/router';
-import {ConfirmationModalComponent} from "../../shared/confirmation-modal/confirmation-modal.component";
 import {AsyncPipe, CurrencyPipe, NgForOf, NgIf} from "@angular/common";
 import {ShippingEstimationComponent} from "../shipping-estimation/shipping-estimation.component";
+import {
+  ConfirmationModalComponent
+} from "../../../../shared/components/shared/confirmation-modal/confirmation-modal.component";
 
 @Component({
     selector: 'app-cart',
