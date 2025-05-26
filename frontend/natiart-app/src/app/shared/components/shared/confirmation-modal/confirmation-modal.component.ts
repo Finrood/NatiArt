@@ -1,32 +1,52 @@
+// START OF FILE: src/app/shared/components/shared/confirmation-modal/confirmation-modal.component.ts
 import {Component, EventEmitter, Input, Output} from '@angular/core';
-import {NgIf} from '@angular/common';
+import {NgIf} from '@angular/common'; // Ensure NgIf is imported
 
 @Component({
-    selector: 'app-confirmation-modal',
-    imports: [NgIf],
-    template: `
-    <div *ngIf="isOpen" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
-         id="modal-overlay">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <div class="mt-3 text-center">
-          <h3 class="text-lg leading-6 font-medium text-gray-900">{{ title }}</h3>
-          <div class="mt-2 px-7 py-3">
-            <p class="text-sm text-gray-500">{{ message }}</p>
+  selector: 'app-confirmation-modal',
+  standalone: true, // Make sure it's standalone
+  imports: [NgIf],   // Import NgIf
+  template: `
+    <div *ngIf="isOpen"
+         class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300 ease-out"
+         id="modal-overlay"
+         (click)="onCancel()"> <!-- Optional: Close on overlay click -->
+
+      <div class="bg-surface rounded-lg shadow-xl w-full max-w-md m-4 p-6 transform transition-transform duration-300 ease-out scale-95 opacity-0"
+           [class.scale-100]="isOpen" [class.opacity-100]="isOpen"
+           (click)="$event.stopPropagation()"> <!-- Prevent closing when clicking inside modal -->
+
+        <div class="text-center">
+          <!-- Title -->
+          <h3 class="text-xl font-semibold leading-6 text-secondary-dark mb-3">{{ title }}</h3>
+
+          <!-- Message -->
+          <div class="mt-2 mb-6">
+            <p class="text-sm text-secondary">{{ message }}</p>
           </div>
-          <div class="items-center px-4 py-3">
+
+          <!-- Buttons -->
+          <div class="flex flex-col sm:flex-row-reverse gap-3">
+            <!-- Confirm Button (Primary) -->
             <button (click)="onConfirm()"
-                    class="px-4 py-2 bg-blue-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    type="button"
+                    class="w-full sm:w-auto inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary text-base font-medium text-primary-contrast hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-150">
               {{ confirmText }}
             </button>
+
+            <!-- Cancel Button (Secondary - Bordered) -->
             <button (click)="onCancel()"
-                    class="mt-3 px-4 py-2 bg-gray-100 text-gray-800 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                    type="button"
+                    class="w-full sm:w-auto inline-flex justify-center rounded-md border border-secondary/50 shadow-sm px-4 py-2 bg-surface text-base font-medium text-secondary hover:bg-secondary/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary/50 transition-colors duration-150">
               {{ cancelText }}
             </button>
           </div>
         </div>
       </div>
     </div>
-  `
+  `,
+  // Add styleUrl if you have separate CSS, otherwise keep empty/remove
+  // styleUrl: './confirmation-modal.component.css'
 })
 export class ConfirmationModalComponent {
   @Input() isOpen = false;
@@ -37,11 +57,13 @@ export class ConfirmationModalComponent {
   @Output() confirm = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();
 
-  onConfirm() {
+  onConfirm(): void {
     this.confirm.emit();
+    // No need to set isOpen = false here, parent should handle it if needed
   }
 
-  onCancel() {
+  onCancel(): void {
     this.cancel.emit();
+    // No need to set isOpen = false here, parent should handle it if needed
   }
 }
