@@ -2,17 +2,19 @@ package com.portcelana.natiart.repository;
 
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Product;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-
 @Repository
 public interface ProductRepository extends JpaRepository<Product, String> {
-    List<Product> findAllByCategory(Category category);
+    Page<Product> findAllByCategory(Category category, Pageable pageable);
 
-    List<Product> findAllByNewProduct(boolean newProduct);
+    Page<Product> findAllByNewProduct(boolean newProduct, Pageable pageable);
 
-    List<Product> findAllByFeaturedProduct(boolean featuredProduct);
+    Page<Product> findAllByFeaturedProduct(boolean featuredProduct, Pageable pageable);
+
+    boolean existsByCategory(Category category);
 
 }

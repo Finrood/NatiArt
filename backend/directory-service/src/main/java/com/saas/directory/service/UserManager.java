@@ -3,12 +3,13 @@ package com.saas.directory.service;
 import com.saas.directory.controller.helper.ResourceAlreadyExistsException;
 import com.saas.directory.controller.helper.ResourceNotFoundException;
 import com.saas.directory.dto.UserRegistrationDto;
+import com.saas.directory.event.UserRegisteredEvent;
 import com.saas.directory.model.*;
 import com.saas.directory.model.helper.PaymentProcessor;
 import com.saas.directory.repository.ExternalUserRepository;
 import com.saas.directory.repository.RoleRepository;
 import com.saas.directory.repository.UserRepository;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -23,18 +24,18 @@ public class UserManager {
     private final ExternalUserRepository externalUserRepository;
     private final RoleRepository roleRepository;
     private final ProfileManager profileManager;
-    private final PasswordEncoder passwordEncoder;
+    private final ApplicationEventPublisher eventPublisher;
 
     public UserManager(UserRepository userRepository,
                        ExternalUserRepository externalUserRepository,
                        RoleRepository roleRepository,
                        ProfileManager profileManager,
-                       PasswordEncoder passwordEncoder) {
+                       ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.externalUserRepository = externalUserRepository;
         this.roleRepository = roleRepository;
         this.profileManager = profileManager;
-        this.passwordEncoder = passwordEncoder;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -71,7 +72,11 @@ public class UserManager {
         );
         final Profile profile = profileManager.createProfile(newUser, userRegistrationDto.profile());
         newUser.setProfile(profile);
-        return userRepository.save(newUser);
+        final User savedUser = userRepository.save(newUser);
+
+        eventPublisher.publishEvent(new UserRegisteredEvent(savedUser.getUsername()));
+
+        return savedUser;
     }
 
     @Transactional
@@ -90,7 +95,11 @@ public class UserManager {
         );
         final Profile profile = profileManager.createProfile(newUser, userRegistrationDto.profile());
         newUser.setProfile(profile);
-        return userRepository.save(newUser);
+        final User savedUser = userRepository.save(newUser);
+
+        eventPublisher.publishEvent(new UserRegisteredEvent(savedUser.getUsername()));
+
+        return savedUser;
     }
 
     @Transactional(readOnly = true)

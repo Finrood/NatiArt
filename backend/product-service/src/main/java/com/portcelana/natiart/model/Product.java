@@ -35,11 +35,11 @@ public class Product {
     @Column(nullable = false)
     private int stockQuantity;
 
-    @ManyToOne(optional = false, fetch = FetchType.EAGER)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", referencedColumnName = "id")
     private Category category;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "package_id", referencedColumnName = "id")
     private Package packaging;
 

@@ -8,6 +8,9 @@ import com.portcelana.natiart.storage.InputFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +21,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 @RestController
@@ -42,30 +44,33 @@ public class ProductController {
     }
 
     @GetMapping("/products")
-    public List<ProductDto> getProducts(@TargetUser String username) {
-        return productManager.getProducts().stream()
+    public List<ProductDto> getProducts(@TargetUser String username,
+                                        @RequestParam(required = false, defaultValue = "0") int page,
+                                        @RequestParam(required = false, defaultValue = "20") int size) {
+        LOGGER.info("Getting all products");
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "label"));
+        return productManager.getProducts(pageable).stream()
                 .map(ProductDto::from)
-                .sorted(Comparator.comparing(ProductDto::getLabel))
                 .toList();
     }
 
     @GetMapping("/products/new")
-    public List<ProductDto> getNewProducts() {
+    public List<ProductDto> getNewProducts(@RequestParam(required = false, defaultValue = "0") int page,
+                                           @RequestParam(required = false, defaultValue = "20") int size) {
         LOGGER.info("Getting new products");
-
-        return productManager.getProducts().stream()
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "label"));
+        return productManager.getProducts(pageable).stream()
                 .map(ProductDto::from)
-                .sorted(Comparator.comparing(ProductDto::getLabel))
                 .toList();
     }
 
     @GetMapping("/products/featured")
-    public List<ProductDto> getFeaturedProducts() {
+    public List<ProductDto> getFeaturedProducts(@RequestParam(required = false, defaultValue = "0") int page,
+                                                @RequestParam(required = false, defaultValue = "20") int size) {
         LOGGER.info("Getting featured products");
-
-        return productManager.getProducts().stream()
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "label"));
+        return productManager.getProducts(pageable).stream()
                 .map(ProductDto::from)
-                .sorted(Comparator.comparing(ProductDto::getLabel))
                 .toList();
     }
 

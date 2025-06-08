@@ -5,6 +5,7 @@ import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.storage.InputFile;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.data.domain.Pageable;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -16,13 +17,15 @@ public interface ProductManager {
 
     Product getProductOrDie(String id);
 
-    List<Product> getProducts();
+    List<Product> getProducts(Pageable pageable);
 
-    List<Product> getNewProducts();
+    List<Product> getNewProducts(Pageable pageable);
 
-    List<Product> getFeaturedProducts();
+    List<Product> getFeaturedProducts(Pageable pageable);
 
-    List<Product> getProductsByCategory(Category category);
+    List<Product> getProductsByCategory(Category category, Pageable pageable);
+
+    boolean existsByCategory(Category category);
 
     Product createProduct(ProductDto productDto, List<InputFile> imagesInput);
 

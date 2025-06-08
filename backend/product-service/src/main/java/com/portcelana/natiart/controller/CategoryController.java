@@ -4,10 +4,12 @@ import com.portcelana.natiart.dto.CategoryDto;
 import com.portcelana.natiart.service.CategoryManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Comparator;
 import java.util.List;
 
 @RestController
@@ -28,12 +30,12 @@ public class CategoryController {
     }
 
     @GetMapping("/categories")
-    public List<CategoryDto> getCategories() {
+    public List<CategoryDto> getCategories(@RequestParam(required = false, defaultValue = "0") int page,
+                                           @RequestParam(required = false, defaultValue = "20") int size) {
         LOGGER.info("Getting all categories");
-
-        return categoryManager.getCategories().stream()
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "label"));
+        return categoryManager.getCategories(pageable).stream()
                 .map(CategoryDto::from)
-                .sorted(Comparator.comparing(CategoryDto::getLabel))
                 .toList();
     }
 

@@ -1,5 +1,6 @@
 package com.portcelana.natiart.service;
 
+import com.portcelana.natiart.controller.ProductController;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.ProductDto;
 import com.portcelana.natiart.model.Category;
@@ -8,7 +9,10 @@ import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.repository.ProductRepository;
 import com.portcelana.natiart.storage.InputFile;
 import com.portcelana.natiart.storage.StorageService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,7 +26,9 @@ import java.util.UUID;
 
 @Service
 public class ProductManagerImpl implements ProductManager {
+    public static Logger LOGGER = LoggerFactory.getLogger(ProductController.class);
     private static final String IMAGE_BASE_PATH = "product-images/";
+
     private final ProductRepository productRepository;
     private final CategoryManager categoryManager;
     private final PackageManager packageManager;
@@ -53,26 +59,31 @@ public class ProductManagerImpl implements ProductManager {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Product> getProducts() {
-        return productRepository.findAll();
+    public List<Product> getProducts(Pageable pageable) {
+       return  productRepository.findAll(pageable).getContent();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Product> getNewProducts() {
-        return productRepository.findAllByNewProduct(true);
+    public List<Product> getNewProducts(Pageable pageable) {
+        return productRepository.findAllByNewProduct(true, pageable).getContent();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Product> getFeaturedProducts() {
-        return productRepository.findAllByFeaturedProduct(true);
+    public List<Product> getFeaturedProducts(Pageable pageable) {
+        return productRepository.findAllByFeaturedProduct(true, pageable).getContent();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Product> getProductsByCategory(Category category) {
-        return productRepository.findAllByCategory(category);
+    public List<Product> getProductsByCategory(Category category, Pageable pageable) {
+        return productRepository.findAllByCategory(category, pageable).getContent();
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsByCategory(Category category) {
+        return productRepository.existsByCategory(category);
     }
 
     @Override
@@ -158,12 +169,19 @@ public class ProductManagerImpl implements ProductManager {
     }
 
     private List<String> processImages(Product product, List<String> existingImages, List<InputFile> newImages) {
+        LOGGER.info("Processing [{}] images for product labelled [{}] with id [{}]", newImages.size(), product.getLabel(), product.getId());
+
         final List<String> imagesUris = existingImages != null ? new ArrayList<>(existingImages) : new ArrayList<>();
-        for (InputFile inputFile : newImages) {
-            final String imagePath = IMAGE_BASE_PATH + product.getId() + "/" + UUID.randomUUID();
-            final URI imageUri = storageService.uploadFile(imagePath, inputFile, UUID.randomUUID().toString());
-            imagesUris.add(imageUri.toString());
-        }
+
+        List<String> newUris = newImages.parallelStream()
+                .map(inputFile -> {
+                    final String imagePath = IMAGE_BASE_PATH + product.getId() + "/" + UUID.randomUUID();
+                    final URI imageUri = storageService.uploadFile(imagePath, inputFile, UUID.randomUUID().toString());
+                    return imageUri.toString();
+                })
+                .toList();
+
+        imagesUris.addAll(newUris);
         return imagesUris;
     }
 }

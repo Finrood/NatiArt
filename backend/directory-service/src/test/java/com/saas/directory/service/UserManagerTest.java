@@ -4,6 +4,7 @@ import com.saas.directory.controller.helper.ResourceAlreadyExistsException;
 import com.saas.directory.controller.helper.ResourceNotFoundException;
 import com.saas.directory.dto.ProfileDto;
 import com.saas.directory.dto.UserRegistrationDto;
+import com.saas.directory.event.UserRegisteredEvent;
 import com.saas.directory.model.Profile;
 import com.saas.directory.model.Role;
 import com.saas.directory.model.RoleName;
@@ -14,24 +15,28 @@ import com.saas.directory.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.context.ApplicationEventPublisher;
 
 import javax.management.relation.RoleNotFoundException;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class UserManagerTest {
     private final UserRepository userRepository = mock(UserRepository.class);
     private final ExternalUserRepository externalUserRepository = mock(ExternalUserRepository.class);
     private final RoleRepository roleRepository = mock(RoleRepository.class);
-    private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
     private final ProfileManager profileManager = mock(ProfileManager.class);
+    private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+
+    @Captor
+    private ArgumentCaptor<UserRegisteredEvent> eventCaptor;
 
     private UserManager userManager;
 
@@ -42,7 +47,7 @@ public class UserManagerTest {
                 externalUserRepository,
                 roleRepository,
                 profileManager,
-                passwordEncoder
+                eventPublisher
         );
     }
 
@@ -75,6 +80,13 @@ public class UserManagerTest {
         final User result = userManager.registerUser(userRegistrationDto);
 
         assertEquals(user, result);
+        assertEquals("new_username", result.getUsername());
+
+        verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
+
+        UserRegisteredEvent capturedEvent = eventCaptor.getValue();
+        assertNotNull(capturedEvent);
+        assertEquals("new_username", capturedEvent.username());
     }
 
     @Test
@@ -129,6 +141,13 @@ public class UserManagerTest {
         final User result = userManager.registerUser(userRegistrationDto);
 
         assertEquals(user, result);
+        assertEquals("new_username", result.getUsername());
+
+        verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
+
+        UserRegisteredEvent capturedEvent = eventCaptor.getValue();
+        assertNotNull(capturedEvent);
+        assertEquals("new_username", capturedEvent.username());
     }
 
     @Test
@@ -151,6 +170,7 @@ public class UserManagerTest {
 
         // Perform the registration and assert DuplicateUsernameException is thrown
         assertThrows(ResourceAlreadyExistsException.class, () -> userManager.registerUser(userRegistrationDto));
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -173,6 +193,7 @@ public class UserManagerTest {
 
         // Perform the registration and assert DuplicateUsernameException is thrown
         assertThrows(ResourceAlreadyExistsException.class, () -> userManager.registerUser(userRegistrationDto));
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -201,6 +222,13 @@ public class UserManagerTest {
         // Assert the user is registered with an empty profile
         assertEquals(user, result);
         assertNull(result.getProfile());
+        assertEquals("new_username", result.getUsername());
+
+        verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
+
+        UserRegisteredEvent capturedEvent = eventCaptor.getValue();
+        assertNotNull(capturedEvent);
+        assertEquals("new_username", capturedEvent.username());
     }
 
     @Test
@@ -224,5 +252,13 @@ public class UserManagerTest {
 
         // Assert the result
         assertEquals(user, result);
+        assertNotNull(result.getProfile());
+        assertEquals("new_username", result.getUsername());
+
+        verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
+
+        UserRegisteredEvent capturedEvent = eventCaptor.getValue();
+        assertNotNull(capturedEvent);
+        assertEquals("new_username", capturedEvent.username());
     }
 }

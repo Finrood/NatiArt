@@ -2,7 +2,6 @@ package com.saas.directory.controller;
 
 import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.UserRegistrationDto;
-import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
 import com.saas.directory.service.AsaasUserManager;
 import com.saas.directory.service.UserManager;
 import org.slf4j.Logger;
@@ -29,8 +28,6 @@ public class UserRegistrationController {
         LOGGER.info("User [{}] is signing up", userRegistrationDto.username());
 
         final UserDto userDto = UserDto.from(userManager.registerUser(userRegistrationDto));
-        final AsaasCustomerCreationResponse asaasCustomerCreationResponse = asaasUserManager.registerUser(userDto);
-        userDto.setExternalId(userManager.addAsaasCustomerIdToUser(userDto.getUsername(), asaasCustomerCreationResponse.getId()).getExternalId());
         return ResponseEntity.ok(userDto);
     }
 
@@ -39,8 +36,6 @@ public class UserRegistrationController {
         LOGGER.info("Registering ghost user [{}]", userRegistrationDto.username());
 
         final UserDto userDto = UserDto.from(userManager.registerGhostUser(userRegistrationDto));
-        final AsaasCustomerCreationResponse asaasCustomerCreationResponse = asaasUserManager.registerUser(userDto);
-        userDto.setExternalId(userManager.addAsaasCustomerIdToUser(userDto.getUsername(), asaasCustomerCreationResponse.getId()).getExternalId());
         return ResponseEntity.ok(userDto);
     }
 }
