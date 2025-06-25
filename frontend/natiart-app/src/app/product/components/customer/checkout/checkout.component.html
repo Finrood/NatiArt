@@ -44,7 +44,6 @@
           <div *ngIf="currentStep === 3" @fadeIn>
             <h2 class="text-xl font-semibold text-secondary-dark mb-4">3. Payment</h2>
             <app-payment-info-step
-              (processPixPnayment)="onProcessPixPayment()"
               [checkoutForm]="checkoutForm">
             </app-payment-info-step>
           </div>

@@ -34,7 +34,6 @@ import {PaymentMethod} from "../../../../models/paymentMethod.model";
 })
 export class PaymentInfoStepComponent {
   @Input({ required: true }) checkoutForm!: FormGroup;
-  // Removed @Output() processPixPayment as it's handled by the main submit now.
 
   paymentMethods = [
     {value: PaymentMethod.CREDIT_CARD, label: 'Credit Card'},

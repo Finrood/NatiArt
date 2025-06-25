@@ -119,6 +119,19 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.isLoading$ = this.orderService.orderProcessing$; // No takeUntil needed here, async pipe handles it
   }
 
+  private formatCpf(cpf: string): string {
+    const cleanValue = cpf.replace(/\D/g, '').slice(0, 11);
+    if (cleanValue.length <= 3) {
+      return cleanValue;
+    } else if (cleanValue.length <= 6) {
+      return `${cleanValue.slice(0, 3)}.${cleanValue.slice(3)}`;
+    } else if (cleanValue.length <= 9) {
+      return `${cleanValue.slice(0, 3)}.${cleanValue.slice(3, 6)}.${cleanValue.slice(6)}`;
+    } else {
+      return `${cleanValue.slice(0, 3)}.${cleanValue.slice(3, 6)}.${cleanValue.slice(6, 9)}-${cleanValue.slice(9)}`;
+    }
+  }
+
   ngOnInit(): void {
     // Fetch current user if not already fetched or state is unclear.
     // This subscription is managed by takeUntil(this.destroy$)
@@ -137,7 +150,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
                 firstname: user.profile.firstname,
                 lastname: user.profile.lastname,
                 email: user.username,
-                cpf: user.profile.cpf,
+                cpf: this.formatCpf(user.profile.cpf),
                 phone: user.profile.phone,
               },
               shippingInfo: {
