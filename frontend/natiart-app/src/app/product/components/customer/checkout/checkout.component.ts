@@ -183,12 +183,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     const cvvCtrl = this.checkoutForm.get('paymentInfo.cvv');
 
     if (paymentMethod === PaymentMethod.CREDIT_CARD || paymentMethod === PaymentMethod.DEBIT_CARD) {
-      cardNumberCtrl?.setValidators([Validators.required, Validators.pattern('^[0-9]{13,19}
-)]);
-      expirationDateCtrl?.setValidators([Validators.required, Validators.pattern('^(0[1-9]|1[0-2])\\/?([0-9]{2})
-)]);
-      cvvCtrl?.setValidators([Validators.required, Validators.pattern('^[0-9]{3,4}
-)]);
+      cardNumberCtrl?.setValidators([Validators.required, Validators.pattern('^[0-9]{13,19}')]);
+      expirationDateCtrl?.setValidators([Validators.required, Validators.pattern('^(0[1-9]|1[0-2])\\/?([0-9]{2})')]);
+      cvvCtrl?.setValidators([Validators.required, Validators.pattern('^[0-9]{3,4}')]);
     } else {
       cardNumberCtrl?.clearValidators();
       expirationDateCtrl?.clearValidators();
