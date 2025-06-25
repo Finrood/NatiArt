@@ -1,0 +1,9 @@
+.form-input {
+  @apply w-full px-3 py-2 text-base text-secondary bg-surface-variant border border-primary-lighter/50 rounded-md shadow-sm;
+  @apply focus:ring-2 focus:ring-primary/50 focus:border-primary;
+  @apply transition-all duration-150 ease-in-out;
+}
+
+.form-input::placeholder {
+  @apply text-secondary-light/70;
+}

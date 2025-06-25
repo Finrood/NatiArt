@@ -9,7 +9,6 @@
   <ng-container *ngIf="isCardPaymentSelected()" @fadeIn>
     <app-natiart-form-field label="Card Number" controlName="cardNumber" [form]="paymentInfoGroup">
       <input formControlName="cardNumber" id="cardNumber" placeholder="XXXX XXXX XXXX XXXX" type="text" class="form-input">
-      <!-- TODO: Add card type icon based on number -->
     </app-natiart-form-field>
 
     <div class="grid grid-cols-2 gap-4">
@@ -24,9 +23,8 @@
   </ng-container>
 
   <div *ngIf="isPixSelected()" @fadeIn class="pt-2">
-    <p class="text-sm text-secondary-light mb-3">
+    <p class="text-sm text-text-muted mb-3">
       You will be redirected to a secure page to complete your PIX payment after clicking "Place Order".
     </p>
-    <!-- The actual PIX processing is triggered by the main "Place Order" / "Next" button in checkout.component -->
   </div>
 </div>

@@ -1,45 +1,51 @@
-<div class="bg-primary-lighter/40 rounded-xl shadow-elevated p-5 lg:p-6">
-  <h2 class="text-xl font-semibold text-secondary-dark mb-5 pb-3 border-b border-primary-light/50">Order Summary</h2>
+<div class="bg-surface rounded-xl shadow-elevated p-6">
+  <h2 class="text-2xl font-serif text-secondary-dark mb-5 pb-3 border-b border-primary-lighter/50">Order Summary</h2>
 
-  <div *ngIf="cartItems && cartItems.length > 0; else emptyCart" class="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
-    <div *ngFor="let item of cartItems" class="flex items-start justify-between pb-3 border-b border-primary-lighter/30 last:border-b-0">
-      <div class="flex items-start space-x-3">
+  <div *ngIf="cartItems && cartItems.length > 0; else emptyCart" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2 -mr-2">
+    <div *ngFor="let item of cartItems" class="flex items-start justify-between pb-4 border-b border-primary-lighter/30 last:border-b-0">
+      <div class="flex items-start space-x-4">
         <img [src]="imageUrls[item.cartItemId] || 'assets/img/placeholder.png'"
              [alt]="item.product.label"
-             class="w-14 h-14 rounded-md object-cover border border-primary-lighter/50">
+             class="w-16 h-16 rounded-lg object-cover border-2 border-surface-variant">
         <div>
-          <p class="font-medium text-sm text-secondary-dark leading-tight">{{ item.product.label }}</p>
-          <p class="text-xs text-secondary-light">Qty: {{ item.quantity }}</p>
-          <p *ngIf="item.goldBorder" class="text-xs text-yellow-600">Gold Border</p>
-          <p *ngIf="item.image" class="text-xs text-blue-600">Custom Image</p>
+          <p class="font-semibold text-base text-secondary-dark leading-tight">{{ item.product.label }}</p>
+          <p class="text-sm text-text-muted">Qty: {{ item.quantity }}</p>
+          <p *ngIf="item.goldBorder" class="text-xs text-yellow-600 font-medium">+ Gold Border</p>
+          <p *ngIf="item.image" class="text-xs text-blue-600 font-medium">+ Custom Image</p>
         </div>
       </div>
-      <p class="font-medium text-sm text-secondary-dark whitespace-nowrap tabular-nums">
+      <p class="font-medium text-base text-secondary-dark whitespace-nowrap tabular-nums">
         {{ (item.product.markedPrice * item.quantity) | currency:'BRL' }}
       </p>
     </div>
   </div>
 
-  <div *ngIf="cartItems && cartItems.length > 0" class="mt-5 pt-5 border-t border-primary-light/50">
-    <div class="flex justify-between items-center text-secondary-dark mb-1">
-      <span class="text-sm">Subtotal:</span>
-      <span class="text-sm font-medium tabular-nums">{{ cartTotal | currency:'BRL' }}</span>
+  <div *ngIf="cartItems && cartItems.length > 0" class="mt-6 pt-6 border-t-2 border-primary-lighter/60">
+    <div class="space-y-2 text-secondary-dark">
+      <div class="flex justify-between items-center">
+        <span class="text-text-muted">Subtotal:</span>
+        <span class="font-medium tabular-nums">{{ cartTotal | currency:'BRL' }}</span>
+      </div>
+      <div class="flex justify-between items-center text-sm">
+        <span class="text-text-muted">Shipping:</span>
+        <span class="text-text-muted">Free</span>
+      </div>
+      <div class="flex justify-between items-center text-sm">
+        <span class="text-text-muted">Taxes:</span>
+        <span class="text-text-muted">Calculated at checkout</span>
+      </div>
     </div>
-    <div class="flex justify-between items-center text-secondary-light text-xs mb-3">
-      <span>Shipping & Taxes:</span>
-      <span>Calculated at next step</span>
-    </div>
-    <div class="flex justify-between items-center font-semibold text-secondary-dark text-lg">
+    <div class="flex justify-between items-center font-bold text-secondary-dark text-xl mt-4 pt-4 border-t border-primary-lighter/50">
       <p>Total:</p>
       <p class="tabular-nums">{{ cartTotal | currency:'BRL' }}</p>
     </div>
   </div>
 
   <ng-template #emptyCart>
-    <div class="text-center py-8">
-      <svg class="mx-auto h-12 w-12 text-primary-light/70" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-      <p class="mt-3 text-secondary-light">Your cart is empty.</p>
-      <a routerLink="/dashboard" class="mt-4 inline-block text-sm text-primary hover:text-primary-dark underline">Continue Shopping</a>
+    <div class="text-center py-10">
+      <svg class="mx-auto h-16 w-16 text-primary-light/50" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+      <p class="mt-4 text-text-muted">Your cart is empty.</p>
+      <a routerLink="/dashboard" class="mt-4 inline-block text-sm text-primary hover:text-primary-dark font-semibold underline">Start Shopping</a>
     </div>
   </ng-template>
 </div>

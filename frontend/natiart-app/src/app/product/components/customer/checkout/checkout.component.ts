@@ -10,7 +10,6 @@ import {animate, style, transition, trigger} from '@angular/animations';
 import {PaymentService} from "../../../service/payment.service";
 import {PaymentCreationRequest} from "../../../models/paymentCreationRequest.model";
 import {OrderSummaryComponent} from "./order-summary/order-summary.component";
-import {CheckoutStepperComponent} from "./checkout-stepper/checkout-stepper.component";
 import {UserInfoStepComponent} from "./user-info-step/user-info-step.component";
 import {ShippingInfoStepComponent} from "./shipping-info-step/shipping-info-step.component";
 import {PaymentInfoStepComponent} from "./payment-info-step/payment-info-step.component";
@@ -34,7 +33,6 @@ import {UserRegistration} from "../../../../directory/models/user-registration.m
     ReactiveFormsModule,
     FormsModule,
     OrderSummaryComponent,
-    CheckoutStepperComponent,
     UserInfoStepComponent,
     ShippingInfoStepComponent,
     PaymentInfoStepComponent,
@@ -57,7 +55,6 @@ import {UserRegistration} from "../../../../directory/models/user-registration.m
 })
 export class CheckoutComponent implements OnInit, OnDestroy {
   checkoutForm: FormGroup;
-  currentStep = 1;
   errorMessage = '';
   cartItems$: Observable<CartItem[]>;
   cartTotal$: Observable<number>;
@@ -82,7 +79,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       userInfo: this.fb.group({
         firstname: ['', Validators.required],
         lastname: ['', Validators.required],
-        cpf: ['', [Validators.required, Validators.pattern('[0-9.]*\\-[0-9]*')]],
+        cpf: ['', [Validators.required, Validators.pattern('[0-9.]*\-[0-9]*')]],
         email: ['', [Validators.required, Validators.email]],
         phone: ['', Validators.pattern('[()0-9 -]*')],
       }),
@@ -112,11 +109,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       }),
     });
 
-    this.cartItems$ = this.cartService.getCartItems(); // No takeUntil needed here, async pipe handles it
-    this.cartTotal$ = this.cartService.getCartTotal(); // No takeUntil needed here, async pipe handles it
-    this.isLoggedIn$ = this.authenticationService.isLoggedIn$; // No takeUntil needed here, async pipe handles it
-    this.currentUser$ = this.authenticationService.currentUser$; // No takeUntil needed here, async pipe handles it
-    this.isLoading$ = this.orderService.orderProcessing$; // No takeUntil needed here, async pipe handles it
+    this.cartItems$ = this.cartService.getCartItems();
+    this.cartTotal$ = this.cartService.getCartTotal();
+    this.isLoggedIn$ = this.authenticationService.isLoggedIn$;
+    this.currentUser$ = this.authenticationService.currentUser$;
+    this.isLoading$ = this.orderService.orderProcessing$;
   }
 
   private formatCpf(cpf: string): string {
@@ -133,17 +130,14 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // Fetch current user if not already fetched or state is unclear.
-    // This subscription is managed by takeUntil(this.destroy$)
-    this.authenticationService.fetchCurrentUser() // Changed from getCurrentUser
+    this.authenticationService.fetchCurrentUser()
       .pipe(takeUntil(this.destroy$))
       .subscribe();
 
-    // This subscription is managed by takeUntil(this.destroy$)
     this.currentUser$
       .pipe(
         takeUntil(this.destroy$),
-        tap(user => { // Use tap for side effects if needed, or just subscribe
+        tap(user => {
           if (user && user.profile) {
             this.checkoutForm.patchValue({
               userInfo: {
@@ -169,10 +163,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
           }
         })
       )
-      .subscribe(); // Subscribe to trigger the tap
+      .subscribe();
 
     this.updatePaymentValidators();
-    // This subscription is managed by takeUntil(this.destroy$)
     this.checkoutForm.get('paymentInfo.paymentMethod')?.valueChanges
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.updatePaymentValidators());
@@ -190,9 +183,12 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     const cvvCtrl = this.checkoutForm.get('paymentInfo.cvv');
 
     if (paymentMethod === PaymentMethod.CREDIT_CARD || paymentMethod === PaymentMethod.DEBIT_CARD) {
-      cardNumberCtrl?.setValidators([Validators.required, Validators.pattern('^[0-9]{13,19}$')]);
-      expirationDateCtrl?.setValidators([Validators.required, Validators.pattern('^(0[1-9]|1[0-2])\\/?([0-9]{2})$')]);
-      cvvCtrl?.setValidators([Validators.required, Validators.pattern('^[0-9]{3,4}$')]);
+      cardNumberCtrl?.setValidators([Validators.required, Validators.pattern('^[0-9]{13,19}
+)]);
+      expirationDateCtrl?.setValidators([Validators.required, Validators.pattern('^(0[1-9]|1[0-2])\\/?([0-9]{2})
+)]);
+      cvvCtrl?.setValidators([Validators.required, Validators.pattern('^[0-9]{3,4}
+)]);
     } else {
       cardNumberCtrl?.clearValidators();
       expirationDateCtrl?.clearValidators();
@@ -203,54 +199,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     cvvCtrl?.updateValueAndValidity({ emitEvent: false });
   }
 
-  isCurrentStepValid(): boolean {
-    switch (this.currentStep) {
-      case 1:
-        return this.checkoutForm.get('userInfo')?.valid ?? false;
-      case 2:
-        const shippingValid = this.checkoutForm.get('shippingInfo')?.valid ?? false;
-        const billingValid = this.sameShippingAsBilling || (this.checkoutForm.get('billingInfo')?.valid ?? false);
-        return shippingValid && billingValid;
-      case 3:
-        return this.checkoutForm.get('paymentInfo')?.valid ?? false;
-      default:
-        return false;
-    }
-  }
-
-  onNextStep(): void {
-    const currentGroup = this.getCurrentFormGroup();
-    if (currentGroup?.invalid) {
-      currentGroup.markAllAsTouched();
-      this.setErrorMessage(`Please complete all fields in step ${this.currentStep}.`);
-      return;
-    }
-    if (this.currentStep < 3) {
-      this.currentStep++;
-    }
-    this.clearErrorMessage();
-    this.cdr.detectChanges();
-  }
-
-  onPreviousStep(): void {
-    if (this.currentStep > 1) {
-      this.currentStep--;
-    }
-    this.clearErrorMessage();
-    this.cdr.detectChanges();
-  }
-
-  private getCurrentFormGroup(): FormGroup | null {
-    switch (this.currentStep) {
-      case 1: return this.checkoutForm.get('userInfo') as FormGroup;
-      case 2: return this.checkoutForm.get('shippingInfo') as FormGroup;
-      case 3: return this.checkoutForm.get('paymentInfo') as FormGroup;
-      default: return null;
-    }
-  }
-
   createUserIfGuestCheckout(): Observable<User> {
-    // This subscription is managed by takeUntil(this.destroy$) where createUserIfGuestCheckout is called
     return this.isLoggedIn$.pipe(
       switchMap(isLoggedIn => {
         if (!isLoggedIn) {
@@ -307,7 +256,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   async onProcessPixPayment() {
     this.clearErrorMessage();
     try {
-      // The subscription to createUserIfGuestCheckout() is managed by takeUntil(this.destroy$) in the caller (onSubmit)
       let user = await firstValueFrom(this.createUserIfGuestCheckout());
 
       if (!user || !user.externalId) {
@@ -322,7 +270,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         value: this.cartService.getCartTotalSnapshot(),
       };
 
-      // This subscription is managed by takeUntil(this.destroy$) in the caller (onSubmit)
       const paymentResponse = await firstValueFrom(
         this.paymentService.createPixPayment(pixPaymentData)
       );
@@ -345,7 +292,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     }
 
     try {
-      // The subscription to createUserIfGuestCheckout() is managed by takeUntil(this.destroy$)
       let user = await firstValueFrom(this.createUserIfGuestCheckout().pipe(takeUntil(this.destroy$)));
       if (!user) return;
 
