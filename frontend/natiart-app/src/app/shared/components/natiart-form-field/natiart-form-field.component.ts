@@ -19,6 +19,7 @@ export class NatiartFormFieldComponent implements OnInit {
 
   showPassword = false;
   @Output() showPasswordEmitter = new EventEmitter<void>();
+  @Input() isOptional!: boolean;
 
   ngOnInit() {
     this.control = this.form.get(this.controlName);

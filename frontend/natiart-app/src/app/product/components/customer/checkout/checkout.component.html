@@ -1,70 +1,91 @@
-<div class="container mx-auto px-4 py-8">
-  <h1 class="text-3xl font-semibold mb-8 text-gray-800">Checkout</h1>
+<div class="container mx-auto px-2 sm:px-4 py-6 sm:py-8 font-serif text-secondary">
+  <h1 class="text-3xl lg:text-4xl font-light mb-6 sm:mb-10 text-center text-secondary-dark">Secure Checkout</h1>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-    <!-- Left Column: User Information -->
-    <div>
-      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 class="text-xl font-semibold mb-4">Your Information</h2>
-        <ng-container *ngIf="(isLoggedIn$ | async); else guestCheckout">
-          <p class="mb-4">Welcome back, {{ (currentUser$ | async)?.username }}!</p>
-        </ng-container>
-        <ng-template #guestCheckout>
-          <p class="mb-4">Checking out as a guest? You can also <a class="text-blue-500 hover:underline"
-                                                                   routerLink="/login">log in</a> to
-            use your saved information.</p>
-        </ng-template>
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10">
+    <!-- Left Column: Checkout Steps & Forms -->
+    <div class="lg:col-span-7 xl:col-span-8">
+      <div class="bg-surface rounded-xl shadow-elevated p-4 sm:p-6 lg:p-8">
+        <!-- Stepper -->
+        <app-checkout-stepper [currentStep]="currentStep" class="mb-6 sm:mb-8"></app-checkout-stepper>
 
-        <app-checkout-stepper
-          [currentStep]="currentStep"
-        ></app-checkout-stepper>
+        <!-- Guest/Logged-in Info -->
+        <div class="mb-6 text-sm p-3 bg-primary-lighter/30 rounded-md border border-primary-lighter/50">
+          <ng-container *ngIf="(isLoggedIn$ | async); else guestCheckout">
+            <p>Welcome back, <strong class="font-medium">{{ (currentUser$ | async)?.profile?.firstname || (currentUser$ | async)?.username }}</strong>! Your details are pre-filled for convenience.</p>
+          </ng-container>
+          <ng-template #guestCheckout>
+            <p>Checking out as a guest? An account will be created for you. Already have an account?
+              <a routerLink="/login" class="text-primary hover:text-primary-dark font-medium underline">Log in here</a>.
+            </p>
+          </ng-template>
+        </div>
 
-        <button (click)="logFormState()" type="button">Log Form State</button>
+        <!-- Error Message Display -->
+        <div *ngIf="errorMessage" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md shadow-md mb-6" role="alert">
+          <strong class="font-bold">Error:</strong> {{ errorMessage }}
+        </div>
 
-        <form (ngSubmit)="onSubmit()" [formGroup]="checkoutForm" class="mt-8 space-y-6">
-          <!-- Step 1: Personal information -->
-          <div *ngIf="currentStep === 1" [@slideInRight]>
+        <!-- Form -->
+        <form (ngSubmit)="onSubmit()" [formGroup]="checkoutForm" class="space-y-8">
+          <div *ngIf="currentStep === 1" @fadeIn>
+            <h2 class="text-xl font-semibold text-secondary-dark mb-4">1. Your Information</h2>
             <app-user-info-step [checkoutForm]="checkoutForm"></app-user-info-step>
           </div>
 
-          <!-- Step 2: Shipping and Billing information -->
-          <div *ngIf="currentStep === 2" [@slideInRight]>
+          <div *ngIf="currentStep === 2" @fadeIn>
+            <h2 class="text-xl font-semibold text-secondary-dark mb-4">2. Delivery Details</h2>
             <app-shipping-info-step
               [checkoutForm]="checkoutForm"
-              [sameShippingAsBilling]="sameShippingAsBilling"
-            ></app-shipping-info-step>
+              [sameShippingAsBillingInitialValue]="sameShippingAsBilling"
+              (sameShippingAsBillingChange)="onSameShippingChange($event)">
+            </app-shipping-info-step>
           </div>
 
-          <!-- Step 3: Payment Information -->
-          <div *ngIf="currentStep === 3" [@slideInRight]>
-            <app-payment-info-step (processPixPayment)="onProcessPixPayment()"
-                                   [checkoutForm]="checkoutForm"></app-payment-info-step>
+          <div *ngIf="currentStep === 3" @fadeIn>
+            <h2 class="text-xl font-semibold text-secondary-dark mb-4">3. Payment</h2>
+            <app-payment-info-step
+              (processPixPnayment)="onProcessPixPayment()"
+              [checkoutForm]="checkoutForm">
+            </app-payment-info-step>
           </div>
 
-          <div class="flex justify-between mt-6">
-            <button (click)="onPreviousStep()" [disabled]="currentStep === 1"
-                    class="flex justify-center py-2 px-4 border border-primary rounded-md shadow-input text-sm font-medium text-primary hover:bg-primary-light focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                    type="button">
+          <!-- Navigation Buttons -->
+          <div class="flex pt-6 border-t border-primary-lighter/30"
+               [ngClass]="currentStep === 1 ? 'justify-end' : 'justify-between'">
+            <button *ngIf="currentStep > 1"
+                    (click)="onPreviousStep()" type="button"
+                    class="flex items-center justify-center py-2.5 px-5 border border-primary rounded-lg shadow-sm text-sm font-medium text-primary hover:bg-primary-lighter/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-150 disabled:opacity-60 disabled:cursor-not-allowed">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
               Previous
             </button>
-            <button (click)="onNextStep()" *ngIf="currentStep < 3" [disabled]="!isCurrentStepValid()"
-                    class="flex justify-center py-2 px-4 border border-transparent rounded-md shadow-input text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                    type="button">
+
+            <button *ngIf="currentStep < 3"
+                    (click)="onNextStep()" type="button" [disabled]="!isCurrentStepValid()"
+                    class="flex items-center justify-center py-2.5 px-5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-primary-contrast bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-150 disabled:opacity-60 disabled:cursor-not-allowed">
               Next
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
             </button>
-            <button *ngIf="currentStep === 3" [disabled]="!isCurrentStepValid()"
-                    class="flex justify-center py-2 px-4 border border-transparent rounded-md shadow-input text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                    type="submit">
-              Place Order
+
+            <button *ngIf="currentStep === 3" type="submit" [disabled]="!checkoutForm.valid || (isLoading$ | async)"
+                    class="flex items-center justify-center py-2.5 px-5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-primary-contrast bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-150 disabled:opacity-60 disabled:cursor-not-allowed">
+              <span *ngIf="!(isLoading$ | async)">Place Order</span>
+              <span *ngIf="(isLoading$ | async)" class="flex items-center">
+                <app-loading-spinner class="mr-2 !w-4 !h-4 !border-2 !border-primary-contrast"></app-loading-spinner>
+                Processing...
+              </span>
             </button>
           </div>
         </form>
       </div>
     </div>
 
-    <app-order-summary
-      [cartItems]="cartItems$ | async"
-      [cartTotal]="cartTotal$ | async"
-    ></app-order-summary>
+    <!-- Right Column: Order Summary -->
+    <div class="lg:col-span-5 xl:col-span-4">
+      <app-order-summary
+        class="sticky top-8"
+        [cartItems]="cartItems$ | async"
+        [cartTotal]="cartTotal$ | async">
+      </app-order-summary>
+    </div>
   </div>
 </div>

@@ -7,6 +7,10 @@ import {DashboardComponent} from "./product/components/customer/dashboard/dashbo
 import {ProductDetailComponent} from "./product/components/customer/product-detail/product-detail.component";
 import {productGuard} from "./product/guards/product-guard.guard";
 import {CartComponent} from "./product/components/customer/cart/cart.component";
+import {CheckoutComponent} from './product/components/customer/checkout/checkout.component';
+import {
+  PixPaymentConfirmationComponent
+} from "./product/components/customer/checkout/pix-payment-confirmation/pix-payment-confirmation.component";
 
 export const routes: Routes = [
   {path: 'login', component: LoginComponent},
@@ -28,16 +32,16 @@ export const routes: Routes = [
      component: CartComponent,
   //   canActivate: [authGuard]
    },
-  // {
-  //   path: 'checkout',
-  //   component: CheckoutComponent,
+   {
+     path: 'checkout',
+     component: CheckoutComponent,
   //   canActivate: [authGuard]
-  // },
-  // {
-  //   path: 'pix-payment/:paymentId',
-  //   component: PixPaymentConfirmationComponent,
+   },
+   {
+     path: 'pix-payment/:paymentId',
+     component: PixPaymentConfirmationComponent,
   //   canActivate: [authGuard]
-  // },
+   },
   {
     path: 'admin',
     component: AdminDashboardComponent,

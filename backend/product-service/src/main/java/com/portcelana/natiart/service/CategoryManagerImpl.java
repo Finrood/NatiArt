@@ -4,6 +4,7 @@ import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.CategoryDto;
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.repository.CategoryRepository;
+import com.portcelana.natiart.repository.ProductRepository;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,11 +15,11 @@ import java.util.Optional;
 @Service
 public class CategoryManagerImpl implements CategoryManager {
     private final CategoryRepository categoryRepository;
-    private final ProductManager productManager;
+    private final ProductRepository productRepository;
 
-    public CategoryManagerImpl(CategoryRepository categoryRepository, ProductManager productManager) {
+    public CategoryManagerImpl(CategoryRepository categoryRepository, ProductRepository productRepository) {
         this.categoryRepository = categoryRepository;
-        this.productManager = productManager;
+        this.productRepository = productRepository;
     }
 
     @Override
@@ -74,7 +75,7 @@ public class CategoryManagerImpl implements CategoryManager {
     @Transactional
     public void deleteCategory(String categoryId) {
         final Category category = getCategoryOrDie(categoryId);
-        if (productManager.existsByCategory(category)) {
+        if (productRepository.existsByCategory(category)) {
             throw new IllegalArgumentException("Category with label [" + category.getLabel() + "] contains products.");
         }
         categoryRepository.delete(category);

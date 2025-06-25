@@ -1,98 +1,96 @@
-import {Component, Input} from '@angular/core';
-import {CepFormatDirective} from "../../../../../directory/directive/cep-format-directive.directive";
-import {FormGroup, FormsModule, ReactiveFormsModule} from "@angular/forms";
-import {LoadingSpinnerComponent} from "../../../shared/loading-spinner/loading-spinner.component";
-import {NgClass, NgIf} from "@angular/common";
-import {finalize} from "rxjs/operators";
-import {SignupService, ViaCEPResponse} from "../../../../service/signup.service";
+import {ChangeDetectionStrategy, Component, EventEmitter, Input, OnDestroy, OnInit, Output} from '@angular/core';
+import {FormGroup, ReactiveFormsModule, Validators} from "@angular/forms";
+import {CommonModule, NgIf} from "@angular/common";
+import {Subject} from "rxjs";
+import {takeUntil} from "rxjs/operators";
+import {animate, style, transition, trigger} from "@angular/animations";
+import {AddressFormComponent} from "../address-form/address-form.component";
 
 @Component({
-    selector: 'app-shipping-info-step',
-    imports: [
-        CepFormatDirective,
-        FormsModule,
-        LoadingSpinnerComponent,
-        NgIf,
-        ReactiveFormsModule,
-        NgClass
-    ],
-    templateUrl: './shipping-info-step.component.html',
-    styleUrl: './shipping-info-step.component.css'
+  selector: 'app-shipping-info-step',
+  standalone: true,
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    NgIf,
+    AddressFormComponent
+  ],
+  templateUrl: './shipping-info-step.component.html',
+  animations: [
+    trigger('slideInRight', [
+      transition(':enter', [
+        style({ transform: 'translateX(100%)', opacity: 0 }),
+        animate('300ms ease-out', style({ transform: 'translateX(0)', opacity: 1 })),
+      ]),
+      transition(':leave', [
+        animate('300ms ease-in', style({ transform: 'translateX(100%)', opacity: 0 }))
+      ])
+    ]),
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ShippingInfoStepComponent {
-  @Input() checkoutForm!: FormGroup;
-  @Input() sameShippingAsBilling!: boolean;
+export class ShippingInfoStepComponent implements OnInit, OnDestroy {
+  @Input({ required: true }) checkoutForm!: FormGroup;
+  // Manage 'sameShippingAsBilling' locally
+  @Input() sameShippingAsBillingInitialValue: boolean = true;
+  @Output() sameShippingAsBillingChange = new EventEmitter<boolean>();
 
-  isLoadingShippingAddress = false;
-  isLoadingBillingAddress = false;
-  errorMessage = '';
+  _sameShippingAsBilling: boolean = true;
 
-  constructor(private signupService: SignupService) {
+  private destroy$ = new Subject<void>();
+
+  ngOnInit(): void {
+    this._sameShippingAsBilling = this.sameShippingAsBillingInitialValue;
+    this.setupBillingInfoSync();
+    this.updateBillingValidators();
   }
 
-  getFieldError(fieldName: string): string {
-    const field = this.checkoutForm.get(fieldName);
-    if (field?.invalid && (field.dirty || field.touched)) {
-      if (field.errors?.['required']) return 'This field is required.';
-    }
-    return '';
+  get shippingInfoFormGroup(): FormGroup {
+    return this.checkoutForm.get('shippingInfo') as FormGroup;
   }
 
-  onZipCodeChange(section: 'shippingInfo' | 'billingInfo'): void {
-    const zipCode = this.checkoutForm.get(`${section}.zipCode`)?.value?.replace(/\D/g, '');
-    if (zipCode?.length !== 8) {
-      return;
+  get billingInfoFormGroup(): FormGroup {
+    return this.checkoutForm.get('billingInfo') as FormGroup;
+  }
+
+  toggleSameShippingAsBilling(event: Event): void {
+    this._sameShippingAsBilling = (event.target as HTMLInputElement).checked;
+    this.sameShippingAsBillingChange.emit(this._sameShippingAsBilling);
+    this.updateBillingValidators();
+    if (this._sameShippingAsBilling) {
+      this.syncShippingToBilling();
     }
+  }
 
-    if (section === 'shippingInfo') {
-      this.isLoadingShippingAddress = true;
-    } else {
-      this.isLoadingBillingAddress = true;
-    }
-
-    this.signupService.getAddressFromZipCode(zipCode)
-      .pipe(finalize(() => {
-        this.isLoadingShippingAddress = false;
-        this.isLoadingBillingAddress = false;
-      }))
-      .subscribe({
-        next: (data: ViaCEPResponse) => {
-          const addressData = {
-            street: data.logradouro,
-            city: data.localidade,
-            neighborhood: data.bairro,
-            state: data.uf,
-            country: "Brazil",
-          };
-
-          const updatedFormValue = {
-            [section]: addressData
-          };
-
-          this.checkoutForm.patchValue(updatedFormValue);
-        },
-        error: () => {
-          this.setErrorMessage('Error fetching address. Please enter manually.');
+  private setupBillingInfoSync(): void {
+    this.shippingInfoFormGroup.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        if (this._sameShippingAsBilling) {
+          this.syncShippingToBilling();
         }
       });
   }
 
-  toggleSameShippingAsBilling(event: Event): void {
-    this.sameShippingAsBilling = (event.target as HTMLInputElement).checked;
-    if (this.sameShippingAsBilling) {
-      this.checkoutForm.get('billingInfo')?.patchValue({
-        country: this.checkoutForm.get('shippingInfo.country')?.value,
-        state: this.checkoutForm.get('shippingInfo.state')?.value,
-        city: this.checkoutForm.get('shippingInfo.city')?.value,
-        neighborhood: this.checkoutForm.get('shippingInfo.neighborhood')?.value,
-        zipCode: this.checkoutForm.get('shippingInfo.zipCode')?.value,
-        street: this.checkoutForm.get('shippingInfo.street')?.value,
-        complement: this.checkoutForm.get('shippingInfo.complement')?.value,
-      });
-    }
+  private syncShippingToBilling(): void {
+    this.billingInfoFormGroup.patchValue(this.shippingInfoFormGroup.value);
   }
 
-  private setErrorMessage(message: string): void {
-    this.errorMessage = message;
+  private updateBillingValidators(): void {
+    const fields = ['country', 'state', 'city', 'neighborhood', 'zipCode', 'street'];
+    fields.forEach(field => {
+      const control = this.billingInfoFormGroup.get(field);
+      if (this._sameShippingAsBilling) {
+        control?.clearValidators();
+      } else {
+        control?.setValidators([Validators.required]);
+      }
+      control?.updateValueAndValidity({ emitEvent: false });
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

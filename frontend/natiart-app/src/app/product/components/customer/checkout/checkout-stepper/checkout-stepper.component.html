@@ -1,11 +1,32 @@
-<div class="flex justify-center items-center space-x-4">
-  <ng-container *ngFor="let step of [1, 2, 3]; let i = index">
-    <div [ngClass]="{'bg-primary': currentStep === step, 'bg-primary-light': currentStep !== step}"
-         class="w-8 h-8 rounded-full text-white flex items-center justify-center text-sm font-medium">
-      {{ step }}
+<div class="flex items-center justify-center w-full max-w-md mx-auto">
+  <ng-container *ngFor="let step of steps; let i = index; let isLast = last">
+    <div class="flex flex-col items-center">
+      <div
+        class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300"
+        [ngClass]="{
+          'bg-primary text-primary-contrast ring-2 ring-offset-2 ring-primary ring-offset-surface': currentStep === step.id,
+          'bg-green-500 text-white': currentStep > step.id,
+          'bg-surface-variant text-secondary-light border-2 border-primary-lighter/70': currentStep < step.id
+        }">
+        <svg *ngIf="currentStep > step.id" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+        </svg>
+        <span *ngIf="currentStep <= step.id">{{ step.id }}</span>
+      </div>
+      <p class="text-xs sm:text-sm mt-1.5 text-center transition-colors duration-300"
+         [ngClass]="{
+            'text-primary font-medium': currentStep === step.id,
+            'text-green-600': currentStep > step.id,
+            'text-secondary-light': currentStep < step.id
+         }">
+        {{ step.label }}
+      </p>
     </div>
-    <div *ngIf="i < 2" [ngClass]="{'bg-primary': currentStep === (step + 1)}"
-         class="w-16 h-1 bg-primary-light">
+    <div *ngIf="!isLast" class="flex-1 h-0.5 sm:h-1 mx-1 sm:mx-2 transition-colors duration-500"
+         [ngClass]="{
+          'bg-primary': currentStep > step.id,
+          'bg-primary-lighter/70': currentStep <= step.id
+         }">
     </div>
   </ng-container>
 </div>

@@ -1,18 +1,25 @@
-<div [formGroup]="checkoutForm">
-  <div class="space-y-6" formGroupName="userInfo">
-    <ng-container *ngFor="let field of formFields">
-      <div>
-        <label [for]="field.id" class="block text-sm font-medium text-secondary">{{ field.label }}</label>
-        <input [formControlName]="field.name" [id]="field.id"
-               [ngClass]="{'border-error': getFieldError('userInfo.' + field.name)}"
-               [placeholder]="field.placeholder"
-               [required]="field.required"
-               [type]="field.type"
-               class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
-        <p *ngIf="getFieldError('userInfo.' + field.name)" class="mt-2 text-sm text-red-600">
-          {{ getFieldError('userInfo.' + field.name) }}
-        </p>
-      </div>
-    </ng-container>
+<div [formGroup]="userInfoGroup" class="space-y-4">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+    <app-natiart-form-field label="First Name" controlName="firstname" [form]="userInfoGroup">
+      <input formControlName="firstname" id="firstname" type="text" placeholder="John" class="form-input">
+    </app-natiart-form-field>
+
+    <app-natiart-form-field label="Last Name" controlName="lastname" [form]="userInfoGroup">
+      <input formControlName="lastname" id="lastname" type="text" placeholder="Doe" class="form-input">
+    </app-natiart-form-field>
+  </div>
+
+  <app-natiart-form-field label="Email Address" controlName="email" [form]="userInfoGroup">
+    <input formControlName="email" id="email" type="email" placeholder="you@example.com" class="form-input">
+  </app-natiart-form-field>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+    <app-natiart-form-field label="CPF" controlName="cpf" [form]="userInfoGroup">
+      <input formControlName="cpf" id="cpf" type="text" placeholder="000.000.000-00" cpfFormat class="form-input">
+    </app-natiart-form-field>
+
+    <app-natiart-form-field label="Phone (Optional)" controlName="phone" [form]="userInfoGroup" [isOptional]="true">
+      <input formControlName="phone" id="phone" type="tel" placeholder="(XX) XXXXX-XXXX" appPhoneFormatBrazil class="form-input">
+    </app-natiart-form-field>
   </div>
 </div>

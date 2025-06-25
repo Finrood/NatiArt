@@ -16,6 +16,7 @@ export const environment = {
         category: '/categories',
         package: '/packages',
         product: '/products',
+        order: '/orders',
       }
     },
   }

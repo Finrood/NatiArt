@@ -1,43 +1,57 @@
-import {Component, EventEmitter, Input, Output} from '@angular/core';
+import {ChangeDetectionStrategy, Component, Input} from '@angular/core';
 import {FormGroup, ReactiveFormsModule} from "@angular/forms";
-import {NgClass, NgForOf, NgIf} from "@angular/common";
+import {CommonModule, NgForOf, NgIf} from "@angular/common";
+import {animate, style, transition, trigger} from "@angular/animations";
+import {
+  NatiartFormFieldComponent
+} from "../../../../../shared/components/natiart-form-field/natiart-form-field.component";
+import {PaymentMethod} from "../../../../models/paymentMethod.model";
 
 @Component({
-    selector: 'app-payment-info-step',
-    imports: [
-        ReactiveFormsModule,
-        NgClass,
-        NgIf,
-        NgForOf
-    ],
-    templateUrl: './payment-info-step.component.html',
-    styleUrl: './payment-info-step.component.css'
+  selector: 'app-payment-info-step',
+  standalone: true,
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    NgIf,
+    NgForOf,
+    NatiartFormFieldComponent,
+    NatiartFormFieldComponent
+  ],
+  templateUrl: './payment-info-step.component.html',
+  animations: [
+    trigger('fadeIn', [
+      transition(':enter', [
+        style({ opacity: 0, transform: 'translateY(5px)' }),
+        animate('200ms ease-out', style({ opacity: 1, transform: 'translateY(0)' })),
+      ]),
+      transition(':leave', [
+        animate('200ms ease-in', style({ opacity: 0, transform: 'translateY(5px)' }))
+      ])
+    ]),
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PaymentInfoStepComponent {
-  @Input() checkoutForm!: FormGroup;
-  @Output() processPixPayment = new EventEmitter<void>();
+  @Input({ required: true }) checkoutForm!: FormGroup;
+  // Removed @Output() processPixPayment as it's handled by the main submit now.
+
   paymentMethods = [
-    {value: 'credit_card', label: 'Credit Card'},
-    {value: 'debit_card', label: 'Debit Card'},
-    {value: 'pix', label: 'PIX'}
+    {value: PaymentMethod.CREDIT_CARD, label: 'Credit Card'},
+    {value: PaymentMethod.DEBIT_CARD, label: 'Debit Card'},
+    {value: PaymentMethod.PIX, label: 'PIX'}
   ];
 
-  getFieldError(fieldName: string): string {
-    const field = this.checkoutForm.get(fieldName);
-    if (field?.invalid && (field.dirty || field.touched)) {
-      if (field.errors?.['required']) return 'This field is required.';
-      if (field.errors?.['pattern']) return 'Please enter a valid card number.';
-    }
-    return '';
+  get paymentInfoGroup(): FormGroup { // Helper getter
+    return this.checkoutForm.get('paymentInfo') as FormGroup;
   }
 
-  onProcessPixPayment() {
-    this.processPixPayment.emit();
-  }
-
-  isCardPayment(): boolean {
+  isCardPaymentSelected(): boolean {
     const paymentMethod = this.checkoutForm.get('paymentInfo.paymentMethod')?.value;
-    return paymentMethod === 'credit_card' || paymentMethod === 'debit_card';
+    return paymentMethod === PaymentMethod.CREDIT_CARD || paymentMethod === PaymentMethod.DEBIT_CARD;
   }
 
+  isPixSelected(): boolean {
+    return this.checkoutForm.get('paymentInfo.paymentMethod')?.value === PaymentMethod.PIX;
+  }
 }

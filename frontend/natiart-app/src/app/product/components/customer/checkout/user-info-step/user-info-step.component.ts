@@ -1,43 +1,32 @@
-import {Component, Input} from '@angular/core';
-import {NgClass, NgForOf, NgIf} from "@angular/common";
+import {ChangeDetectionStrategy, Component, Input} from '@angular/core';
+import {CommonModule} from "@angular/common";
 import {FormGroup, ReactiveFormsModule} from "@angular/forms";
+import {
+  NatiartFormFieldComponent
+} from "../../../../../shared/components/natiart-form-field/natiart-form-field.component";
+import {CpfFormatDirective} from "../../../../../directory/directive/cpf-format-directive.directive";
+import {PhoneFormatBrazilDirective} from "../../../../../directory/directive/phone-format-brazil.directive";
 
 @Component({
-    selector: 'app-user-info-step',
-    imports: [
-        NgIf,
-        ReactiveFormsModule,
-        NgClass,
-        NgForOf
-    ],
-    templateUrl: './user-info-step.component.html',
-    styleUrls: ['./user-info-step.component.css'] // Fixed here
+  selector: 'app-user-info-step',
+  standalone: true,
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    NatiartFormFieldComponent,
+    CpfFormatDirective,
+    PhoneFormatBrazilDirective
+  ],
+  templateUrl: './user-info-step.component.html',
+  styleUrls: ['./user-info-step.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UserInfoStepComponent {
-  @Input() checkoutForm!: FormGroup;
+  @Input({ required: true }) checkoutForm!: FormGroup; // Parent form groupµµ
 
-  formFields = [
-    {
-      id: 'email',
-      name: 'email',
-      label: 'Email address',
-      type: 'email',
-      placeholder: 'you@yourbest.com',
-      required: true
-    },
-    {id: 'firstname', name: 'firstname', label: 'First Name', type: 'text', placeholder: 'John', required: true},
-    {id: 'lastname', name: 'lastname', label: 'Last Name', type: 'text', placeholder: 'Doe', required: true},
-    {id: 'cpf', name: 'cpf', label: 'CPF', type: 'text', placeholder: '000.000.000-11', required: true},
-    {id: 'phone', name: 'phone', label: 'Phone', type: 'tel', placeholder: '(XX) XXXXX-XXXX', required: false}
-  ];
-
-  getFieldError(fieldName: string): string {
-    const field = this.checkoutForm.get(fieldName);
-    if (field?.invalid && (field.dirty || field.touched)) {
-      if (field.errors?.['required']) return 'This field is required.';
-      if (field.errors?.['email']) return 'Please enter a valid email address.';
-      if (field.errors?.['pattern']) return 'Please enter a valid phone number or card number.';
-    }
-    return '';
+  get userInfoGroup(): FormGroup { // Helper getter
+    return this.checkoutForm.get('userInfo') as FormGroup;
   }
+
+  // No need for formFields array if using NatiartFormFieldComponent correctly
 }

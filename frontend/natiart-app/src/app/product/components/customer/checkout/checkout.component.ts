@@ -1,12 +1,10 @@
-import {Component, OnInit} from '@angular/core';
-import {AsyncPipe, NgIf} from '@angular/common';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit} from '@angular/core';
+import {AsyncPipe, CommonModule, NgIf} from '@angular/common';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
-import {catchError, firstValueFrom, map, Observable, throwError} from 'rxjs';
+import {catchError, firstValueFrom, map, Observable, Subject, throwError} from 'rxjs';
 import {CartItem} from '../../../models/CartItem.model';
-import {User} from '../../../models/user.model';
 import {CartService} from '../../../service/cart.service';
 import {OrderService} from '../../../service/order.service';
-import {AuthenticationService} from '../../../service/authentication.service';
 import {Router, RouterLink} from '@angular/router';
 import {animate, style, transition, trigger} from '@angular/animations';
 import {PaymentService} from "../../../service/payment.service";
@@ -16,43 +14,48 @@ import {CheckoutStepperComponent} from "./checkout-stepper/checkout-stepper.comp
 import {UserInfoStepComponent} from "./user-info-step/user-info-step.component";
 import {ShippingInfoStepComponent} from "./shipping-info-step/shipping-info-step.component";
 import {PaymentInfoStepComponent} from "./payment-info-step/payment-info-step.component";
-import {SignupService} from "../../../service/signup.service";
-import {UserRegistration} from "../../../models/user-registration.model";
-import {Profile} from "../../../models/profile.model";
-import {switchMap} from "rxjs/operators";
+import {switchMap, takeUntil, tap} from "rxjs/operators";
+import {PaymentMethod} from "../../../models/paymentMethod.model";
+import {LoadingSpinnerComponent} from "../../../../shared/components/shared/loading-spinner/loading-spinner.component";
+import {User} from "../../../../directory/models/user.model";
+import {AuthenticationService} from "../../../../directory/service/authentication.service";
+import {SignupService} from "../../../../directory/service/signup.service";
+import {Profile} from "../../../../directory/models/profile.model";
+import {UserRegistration} from "../../../../directory/models/user-registration.model";
 
 @Component({
-    selector: 'app-checkout',
-    imports: [
-        NgIf,
-        AsyncPipe,
-        RouterLink,
-        ReactiveFormsModule,
-        FormsModule,
-        OrderSummaryComponent,
-        CheckoutStepperComponent,
-        UserInfoStepComponent,
-        ShippingInfoStepComponent,
-        PaymentInfoStepComponent
-    ],
-    animations: [
-        trigger('fadeIn', [
-            transition(':enter', [
-                style({ opacity: 0 }),
-                animate('300ms', style({ opacity: 1 })),
-            ]),
-        ]),
-        trigger('slideInRight', [
-            transition(':enter', [
-                style({ transform: 'translateX(100%)', opacity: 0 }),
-                animate('300ms', style({ transform: 'translateX(0)', opacity: 1 })),
-            ]),
-        ]),
-    ],
-    templateUrl: './checkout.component.html',
-    styleUrl: './checkout.component.css'
+  selector: 'app-checkout',
+  standalone: true,
+  imports: [
+    NgIf,
+    AsyncPipe,
+    RouterLink,
+    CommonModule,
+    ReactiveFormsModule,
+    FormsModule,
+    OrderSummaryComponent,
+    CheckoutStepperComponent,
+    UserInfoStepComponent,
+    ShippingInfoStepComponent,
+    PaymentInfoStepComponent,
+    LoadingSpinnerComponent
+  ],
+  animations: [
+    trigger('fadeIn', [
+      transition(':enter', [
+        style({ opacity: 0, transform: 'translateY(10px)' }),
+        animate('300ms ease-out', style({ opacity: 1, transform: 'translateY(0)' })),
+      ]),
+      transition(':leave', [
+        animate('300ms ease-in', style({ opacity: 0, transform: 'translateY(10px)' }))
+      ])
+    ]),
+  ],
+  templateUrl: './checkout.component.html',
+  styleUrls: ['./checkout.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class CheckoutComponent implements OnInit {
+export class CheckoutComponent implements OnInit, OnDestroy {
   checkoutForm: FormGroup;
   currentStep = 1;
   errorMessage = '';
@@ -63,6 +66,8 @@ export class CheckoutComponent implements OnInit {
   isLoading$: Observable<boolean>;
   sameShippingAsBilling = true;
 
+  private destroy$ = new Subject<void>();
+
   constructor(
     private fb: FormBuilder,
     private cartService: CartService,
@@ -70,258 +75,321 @@ export class CheckoutComponent implements OnInit {
     private orderService: OrderService,
     private paymentService: PaymentService,
     private signupService: SignupService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {
     this.checkoutForm = this.fb.group({
       userInfo: this.fb.group({
         firstname: ['', Validators.required],
         lastname: ['', Validators.required],
-        cpf: ['', [Validators.required, Validators.pattern('[0-9]*')]],
+        cpf: ['', [Validators.required, Validators.pattern('[0-9.]*\\-[0-9]*')]],
         email: ['', [Validators.required, Validators.email]],
-        phone: ['', Validators.pattern('[0-9]*')],
+        phone: ['', Validators.pattern('[()0-9 -]*')],
       }),
       shippingInfo: this.fb.group({
         country: ['Brazil', Validators.required],
         state: ['', Validators.required],
         city: ['', Validators.required],
         neighborhood: ['', Validators.required],
-        zipCode: ['', Validators.required],
+        zipCode: ['', [Validators.required, Validators.pattern(/^\d{5}-\d{3}$/)]],
         street: ['', Validators.required],
         complement: [''],
       }),
       billingInfo: this.fb.group({
-        country: ['Brazil', Validators.required],
-        state: ['', Validators.required],
-        city: ['', Validators.required],
-        neighborhood: ['', Validators.required],
-        zipCode: ['', Validators.required],
-        street: ['', Validators.required],
+        country: ['Brazil'],
+        state: [''],
+        city: [''],
+        neighborhood: [''],
+        zipCode: ['', Validators.pattern(/^\d{5}-\d{3}$/)],
+        street: [''],
         complement: [''],
       }),
       paymentInfo: this.fb.group({
         paymentMethod: ['', Validators.required],
-        cardNumber: ['', Validators.required],
-        expirationDate: ['', Validators.required],
-        cvv: ['', Validators.required],
-        pixKey: ['', Validators.required],
+        cardNumber: [''],
+        expirationDate: [''],
+        cvv: [''],
       }),
     });
 
-    this.cartItems$ = this.cartService.getCartItems();
-    this.cartTotal$ = this.cartService.getCartTotal();
-    this.isLoggedIn$ = this.authenticationService.isLoggedIn$;
-    this.currentUser$ = this.authenticationService.currentUser$;
-    this.isLoading$ = this.orderService.orderProcessing$;
+    this.cartItems$ = this.cartService.getCartItems(); // No takeUntil needed here, async pipe handles it
+    this.cartTotal$ = this.cartService.getCartTotal(); // No takeUntil needed here, async pipe handles it
+    this.isLoggedIn$ = this.authenticationService.isLoggedIn$; // No takeUntil needed here, async pipe handles it
+    this.currentUser$ = this.authenticationService.currentUser$; // No takeUntil needed here, async pipe handles it
+    this.isLoading$ = this.orderService.orderProcessing$; // No takeUntil needed here, async pipe handles it
   }
 
   ngOnInit(): void {
-    this.authenticationService.getCurrentUser();
-    this.currentUser$.subscribe(user => {
-      if (user) {
-        this.checkoutForm.patchValue({
-          userInfo: {
-            firstname: user.profile.firstname,
-            lastname: user.profile.lastname,
-            email: user.username,
-            cpf: user.profile.cpf,
-            phone: user.profile.phone,
-          },
-          shippingInfo: {
-            country: user.profile.country,
-            state: user.profile.state,
-            city: user.profile.city,
-            neighborhood: user.profile.neighborhood,
-            zipCode: user.profile.zipCode,
-            street: user.profile.street,
-            complement: user.profile.complement,
-          },
-          billingInfo: {
-            country: user.profile.country,
-            state: user.profile.state,
-            city: user.profile.city,
-            neighborhood: user.profile.neighborhood,
-            zipCode: user.profile.zipCode,
-            street: user.profile.street,
-            complement: user.profile.complement,
-          },
-        });
-      }
-    });
+    // Fetch current user if not already fetched or state is unclear.
+    // This subscription is managed by takeUntil(this.destroy$)
+    this.authenticationService.fetchCurrentUser() // Changed from getCurrentUser
+      .pipe(takeUntil(this.destroy$))
+      .subscribe();
+
+    // This subscription is managed by takeUntil(this.destroy$)
+    this.currentUser$
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(user => { // Use tap for side effects if needed, or just subscribe
+          if (user && user.profile) {
+            this.checkoutForm.patchValue({
+              userInfo: {
+                firstname: user.profile.firstname,
+                lastname: user.profile.lastname,
+                email: user.username,
+                cpf: user.profile.cpf,
+                phone: user.profile.phone,
+              },
+              shippingInfo: {
+                country: user.profile.country || 'Brazil',
+                state: user.profile.state,
+                city: user.profile.city,
+                neighborhood: user.profile.neighborhood,
+                zipCode: user.profile.zipCode,
+                street: user.profile.street,
+                complement: user.profile.complement,
+              },
+            });
+            if (this.sameShippingAsBilling) {
+              this.checkoutForm.get('billingInfo')?.patchValue(this.checkoutForm.get('shippingInfo')?.value);
+            }
+          }
+        })
+      )
+      .subscribe(); // Subscribe to trigger the tap
+
+    this.updatePaymentValidators();
+    // This subscription is managed by takeUntil(this.destroy$)
+    this.checkoutForm.get('paymentInfo.paymentMethod')?.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.updatePaymentValidators());
   }
 
-  logFormState() {
-    console.log('Form Value:', this.checkoutForm.value);
-    console.log('Form Valid:', this.checkoutForm.valid);
-    console.log('Form Errors:', this.checkoutForm.errors);
+  onSameShippingChange(isSame: boolean): void {
+    this.sameShippingAsBilling = isSame;
+    this.cdr.detectChanges();
   }
 
-  isCurrentStepValid(): boolean | undefined {
+  updatePaymentValidators(): void {
+    const paymentMethod = this.checkoutForm.get('paymentInfo.paymentMethod')?.value;
+    const cardNumberCtrl = this.checkoutForm.get('paymentInfo.cardNumber');
+    const expirationDateCtrl = this.checkoutForm.get('paymentInfo.expirationDate');
+    const cvvCtrl = this.checkoutForm.get('paymentInfo.cvv');
+
+    if (paymentMethod === PaymentMethod.CREDIT_CARD || paymentMethod === PaymentMethod.DEBIT_CARD) {
+      cardNumberCtrl?.setValidators([Validators.required, Validators.pattern('^[0-9]{13,19}$')]);
+      expirationDateCtrl?.setValidators([Validators.required, Validators.pattern('^(0[1-9]|1[0-2])\\/?([0-9]{2})$')]);
+      cvvCtrl?.setValidators([Validators.required, Validators.pattern('^[0-9]{3,4}$')]);
+    } else {
+      cardNumberCtrl?.clearValidators();
+      expirationDateCtrl?.clearValidators();
+      cvvCtrl?.clearValidators();
+    }
+    cardNumberCtrl?.updateValueAndValidity({ emitEvent: false });
+    expirationDateCtrl?.updateValueAndValidity({ emitEvent: false });
+    cvvCtrl?.updateValueAndValidity({ emitEvent: false });
+  }
+
+  isCurrentStepValid(): boolean {
     switch (this.currentStep) {
       case 1:
-        return this.checkoutForm.get('userInfo')?.valid;
+        return this.checkoutForm.get('userInfo')?.valid ?? false;
       case 2:
-        return this.checkoutForm.get('shippingInfo')?.valid;
+        const shippingValid = this.checkoutForm.get('shippingInfo')?.valid ?? false;
+        const billingValid = this.sameShippingAsBilling || (this.checkoutForm.get('billingInfo')?.valid ?? false);
+        return shippingValid && billingValid;
       case 3:
-        return this.checkoutForm.get('paymentInfo')?.valid;
+        return this.checkoutForm.get('paymentInfo')?.valid ?? false;
       default:
-        return true;
+        return false;
     }
   }
 
   onNextStep(): void {
-    if (this.currentStep === 1) {
-      if (this.checkoutForm.get('userInfo')?.invalid) {
-        this.checkoutForm.get('userInfo')?.markAllAsTouched();
-        return;
-      }
-    } else if (this.currentStep === 2) {
-      if (this.checkoutForm.get('shippingInfo')?.invalid) {
-        this.checkoutForm.get('shippingInfo')?.markAllAsTouched();
-        return;
-      }
-      if (!this.sameShippingAsBilling) {
-        if (this.checkoutForm.get('billingInfo')?.invalid) {
-          this.checkoutForm.get('billingInfo')?.markAllAsTouched();
-          return;
-        }
-      }
+    const currentGroup = this.getCurrentFormGroup();
+    if (currentGroup?.invalid) {
+      currentGroup.markAllAsTouched();
+      this.setErrorMessage(`Please complete all fields in step ${this.currentStep}.`);
+      return;
     }
-    this.currentStep++;
+    if (this.currentStep < 3) {
+      this.currentStep++;
+    }
     this.clearErrorMessage();
+    this.cdr.detectChanges();
   }
 
   onPreviousStep(): void {
-    this.currentStep--;
+    if (this.currentStep > 1) {
+      this.currentStep--;
+    }
     this.clearErrorMessage();
+    this.cdr.detectChanges();
+  }
+
+  private getCurrentFormGroup(): FormGroup | null {
+    switch (this.currentStep) {
+      case 1: return this.checkoutForm.get('userInfo') as FormGroup;
+      case 2: return this.checkoutForm.get('shippingInfo') as FormGroup;
+      case 3: return this.checkoutForm.get('paymentInfo') as FormGroup;
+      default: return null;
+    }
   }
 
   createUserIfGuestCheckout(): Observable<User> {
+    // This subscription is managed by takeUntil(this.destroy$) where createUserIfGuestCheckout is called
     return this.isLoggedIn$.pipe(
       switchMap(isLoggedIn => {
         if (!isLoggedIn) {
-          const formValue = this.checkoutForm.get('userInfo')?.value;
+          const userInfo = this.checkoutForm.get('userInfo')?.value;
+          const shippingInfo = this.checkoutForm.get('shippingInfo')?.value;
+
           const profile: Profile = {
-            firstname: formValue.firstname,
-            lastname: formValue.lastname,
-            cpf: formValue.cpf,
-            phone: formValue.phone,
-            country: formValue.country,
-            state: formValue.state,
-            city: formValue.city,
-            neighborhood: formValue.neighborhood,
-            zipCode: formValue.zipCode,
-            street: formValue.street,
-            complement: formValue.complement,
+            firstname: userInfo.firstname,
+            lastname: userInfo.lastname,
+            cpf: userInfo.cpf.replace(/\D/g, ''),
+            phone: userInfo.phone.replace(/\D/g, ''),
+            country: shippingInfo.country,
+            state: shippingInfo.state,
+            city: shippingInfo.city,
+            neighborhood: shippingInfo.neighborhood,
+            zipCode: shippingInfo.zipCode.replace(/\D/g, ''),
+            street: shippingInfo.street,
+            complement: shippingInfo.complement,
           };
 
           const userRegistration: UserRegistration = {
-            username: formValue.email,
-            password: '',
+            username: userInfo.email,
+            password: this.generateRandomPassword(),
             profile: profile,
           };
-
+          this.setInfoMessage('Creating a temporary account to process your order...');
           return this.signupService.registerGhostUser(userRegistration).pipe(
+            switchMap(() => {
+              this.clearInfoMessage();
+              return this.authenticationService.login({ username: userInfo.email, password: userRegistration.password });
+            }),
             switchMap(() => this.currentUser$),
             map(user => {
-              if (user === null) {
-                throw new Error('User registration failed');
-              }
+              if (!user) throw new Error('Ghost user registration or login failed.');
               return user;
             }),
             catchError(error => {
-              this.setErrorMessage('Registration failed. Please try again.');
-              console.error('Registration error:', error);
+              this.clearInfoMessage();
+              this.setErrorMessage('Guest checkout setup failed. Please try again or register.');
+              console.error('Guest checkout error:', error);
               return throwError(() => error);
             })
           );
         } else {
-          return this.currentUser$.pipe(
-            map(user => {
-              if (user === null) {
-                throw new Error('No logged-in user found');
-              }
-              return user;
-            })
-          );
+          return this.currentUser$.pipe(map(user => {
+            if (!user) throw new Error('No logged-in user found.');
+            return user;
+          }));
         }
       })
     );
   }
 
   async onProcessPixPayment() {
+    this.clearErrorMessage();
     try {
-      // Fetch current user or create a new guest user
-      this.authenticationService.getCurrentUser();
-      let user = await firstValueFrom(this.authenticationService.currentUser$);
-      if (!user) {
-        user = await firstValueFrom(this.createUserIfGuestCheckout());
+      // The subscription to createUserIfGuestCheckout() is managed by takeUntil(this.destroy$) in the caller (onSubmit)
+      let user = await firstValueFrom(this.createUserIfGuestCheckout());
+
+      if (!user || !user.externalId) {
+        this.setErrorMessage('Could not retrieve customer ID for payment. Please try again.');
+        return;
       }
 
-      // Prepare payment data
       const pixPaymentData: PaymentCreationRequest = {
         paymentProcessor: 'ASAAS',
         customerId: user.externalId,
-        billingType: 'PIX',
+        billingType: PaymentMethod.PIX,
         value: this.cartService.getCartTotalSnapshot(),
       };
 
-      // Create payment and fetch QR code data
+      // This subscription is managed by takeUntil(this.destroy$) in the caller (onSubmit)
       const paymentResponse = await firstValueFrom(
         this.paymentService.createPixPayment(pixPaymentData)
       );
 
-      // Navigate to QR Code display page
       this.router.navigate(['/pix-payment', paymentResponse.paymentId]);
 
     } catch (error) {
       console.error('Error processing PIX payment:', error);
-      // Show user-friendly error message
       this.setErrorMessage('Could not process PIX payment. Please try again.');
     }
+    this.cdr.detectChanges();
   }
 
-  onSubmit(): void {
-    if (this.checkoutForm.valid) {
-      const orderData = {
-        ...this.checkoutForm.value,
-        //items: this.cartService.getCartItemsSnapshot()
-      };
+  async onSubmit(): Promise<void> {
+    this.clearErrorMessage();
+    if (this.checkoutForm.invalid) {
+      this.checkoutForm.markAllAsTouched();
+      this.setErrorMessage('Please correct the errors in the form.');
+      return;
+    }
+
+    try {
+      // The subscription to createUserIfGuestCheckout() is managed by takeUntil(this.destroy$)
+      let user = await firstValueFrom(this.createUserIfGuestCheckout().pipe(takeUntil(this.destroy$)));
+      if (!user) return;
 
       const paymentMethod = this.checkoutForm.get('paymentInfo.paymentMethod')?.value;
-      if (paymentMethod === 'credit_card' || paymentMethod === 'debit_card') {
-        // Process credit/debit card payment
-        // this.orderService.processCardPayment(orderData).subscribe({
-        //   next: () => {
-        //     // Handle successful order placement (e.g., navigate to confirmation page)
-        //     console.log('Order placed successfully');
-        //   },
-        //   error: (error: any) => {
-        //     // Handle error (e.g., show error message)
-        //     console.error('Error placing order:', error);
-        //   }
-        // });
-      } else if (paymentMethod === 'pix') {
 
-        // Process PIX payment
-        // this.orderService.processPixPayment(orderData).subscribe({
-        //   next: () => {
-        //     // Handle successful order placement (e.g., navigate to confirmation page)
-        //     console.log('Order placed successfully');
-        //   },
-        //   error: (error: any) => {
-        //     // Handle error (e.g., show error message)
-        //     console.error('Error placing order:', error);
-        //   }
-        // });
+      if (paymentMethod === PaymentMethod.PIX) {
+        await this.onProcessPixPayment();
+        return;
+      }
+
+      if (paymentMethod === PaymentMethod.CREDIT_CARD || paymentMethod === PaymentMethod.DEBIT_CARD) {
+        this.setInfoMessage('Processing card payment...');
+        this.setErrorMessage('Card payment is not yet implemented.');
+        this.clearInfoMessage();
+        return;
+      }
+
+      this.setErrorMessage('Invalid payment method selected.');
+
+    } catch (error) {
+      console.error('Order submission error:', error);
+      if (!this.errorMessage) {
+        this.setErrorMessage('An unexpected error occurred during checkout.');
       }
     }
+    this.cdr.detectChanges();
   }
+
+  private generateRandomPassword(): string {
+    return Math.random().toString(36).slice(-12);
+  }
+
+  private setInfoMessage(message: string): void {
+    this.errorMessage = `INFO: ${message}`;
+    this.cdr.detectChanges();
+  }
+  private clearInfoMessage(): void {
+    if(this.errorMessage.startsWith("INFO:")) {
+      this.errorMessage = "";
+    }
+    this.cdr.detectChanges();
+  }
+
 
   private setErrorMessage(message: string): void {
     this.errorMessage = message;
+    this.cdr.detectChanges();
+    setTimeout(() => this.clearErrorMessage(), 7000);
   }
 
   private clearErrorMessage(): void {
     this.errorMessage = '';
+    this.cdr.detectChanges();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

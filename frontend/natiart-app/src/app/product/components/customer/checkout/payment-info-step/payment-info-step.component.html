@@ -1,61 +1,32 @@
-<div [formGroup]="checkoutForm">
-  <div class="space-y-6" formGroupName="paymentInfo">
-    <div>
-      <label class="block text-sm font-medium text-secondary" for="paymentMethod">Payment Method</label>
-      <select
-        class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-        formControlName="paymentMethod"
-        id="paymentMethod">
-        <option value="">Select payment method</option>
-        <option *ngFor="let method of paymentMethods" [value]="method.value">{{ method.label }}</option>
-      </select>
+<div [formGroup]="paymentInfoGroup" class="space-y-6">
+  <app-natiart-form-field label="Payment Method" controlName="paymentMethod" [form]="paymentInfoGroup">
+    <select formControlName="paymentMethod" id="paymentMethod" class="form-input">
+      <option value="" disabled>Select payment method</option>
+      <option *ngFor="let method of paymentMethods" [value]="method.value">{{ method.label }}</option>
+    </select>
+  </app-natiart-form-field>
+
+  <ng-container *ngIf="isCardPaymentSelected()" @fadeIn>
+    <app-natiart-form-field label="Card Number" controlName="cardNumber" [form]="paymentInfoGroup">
+      <input formControlName="cardNumber" id="cardNumber" placeholder="XXXX XXXX XXXX XXXX" type="text" class="form-input">
+      <!-- TODO: Add card type icon based on number -->
+    </app-natiart-form-field>
+
+    <div class="grid grid-cols-2 gap-4">
+      <app-natiart-form-field label="Expiration Date" controlName="expirationDate" [form]="paymentInfoGroup">
+        <input formControlName="expirationDate" id="expirationDate" placeholder="MM/YY" type="text" class="form-input">
+      </app-natiart-form-field>
+
+      <app-natiart-form-field label="CVV" controlName="cvv" [form]="paymentInfoGroup">
+        <input formControlName="cvv" id="cvv" placeholder="123" type="text" class="form-input">
+      </app-natiart-form-field>
     </div>
+  </ng-container>
 
-    <ng-container *ngIf="isCardPayment()">
-      <div>
-        <label class="block text-sm font-medium text-secondary" for="cardNumber">Card Number</label>
-        <input [ngClass]="{'border-error': getFieldError('paymentInfo.cardNumber')}"
-               class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-               formControlName="cardNumber" id="cardNumber"
-               placeholder="XXXX XXXX XXXX XXXX"
-               required
-               type="text">
-        <p *ngIf="getFieldError('paymentInfo.cardNumber')" class="mt-2 text-sm text-red-600">
-          {{ getFieldError('paymentInfo.cardNumber') }}
-        </p>
-      </div>
-
-      <div class="grid grid-cols-2 gap-6">
-        <div>
-          <label class="block text-sm font-medium text-secondary" for="expirationDate">Expiration Date</label>
-          <input [ngClass]="{'border-error': getFieldError('paymentInfo.expirationDate')}"
-                 class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                 formControlName="expirationDate" id="expirationDate"
-                 placeholder="MM/YY"
-                 required
-                 type="text">
-          <p *ngIf="getFieldError('paymentInfo.expirationDate')" class="mt-2 text-sm text-red-600">
-            {{ getFieldError('paymentInfo.expirationDate') }}
-          </p>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-secondary" for="cvv">CVV</label>
-          <input [ngClass]="{'border-error': getFieldError('paymentInfo.cvv')}"
-                 class="mt-1 block w-full px-3 py-2 bg-white border border-primary rounded-md shadow-input placeholder-secondary-light focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                 formControlName="cvv" id="cvv"
-                 placeholder="123"
-                 required
-                 type="text">
-          <p *ngIf="getFieldError('paymentInfo.cvv')" class="mt-2 text-sm text-red-600">
-            {{ getFieldError('paymentInfo.cvv') }}
-          </p>
-        </div>
-      </div>
-    </ng-container>
-
-    <ng-container *ngIf="checkoutForm.get('paymentInfo.paymentMethod')?.value === 'pix'">
-      <button (click)="onProcessPixPayment()">Pay with PIX</button>
-    </ng-container>
+  <div *ngIf="isPixSelected()" @fadeIn class="pt-2">
+    <p class="text-sm text-secondary-light mb-3">
+      You will be redirected to a secure page to complete your PIX payment after clicking "Place Order".
+    </p>
+    <!-- The actual PIX processing is triggered by the main "Place Order" / "Next" button in checkout.component -->
   </div>
 </div>

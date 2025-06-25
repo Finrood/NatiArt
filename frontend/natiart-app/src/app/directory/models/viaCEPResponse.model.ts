@@ -9,4 +9,5 @@ export interface ViaCEPResponse {
   gia: string;
   ddd: string;
   siafi: string;
+  erro?: boolean; // Add this line, make it optional
 }

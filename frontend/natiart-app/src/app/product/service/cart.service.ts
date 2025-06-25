@@ -13,13 +13,21 @@ export class CartService {
   // Use a unique identifier for the localStorage key to avoid conflicts if needed
   private localStorageKey = 'natiart-cart';
   private cartItemsSubject = new BehaviorSubject<CartItem[]>([]);
+  private cartTotalSubject = new BehaviorSubject<number>(0); // Add this
 
   constructor() {
     this.loadCartFromLocalStorage();
+    // Calculate initial total
+    this.calculateAndEmitTotal();
   }
 
   getCartItems(): Observable<CartItem[]> {
     return this.cartItemsSubject.asObservable();
+  }
+
+  // New method for snapshot total
+  getCartTotalSnapshot(): number {
+    return this.cartTotalSubject.value;
   }
 
   addToCart(product: Product, quantity: number, goldBorder?: boolean, image?: File): Observable<void> {
@@ -52,8 +60,7 @@ export class CartService {
           this.cartItems.push(newItem);
         } else {
           console.warn(`Cannot add ${product.label} to cart because stock is 0 or requested quantity is invalid.`);
-          // Optionally, provide user feedback here (e.g., using an alert service)
-          return of(undefined); // Don't update cart if nothing can be added
+          return of(undefined);
         }
       }
     }
@@ -62,30 +69,23 @@ export class CartService {
     return of(undefined);
   }
 
-  // Update method to use cartItemId
   removeFromCart(cartItemId: string): Observable<void> {
     this.cartItems = this.cartItems.filter(item => item.cartItemId !== cartItemId);
     this.updateCart();
     return of(undefined);
   }
 
-  // Update method to use cartItemId
   updateItemQuantity(cartItemId: string, quantity: number): Observable<void> {
     const itemIndex = this.cartItems.findIndex(item => item.cartItemId === cartItemId);
     if (itemIndex > -1) {
       const item = this.cartItems[itemIndex];
-      // Ensure quantity doesn't exceed stock
       const newQuantity = Math.max(1, Math.min(quantity, item.product.stockQuantity));
 
       if (newQuantity <= 0) {
-        // This case should ideally be handled by removing the item,
-        // but we'll keep it above 0 based on Math.max(1, ...)
-        // If you want quantity 0 to remove, call removeFromCart here.
-        console.warn(`Quantity for item ${cartItemId} reached 0 or less, removing.`);
-        this.removeFromCart(cartItemId); // Remove if quantity becomes 0 or less
+        this.removeFromCart(cartItemId);
       } else {
         item.quantity = newQuantity;
-        this.cartItems[itemIndex] = item; // Ensure change detection if needed (though should be fine)
+        this.cartItems[itemIndex] = item;
         this.updateCart();
       }
     } else {
@@ -107,43 +107,38 @@ export class CartService {
   }
 
   getCartTotal(): Observable<number> {
-    return this.cartItemsSubject.pipe(
-      map(items => items.reduce((sum, item) => sum + item.product.markedPrice * item.quantity, 0))
-    );
+    return this.cartTotalSubject.asObservable(); // Return the BehaviorSubject as an Observable
   }
 
-  // Helper to get a snapshot if needed elsewhere (like checkout)
   getCartItemsSnapshot(): CartItem[] {
-    return [...this.cartItems]; // Return a copy
+    return [...this.cartItems];
   }
 
-  // Helper to generate a simple unique ID for the cart item
   private generateUniqueCartItemId(): string {
     return Date.now().toString(36) + Math.random().toString(36).substring(2);
   }
 
+  private calculateAndEmitTotal(): void {
+    const total = this.cartItems.reduce((sum, item) => sum + item.product.markedPrice * item.quantity, 0);
+    this.cartTotalSubject.next(total);
+  }
+
   private updateCart(): void {
-    // Filter out any items that might have ended up with quantity 0 or less
     this.cartItems = this.cartItems.filter(item => item.quantity > 0);
-    this.cartItemsSubject.next([...this.cartItems]); // Emit a new array reference
+    this.cartItemsSubject.next([...this.cartItems]);
+    this.calculateAndEmitTotal(); // Recalculate and emit total
     this.saveCartToLocalStorage();
   }
 
   private saveCartToLocalStorage(): void {
     try {
-      // We cannot directly stringify File objects. We need to handle them.
-      // For simplicity here, we'll just *not* save carts with File objects to localStorage.
-      // A more complex solution would involve FileReader to store base64, but that's heavy.
       const serializableCart = this.cartItems.filter(item => !item.image);
       if (serializableCart.length === this.cartItems.length) {
         localStorage.setItem(this.localStorageKey, JSON.stringify(serializableCart));
       } else {
-        // If there are custom images, don't persist to avoid issues.
-        // The cart will reset on refresh if it contains custom images.
         console.warn("Cart contains custom images and will not be saved to localStorage.");
-        localStorage.removeItem(this.localStorageKey); // Clear potentially outdated saved cart
+        localStorage.removeItem(this.localStorageKey);
       }
-
     } catch (e) {
       console.error("Error saving cart to localStorage", e);
     }
@@ -153,15 +148,16 @@ export class CartService {
     try {
       const savedCart = localStorage.getItem(this.localStorageKey);
       if (savedCart) {
-        // We assume the saved cart only contains items without File objects
         this.cartItems = JSON.parse(savedCart);
         this.cartItemsSubject.next([...this.cartItems]);
+        this.calculateAndEmitTotal(); // Calculate total after loading
       }
     } catch (e) {
       console.error("Error loading cart from localStorage", e);
-      this.cartItems = []; // Reset cart on error
-      localStorage.removeItem(this.localStorageKey); // Clear corrupted data
+      this.cartItems = [];
+      localStorage.removeItem(this.localStorageKey);
       this.cartItemsSubject.next([]);
+      this.calculateAndEmitTotal(); // Emit 0 total
     }
   }
 }
