@@ -2,27 +2,30 @@ import {Component, OnDestroy, OnInit} from '@angular/core';
 import {switchMap} from "rxjs/operators";
 import {interval, Subscription} from "rxjs";
 import {PaymentService} from "../../../../service/payment.service";
-import {ActivatedRoute} from "@angular/router";
-import {DatePipe, NgIf} from "@angular/common";
+import {ActivatedRoute, Router} from "@angular/router";
+import {DatePipe, NgClass, NgIf} from "@angular/common";
+import * as confetti from 'canvas-confetti';
 
 @Component({
-    selector: 'app-pix-payment-confirmation',
-    imports: [
-        DatePipe,
-        NgIf
-    ],
-    templateUrl: './pix-payment-confirmation.component.html',
-    styleUrl: './pix-payment-confirmation.component.css'
+  selector: 'app-pix-payment-confirmation',
+  imports: [
+    DatePipe,
+    NgIf,
+    NgClass
+  ],
+  templateUrl: './pix-payment-confirmation.component.html',
+  styleUrl: './pix-payment-confirmation.component.css'
 })
 export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   paymentId: string | null = null;
   qrCodeData!: { encodedImage: string; payload: string; expirationDate: Date };
-  paymentStatus: string = 'Pending';
+  paymentStatus: string = 'PENDING';
   pollingInterval!: Subscription;
 
   constructor(
     private route: ActivatedRoute,
-    private paymentService: PaymentService
+    private paymentService: PaymentService,
+    private router: Router
   ) {
   }
 
@@ -47,7 +50,8 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
       .pipe(switchMap(() => this.paymentService.getPaymentStatus(paymentId)))
       .subscribe((status) => {
         this.paymentStatus = status.status;
-        if (status === 'PAID') {
+        if (this.paymentStatus === 'COMPLETED') {
+          this.triggerFireworks();
           this.stopPolling();
         }
       });
@@ -59,7 +63,41 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
     }
   }
 
+  copyToClipboard(inputElement: HTMLInputElement) {
+    inputElement.select();
+    document.execCommand('copy');
+    inputElement.setSelectionRange(0, 0);
+  }
+
+  closePayment() {
+    this.router.navigate(['/']);
+  }
+
+  triggerFireworks() {
+    const duration = 5 * 1000; // 5 seconds
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+    function randomInRange(min: number, max: number) {
+      return Math.random() * (max - min) + min;
+    }
+
+    const intervalConfetti = setInterval(() => {
+      const timeLeft = animationEnd - Date.now();
+
+      if (timeLeft <= 0) {
+        return clearInterval(intervalConfetti);
+      }
+
+      const particleCount = 50 * (timeLeft / duration);
+      // since particles fall down, start a bit higher than random
+      confetti.default(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+      confetti.default(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+    }, 250);
+  }
+
   ngOnDestroy() {
     this.stopPolling();
   }
 }
+
