@@ -9,11 +9,13 @@ import com.saas.directory.service.UserManager;
 import com.saas.directory.service.support.RetryExternalApiCall;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.event.EventListener;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.client.HttpClientErrorException;
 
 @Component
@@ -37,8 +39,8 @@ public class UserRegistrationListener {
      * @param event The event containing the newly registered user's username.
      */
     @Async
-    @EventListener
-    @Transactional
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     @RetryExternalApiCall
     public void handleUserRegistration(UserRegisteredEvent event) throws Exception {
         LOGGER.info("Asynchronously handling registration for user [{}]", event.username());

@@ -81,8 +81,15 @@ public class UserManager {
 
     @Transactional
     public User registerGhostUser(UserRegistrationDto userRegistrationDto) throws RoleNotFoundException {
-        if (userExist(userRegistrationDto.username())) {
-            throw new ResourceAlreadyExistsException(String.format("User [%s] already exist", userRegistrationDto.username()));
+        final Optional<User> optionalUser = userRepository.findUserByUsernameIgnoreCase(userRegistrationDto.username());
+
+        if (optionalUser.isPresent()) {
+            final User user = optionalUser.get();
+            if (user.getUserType() == UserType.GHOST) {
+                return user;
+            } else {
+                throw new ResourceAlreadyExistsException(String.format("User [%s] already exist", userRegistrationDto.username()));
+            }
         }
 
         final Role role = roleRepository.findRoleByLabel(RoleName.USER)
