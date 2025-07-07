@@ -136,7 +136,7 @@ public class UserAuthenticationProvider {
             authority = new SimpleGrantedAuthority("ROLE_" + dbToken.get().getUser().getRole().getLabel());
         }
 
-        return new UsernamePasswordAuthenticationToken(UserDto.from(dbToken.get().getUser()), null, Collections.singletonList(authority));
+        return new UsernamePasswordAuthenticationToken(UserDto.from(dbToken.get().getUser(), null), null, Collections.singletonList(authority));
     }
 
     @Transactional

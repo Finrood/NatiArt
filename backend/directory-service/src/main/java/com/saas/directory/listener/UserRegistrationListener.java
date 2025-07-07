@@ -45,7 +45,7 @@ public class UserRegistrationListener {
     public void handleUserRegistration(UserRegisteredEvent event) throws Exception {
         LOGGER.info("Asynchronously handling registration for user [{}]", event.username());
 
-        final UserDto userDto = UserDto.from(userManager.getUserOrDie(event.username()));
+        final UserDto userDto = UserDto.from(userManager.getUserOrDie(event.username()), null);
         final AsaasCustomerCreationResponse asaasResponse = asaasUserManager.registerUser(userDto);
         ExternalUser externalUser = userManager.addAsaasCustomerIdToUser(userDto.getUsername(), asaasResponse.getId());
 

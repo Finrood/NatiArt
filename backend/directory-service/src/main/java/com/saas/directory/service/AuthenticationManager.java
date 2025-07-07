@@ -30,7 +30,7 @@ public class AuthenticationManager {
     public UserAuthDto login(CredentialsDto credentialsDto) {
         final User user = userManager.getUserOrDie(credentialsDto.username());
         if (passwordEncoder.matches(credentialsDto.password(), user.getPasswordHash())) {
-            final UserDto userDto = UserDto.from(user);
+            final UserDto userDto = UserDto.from(user, null);
             return new UserAuthDto(userAuthenticationProvider.createAccessToken(userDto), userAuthenticationProvider.createRefreshToken(userDto));
         } else {
             throw new ResourceNotFoundException("Password is invalid. Try again", HttpStatus.BAD_REQUEST);

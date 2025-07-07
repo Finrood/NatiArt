@@ -263,9 +263,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
           };
           this.setInfoMessage('Creating a temporary account to process your order...');
           return this.signupService.registerGhostUser(userRegistration).pipe(
-            switchMap(() => {
+            switchMap((loginResponse) => {
               this.clearInfoMessage();
-              return this.authenticationService.login({ username: userInfo.email, password: userRegistration.password });
+              return this.authenticationService.setAuthTokensAndUser(loginResponse);
             }),
             switchMap(() => this.currentUser$),
             map(user => {

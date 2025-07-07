@@ -2,7 +2,9 @@ package com.saas.directory.service;
 
 import com.saas.directory.controller.helper.ResourceAlreadyExistsException;
 import com.saas.directory.controller.helper.ResourceNotFoundException;
+import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.UserRegistrationDto;
+import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
 import com.saas.directory.event.UserRegisteredEvent;
 import com.saas.directory.model.*;
 import com.saas.directory.model.helper.PaymentProcessor;
@@ -25,17 +27,20 @@ public class UserManager {
     private final RoleRepository roleRepository;
     private final ProfileManager profileManager;
     private final ApplicationEventPublisher eventPublisher;
+    private final AsaasUserManager asaasUserManager;
 
     public UserManager(UserRepository userRepository,
                        ExternalUserRepository externalUserRepository,
                        RoleRepository roleRepository,
                        ProfileManager profileManager,
-                       ApplicationEventPublisher eventPublisher) {
+                       ApplicationEventPublisher eventPublisher,
+                       AsaasUserManager asaasUserManager) {
         this.userRepository = userRepository;
         this.externalUserRepository = externalUserRepository;
         this.roleRepository = roleRepository;
         this.profileManager = profileManager;
         this.eventPublisher = eventPublisher;
+        this.asaasUserManager = asaasUserManager;
     }
 
     @Transactional(readOnly = true)
@@ -80,7 +85,7 @@ public class UserManager {
     }
 
     @Transactional
-    public User registerGhostUser(UserRegistrationDto userRegistrationDto) throws RoleNotFoundException {
+    public User registerGhostUser(UserRegistrationDto userRegistrationDto) throws Exception {
         final Optional<User> optionalUser = userRepository.findUserByUsernameIgnoreCase(userRegistrationDto.username());
 
         if (optionalUser.isPresent()) {
@@ -104,7 +109,10 @@ public class UserManager {
         newUser.setProfile(profile);
         final User savedUser = userRepository.save(newUser);
 
-        eventPublisher.publishEvent(new UserRegisteredEvent(savedUser.getUsername()));
+        // Synchronously create Asaas customer for ghost user
+        final UserDto userDto = UserDto.from(savedUser, null);
+        final AsaasCustomerCreationResponse asaasResponse = asaasUserManager.registerUser(userDto);
+        addAsaasCustomerIdToUser(userDto.getUsername(), asaasResponse.getId());
 
         return savedUser;
     }

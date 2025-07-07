@@ -5,6 +5,7 @@ import {environment} from "../../../environments/environment";
 import {User} from "../models/user.model";
 import {UserRegistration} from "../models/user-registration.model";
 import {ViaCEPResponse} from "../models/viaCEPResponse.model";
+import {LoginResponse} from "../models/loginResponse.model";
 
 
 @Injectable({
@@ -20,8 +21,8 @@ export class SignupService {
     return this.http.post<User>(`${this.apiUrl}/register-user`, userRegistration);
   }
 
-  registerGhostUser(userRegistration: UserRegistration): Observable<User> {
-    return this.http.post<User>(`${this.apiUrl}/register-ghost-user`, userRegistration);
+  registerGhostUser(userRegistration: UserRegistration): Observable<LoginResponse> {
+    return this.http.post<LoginResponse>(`${this.apiUrl}/register-ghost-user`, userRegistration);
   }
 
   getAddressFromZipCode(zipCode: string): Observable<ViaCEPResponse> {

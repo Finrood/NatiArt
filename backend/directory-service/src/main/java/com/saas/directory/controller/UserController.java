@@ -27,7 +27,7 @@ public class UserController {
         if (username == null || username.isEmpty()) {
             return ResponseEntity.ok(null);
         }
-        final UserDto userDto = UserDto.from(userManager.getUserOrDie(username));
+        final UserDto userDto = UserDto.from(userManager.getUserOrDie(username), null);
         userDto.setExternalId(userManager.getAsaasCustomer(username)
                 .map(ExternalUser::getExternalId)
                 .orElse(null));

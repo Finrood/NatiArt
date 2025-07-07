@@ -1,5 +1,6 @@
 package com.saas.directory.dto;
 
+import com.saas.directory.model.ExternalUser;
 import com.saas.directory.model.RoleName;
 import com.saas.directory.model.User;
 
@@ -10,13 +11,15 @@ public class UserDto {
     private RoleName role;
     private String externalId;
 
-    public static UserDto from(User user) {
+    public static UserDto from(User user, ExternalUser externalUser) {
         if (user == null) return null;
+
         return new UserDto()
                 .setId(user.getId())
                 .setUsername(user.getUsername())
                 .setProfile(ProfileDto.from(user.getProfile()))
-                .setRole(user.getRole().getLabel());
+                .setRole(user.getRole().getLabel())
+                .setExternalId(externalUser != null ? externalUser.getExternalId() : null);
     }
 
     public String getId() {

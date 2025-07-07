@@ -64,6 +64,15 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
     );
   }
 
+  // New method for setting tokens and user directly (for ghost users)
+  setAuthTokensAndUser(loginResponse: LoginResponse): Observable<User> {
+    this.tokenService.accessToken = loginResponse.accessToken;
+    this.tokenService.refreshToken = loginResponse.refreshToken;
+    return this.fetchCurrentUser().pipe(
+      catchError(error => this.handleError(error, 'Failed to set ghost user authentication'))
+    );
+  }
+
   logout(): Observable<void> {
     // No need to pass null if the endpoint doesn't expect a body for logout
     return this.http.post<void>(`${this.apiUrl}${environment.api.directory.endpoints.logout}`, {}).pipe(
@@ -188,8 +197,8 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
   private resetAuthState() {
     this.tokenService.clearTokens();
     this.updateState(null); // This will make isLoggedIn$ emit false
-    // Only navigate if not already on login/register page to avoid navigation loops
-    if (!this.router.url.includes('/login') && !this.router.url.includes('/register')) {
+    // Only navigate if not already on login/register/checkout page to avoid navigation loops
+    if (!this.router.url.includes('/login') && !this.router.url.includes('/register') && !this.router.url.includes('/checkout')) {
       this.router.navigate(['/login']);
     }
   }
