@@ -42,12 +42,9 @@
           [product]="product"
           (itemAdded)="triggerFlyAnimation($event)">
         </app-add-to-cart-button>
-        <button
-          [routerLink]="['/product', product.id]"
-          class="flex-1 py-2 border border-primary text-primary rounded-lg hover:bg-primary-light transition-colors"
-        >
+        <app-button [routerLink]="['/product', product.id]" color="secondary" size="md">
           View Details
-        </button>
+        </app-button>
       </div>
     </div>
   </div>

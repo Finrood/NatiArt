@@ -4,10 +4,9 @@
 <!-- Header with "Add New Package" Button -->
 <div class="flex justify-between items-center mb-4">
   <h2 class="text-2xl sm:text-3xl font-light">Packages</h2>
-  <button (click)="openModal()"
-          class="bg-primary text-white px-4 py-2 rounded-full hover:bg-primary-dark transition-colors text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+  <app-button (click)="openModal()" color="primary" size="md">
     Add New Package
-  </button>
+  </app-button>
 </div>
 
 <!-- Packages Grid -->
@@ -20,14 +19,12 @@
       {{ pack.height }}cm x {{ pack.width }}cm x {{ pack.depth }}cm
     </p>
     <div class="flex flex-wrap justify-between gap-2">
-      <button (click)="openModal(pack)"
-              class="text-primary border border-primary px-3 py-1 rounded-full hover:bg-primary hover:text-white transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+      <app-button (click)="openModal(pack)" color="primary" size="sm">
         Edit
-      </button>
-      <button (click)="deletePackage(pack.id!)"
-              class="text-error border border-error px-3 py-1 rounded-full hover:bg-error hover:text-white transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-error focus:ring-opacity-50">
+      </app-button>
+      <app-button (click)="deletePackage(pack.id!)" color="danger" size="sm">
         Delete
-      </button>
+      </app-button>
     </div>
   </div>
 </div>
@@ -65,14 +62,12 @@
 
       <!-- Form Actions -->
       <div class="flex justify-end space-x-2">
-        <button type="button" (click)="closeModal()"
-                class="bg-gray-300 text-gray-700 px-4 py-2 rounded-full hover:bg-gray-400 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50">
-          Cancel
-        </button>
-        <button type="submit"
-                class="bg-primary text-white px-4 py-2 rounded-full hover:bg-primary-dark transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
-          {{ isEditingPackage.value ? 'Update' : 'Add' }}
-        </button>
+        <app-button type="button" (click)="closeModal()" color="secondary" size="md">
+        Cancel
+      </app-button>
+      <app-button type="submit" color="primary" size="md">
+        {{ isEditingPackage.value ? 'Update' : 'Add' }}
+      </app-button>
       </div>
     </form>
   </div>

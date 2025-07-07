@@ -2,12 +2,13 @@ import {Component, EventEmitter, Input, Output} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {Product} from '../../../models/product.model';
-import {PersonalizationOption} from "../../../models/support/personalization-option"; // Ensure this path is correct
+import {PersonalizationOption} from "../../../models/support/personalization-option";
+import {ButtonComponent} from "../../../../shared/components/button.component"; // Ensure this path is correct
 
 @Component({
   selector: 'app-personalization-modal',
   standalone: true, // Add standalone: true
-  imports: [CommonModule, FormsModule], // CommonModule and FormsModule are needed for *ngIf, [(ngModel)] etc.
+  imports: [CommonModule, FormsModule, ButtonComponent], // CommonModule and FormsModule are needed for *ngIf, [(ngModel)] etc.
   templateUrl: './personalization-modal.component.html',
   styleUrl: './personalization-modal.component.css'
 })

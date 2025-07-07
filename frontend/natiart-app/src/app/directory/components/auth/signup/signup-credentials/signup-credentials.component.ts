@@ -1,8 +1,7 @@
 import {Component, EventEmitter, Input, Output} from '@angular/core';
 import {FormGroup, ReactiveFormsModule} from "@angular/forms";
-import {
-  NatiartFormFieldComponent
-} from "../../../../../shared/components/natiart-form-field/natiart-form-field.component";
+import {NatiartFormFieldComponent} from "../../../../../shared/components/natiart-form-field/natiart-form-field.component";
+import {ButtonComponent} from "../../../../../shared/components/button.component";
 import {PasswordRequirementsComponent} from "../password-requirements/password-requirements.component";
 
 @Component({
@@ -10,7 +9,8 @@ import {PasswordRequirementsComponent} from "../password-requirements/password-r
   imports: [
     ReactiveFormsModule,
     NatiartFormFieldComponent,
-    PasswordRequirementsComponent
+    PasswordRequirementsComponent,
+    ButtonComponent
   ],
   templateUrl: './signup-credentials.component.html',
   styleUrl: './signup-credentials.component.css'

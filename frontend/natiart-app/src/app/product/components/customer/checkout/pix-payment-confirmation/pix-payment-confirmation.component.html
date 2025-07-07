@@ -1,18 +1,18 @@
-<div class="max-w-md mx-auto my-10 p-6 bg-white rounded-lg shadow-lg text-center">
+<div class="max-w-md mx-auto my-10 p-8 bg-white rounded-2xl shadow-lg text-center">
 
   <!-- Payment Success State -->
   <div *ngIf="paymentStatus === 'COMPLETED'; else paymentPending">
     <div class="mb-4">
       <!-- Simple and clean green checkmark SVG -->
-      <svg class="w-24 h-24 mx-auto text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <svg class="w-24 h-24 mx-auto text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
       </svg>
     </div>
     <h1 class="text-2xl font-bold text-gray-800 mb-2">Payment Successful!</h1>
     <p class="text-gray-600 mb-6">Thank you for your purchase. Your order is confirmed.</p>
-    <button (click)="closePayment()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300">
+    <app-button (click)="closePayment()" [block]="true" color="primary" size="lg">
       Continue Shopping
-    </button>
+    </app-button>
   </div>
 
   <!-- Payment Pending State -->
@@ -30,14 +30,14 @@
       <div class="relative mb-6">
         <input type="text" [value]="qrCodeData.payload" readonly #pixCodeInput
                class="w-full bg-gray-100 border border-gray-300 text-gray-700 text-sm rounded-lg p-3 pr-12 truncate">
-        <button (click)="copyToClipboard(pixCodeInput)" class="absolute top-1/2 right-2 -translate-y-1/2 text-gray-500 hover:text-blue-500">
+        <app-button (click)="copyToClipboard(pixCodeInput)" color="link" size="sm" customClass="absolute top-1/2 right-2 -translate-y-1/2 text-gray-500 hover:text-blue-500">
           <!-- Heroicons: clipboard-document -->
           <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a2.25 2.25 0 01-2.25 2.25h-1.5a2.25 2.25 0 01-2.25-2.25V4.5A2.25 2.25 0 019 2.25h1.5a2.25 2.25 0 012.25 2.25v.75" />
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6M9 15h6M9 18h6" />
             <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 6.75a.75.75 0 01.75-.75h13.5a.75.75 0 01.75.75v10.5a.75.75 0 01-.75.75H5.25a.75.75 0 01-.75-.75V6.75z" />
           </svg>
-        </button>
+        </app-button>
       </div>
 
       <div class="text-sm text-gray-600">
@@ -51,7 +51,7 @@
   <ng-template #loading>
     <div class="flex items-center justify-center">
       <!-- Simple spinner -->
-      <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+      <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
       <p class="ml-4 text-gray-600">Loading payment details...</p>
     </div>
   </ng-template>

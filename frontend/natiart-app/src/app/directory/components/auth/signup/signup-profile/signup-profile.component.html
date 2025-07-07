@@ -69,13 +69,11 @@
   </div>
 
   <div class="flex gap-4">
-    <button type="button" (click)="goBack()"
-            class="flex-1 py-3 bg-surface-variant hover:bg-surface-variant/80 text-surface-contrast font-semibold rounded-lg transition-all transform hover:scale-[1.01]">
+    <app-button type="button" (click)="goBack()" color="secondary" size="md">
       ← Back
-    </button>
-    <button type="submit" [disabled]="profileForm.invalid"
-            class="flex-1 py-3 bg-primary hover:bg-primary-dark text-primary-contrast font-semibold rounded-lg transition-all transform hover:scale-[1.01] disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed">
+    </app-button>
+    <app-button type="submit" [disabled]="profileForm.invalid" color="primary" size="md" [block]="true">
       Complete Registration
-    </button>
+    </app-button>
   </div>
 </div>

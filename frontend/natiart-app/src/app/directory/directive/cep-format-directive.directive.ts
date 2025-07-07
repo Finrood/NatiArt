@@ -20,19 +20,19 @@ export class CepFormatDirective {
     const cleanValue = input.value.replace(/\D/g, '').slice(0, 8);
     const formattedValue = this.applyFormat(cleanValue);
 
-    this.updateValue(input, formattedValue);
+    this.updateValue(input, formattedValue, cleanValue);
   }
 
   private applyFormat(value: string): string {
     return value.length > 5 ? `${value.slice(0, 5)}-${value.slice(5)}` : value;
   }
 
-  private updateValue(input: HTMLInputElement, formattedValue: string) {
+  private updateValue(input: HTMLInputElement, formattedValue: string, cleanValue: string) {
     const previousValue = input.value;
     if (previousValue !== formattedValue) {
       this.renderer.setProperty(input, 'value', formattedValue);
-      this.control.control?.setValue(formattedValue.replace(/\D/g, ''), {
-        emitEvent: false,
+      this.control.control?.setValue(cleanValue, {
+        emitEvent: true,
         emitModelToViewChange: false
       });
 

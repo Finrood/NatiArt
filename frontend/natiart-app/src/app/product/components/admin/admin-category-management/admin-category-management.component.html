@@ -5,10 +5,9 @@
   <!-- Header with "Add New Category" Button -->
   <div class="flex justify-between items-center mb-4">
     <h2 class="text-2xl sm:text-3xl font-light">Categories</h2>
-    <button (click)="openModal()"
-            class="bg-primary text-white px-4 py-2 rounded-full hover:bg-primary-dark transition-colors text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+    <app-button (click)="openModal()" color="primary" size="md">
       Add New Category
-    </button>
+    </app-button>
   </div>
 
   <!-- Categories Grid -->
@@ -19,16 +18,13 @@
       <h3 class="text-xl font-semibold mb-2">{{ category.label }}</h3>
       <p class="text-gray-600 mb-4">{{ category.description }}</p>
       <div class="flex flex-wrap justify-between gap-2">
-        <button (click)="openModal(category)"
-                class="text-primary border border-primary px-3 py-1 rounded-full hover:bg-primary hover:text-white transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+        <app-button (click)="openModal(category)" color="primary" size="sm">
           Edit
-        </button>
-        <button (click)="deleteCategory(category.id!)"
-                class="text-error border border-error px-3 py-1 rounded-full hover:bg-error hover:text-white transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-error focus:ring-opacity-50">
+        </app-button>
+        <app-button (click)="deleteCategory(category.id!)" color="danger" size="sm">
           Delete
-        </button>
-        <button (click)="toggleCategoryVisibility(category)"
-                class="text-primary border border-primary px-3 py-1 rounded-full hover:bg-primary hover:text-white transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 flex items-center space-x-1">
+        </app-button>
+        <app-button (click)="toggleCategoryVisibility(category)" color="primary" size="sm">
           <span>{{ category.active ? 'Hide' : 'Show' }}</span>
           <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
             <path *ngIf="category.active" d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
@@ -41,7 +37,7 @@
             <path *ngIf="!category.active"
                   d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7S18.268 14.057 17 10z"/>
           </svg>
-        </button>
+        </app-button>
       </div>
     </div>
   </div>
@@ -64,14 +60,12 @@
                     class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm"></textarea>
         </app-natiart-form-field>
         <div class="flex justify-end space-x-2">
-          <button type="button" (click)="closeModal()"
-                  class="bg-gray-300 text-gray-700 px-4 py-2 rounded-full hover:bg-gray-400 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50">
+          <app-button type="button" (click)="closeModal()" color="secondary" size="md">
             Cancel
-          </button>
-          <button type="submit"
-                  class="bg-primary text-white px-4 py-2 rounded-full hover:bg-primary-dark transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+          </app-button>
+          <app-button type="submit" color="primary" size="md">
             {{ isEditingCategory ? 'Update' : 'Add' }}
-          </button>
+          </app-button>
         </div>
       </form>
     </div>

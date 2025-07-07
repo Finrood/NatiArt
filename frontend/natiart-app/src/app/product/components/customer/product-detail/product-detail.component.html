@@ -74,12 +74,9 @@
           <div class="flex items-center mb-6">
             <label for="quantityInput" class="block text-sm font-medium text-gray-700 mr-4">Quantity</label>
             <div class="flex items-center border border-gray-300 rounded">
-              <button
-                (click)="decrementQuantity()"
-                [disabled]="quantity <= 1"
-                aria-label="Decrease quantity"
-                class="px-3 py-1 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-primary rounded-l"
-              >－</button> <!-- Changed from hyphen to minus sign -->
+              <app-button (click)="decrementQuantity()" [disabled]="quantity <= 1" aria-label="Decrease quantity" color="light" size="sm">
+                －
+              </app-button> <!-- Changed from hyphen to minus sign -->
               <input
                 id="quantityInput"
                 [(ngModel)]="quantity"
@@ -89,12 +86,9 @@
                 aria-label="Current quantity"
                 class="w-16 text-center border-l border-r border-gray-300 py-1 focus:outline-none focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               >
-              <button
-                (click)="incrementQuantity(product)"
-                [disabled]="quantity >= product.stockQuantity"
-                aria-label="Increase quantity"
-                class="px-3 py-1 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-primary rounded-r"
-              >＋</button> <!-- Changed from plus sign -->
+              <app-button (click)="incrementQuantity(product)" [disabled]="quantity >= product.stockQuantity" aria-label="Increase quantity" color="light" size="sm">
+                ＋
+              </app-button> <!-- Changed from plus sign -->
             </div>
             <span class="ml-4 text-sm text-gray-500">({{ product.stockQuantity }} in stock)</span>
           </div>

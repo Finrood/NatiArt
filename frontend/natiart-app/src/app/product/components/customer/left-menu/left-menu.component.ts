@@ -2,10 +2,11 @@ import {CommonModule} from '@angular/common';
 import {Component, HostListener, OnInit} from '@angular/core';
 import {Category} from '../../../models/category.model';
 import {CategoryService} from '../../../service/category.service';
+import {ButtonComponent} from "../../../../shared/components/button.component";
 
 @Component({
     selector: 'app-left-menu',
-    imports: [CommonModule],
+    imports: [CommonModule, ButtonComponent],
     templateUrl: './left-menu.component.html',
     styles: [] // Empty styles array as we're using only Tailwind classes
 })

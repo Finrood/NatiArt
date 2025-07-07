@@ -4,19 +4,22 @@ import {Product} from "../../../models/product.model";
 import {CartService} from "../../../service/cart.service";
 import {PersonalizationOption} from "../../../models/support/personalization-option";
 import {CommonModule} from "@angular/common";
+import {ButtonComponent} from "../../../../shared/components/button.component";
 
 @Component({
   selector: 'app-add-to-cart-button',
   standalone: true,
-  imports: [CommonModule, PersonalizationModalComponent, PersonalizationModalComponent],
+  imports: [CommonModule, PersonalizationModalComponent, PersonalizationModalComponent, ButtonComponent],
   template: `
-    <button
+    <app-button
       (click)="addToCartOrPersonalize(product, $event)"
       [disabled]="product.stockQuantity <= 0 || isAdding"
-      class="w-full bg-primary text-white px-4 py-2 rounded-full font-medium hover:bg-primary-dark transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
+      [block]="true"
+      color="primary"
+      size="md"
     >
       {{ product.stockQuantity > 0 ? (isAdding ? 'Adding...' : 'Add to Cart') : 'Out of Stock' }}
-    </button>
+    </app-button>
 
     <app-personalization-modal
       (close)="closePersonalizationModal()"

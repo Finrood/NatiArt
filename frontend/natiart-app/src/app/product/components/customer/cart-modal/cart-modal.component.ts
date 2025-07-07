@@ -7,6 +7,7 @@ import {FormsModule} from "@angular/forms";
 import {ProductService} from "../../../service/product.service";
 import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
 import {RouterLink} from "@angular/router";
+import {ButtonComponent} from "../../../../shared/components/button.component";
 
 @Component({
     selector: 'app-cart-modal',
@@ -16,7 +17,8 @@ import {RouterLink} from "@angular/router";
         NgIf,
         NgForOf,
         FormsModule,
-        RouterLink
+        RouterLink,
+        ButtonComponent
     ],
     templateUrl: './cart-modal.component.html'
 })

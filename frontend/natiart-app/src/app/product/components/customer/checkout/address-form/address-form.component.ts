@@ -49,14 +49,30 @@ export class AddressFormComponent implements OnInit, OnDestroy {
   private onZipCodeChange(zipCode: string | null): void {
     this.clearErrorMessage();
     const cleanZipCode = zipCode?.replace(/\D/g, '');
-    if (cleanZipCode?.length !== 8) {
+    const zipCodeControl = this.addressFormGroup.get('zipCode');
+
+    if (!cleanZipCode || cleanZipCode.length !== 8) {
+      // If CEP is not 8 digits or empty, clear address fields and mark zipCode as invalid
+      this.addressFormGroup.patchValue({
+        street: '', city: '', neighborhood: '', state: '', country: ''
+      });
+      // Only set error if it's not empty, otherwise rely on Validators.required
+      if (cleanZipCode && cleanZipCode.length !== 8) {
+        zipCodeControl?.setErrors({ 'invalidCepLength': true });
+      } else {
+        zipCodeControl?.setErrors(null); // Clear any previous errors if empty
+      }
+      this.addressFormGroup.updateValueAndValidity(); // Update parent form group validity
       return;
     }
 
     this.isLoadingAddress = true;
     this.signupService.getAddressFromZipCode(cleanZipCode)
       .pipe(
-        finalize(() => this.isLoadingAddress = false),
+        finalize(() => {
+          this.isLoadingAddress = false;
+          this.addressFormGroup.updateValueAndValidity(); // Update parent form group validity after loading
+        }),
         takeUntil(this.destroy$)
       )
       .subscribe({
@@ -64,8 +80,9 @@ export class AddressFormComponent implements OnInit, OnDestroy {
           if (data.erro) {
             this.setErrorMessage('CEP not found. Please enter address manually.');
             this.addressFormGroup.patchValue({
-              street: '', city: '', neighborhood: '', state: '', country: 'Brazil'
+              street: '', city: '', neighborhood: '', state: '', country: ''
             });
+            zipCodeControl?.setErrors({ 'cepNotFound': true });
           } else {
             this.addressFormGroup.patchValue({
               street: data.logradouro,
@@ -74,17 +91,35 @@ export class AddressFormComponent implements OnInit, OnDestroy {
               state: data.uf,
               country: "Brazil", // Assuming Brazil is default
             });
+            zipCodeControl?.setErrors(null); // Clear CEP specific errors on success
           }
+          // Mark all relevant controls as touched and dirty to show validation messages
+          ['street', 'city', 'neighborhood', 'state', 'country'].forEach(controlName => {
+            const control = this.addressFormGroup.get(controlName);
+            control?.markAsTouched();
+            control?.markAsDirty();
+            control?.updateValueAndValidity();
+          });
         },
         error: () => {
           this.setErrorMessage('Error fetching address. Please enter manually.');
+          this.addressFormGroup.patchValue({
+            street: '', city: '', neighborhood: '', state: '', country: ''
+          });
+          zipCodeControl?.setErrors({ 'fetchError': true });
+          // Mark all relevant controls as touched and dirty to show validation messages
+          ['street', 'city', 'neighborhood', 'state', 'country'].forEach(controlName => {
+            const control = this.addressFormGroup.get(controlName);
+            control?.markAsTouched();
+            control?.markAsDirty();
+            control?.updateValueAndValidity();
+          });
         }
       });
   }
 
   private setErrorMessage(message: string): void {
     this.errorMessage = message;
-    // Consider emitting an event if the parent needs to know about this error.
   }
 
   private clearErrorMessage(): void {

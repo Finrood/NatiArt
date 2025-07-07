@@ -6,6 +6,7 @@ import {Package} from '../../../models/package.model';
 import {AsyncPipe, NgClass, NgForOf, NgIf} from '@angular/common';
 import {AlertMessageComponent} from "../../../../shared/components/alert-message/alert-message.component";
 import {NatiartFormFieldComponent} from "../../../../shared/components/natiart-form-field/natiart-form-field.component";
+import {ButtonComponent} from "../../../../shared/components/button.component";
 
 @Component({
   selector: 'app-admin-package-management',
@@ -17,7 +18,8 @@ import {NatiartFormFieldComponent} from "../../../../shared/components/natiart-f
     ReactiveFormsModule,
     NgClass,
     AlertMessageComponent,
-    NatiartFormFieldComponent
+    NatiartFormFieldComponent,
+    ButtonComponent
   ],
   templateUrl: './admin-package-management.component.html',
   styleUrls: ['./admin-package-management.component.css']

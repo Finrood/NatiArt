@@ -12,6 +12,7 @@ import {SignupCredentialsComponent} from "./signup-credentials/signup-credential
 import {StepIndicatorComponent} from "./step-indicator/step-indicator.component";
 import {CustomPhoneValidators} from "../../../validator/CustomPhoneValidators";
 import {CustomCpfValidators} from "../../../validator/CustomCpfValidators";
+import {CustomCepValidators} from "../../../validator/CustomCepValidators";
 
 @Component({
   selector: 'app-signup',
@@ -124,7 +125,7 @@ export class SignupComponent implements OnInit {
         state: ['', Validators.required],
         city: ['', Validators.required],
         neighborhood: ['', Validators.required],
-        zipCode: ['', Validators.required],
+        zipCode: ['', [Validators.required, CustomCepValidators.validCep()]],
         street: ['', Validators.required],
         complement: [''],
       }),

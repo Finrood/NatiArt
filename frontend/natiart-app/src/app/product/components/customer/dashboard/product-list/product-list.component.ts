@@ -9,11 +9,12 @@ import {CartService} from "../../../../service/cart.service";
 import {PersonalizationModalComponent} from "../../personalization-modal/personalization-modal.component";
 import {PersonalizationOption} from "../../../../models/support/personalization-option";
 import {AddToCartButtonComponent} from "../../add-to-cart-button/add-to-cart-button.component";
+import {ButtonComponent} from "../../../../../shared/components/button.component";
 
 @Component({
   selector: 'app-product-list',
   standalone: true,
-  imports: [AsyncPipe, CurrencyPipe, NgForOf, NgIf, RouterLink, PersonalizationModalComponent, AddToCartButtonComponent],
+  imports: [AsyncPipe, CurrencyPipe, NgForOf, NgIf, RouterLink, PersonalizationModalComponent, AddToCartButtonComponent, ButtonComponent],
   templateUrl: './product-list.component.html',
   styleUrls: ['./product-list.component.css']
 })

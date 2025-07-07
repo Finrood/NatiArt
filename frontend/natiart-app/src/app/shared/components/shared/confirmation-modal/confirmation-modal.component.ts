@@ -1,11 +1,12 @@
 // START OF FILE: src/app/shared/components/shared/confirmation-modal/confirmation-modal.component.ts
 import {Component, EventEmitter, Input, Output} from '@angular/core';
-import {NgIf} from '@angular/common'; // Ensure NgIf is imported
+import {NgIf} from '@angular/common';
+import {ButtonComponent} from "../../button.component";
 
 @Component({
   selector: 'app-confirmation-modal',
   standalone: true, // Make sure it's standalone
-  imports: [NgIf],   // Import NgIf
+  imports: [NgIf, ButtonComponent],   // Import NgIf
   template: `
     <div *ngIf="isOpen"
          class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300 ease-out"
@@ -28,18 +29,14 @@ import {NgIf} from '@angular/common'; // Ensure NgIf is imported
           <!-- Buttons -->
           <div class="flex flex-col sm:flex-row-reverse gap-3">
             <!-- Confirm Button (Primary) -->
-            <button (click)="onConfirm()"
-                    type="button"
-                    class="w-full sm:w-auto inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary text-base font-medium text-primary-contrast hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-150">
+            <app-button (click)="onConfirm()" type="button" color="primary" size="md" [block]="true">
               {{ confirmText }}
-            </button>
+            </app-button>
 
             <!-- Cancel Button (Secondary - Bordered) -->
-            <button (click)="onCancel()"
-                    type="button"
-                    class="w-full sm:w-auto inline-flex justify-center rounded-md border border-secondary/50 shadow-sm px-4 py-2 bg-surface text-base font-medium text-secondary hover:bg-secondary/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary/50 transition-colors duration-150">
+            <app-button (click)="onCancel()" type="button" color="secondary" size="md" [block]="true">
               {{ cancelText }}
-            </button>
+            </app-button>
           </div>
         </div>
       </div>

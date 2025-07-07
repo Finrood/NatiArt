@@ -10,6 +10,7 @@ import {
   ConfirmationModalComponent
 } from "../../../../shared/components/shared/confirmation-modal/confirmation-modal.component";
 import {LoadingSpinnerComponent} from "../../../../shared/components/shared/loading-spinner/loading-spinner.component";
+import {ButtonComponent} from "../../../../shared/components/button.component";
 import {CartItem} from "../../../models/CartItem.model";
 import {CartService} from "../../../service/cart.service";
 import {ProductService} from "../../../service/product.service";
@@ -31,7 +32,8 @@ interface CartState {
     CurrencyPipe,
     ShippingEstimationComponent,
     NgForOf,
-    LoadingSpinnerComponent
+    LoadingSpinnerComponent,
+    ButtonComponent
   ],
   templateUrl: './cart.component.html',
   styleUrls: ['./cart.component.css'],

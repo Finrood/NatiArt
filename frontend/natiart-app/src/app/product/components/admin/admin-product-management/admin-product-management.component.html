@@ -5,10 +5,9 @@
   <!-- Header -->
   <div class="flex justify-between items-center mb-4">
     <h2 class="text-2xl sm:text-3xl font-light">Products</h2>
-    <button (click)="openModal()"
-            class="bg-primary text-white px-4 py-2 rounded-full hover:bg-primary-dark transition-colors text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+    <app-button (click)="openModal()" color="primary" size="md">
       Add New Product
-    </button>
+    </app-button>
   </div>
 
   <!-- Products Grid -->
@@ -48,16 +47,13 @@
         <span class="text-sm text-gray-500 line-through">{{ product.originalPrice | currency:'BRL' }}</span>
       </div>
       <div class="flex flex-wrap justify-between gap-2">
-        <button (click)="openModal(product)"
-                class="text-primary border border-primary px-3 py-1 rounded-full hover:bg-primary hover:text-white transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+        <app-button (click)="openModal(product)" color="primary" size="sm">
           Edit
-        </button>
-        <button (click)="deleteProduct(product.id!)"
-                class="text-error border border-error px-3 py-1 rounded-full hover:bg-error hover:text-white transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-error focus:ring-opacity-50">
+        </app-button>
+        <app-button (click)="deleteProduct(product.id!)" color="danger" size="sm">
           Delete
-        </button>
-        <button (click)="toggleProductVisibility(product)"
-                class="text-primary border border-primary px-3 py-1 rounded-full hover:bg-primary hover:text-white transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 flex items-center space-x-1">
+        </app-button>
+        <app-button (click)="toggleProductVisibility(product)" color="primary" size="sm">
           <span>{{ product.active ? 'Hide' : 'Show' }}</span>
           <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
             <path *ngIf="product.active" d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
@@ -70,7 +66,7 @@
             <path *ngIf="!product.active"
                   d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z"/>
           </svg>
-        </button>
+        </app-button>
       </div>
     </div>
   </div>
@@ -182,11 +178,9 @@
               <div class="aspect-w-1 aspect-h-1">
                 <img [src]="preview.url" alt="Image preview" class="object-cover w-full h-full rounded-md">
               </div>
-              <button type="button" (click)="removeImage(i)"
-                      [class.pointer-events-none]="isDragging"
-                      class="absolute top-0 right-0 bg-error text-white p-2 rounded-bl-md rounded-tr-md text-xs z-10">
+              <app-button type="button" (click)="removeImage(i)" color="danger" size="sm" [disabled]="isDragging">
                 Remove
-              </button>
+              </app-button>
               <div
                 class="absolute inset-0 bg-blue-500 bg-opacity-50 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 {{ isTouch ? 'Long press to reorder' : 'Drag to reorder' }}
@@ -196,14 +190,12 @@
         </div>
         <!-- Form Actions -->
         <div class="flex justify-end space-x-2">
-          <button type="button" (click)="closeModal()"
-                  class="bg-gray-300 text-gray-700 px-4 py-2 rounded-full hover:bg-gray-400 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50">
+          <app-button type="button" (click)="closeModal()" color="secondary" size="md">
             Cancel
-          </button>
-          <button type="submit" [disabled]="isSubmitting || isLoadingImages || productForm.invalid"
-                  class="bg-primary text-white px-4 py-2 rounded-full hover:bg-primary-dark transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed">
+          </app-button>
+          <app-button type="submit" [disabled]="isSubmitting || isLoadingImages || productForm.invalid" color="primary" size="md">
             {{ isEditingProduct ? 'Update' : 'Add' }}
-          </button>
+          </app-button>
         </div>
       </form>
     </div>

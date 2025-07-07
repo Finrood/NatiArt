@@ -7,6 +7,7 @@ import {RedirectService} from "../../../service/redirect.service";
 import {AuthenticationService} from "../../../service/authentication.service";
 import {User} from "../../../models/user.model";
 import {NatiartFormFieldComponent} from "../../../../shared/components/natiart-form-field/natiart-form-field.component";
+import {ButtonComponent} from "../../../../shared/components/button.component";
 import {Credentials} from "../../../models/credentials.model";
 import {TokenService} from "../../../service/token.service";
 
@@ -17,6 +18,7 @@ import {TokenService} from "../../../service/token.service";
     NgIf,
     ReactiveFormsModule,
     NatiartFormFieldComponent,
+    ButtonComponent
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css',

@@ -4,12 +4,7 @@
     <!-- Menu Header with Toggle Button -->
     <div class="flex items-center justify-between p-4">
       <h2 *ngIf="isOpen" class="text-xl font-bold text-gray-800">Menu</h2>
-      <button
-        (click)="toggleMenu()"
-        [class.right-2]="!isOpen"
-        [class.top-2]="!isOpen"
-        aria-label="Toggle menu"
-        class="p-2 rounded-md text-gray-600 hover:bg-beige-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-beige-300">
+      <app-button (click)="toggleMenu()" color="light" size="sm" [customClass]="!isOpen ? 'right-2 top-2' : ''" aria-label="Toggle menu">
         <svg
           [class]="getToggleButtonClasses()"
           fill="none"
@@ -22,7 +17,7 @@
             stroke-linejoin="round"
             stroke-width="2"/>
         </svg>
-      </button>
+      </app-button>
     </div>
 
     <!-- Main Menu Items -->

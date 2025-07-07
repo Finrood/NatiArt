@@ -12,9 +12,10 @@
     <ng-content></ng-content>
 
     <!-- Password Visibility Toggle -->
-    <button *ngIf="isPassword" (click)="togglePasswordVisibility()" type="button"
-            class="absolute inset-y-0 right-8 pr-3 flex items-center text-sm leading-5 text-primary hover:text-primary-dark focus:outline-none z-30 transition-colors duration-200"
-            aria-label="Toggle password visibility">
+    <app-button *ngIf="isPassword" (click)="togglePasswordVisibility()" type="button"
+                color="primary"
+                class="absolute inset-y-0 right-8 pr-3 flex items-center text-sm leading-5 focus:outline-none z-30 transition-colors duration-200"
+                aria-label="Toggle password visibility">
       <span class="w-5 h-5 flex items-center justify-center">
         <svg *ngIf="!showPassword" class="w-5 h-5" fill="none" stroke="currentColor"
              viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -31,7 +32,7 @@
             stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
         </svg>
       </span>
-    </button>
+    </app-button>
 
     <!-- Error icon -->
     <div *ngIf="showErrors()" class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -51,6 +52,11 @@
       Minimum length {{ control?.errors?.['minlength'].requiredLength }} characters
     </p>
     <p *ngIf="control?.errors?.['pattern']">Invalid format</p>
+    <p *ngIf="control?.errors?.['invalidCpf']">Invalid CPF</p>
+    <p *ngIf="control?.errors?.['invalidCep']">Invalid CEP</p>
+    <p *ngIf="control?.errors?.['invalidCepLength']">CEP must be 8 digits</p>
+    <p *ngIf="control?.errors?.['cepNotFound']">CEP not found</p>
+    <p *ngIf="control?.errors?.['fetchError']">Error fetching address</p>
     <p *ngIf="control?.errors?.['passwordMismatch']">Passwords do not match</p>
   </div>
 </div>

@@ -20,10 +20,9 @@
                  formControlName="password" autocomplete="new-password" placeholder="••••••••" class="w-full px-4 py-3 bg-surface rounded-lg border border-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/30 placeholder:text-surface-contrast/50 transition-all">
         </app-natiart-form-field>
 
-        <button type="submit" [disabled]="loginForm.invalid"
-                class="w-full py-3 bg-primary hover:bg-primary-dark text-primary-contrast font-semibold rounded-lg transition-all transform hover:scale-[1.01] disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed">
+        <app-button type="submit" [disabled]="loginForm.invalid" [block]="true" color="primary" size="lg">
           Sign in
-        </button>
+        </app-button>
       </div>
     </form>
 
@@ -46,12 +45,11 @@
       </div>
 
       <div class="mt-6">
-        <button
-          class="w-full flex items-center justify-center px-4 py-2 sm:py-3 border border-primary rounded-md shadow-input text-xs sm:text-sm font-medium text-secondary bg-white hover:bg-gray-50 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+        <app-button color="secondary" [block]="true" size="lg">
           <img alt="Google logo" class="h-5 w-5 mr-2"
                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg">
           Sign in with Google
-        </button>
+        </app-button>
       </div>
     </div>
 

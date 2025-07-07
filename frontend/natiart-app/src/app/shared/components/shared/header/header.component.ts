@@ -1,10 +1,12 @@
 import {Component} from '@angular/core';
 import {NgIf} from "@angular/common";
+import {ButtonComponent} from "../button.component";
 
 @Component({
     selector: 'app-header',
     imports: [
-        NgIf
+        NgIf,
+        ButtonComponent
     ],
     templateUrl: './header.component.html',
     styleUrl: './header.component.css'

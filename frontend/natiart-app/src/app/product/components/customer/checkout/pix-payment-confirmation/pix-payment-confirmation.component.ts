@@ -5,16 +5,17 @@ import {PaymentService} from "../../../../service/payment.service";
 import {ActivatedRoute, Router} from "@angular/router";
 import {DatePipe, NgClass, NgIf} from "@angular/common";
 import * as confetti from 'canvas-confetti';
+import {ButtonComponent} from "../../../../../shared/components/button.component";
 
 @Component({
   selector: 'app-pix-payment-confirmation',
   imports: [
     DatePipe,
     NgIf,
-    NgClass
+    NgClass,
+    ButtonComponent
   ],
   templateUrl: './pix-payment-confirmation.component.html',
-  styleUrl: './pix-payment-confirmation.component.css'
 })
 export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   paymentId: string | null = null;

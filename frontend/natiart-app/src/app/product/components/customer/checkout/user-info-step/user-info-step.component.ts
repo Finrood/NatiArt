@@ -18,7 +18,6 @@ import {PhoneFormatBrazilDirective} from "../../../../../directory/directive/pho
     PhoneFormatBrazilDirective
   ],
   templateUrl: './user-info-step.component.html',
-  styleUrls: ['./user-info-step.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UserInfoStepComponent {

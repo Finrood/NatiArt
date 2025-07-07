@@ -5,7 +5,7 @@ import {catchError, firstValueFrom, map, Observable, Subject, throwError} from '
 import {CartItem} from '../../../models/CartItem.model';
 import {CartService} from '../../../service/cart.service';
 import {OrderService} from '../../../service/order.service';
-import {Router, RouterLink} from '@angular/router';
+import {Router} from '@angular/router';
 import {animate, style, transition, trigger} from '@angular/animations';
 import {PaymentService} from "../../../service/payment.service";
 import {PaymentCreationRequest} from "../../../models/paymentCreationRequest.model";
@@ -21,6 +21,9 @@ import {AuthenticationService} from "../../../../directory/service/authenticatio
 import {SignupService} from "../../../../directory/service/signup.service";
 import {Profile} from "../../../../directory/models/profile.model";
 import {UserRegistration} from "../../../../directory/models/user-registration.model";
+import {CustomCpfValidators} from "../../../../directory/validator/CustomCpfValidators";
+import {CustomCepValidators} from "../../../../directory/validator/CustomCepValidators";
+import {ButtonComponent} from "../../../../shared/components/button.component";
 
 @Component({
   selector: 'app-checkout',
@@ -28,7 +31,6 @@ import {UserRegistration} from "../../../../directory/models/user-registration.m
   imports: [
     NgIf,
     AsyncPipe,
-    RouterLink,
     CommonModule,
     ReactiveFormsModule,
     FormsModule,
@@ -36,7 +38,8 @@ import {UserRegistration} from "../../../../directory/models/user-registration.m
     UserInfoStepComponent,
     ShippingInfoStepComponent,
     PaymentInfoStepComponent,
-    LoadingSpinnerComponent
+    LoadingSpinnerComponent,
+    ButtonComponent
   ],
   animations: [
     trigger('fadeIn', [
@@ -50,7 +53,6 @@ import {UserRegistration} from "../../../../directory/models/user-registration.m
     ]),
   ],
   templateUrl: './checkout.component.html',
-  styleUrls: ['./checkout.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CheckoutComponent implements OnInit, OnDestroy {
@@ -62,6 +64,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   currentUser$: Observable<User | null>;
   isLoading$: Observable<boolean>;
   sameShippingAsBilling = true;
+  currentStep = 1;
 
   private destroy$ = new Subject<void>();
 
@@ -79,7 +82,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       userInfo: this.fb.group({
         firstname: ['', Validators.required],
         lastname: ['', Validators.required],
-        cpf: ['', [Validators.required, Validators.pattern('[0-9.]*\-[0-9]*')]],
+        cpf: ['', [Validators.required, CustomCpfValidators.validCpf()]],
         email: ['', [Validators.required, Validators.email]],
         phone: ['', Validators.pattern('[()0-9 -]*')],
       }),
@@ -88,7 +91,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         state: ['', Validators.required],
         city: ['', Validators.required],
         neighborhood: ['', Validators.required],
-        zipCode: ['', [Validators.required, Validators.pattern(/^\d{5}-\d{3}$/)]],
+        zipCode: ['', [Validators.required, CustomCepValidators.validCep()]],
         street: ['', Validators.required],
         complement: [''],
       }),
@@ -114,6 +117,30 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.isLoggedIn$ = this.authenticationService.isLoggedIn$;
     this.currentUser$ = this.authenticationService.currentUser$;
     this.isLoading$ = this.orderService.orderProcessing$;
+  }
+
+  nextStep() {
+    if (this.currentStep === 1) {
+      this.checkoutForm.get('userInfo')?.markAllAsTouched();
+      if (this.checkoutForm.get('userInfo')?.invalid) {
+        return;
+      }
+    } else if (this.currentStep === 2) {
+      this.checkoutForm.get('shippingInfo')?.markAllAsTouched();
+      if (this.checkoutForm.get('shippingInfo')?.invalid) {
+        return;
+      }
+    }
+
+    if (this.currentStep < 3) {
+      this.currentStep++;
+    }
+  }
+
+  prevStep() {
+    if (this.currentStep > 1) {
+      this.currentStep--;
+    }
   }
 
   private formatCpf(cpf: string): string {
@@ -160,10 +187,22 @@ export class CheckoutComponent implements OnInit, OnDestroy {
             if (this.sameShippingAsBilling) {
               this.checkoutForm.get('billingInfo')?.patchValue(this.checkoutForm.get('shippingInfo')?.value);
             }
+
+            // Mark controls as touched if they are invalid after pre-filling
+            if (this.checkoutForm.get('userInfo')?.invalid) {
+              this.checkoutForm.get('userInfo')?.markAllAsTouched();
+            }
+            if (this.checkoutForm.get('shippingInfo')?.invalid) {
+              this.checkoutForm.get('shippingInfo')?.markAllAsTouched();
+            }
           }
         })
       )
       .subscribe();
+
+    this.checkoutForm.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      console.log('Form validity:', this.checkoutForm.valid);
+    });
 
     this.updatePaymentValidators();
     this.checkoutForm.get('paymentInfo.paymentMethod')?.valueChanges
@@ -184,7 +223,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
     if (paymentMethod === PaymentMethod.CREDIT_CARD || paymentMethod === PaymentMethod.DEBIT_CARD) {
       cardNumberCtrl?.setValidators([Validators.required, Validators.pattern('^[0-9]{13,19}')]);
-      expirationDateCtrl?.setValidators([Validators.required, Validators.pattern('^(0[1-9]|1[0-2])\\/?([0-9]{2})')]);
+      expirationDateCtrl?.setValidators([Validators.required, Validators.pattern('^(0[1-9]|1[0-2])\/?([0-9]{2})')]);
       cvvCtrl?.setValidators([Validators.required, Validators.pattern('^[0-9]{3,4}')]);
     } else {
       cardNumberCtrl?.clearValidators();
@@ -349,3 +388,4 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 }
+

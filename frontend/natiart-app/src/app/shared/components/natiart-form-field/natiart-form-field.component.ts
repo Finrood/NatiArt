@@ -1,11 +1,14 @@
 import {Component, EventEmitter, Input, OnInit, Output} from '@angular/core';
 import {AbstractControl, FormGroup} from "@angular/forms";
 import {NgIf} from "@angular/common";
+import {ButtonComponent} from "../button.component";
 
 @Component({
   selector: 'app-natiart-form-field',
+  standalone: true,
   imports: [
-    NgIf
+    NgIf,
+    ButtonComponent
   ],
   templateUrl: './natiart-form-field.component.html',
   styleUrl: './natiart-form-field.component.css'

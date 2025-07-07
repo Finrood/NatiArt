@@ -36,7 +36,7 @@ export class CpfFormatDirective {
     const cleanValue = input.value.replace(/\D/g, '').slice(0, 11); // Only numbers, max length 11
     const formattedValue = this.applyFormat(cleanValue);
 
-    this.updateValue(input, formattedValue);
+    this.updateValue(input, formattedValue, cleanValue);
   }
 
   private applyFormat(value: string): string {
@@ -51,12 +51,12 @@ export class CpfFormatDirective {
     }
   }
 
-  private updateValue(input: HTMLInputElement, formattedValue: string) {
+  private updateValue(input: HTMLInputElement, formattedValue: string, cleanValue: string) {
     const previousValue = input.value;
     if (previousValue !== formattedValue) {
       this.renderer.setProperty(input, 'value', formattedValue);
-      this.control.control?.setValue(formattedValue.replace(/\D/g, ''), {
-        emitEvent: false,
+      this.control.control?.setValue(cleanValue, {
+        emitEvent: true,
         emitModelToViewChange: false
       });
 

@@ -12,6 +12,7 @@ import {CdkDragDrop, DragDropModule, moveItemInArray} from '@angular/cdk/drag-dr
 import {PersonalizationOption} from '../../../models/support/personalization-option';
 import {ImageService} from '../../../service/image.service';
 import {AlertMessageComponent} from "../../../../shared/components/alert-message/alert-message.component";
+import {ButtonComponent} from "../../../../shared/components/button.component";
 
 interface ImagePreview {
   url: string | SafeUrl;
@@ -23,7 +24,7 @@ interface ImagePreview {
 @Component({
   selector: 'app-admin-product-management',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DragDropModule, AlertMessageComponent],
+  imports: [CommonModule, ReactiveFormsModule, DragDropModule, AlertMessageComponent, ButtonComponent],
   templateUrl: './admin-product-management.component.html',
   styleUrls: ['./admin-product-management.component.css']
 })

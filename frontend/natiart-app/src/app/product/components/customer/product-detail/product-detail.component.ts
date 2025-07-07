@@ -12,6 +12,7 @@ import {CartService} from "../../../service/cart.service";
 import {PersonalizationOption} from "../../../models/support/personalization-option";
 import {PersonalizationModalComponent} from "../personalization-modal/personalization-modal.component";
 import {AddToCartButtonComponent} from "../add-to-cart-button/add-to-cart-button.component";
+import {ButtonComponent} from "../../../../shared/components/button.component";
 
 @Component({
   selector: 'app-product-detail',
@@ -29,6 +30,7 @@ import {AddToCartButtonComponent} from "../add-to-cart-button/add-to-cart-button
     PersonalizationModalComponent,
     RouterLink,
     AddToCartButtonComponent,
+    ButtonComponent
   ],
   templateUrl: './product-detail.component.html',
   styleUrls: ['./product-detail.component.css']

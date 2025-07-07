@@ -1,10 +1,12 @@
 import {Component, OnDestroy, OnInit} from '@angular/core';
 import {NgForOf} from "@angular/common";
+import {ButtonComponent} from "../../../../../shared/components/button.component";
 
 @Component({
   selector: 'app-top-banner',
   imports: [
-    NgForOf
+    NgForOf,
+    ButtonComponent
   ],
   templateUrl: './top-banner.component.html',
   styleUrl: './top-banner.component.css'

@@ -36,25 +36,30 @@ export class PhoneFormatBrazilDirective {
     const cleanValue = input.value.replace(/\D/g, '').slice(0, 11); // Remove non-numeric chars
     const formattedValue = this.applyFormat(cleanValue);
 
-    this.updateValue(input, formattedValue);
+    this.updateValue(input, formattedValue, cleanValue);
   }
 
   private applyFormat(value: string): string {
+    // (XX) XXXX-XXXX or (XX) XXXXX-XXXX
     if (value.length <= 2) {
-      return `(${value}`;
-    } else if (value.length <= 7) {
+      return value; // Just the DDD
+    } else if (value.length <= 6) {
       return `(${value.slice(0, 2)}) ${value.slice(2)}`;
+    } else if (value.length <= 10) {
+      // Handles 8-digit numbers (e.g., 1234-5678)
+      return `(${value.slice(0, 2)}) ${value.slice(2, 6)}-${value.slice(6)}`;
     } else {
+      // Handles 9-digit numbers (e.g., 12345-6789)
       return `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7)}`;
     }
   }
 
-  private updateValue(input: HTMLInputElement, formattedValue: string) {
+  private updateValue(input: HTMLInputElement, formattedValue: string, cleanValue: string) {
     const previousValue = input.value;
     if (previousValue !== formattedValue) {
       this.renderer.setProperty(input, 'value', formattedValue);
-      this.control.control?.setValue(formattedValue.replace(/\D/g, ''), {
-        emitEvent: false,
+      this.control.control?.setValue(cleanValue, {
+        emitEvent: true,
         emitModelToViewChange: false
       });
 

@@ -6,11 +6,12 @@ import {Category} from '../../../models/category.model';
 import {BehaviorSubject} from 'rxjs';
 import {NatiartFormFieldComponent} from "../../../../shared/components/natiart-form-field/natiart-form-field.component";
 import {AlertMessageComponent} from "../../../../shared/components/alert-message/alert-message.component";
+import {ButtonComponent} from "../../../../shared/components/button.component";
 
 @Component({
   selector: 'app-admin-category-management',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, NatiartFormFieldComponent, AlertMessageComponent],
+  imports: [CommonModule, ReactiveFormsModule, NatiartFormFieldComponent, AlertMessageComponent, ButtonComponent],
   templateUrl: './admin-category-management.component.html',
   styleUrls: ['./admin-category-management.component.css']
 })
