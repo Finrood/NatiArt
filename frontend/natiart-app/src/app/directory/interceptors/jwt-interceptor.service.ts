@@ -17,7 +17,7 @@ const isExcludedDomain = (url: string): boolean => {
 };
 
 const isAuthRequest = (url: string): boolean =>
-  url.includes('/register-user') || url.includes('/login');
+  url.includes('/register-user') || url.includes('/login') || url.includes("/register-ghost-user");
 
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   if (isExcludedDomain(req.url)) {
