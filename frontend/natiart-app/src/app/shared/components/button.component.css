@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+.btn {
+  @apply px-6 py-3 rounded-lg font-semibold transition-all duration-200 ease-in-out
+  focus:outline-none focus:ring-2 focus:ring-offset-2;
+}
+
+.btn:disabled {
+  @apply opacity-50 cursor-not-allowed bg-gray-300 text-gray-500;
+}
+
+.btn-primary {
+  @apply bg-primary text-primary-contrast hover:bg-primary-dark focus:ring-primary;
+}
+
+.btn-secondary {
+  @apply bg-secondary text-secondary-contrast hover:bg-secondary-dark focus:ring-secondary;
+}
+
+.btn-success {
+  @apply bg-success text-white hover:bg-green-600 focus:ring-green-500;
+}
+
+.btn-danger {
+  @apply bg-error text-white hover:bg-red-600 focus:ring-red-500;
+}
+
+.btn-warning {
+  @apply bg-warning text-white hover:bg-yellow-600 focus:ring-yellow-500;
+}
+
+.btn-info {
+  @apply bg-info text-white hover:bg-blue-600 focus:ring-blue-500;
+}
+
+.btn-light {
+  @apply bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-400;
+}
+
+.btn-dark {
+  @apply bg-gray-800 text-white hover:bg-gray-900 focus:ring-gray-700;
+}
+
+.btn-link {
+  @apply bg-transparent text-primary hover:underline focus:ring-transparent;
+}
+
+.btn-sm {
+  @apply px-4 py-2 text-sm;
+}
+
+.btn-lg {
+  @apply px-8 py-4 text-lg;
+}
+
+.btn-block {
+  @apply w-full;
+}
