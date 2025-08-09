@@ -43,7 +43,7 @@ public class AuthenticationController {
     public void refreshToken(@TargetUser String username, HttpServletRequest request, HttpServletResponse response) throws IOException, IllegalAccessException {
         LOGGER.info("User [{}] is refreshing is access token", username);
 
-        userAuthenticationProvider.refreshToken(request, response);
+        userAuthenticationProvider.refreshToken(username, request, response);
     }
 
     @PostMapping("/signout")

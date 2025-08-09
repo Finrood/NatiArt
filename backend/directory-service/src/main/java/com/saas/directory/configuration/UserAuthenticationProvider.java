@@ -92,7 +92,7 @@ public class UserAuthenticationProvider {
     }
 
     @Transactional
-    public void refreshToken(HttpServletRequest request, HttpServletResponse response) throws IOException, IllegalAccessException {
+    public void refreshToken(String username, HttpServletRequest request, HttpServletResponse response) throws IOException, IllegalAccessException {
         final String header = request.getHeader(HttpHeaders.AUTHORIZATION);
 
         if (header != null) {
@@ -103,6 +103,11 @@ public class UserAuthenticationProvider {
                 final Authentication currentAuth = authenticateWithToken(refreshToken, TokenType.AUTH_REFRESH);
                 if (currentAuth != null) {
                     final UserDto userDto = (UserDto) currentAuth.getPrincipal();
+
+                    if (!username.equals(userDto.getUsername())) {
+                        throw new IllegalAccessException("User from access token does not match user from refresh token.");
+                    }
+
                     final String accessToken = createAccessToken(userDto);
                     final UserAuthDto userAuthDto = new UserAuthDto(accessToken, refreshToken);
                     new ObjectMapper().writeValue(response.getOutputStream(), userAuthDto);
