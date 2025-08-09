@@ -9,20 +9,27 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.reactive.function.client.WebClient;
+
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
     private final CorsConfigurationSource corsFilter;
+    private final WebClient.Builder webClientBuilder;
+    private final String directoryServiceUrl;
 
-    public SecurityConfig(CorsConfigurationSource corsFilter) {
+    public SecurityConfig(CorsConfigurationSource corsFilter, WebClient.Builder webClientBuilder, @Value("${directory.service.url}") String directoryServiceUrl) {
         this.corsFilter = corsFilter;
+        this.webClientBuilder = webClientBuilder;
+        this.directoryServiceUrl = directoryServiceUrl;
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .addFilterBefore(new JwtAuthFilter(), BasicAuthenticationFilter.class)
+                .addFilterBefore(new JwtAuthFilter(webClientBuilder, directoryServiceUrl), BasicAuthenticationFilter.class)
                 .cors(cors -> cors.configurationSource(corsFilter))
                 .authorizeHttpRequests(request -> request
                         .anyRequest().permitAll());

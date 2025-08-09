@@ -34,6 +34,7 @@ public class UserManagerTest {
     private final RoleRepository roleRepository = mock(RoleRepository.class);
     private final ProfileManager profileManager = mock(ProfileManager.class);
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+    private final AsaasUserManager asaasUserManager = mock(AsaasUserManager.class);
 
     @Captor
     private ArgumentCaptor<UserRegisteredEvent> eventCaptor;
@@ -47,7 +48,8 @@ public class UserManagerTest {
                 externalUserRepository,
                 roleRepository,
                 profileManager,
-                eventPublisher
+                eventPublisher,
+                asaasUserManager
         );
     }
 

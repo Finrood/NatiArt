@@ -17,28 +17,37 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Collections;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.web.reactive.function.client.WebClient;
+
 public class JwtAuthFilter extends OncePerRequestFilter {
-    @Value("${saas.security.jwt.key.secret}")
-    private String secretKey;
 
-    public JwtAuthFilter() {
+    private final WebClient.Builder webClientBuilder;
+    private final String directoryServiceUrl;
 
+    public JwtAuthFilter(WebClient.Builder webClientBuilder, @Value("${directory.service.url}") String directoryServiceUrl) {
+        this.webClientBuilder = webClientBuilder;
+        this.directoryServiceUrl = directoryServiceUrl;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         final String token = extractToken(request);
         if (token != null) {
-            final DecodedJWT jwt = JWT.decode(token);
-            if (jwt.getClaims() != null && !jwt.getClaims().isEmpty()) {
-                final String username = jwt.getIssuer();
-                final String role = jwt.getClaim("roles").asString();
-                final GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
+            try {
+                final Authentication authentication = webClientBuilder.build()
+                        .post()
+                        .uri(directoryServiceUrl + "/validate-token")
+                        .header("Authorization", "Bearer " + token)
+                        .retrieve()
+                        .bodyToMono(Authentication.class)
+                        .block();
 
-                final UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(new UserDto()
-                        .setUsername(username)
-                        .setRole(role), null, Collections.singleton(authority));
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            } catch (Exception e) {
+                SecurityContextHolder.clearContext();
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                return;
             }
         }
         filterChain.doFilter(request, response);

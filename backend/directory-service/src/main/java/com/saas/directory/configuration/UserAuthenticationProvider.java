@@ -167,4 +167,12 @@ public class UserAuthenticationProvider {
         final JWTVerifier verifier = JWT.require(algorithm).build();
         return verifier.verify(token);
     }
+
+    public String extractToken(HttpServletRequest request) {
+        final String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
+    }
 }

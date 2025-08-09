@@ -3,7 +3,7 @@ import {HttpClient, HttpErrorResponse, HttpHeaders} from "@angular/common/http";
 import {Router} from "@angular/router";
 import {RoleName, User} from "../models/user.model";
 import {environment} from "../../../environments/environment";
-import {BehaviorSubject, catchError, Observable, Subject, throwError, timer} from "rxjs"; // Added Subject
+import {BehaviorSubject, catchError, Observable, Subject, throwError, timer, Subscription} from "rxjs"; // Added Subject, Subscription
 import {Credentials} from "../models/credentials.model";
 import {map, switchMap, takeUntil, tap} from "rxjs/operators"; // Added takeUntil
 import {LoginResponse} from "../models/loginResponse.model";
@@ -22,6 +22,10 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
   private readonly apiUrl: string = `${environment.api.directory.url}`;
   private readonly tokenCheckInterval = 60000; // 1 minute
   private readonly tokenRefreshBuffer = 300000; // 5 minutes before expiration
+  private readonly refreshTokenRefreshBuffer = 86400000 * 7; // 7 days before refresh token expiration
+  private readonly inactivityTimeout = 900000; // 15 minutes
+
+  private inactivityTimerSubscription: Subscription | undefined;
 
   // stateSubject holds the current User object or null
   private stateSubject = new BehaviorSubject<User | null>(null);
@@ -39,15 +43,39 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
   constructor(private http: HttpClient, private router: Router, private tokenService: TokenService) {
     this.initializeAuthState(); // Call this in constructor
     this.startTokenMonitoring(); // Call this in constructor
+    this.resetInactivityTimer();
   }
 
-  // ngOnInit is typically for components. For services, constructor or a manual init method is common.
-  // If you need ngOnInit, ensure your service is provided in a way that it gets instantiated at the right time.
-  // For a root-provided service, constructor is fine.
+  resetInactivityTimer() {
+    if (this.inactivityTimerSubscription) {
+      this.inactivityTimerSubscription.unsubscribe();
+    }
+
+    this.inactivityTimerSubscription = timer(this.inactivityTimeout)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        if (this.isTokenExpired(this.tokenService.refreshToken)) {
+          this.resetAuthState(); // Logout if refresh token is expired
+        } else {
+          // If refresh token is still valid, try to refresh it to prolong the session
+          this.doRefreshToken().pipe(takeUntil(this.destroy$)).subscribe({
+            error: () => {
+              // If refresh token fails, then log out
+              this.resetAuthState();
+            }
+          });
+        }
+      });
+  }
+
+  
 
   ngOnDestroy(): void { // Implement OnDestroy
     this.destroy$.next();
     this.destroy$.complete();
+    if (this.inactivityTimerSubscription) {
+      this.inactivityTimerSubscription.unsubscribe();
+    }
   }
 
   login(credentials: Credentials): Observable<User> {
@@ -158,13 +186,21 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
     timer(0, this.tokenCheckInterval)
       .pipe(takeUntil(this.destroy$)) // Manage this timer subscription
       .subscribe(() => {
-        if (this.tokenService.accessToken && this.isTokenExpiringSoon() && !this.isTokenExpired(this.tokenService.refreshToken)) {
-          // Only refresh if refresh token is still valid
+        // Proactively refresh access token if expiring soon and refresh token is valid
+        if (this.tokenService.accessToken && this.isAccessTokenExpiringSoon() && !this.isTokenExpired(this.tokenService.refreshToken)) {
           this.doRefreshToken().pipe(takeUntil(this.destroy$)).subscribe({
             error: () => { /* Error handled in doRefreshToken, state reset there */ }
           });
-        } else if (this.tokenService.accessToken && this.isTokenExpired(this.tokenService.accessToken)) {
-          // Access token expired, and refresh might also be expired or not working
+        }
+        // Proactively refresh refresh token if expiring soon
+        else if (this.tokenService.refreshToken && this.isRefreshTokenExpiringSoon()) {
+          this.doRefreshToken().pipe(takeUntil(this.destroy$)).subscribe({
+            error: () => { /* Error handled in doRefreshToken, state reset there */ }
+          });
+        }
+        // If access token is expired and refresh token is also expired or missing, reset auth state
+        else if (this.tokenService.accessToken && this.isTokenExpired(this.tokenService.accessToken) &&
+                   (this.isTokenExpired(this.tokenService.refreshToken) || !this.tokenService.refreshToken)) {
           this.resetAuthState();
         }
       });
@@ -176,10 +212,18 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
     return expiration < Date.now();
   }
 
-  private isTokenExpiringSoon(): boolean {
-    if (!this.tokenService.accessToken) return false; // If no access token, not expiring soon
-    const expiration = this.getTokenExpiration(this.tokenService.accessToken);
-    return expiration - Date.now() < this.tokenRefreshBuffer;
+  private isTokenExpiringSoon(token: string | null, buffer: number): boolean {
+    if (!token) return false;
+    const expiration = this.getTokenExpiration(token);
+    return expiration - Date.now() < buffer;
+  }
+
+  private isAccessTokenExpiringSoon(): boolean {
+    return this.isTokenExpiringSoon(this.tokenService.accessToken, this.tokenRefreshBuffer);
+  }
+
+  private isRefreshTokenExpiringSoon(): boolean {
+    return this.isTokenExpiringSoon(this.tokenService.refreshToken, this.refreshTokenRefreshBuffer);
   }
 
   private getTokenExpiration(token: string): number {

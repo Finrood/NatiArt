@@ -10,7 +10,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.saas.directory.model.TokenType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -50,5 +52,12 @@ public class AuthenticationController {
 
         authenticationManager.logout(request);
         return ResponseEntity.ok(true);
+    }
+
+    @PostMapping("/validate-token")
+    public ResponseEntity<Authentication> validateToken(HttpServletRequest request) throws IllegalAccessException {
+        final String token = userAuthenticationProvider.extractToken(request);
+        final Authentication authentication = userAuthenticationProvider.authenticateWithToken(token, TokenType.AUTH_ACCESS);
+        return ResponseEntity.ok(authentication);
     }
 }
