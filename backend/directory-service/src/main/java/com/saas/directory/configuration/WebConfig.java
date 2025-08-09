@@ -18,8 +18,8 @@ public class WebConfig {
         final CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
         config.setAllowedOrigins(List.of("http://localhost:4200", "https://natiart.samuelpetre.com"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowedMethods(List.of("*"));
+        config.setAllowedHeaders(List.of("Origin", "Content-Type", "Accept", "Authorization"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setMaxAge(3600L);
         source.registerCorsConfiguration("/**", config);
         return source;
