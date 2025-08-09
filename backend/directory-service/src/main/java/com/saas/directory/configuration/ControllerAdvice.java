@@ -1,6 +1,7 @@
 package com.saas.directory.configuration;
 
 import com.saas.directory.controller.helper.ResourceNotFoundException;
+import com.saas.directory.service.AsaasApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,12 @@ public class ControllerAdvice {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Object> handleResourceNotFoundException(ResourceNotFoundException e) {
         logger.debug("Exception caught in controller: ", e);
+        return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
+    }
+
+    @ExceptionHandler(AsaasApiException.class)
+    public ResponseEntity<Object> handleAsaasApiException(AsaasApiException e) {
+        logger.error("Asaas API error: status={}, message={}", e.getHttpStatus(), e.getMessage(), e);
         return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
     }
 }

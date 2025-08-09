@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -41,10 +42,10 @@ public class AsaasUserManager {
             return Optional.ofNullable(response.getBody())
                     .orElseThrow(() -> new RuntimeException("Received a null response body from " + asaasCustomerUrl));
         } catch (HttpClientErrorException e) {
-            throw new IllegalArgumentException(String.format("Received [%s] status from [%s] with message [%s]",
-                    e.getStatusCode(),
-                    asaasCustomerUrl,
-                    e.getResponseBodyAsString()));
+            throw new AsaasApiException(
+                String.format("Error from Asaas API: %s", e.getResponseBodyAsString()),
+                (HttpStatus) e.getStatusCode()
+            );
         } catch (Exception e) {
             throw new Exception("Unexpected error during asaas user registration: " + e);
         }
