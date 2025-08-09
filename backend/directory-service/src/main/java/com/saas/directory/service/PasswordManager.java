@@ -28,13 +28,13 @@ public class PasswordManager {
     }
 
     @Transactional(readOnly = true)
-    public Token getPasswordResetTokenOrDie(String token) {
-        return tokenManager.getTokenByTokenAndTokenTypeOrDie(token, TokenType.PASSWORD_RESET);
+    public Token getPasswordResetTokenOrDie(String jti) {
+        return tokenManager.getTokenByJtiAndTokenTypeOrDie(jti, TokenType.PASSWORD_RESET);
     }
 
     @Transactional(readOnly = true)
-    public Token getValidPasswordResetTokenOrDie(String token) {
-        return tokenManager.getValidTokenTokenAndTokenTypeOrDie(token, TokenType.PASSWORD_RESET);
+    public Token getValidPasswordResetTokenOrDie(String jti) {
+        return tokenManager.getValidTokenByJtiAndTokenTypeOrDie(jti, TokenType.PASSWORD_RESET);
     }
 
     //TODO CALL NOTIFICATION SERVICE TO SEND THE RESET PASSWORD EMAIL
@@ -43,7 +43,7 @@ public class PasswordManager {
     }
 
     @Transactional
-    public void doResetPassword(String token, ResetPasswordDto resetPasswordDto) {
+    public void doResetPassword(String jti, ResetPasswordDto resetPasswordDto) {
         if (!resetPasswordDto.password().equals(resetPasswordDto.passwordConfirmation())) {
             throw new IllegalArgumentException("Passwords must be identical");
         }
@@ -51,7 +51,7 @@ public class PasswordManager {
             throw new IllegalArgumentException("Password cannot be empty");
         }
 
-        final Token passwordResetToken = getPasswordResetTokenOrDie(token);
+        final Token passwordResetToken = getPasswordResetTokenOrDie(jti);
 
         final User user = passwordResetToken.getUser();
 

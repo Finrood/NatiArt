@@ -28,23 +28,23 @@ public class TokenManager {
     }
 
     @Transactional(readOnly = true)
-    public Optional<Token> getTokenByTokenAndTokenType(String token, TokenType tokenType) {
-        return tokenRepository.findByTokenAndTokenType(token, tokenType);
+    public Optional<Token> getTokenByJtiAndTokenType(String jti, TokenType tokenType) {
+        return tokenRepository.findByJtiAndTokenType(jti, tokenType);
     }
 
     @Transactional(readOnly = true)
-    public Token getTokenByTokenAndTokenTypeOrDie(String token, TokenType tokenType) {
-        return tokenRepository.findByTokenAndTokenType(token, tokenType)
-                .orElseThrow(() -> new IllegalArgumentException(String.format("[%s] Token [%s] does not exist", tokenType, token)));
+    public Token getTokenByJtiAndTokenTypeOrDie(String jti, TokenType tokenType) {
+        return tokenRepository.findByJtiAndTokenType(jti, tokenType)
+                .orElseThrow(() -> new IllegalArgumentException(String.format("[%s] Token [%s] does not exist", tokenType, jti)));
 
     }
 
     @Transactional(readOnly = true)
-    public Token getValidTokenTokenAndTokenTypeOrDie(String token, TokenType tokenType) {
-        final Optional<Token> dbToken = tokenRepository.findByTokenAndTokenType(token, tokenType);
+    public Token getValidTokenByJtiAndTokenTypeOrDie(String jti, TokenType tokenType) {
+        final Optional<Token> dbToken = tokenRepository.findByJtiAndTokenType(jti, tokenType);
 
         if (!isTokenValid(dbToken)) {
-            throw new IllegalArgumentException(String.format("Token [%s] is invalid", token));
+            throw new IllegalArgumentException(String.format("Token [%s] is invalid", jti));
         }
         return dbToken.get();
     }
@@ -61,13 +61,13 @@ public class TokenManager {
 
         final Random random = new Random();
 
-        final StringBuilder tokenStringBuilder = new StringBuilder();
+        final StringBuilder jtiStringBuilder = new StringBuilder();
         for (int i = 0; i < 6; i++) {
             int randomNumber = random.nextInt(10);
-            tokenStringBuilder.append(randomNumber);
+            jtiStringBuilder.append(randomNumber);
         }
 
-        return tokenRepository.save(new Token(tokenStringBuilder.toString(), user, tokenType, expiryDate));
+        return tokenRepository.save(new Token(jtiStringBuilder.toString(), user, tokenType, expiryDate));
     }
 
     @Transactional

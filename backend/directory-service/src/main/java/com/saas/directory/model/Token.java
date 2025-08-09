@@ -19,8 +19,8 @@ public class Token {
     private String id;
     @Version
     private long version;
-    @Column(nullable = false, unique = true, length = 1024)
-    private String token;
+    @Column(nullable = false, unique = true)
+    private String jti;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TokenType tokenType;
@@ -34,9 +34,9 @@ public class Token {
         // FOR JPA
     }
 
-    public Token(String token, User user, TokenType tokenType, Instant expiry) {
+    public Token(String jti, User user, TokenType tokenType, Instant expiry) {
         this.id = UUID.randomUUID().toString();
-        this.token = token;
+        this.jti = jti;
         this.user = user;
         this.tokenType = tokenType;
         this.expiry = expiry;
@@ -46,8 +46,8 @@ public class Token {
         return id;
     }
 
-    public String getToken() {
-        return token;
+    public String getJti() {
+        return jti;
     }
 
     public TokenType getTokenType() {

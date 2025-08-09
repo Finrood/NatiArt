@@ -33,6 +33,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.Optional;
+import java.util.UUID;
 
 
 @Component
@@ -61,8 +62,10 @@ public class UserAuthenticationProvider {
     public String createAccessToken(UserDto userDto) {
         final Instant now = Instant.now();
         final Instant validUntil = now.plus(accessTokenExpiration, ChronoUnit.MILLIS);
+        final String jti = UUID.randomUUID().toString();
 
         final String token = JWT.create()
+                .withJWTId(jti)
                 .withIssuer(userDto.getUsername())
                 .withIssuedAt(now)
                 .withClaim("id", userDto.getId())
@@ -71,24 +74,26 @@ public class UserAuthenticationProvider {
                 .withExpiresAt(validUntil)
                 .sign(Algorithm.HMAC256(secretKey));
         final User user = userManager.getUserOrDie(userDto.getUsername());
-        final Token savedToken = tokenRepository.save(new Token(token, user, TokenType.AUTH_ACCESS, validUntil));
-        return savedToken.getToken();
+        tokenRepository.save(new Token(jti, user, TokenType.AUTH_ACCESS, validUntil));
+        return token;
     }
 
     @Transactional
     public String createRefreshToken(UserDto userDto) {
         final Instant now = Instant.now();
         final Instant validUntil = now.plus(refreshTokenExpiration, ChronoUnit.MILLIS);
+        final String jti = UUID.randomUUID().toString();
 
         final String token = JWT.create()
+                .withJWTId(jti)
                 .withIssuer(userDto.getUsername())
                 .withIssuedAt(now)
                 .withExpiresAt(validUntil)
                 .sign(Algorithm.HMAC256(secretKey));
 
         final User user = userManager.getUserOrDie(userDto.getUsername());
-        final Token savedToken = tokenRepository.save(new Token(token, user, TokenType.AUTH_REFRESH, validUntil));
-        return savedToken.getToken();
+        tokenRepository.save(new Token(jti, user, TokenType.AUTH_REFRESH, validUntil));
+        return token;
     }
 
     @Transactional
@@ -118,15 +123,16 @@ public class UserAuthenticationProvider {
 
     @Transactional(readOnly = true)
     public Authentication authenticateWithToken(String token, TokenType tokenType) throws IllegalAccessException {
-        final Optional<Token> dbToken = tokenRepository.findByTokenAndTokenType(token, tokenType);
+        final DecodedJWT decodedJWT = decodeJWT(token);
+        final String jti = decodedJWT.getId();
+
+        final Optional<Token> dbToken = tokenRepository.findByJtiAndTokenType(jti, tokenType);
         final boolean isTokenValid = dbToken
                 .map(t -> !t.isExpired())
                 .orElse(false);
         if (!isTokenValid) {
             throw new IllegalAccessException(String.format("Authentication Token [%s] is not valid", token));
         }
-
-        final DecodedJWT decodedJWT = decodeJWT(token);
 
         if (!dbToken.get().getUser().getUsername().equals(decodedJWT.getIssuer())) {
             invalidateToken(token);
@@ -146,7 +152,13 @@ public class UserAuthenticationProvider {
 
     @Transactional
     public void invalidateToken(String token) {
-        tokenRepository.deleteByToken(token);
+        try {
+            final DecodedJWT decodedJWT = decodeJWT(token);
+            final String jti = decodedJWT.getId();
+            tokenRepository.deleteByJti(jti);
+        } catch (JWTVerificationException exception) {
+            logger.error("Error verifying JWT token: {}", exception.getMessage());
+        }
     }
 
     public String extractEmailClaim(String token) {
