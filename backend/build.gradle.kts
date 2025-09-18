@@ -1,7 +1,8 @@
 plugins {
     java
-    id("org.springframework.boot") version "3.5.4" apply false
+    id("org.springframework.boot") version "3.5.6" apply false
     id("io.spring.dependency-management") version "1.1.7" apply false
+    id("com.github.ben-manes.versions") version "0.52.0"
 }
 
 group = "com.portcelana.natiart"
@@ -9,7 +10,7 @@ version = "0.0.1-SNAPSHOT"
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
@@ -31,7 +32,7 @@ subprojects {
 
     java {
         toolchain {
-            languageVersion = JavaLanguageVersion.of(21)
+            languageVersion = JavaLanguageVersion.of(25)
         }
     }
 
