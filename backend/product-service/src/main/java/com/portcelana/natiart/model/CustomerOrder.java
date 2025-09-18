@@ -1,14 +1,7 @@
 package com.portcelana.natiart.model;
 
 import com.portcelana.natiart.model.support.OrderStatus;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Version;
+import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;

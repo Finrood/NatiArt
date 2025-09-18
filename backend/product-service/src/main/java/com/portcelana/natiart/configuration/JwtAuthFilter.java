@@ -1,24 +1,16 @@
 package com.portcelana.natiart.configuration;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.interfaces.DecodedJWT;
-import com.portcelana.natiart.dto.UserDto;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.IOException;
-import java.util.Collections;
-
-import org.springframework.security.core.Authentication;
-import org.springframework.web.reactive.function.client.WebClient;
 
 public class JwtAuthFilter extends OncePerRequestFilter {
 

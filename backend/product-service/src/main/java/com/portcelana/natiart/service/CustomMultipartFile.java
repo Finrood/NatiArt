@@ -2,11 +2,7 @@ package com.portcelana.natiart.service;
 
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 
 public class CustomMultipartFile implements MultipartFile {
 
