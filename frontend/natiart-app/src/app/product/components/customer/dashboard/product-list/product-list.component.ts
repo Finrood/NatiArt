@@ -1,5 +1,5 @@
 import {Component, ElementRef, Input, OnDestroy, OnInit, Renderer2} from '@angular/core';
-import {AsyncPipe, CurrencyPipe, NgForOf, NgIf} from "@angular/common";
+import { AsyncPipe, CurrencyPipe } from "@angular/common";
 import {BehaviorSubject, Subscription} from "rxjs";
 import {Product} from "../../../../models/product.model";
 import {ProductService} from "../../../../service/product.service";
@@ -14,7 +14,7 @@ import {ButtonComponent} from "../../../../../shared/components/button.component
 @Component({
   selector: 'app-product-list',
   standalone: true,
-  imports: [AsyncPipe, CurrencyPipe, NgForOf, NgIf, RouterLink, PersonalizationModalComponent, AddToCartButtonComponent, ButtonComponent],
+  imports: [AsyncPipe, CurrencyPipe, RouterLink, PersonalizationModalComponent, AddToCartButtonComponent, ButtonComponent],
   templateUrl: './product-list.component.html',
   styleUrls: ['./product-list.component.css']
 })

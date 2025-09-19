@@ -3,7 +3,9 @@
   <div class="h-full overflow-y-auto relative">
     <!-- Menu Header with Toggle Button -->
     <div class="flex items-center justify-between p-4">
-      <h2 *ngIf="isOpen" class="text-xl font-bold text-gray-800">Menu</h2>
+      @if (isOpen) {
+        <h2 class="text-xl font-bold text-gray-800">Menu</h2>
+      }
       <app-button (click)="toggleMenu()" color="light" size="sm" [customClass]="!isOpen ? 'right-2 top-2' : ''" aria-label="Toggle menu">
         <svg
           [class]="getToggleButtonClasses()"
@@ -21,71 +23,74 @@
     </div>
 
     <!-- Main Menu Items -->
-    <ul *ngIf="isOpen" class="space-y-2 mt-4 px-4">
-      <!-- See all products -->
-      <li>
-        <a aria-label="See all products"
-           class="flex items-center py-2 px-3 rounded-md text-gray-600 hover:bg-beige-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-beige-300"
-           href="#">
-          <svg class="h-5 w-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-               xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-          </svg>
-          <span>See all products</span>
-        </a>
-      </li>
-
-      <!-- Category Items -->
-      <li *ngFor="let category of categories">
-        <a [attr.aria-label]="category.label"
-           class="flex items-center py-2 px-3 rounded-md text-gray-600 hover:bg-beige-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-beige-300"
-           href="#">
-          <svg class="h-5 w-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-               xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-          </svg>
-          <span>{{ category.label }}</span>
-        </a>
-      </li>
-    </ul>
+    @if (isOpen) {
+      <ul class="space-y-2 mt-4 px-4">
+        <!-- See all products -->
+        <li>
+          <a aria-label="See all products"
+            class="flex items-center py-2 px-3 rounded-md text-gray-600 hover:bg-beige-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-beige-300"
+            href="#">
+            <svg class="h-5 w-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+            </svg>
+            <span>See all products</span>
+          </a>
+        </li>
+        <!-- Category Items -->
+        @for (category of categories; track category) {
+          <li>
+            <a [attr.aria-label]="category.label"
+              class="flex items-center py-2 px-3 rounded-md text-gray-600 hover:bg-beige-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-beige-300"
+              href="#">
+              <svg class="h-5 w-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+              </svg>
+              <span>{{ category.label }}</span>
+            </a>
+          </li>
+        }
+      </ul>
+    }
 
     <!-- Additional Menu Items -->
-    <div *ngIf="isOpen" class="mt-8 px-4 space-y-2">
-      <!-- New Arrivals -->
-      <a aria-label="New Arrivals"
-         class="flex items-center py-2 px-3 rounded-md text-gray-600 hover:bg-beige-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-beige-300"
-         href="#">
-        <svg class="h-5 w-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-             xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-        </svg>
-        <span>New Arrivals</span>
-      </a>
-
-      <!-- Sale -->
-      <a aria-label="Sale"
-         class="flex items-center py-2 px-3 rounded-md text-gray-600 hover:bg-beige-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-beige-300"
-         href="#">
-        <svg class="h-5 w-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-             xmlns="http://www.w3.org/2000/svg">
-          <path d="M3 3h18M3 7h18m-9 4v6m6-6h6M3 15h6m-6 4h18" stroke-linecap="round" stroke-linejoin="round"
-                stroke-width="2"/>
-        </svg>
-        <span>Sale</span>
-      </a>
-
-      <!-- Contact -->
-      <a aria-label="Contact"
-         class="flex items-center py-2 px-3 rounded-md text-gray-600 hover:bg-beige-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-beige-300"
-         href="#">
-        <svg class="h-5 w-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-             xmlns="http://www.w3.org/2000/svg">
-          <path d="M8 10h.01M12 14h.01M16 10h.01M12 18h.01M16 6h.01M12 2h.01M8 6h.01M5 10h.01M19 10h.01"
-                stroke-linecap="round" stroke-linejoin="round"
-                stroke-width="2"/>
-        </svg>
-        <span>Contact</span>
-      </a>
-    </div>
+    @if (isOpen) {
+      <div class="mt-8 px-4 space-y-2">
+        <!-- New Arrivals -->
+        <a aria-label="New Arrivals"
+          class="flex items-center py-2 px-3 rounded-md text-gray-600 hover:bg-beige-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-beige-300"
+          href="#">
+          <svg class="h-5 w-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+          </svg>
+          <span>New Arrivals</span>
+        </a>
+        <!-- Sale -->
+        <a aria-label="Sale"
+          class="flex items-center py-2 px-3 rounded-md text-gray-600 hover:bg-beige-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-beige-300"
+          href="#">
+          <svg class="h-5 w-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 3h18M3 7h18m-9 4v6m6-6h6M3 15h6m-6 4h18" stroke-linecap="round" stroke-linejoin="round"
+              stroke-width="2"/>
+          </svg>
+          <span>Sale</span>
+        </a>
+        <!-- Contact -->
+        <a aria-label="Contact"
+          class="flex items-center py-2 px-3 rounded-md text-gray-600 hover:bg-beige-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-beige-300"
+          href="#">
+          <svg class="h-5 w-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 10h.01M12 14h.01M16 10h.01M12 18h.01M16 6h.01M12 2h.01M8 6h.01M5 10h.01M19 10h.01"
+              stroke-linecap="round" stroke-linejoin="round"
+              stroke-width="2"/>
+          </svg>
+          <span>Contact</span>
+        </a>
+      </div>
+    }
   </div>
 </nav>

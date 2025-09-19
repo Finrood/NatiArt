@@ -29,48 +29,60 @@
           <form [formGroup]="checkoutForm" (ngSubmit)="onSubmit()">
 
             <!-- Step 1: Personal Information -->
-            <section *ngIf="currentStep === 1">
-              <h2 class="text-3xl font-bold text-gray-800 mb-6">Your Information</h2>
-              <app-user-info-step [checkoutForm]="checkoutForm"></app-user-info-step>
-              <div class="mt-8 flex justify-end">
-                <app-button type="button" (click)="nextStep()" color="primary" size="md" [disabled]="checkoutForm.get('userInfo')?.invalid">
-                  Next: Shipping
-                </app-button>
-              </div>
-            </section>
+            @if (currentStep === 1) {
+              <section>
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Your Information</h2>
+                <app-user-info-step [checkoutForm]="checkoutForm"></app-user-info-step>
+                <div class="mt-8 flex justify-end">
+                  <app-button type="button" (click)="nextStep()" color="primary" size="md" [disabled]="checkoutForm.get('userInfo')?.invalid">
+                    Next: Shipping
+                  </app-button>
+                </div>
+              </section>
+            }
 
             <!-- Step 2: Shipping Information -->
-            <section *ngIf="currentStep === 2">
-              <h2 class="text-3xl font-bold text-gray-800 mb-6">Shipping Address</h2>
-              <app-shipping-info-step [checkoutForm]="checkoutForm" (sameShippingAsBillingChange)="onSameShippingChange($event)"></app-shipping-info-step>
-              <div class="mt-8 flex justify-between">
-                <app-button type="button" (click)="prevStep()" color="secondary" size="md">Back</app-button>
-                <app-button type="button" (click)="nextStep()" color="primary" size="md" [disabled]="checkoutForm.get('shippingInfo')?.invalid">Next: Payment</app-button>
-              </div>
-            </section>
+            @if (currentStep === 2) {
+              <section>
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Shipping Address</h2>
+                <app-shipping-info-step [checkoutForm]="checkoutForm" (sameShippingAsBillingChange)="onSameShippingChange($event)"></app-shipping-info-step>
+                <div class="mt-8 flex justify-between">
+                  <app-button type="button" (click)="prevStep()" color="secondary" size="md">Back</app-button>
+                  <app-button type="button" (click)="nextStep()" color="primary" size="md" [disabled]="checkoutForm.get('shippingInfo')?.invalid">Next: Payment</app-button>
+                </div>
+              </section>
+            }
 
             <!-- Step 3: Payment Information -->
-            <section *ngIf="currentStep === 3">
-              <h2 class="text-3xl font-bold text-gray-800 mb-6">Payment Details</h2>
-              <app-payment-info-step [checkoutForm]="checkoutForm"></app-payment-info-step>
-              <div class="mt-8 flex justify-between">
-                <app-button type="button" (click)="prevStep()" color="secondary" size="md">Back</app-button>
-                <app-button type="submit" [disabled]="!checkoutForm.valid || (isLoading$ | async) === true" color="primary" size="md" [block]="true">
-                  <span *ngIf="!(isLoading$ | async)">Place Order</span>
-                  <span *ngIf="(isLoading$ | async)" class="flex items-center">
-                    <app-loading-spinner class="mr-2"></app-loading-spinner>
-                    Processing...
-                  </span>
-                </app-button>
-              </div>
-            </section>
+            @if (currentStep === 3) {
+              <section>
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Payment Details</h2>
+                <app-payment-info-step [checkoutForm]="checkoutForm"></app-payment-info-step>
+                <div class="mt-8 flex justify-between">
+                  <app-button type="button" (click)="prevStep()" color="secondary" size="md">Back</app-button>
+                  <app-button type="submit" [disabled]="!checkoutForm.valid || (isLoading$ | async) === true" color="primary" size="md" [block]="true">
+                    @if (!(isLoading$ | async)) {
+                      <span>Place Order</span>
+                    }
+                    @if ((isLoading$ | async)) {
+                      <span class="flex items-center">
+                        <app-loading-spinner class="mr-2"></app-loading-spinner>
+                        Processing...
+                      </span>
+                    }
+                  </app-button>
+                </div>
+              </section>
+            }
 
           </form>
         </div>
-         <!-- Error Message Display -->
-        <div *ngIf="errorMessage" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md shadow-md mt-6" role="alert">
-          <strong class="font-bold">Error:</strong> {{ errorMessage }}
-        </div>
+        <!-- Error Message Display -->
+        @if (errorMessage) {
+          <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md shadow-md mt-6" role="alert">
+            <strong class="font-bold">Error:</strong> {{ errorMessage }}
+          </div>
+        }
       </div>
 
       <!-- Right Column: Order Summary -->

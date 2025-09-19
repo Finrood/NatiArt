@@ -10,19 +10,21 @@
 
     <!-- Signup Forms -->
     <form (ngSubmit)="doRegisterUser()" [formGroup]="signupForm" class="mt-8 space-y-6">
-      <app-signup-credentials
-        *ngIf="currentStep === 1"
-        [credentialForm]="credentialsForm"
-        (nextStep)="onNextStep()">
-      </app-signup-credentials>
+      @if (currentStep === 1) {
+        <app-signup-credentials
+          [credentialForm]="credentialsForm"
+          (nextStep)="onNextStep()">
+        </app-signup-credentials>
+      }
 
-      <app-signup-profile
-        *ngIf="currentStep === 2"
-        [profileForm]="profileForm"
-        [errorMessage] = "errorMessage"
-        (previousStep)="onPreviousStep()"
-        (nextStep)="onNextStep()">
-      </app-signup-profile>
+      @if (currentStep === 2) {
+        <app-signup-profile
+          [profileForm]="profileForm"
+          [errorMessage] = "errorMessage"
+          (previousStep)="onPreviousStep()"
+          (nextStep)="onNextStep()">
+        </app-signup-profile>
+      }
     </form>
 
     <p class="text-center text-surface-contrast/85">

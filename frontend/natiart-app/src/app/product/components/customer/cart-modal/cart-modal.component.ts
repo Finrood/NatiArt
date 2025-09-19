@@ -1,5 +1,5 @@
 import {Component, OnDestroy, OnInit} from '@angular/core';
-import {AsyncPipe, CurrencyPipe, NgForOf, NgIf} from "@angular/common";
+import { AsyncPipe, CurrencyPipe } from "@angular/common";
 import {CartItem} from "../../../models/CartItem.model";
 import {Observable, Subscription} from "rxjs";
 import {CartService} from "../../../service/cart.service";
@@ -12,14 +12,12 @@ import {ButtonComponent} from "../../../../shared/components/button.component";
 @Component({
     selector: 'app-cart-modal',
     imports: [
-        AsyncPipe,
-        CurrencyPipe,
-        NgIf,
-        NgForOf,
-        FormsModule,
-        RouterLink,
-        ButtonComponent
-    ],
+    AsyncPipe,
+    CurrencyPipe,
+    FormsModule,
+    RouterLink,
+    ButtonComponent
+],
     templateUrl: './cart-modal.component.html'
 })
 export class CartModalComponent implements OnInit, OnDestroy {

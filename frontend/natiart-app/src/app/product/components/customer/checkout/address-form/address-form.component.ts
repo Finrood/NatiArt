@@ -1,6 +1,6 @@
 import {ChangeDetectionStrategy, Component, Input, OnDestroy, OnInit} from '@angular/core';
 import {FormGroup, ReactiveFormsModule} from '@angular/forms';
-import {CommonModule} from '@angular/common';
+
 import {finalize, Subject, takeUntil} from 'rxjs';
 import {SignupService} from "../../../../../directory/service/signup.service";
 import {ViaCEPResponse} from "../../../../../directory/models/viaCEPResponse.model";
@@ -16,12 +16,11 @@ import {CepFormatDirective} from "../../../../../directory/directive/cep-format-
   selector: 'app-address-form',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     NatiartFormFieldComponent,
     LoadingSpinnerComponent,
     CepFormatDirective
-  ],
+],
   templateUrl: './address-form.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })

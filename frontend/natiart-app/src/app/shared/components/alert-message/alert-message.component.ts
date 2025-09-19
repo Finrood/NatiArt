@@ -1,5 +1,5 @@
 import {Component} from '@angular/core';
-import {NgClass, NgForOf} from '@angular/common';
+import { NgClass } from '@angular/common';
 import {animate, style, transition, trigger} from '@angular/animations';
 
 export interface AlertMessage {
@@ -10,7 +10,7 @@ export interface AlertMessage {
 @Component({
   selector: 'app-alert-messages',
   templateUrl: './alert-message.component.html',
-  imports: [NgForOf, NgClass],
+  imports: [NgClass],
   animations: [
     trigger('alertAnimation', [
       transition(':enter', [

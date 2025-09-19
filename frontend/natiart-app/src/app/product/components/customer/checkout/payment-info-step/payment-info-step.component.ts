@@ -1,6 +1,6 @@
 import {ChangeDetectionStrategy, Component, Input} from '@angular/core';
 import {FormGroup, ReactiveFormsModule} from "@angular/forms";
-import {CommonModule, NgForOf, NgIf} from "@angular/common";
+
 import {animate, style, transition, trigger} from "@angular/animations";
 import {
   NatiartFormFieldComponent
@@ -11,13 +11,10 @@ import {PaymentMethod} from "../../../../models/paymentMethod.model";
   selector: 'app-payment-info-step',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
-    NgIf,
-    NgForOf,
     NatiartFormFieldComponent,
     NatiartFormFieldComponent
-  ],
+],
   templateUrl: './payment-info-step.component.html',
   animations: [
     trigger('fadeIn', [

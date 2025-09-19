@@ -1,5 +1,5 @@
 import {ChangeDetectionStrategy, Component, OnDestroy, OnInit} from '@angular/core';
-import {AsyncPipe, NgIf, NgSwitch, NgSwitchCase} from '@angular/common';
+import { AsyncPipe } from '@angular/common';
 import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {BehaviorSubject, Observable, Subject} from 'rxjs';
 import {
@@ -25,7 +25,7 @@ interface ShippingState {
 
 @Component({
     selector: 'app-shipping-estimation',
-    imports: [AsyncPipe, NgIf, ReactiveFormsModule, CepFormatDirective, NgSwitchCase, NgSwitch, LoadingSpinnerComponent],
+    imports: [AsyncPipe, ReactiveFormsModule, CepFormatDirective, LoadingSpinnerComponent],
     templateUrl: './shipping-estimation.component.html',
     styleUrls: ['./shipping-estimation.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush

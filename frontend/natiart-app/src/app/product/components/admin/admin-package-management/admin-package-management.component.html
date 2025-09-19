@@ -11,65 +11,65 @@
 
 <!-- Packages Grid -->
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-  <div *ngFor="let pack of packages | async"
-       [ngClass]="{'opacity-50': !pack.active}"
-       class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-    <h3 class="text-xl font-semibold mb-2">{{ pack.label }}</h3>
-    <p class="text-gray-600 mb-4">
-      {{ pack.height }}cm x {{ pack.width }}cm x {{ pack.depth }}cm
-    </p>
-    <div class="flex flex-wrap justify-between gap-2">
-      <app-button (click)="openModal(pack)" color="primary" size="sm">
-        Edit
-      </app-button>
-      <app-button (click)="deletePackage(pack.id!)" color="danger" size="sm">
-        Delete
-      </app-button>
+  @for (pack of packages | async; track pack) {
+    <div
+      [ngClass]="{'opacity-50': !pack.active}"
+      class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+      <h3 class="text-xl font-semibold mb-2">{{ pack.label }}</h3>
+      <p class="text-gray-600 mb-4">
+        {{ pack.height }}cm x {{ pack.width }}cm x {{ pack.depth }}cm
+      </p>
+      <div class="flex flex-wrap justify-between gap-2">
+        <app-button (click)="openModal(pack)" color="primary" size="sm">
+          Edit
+        </app-button>
+        <app-button (click)="deletePackage(pack.id!)" color="danger" size="sm">
+          Delete
+        </app-button>
+      </div>
     </div>
-  </div>
+  }
 </div>
 
 <!-- Modal -->
-<div *ngIf="modalVisible" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-  <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4 transform transition-transform duration-300 ease-in-out">
-    <h3 class="text-2xl mb-4 font-light">
-      {{ isEditingPackage.value ? 'Edit Package' : 'Add Package' }}
-    </h3>
-    <form (ngSubmit)="submitForm()" [formGroup]="packageForm">
-      <!-- Label Field -->
-      <app-natiart-form-field label="Label" controlName="label" [form]="packageForm">
-        <input type="text" formControlName="label" placeholder="Package label"
-               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
-      </app-natiart-form-field>
-
-      <!-- Height Field -->
-      <app-natiart-form-field label="Height (cm)" controlName="height" [form]="packageForm">
-        <input type="number" formControlName="height" placeholder="Height" step="0.01"
-               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
-      </app-natiart-form-field>
-
-      <!-- Width Field -->
-      <app-natiart-form-field label="Width (cm)" controlName="width" [form]="packageForm">
-        <input type="number" formControlName="width" placeholder="Width" step="0.01"
-               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
-      </app-natiart-form-field>
-
-      <!-- Depth Field -->
-      <app-natiart-form-field label="Depth (cm)" controlName="depth" [form]="packageForm">
-        <input type="number" formControlName="depth" placeholder="Depth" step="0.01"
-               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
-      </app-natiart-form-field>
-
-      <!-- Form Actions -->
-      <div class="flex justify-end space-x-2">
-        <app-button type="button" (click)="closeModal()" color="secondary" size="md">
-        Cancel
-      </app-button>
-      <app-button type="submit" color="primary" size="md">
-        {{ isEditingPackage.value ? 'Update' : 'Add' }}
-      </app-button>
-      </div>
-    </form>
+@if (modalVisible) {
+  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4 transform transition-transform duration-300 ease-in-out">
+      <h3 class="text-2xl mb-4 font-light">
+        {{ isEditingPackage.value ? 'Edit Package' : 'Add Package' }}
+      </h3>
+      <form (ngSubmit)="submitForm()" [formGroup]="packageForm">
+        <!-- Label Field -->
+        <app-natiart-form-field label="Label" controlName="label" [form]="packageForm">
+          <input type="text" formControlName="label" placeholder="Package label"
+            class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
+        </app-natiart-form-field>
+        <!-- Height Field -->
+        <app-natiart-form-field label="Height (cm)" controlName="height" [form]="packageForm">
+          <input type="number" formControlName="height" placeholder="Height" step="0.01"
+            class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
+        </app-natiart-form-field>
+        <!-- Width Field -->
+        <app-natiart-form-field label="Width (cm)" controlName="width" [form]="packageForm">
+          <input type="number" formControlName="width" placeholder="Width" step="0.01"
+            class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
+        </app-natiart-form-field>
+        <!-- Depth Field -->
+        <app-natiart-form-field label="Depth (cm)" controlName="depth" [form]="packageForm">
+          <input type="number" formControlName="depth" placeholder="Depth" step="0.01"
+            class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
+        </app-natiart-form-field>
+        <!-- Form Actions -->
+        <div class="flex justify-end space-x-2">
+          <app-button type="button" (click)="closeModal()" color="secondary" size="md">
+            Cancel
+          </app-button>
+          <app-button type="submit" color="primary" size="md">
+            {{ isEditingPackage.value ? 'Update' : 'Add' }}
+          </app-button>
+        </div>
+      </form>
+    </div>
   </div>
-</div>
+}
 

@@ -12,62 +12,74 @@
 
   <!-- Categories Grid -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-    <div *ngFor="let category of categories$ | async"
-         [ngClass]="{'opacity-50': !category.active}"
-         class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-      <h3 class="text-xl font-semibold mb-2">{{ category.label }}</h3>
-      <p class="text-gray-600 mb-4">{{ category.description }}</p>
-      <div class="flex flex-wrap justify-between gap-2">
-        <app-button (click)="openModal(category)" color="primary" size="sm">
-          Edit
-        </app-button>
-        <app-button (click)="deleteCategory(category.id!)" color="danger" size="sm">
-          Delete
-        </app-button>
-        <app-button (click)="toggleCategoryVisibility(category)" color="primary" size="sm">
-          <span>{{ category.active ? 'Hide' : 'Show' }}</span>
-          <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-            <path *ngIf="category.active" d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
-            <path *ngIf="category.active" clip-rule="evenodd"
+    @for (category of categories$ | async; track category) {
+      <div
+        [ngClass]="{'opacity-50': !category.active}"
+        class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+        <h3 class="text-xl font-semibold mb-2">{{ category.label }}</h3>
+        <p class="text-gray-600 mb-4">{{ category.description }}</p>
+        <div class="flex flex-wrap justify-between gap-2">
+          <app-button (click)="openModal(category)" color="primary" size="sm">
+            Edit
+          </app-button>
+          <app-button (click)="deleteCategory(category.id!)" color="danger" size="sm">
+            Delete
+          </app-button>
+          <app-button (click)="toggleCategoryVisibility(category)" color="primary" size="sm">
+            <span>{{ category.active ? 'Hide' : 'Show' }}</span>
+            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+              @if (category.active) {
+                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+              }
+              @if (category.active) {
+                <path clip-rule="evenodd"
                   d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
                   fill-rule="evenodd"/>
-            <path *ngIf="!category.active" clip-rule="evenodd"
+              }
+              @if (!category.active) {
+                <path clip-rule="evenodd"
                   d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z"
                   fill-rule="evenodd"/>
-            <path *ngIf="!category.active"
+              }
+              @if (!category.active) {
+                <path
                   d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7S18.268 14.057 17 10z"/>
-          </svg>
-        </app-button>
+              }
+            </svg>
+          </app-button>
+        </div>
       </div>
-    </div>
+    }
   </div>
 
   <!-- Modal (Shown using *ngIf based on modalVisible) -->
-  <div *ngIf="modalVisible" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4 transform transition-transform duration-300 ease-in-out">
-      <h3 class="text-2xl mb-4 font-light">
-        {{ isEditingCategory ? 'Edit Category' : 'Add Category' }}
-      </h3>
-      <form (ngSubmit)="submitForm()" [formGroup]="categoryForm">
-        <!-- Custom Input for Label -->
-        <app-natiart-form-field label="Label" controlName="label" [form]="categoryForm">
-          <input type="text" formControlName="label" placeholder="Category label"
-                 class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
-        </app-natiart-form-field>
-        <!-- Custom Input for Description -->
-        <app-natiart-form-field label="Description" controlName="description" [form]="categoryForm">
-          <textarea formControlName="description" rows="3" placeholder="Category description"
-                    class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm"></textarea>
-        </app-natiart-form-field>
-        <div class="flex justify-end space-x-2">
-          <app-button type="button" (click)="closeModal()" color="secondary" size="md">
-            Cancel
-          </app-button>
-          <app-button type="submit" color="primary" size="md">
-            {{ isEditingCategory ? 'Update' : 'Add' }}
-          </app-button>
-        </div>
-      </form>
+  @if (modalVisible) {
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4 transform transition-transform duration-300 ease-in-out">
+        <h3 class="text-2xl mb-4 font-light">
+          {{ isEditingCategory ? 'Edit Category' : 'Add Category' }}
+        </h3>
+        <form (ngSubmit)="submitForm()" [formGroup]="categoryForm">
+          <!-- Custom Input for Label -->
+          <app-natiart-form-field label="Label" controlName="label" [form]="categoryForm">
+            <input type="text" formControlName="label" placeholder="Category label"
+              class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
+          </app-natiart-form-field>
+          <!-- Custom Input for Description -->
+          <app-natiart-form-field label="Description" controlName="description" [form]="categoryForm">
+            <textarea formControlName="description" rows="3" placeholder="Category description"
+            class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm"></textarea>
+          </app-natiart-form-field>
+          <div class="flex justify-end space-x-2">
+            <app-button type="button" (click)="closeModal()" color="secondary" size="md">
+              Cancel
+            </app-button>
+            <app-button type="submit" color="primary" size="md">
+              {{ isEditingCategory ? 'Update' : 'Add' }}
+            </app-button>
+          </div>
+        </form>
+      </div>
     </div>
-  </div>
+  }
 </div>

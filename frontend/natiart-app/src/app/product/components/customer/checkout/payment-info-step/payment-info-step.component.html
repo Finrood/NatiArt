@@ -2,29 +2,33 @@
   <app-natiart-form-field label="Payment Method" controlName="paymentMethod" [form]="paymentInfoGroup">
     <select formControlName="paymentMethod" id="paymentMethod" class="form-input">
       <option value="" disabled>Select payment method</option>
-      <option *ngFor="let method of paymentMethods" [value]="method.value">{{ method.label }}</option>
+      @for (method of paymentMethods; track method) {
+        <option [value]="method.value">{{ method.label }}</option>
+      }
     </select>
   </app-natiart-form-field>
 
-  <ng-container *ngIf="isCardPaymentSelected()" @fadeIn>
-    <app-natiart-form-field label="Card Number" controlName="cardNumber" [form]="paymentInfoGroup">
-      <input formControlName="cardNumber" id="cardNumber" placeholder="XXXX XXXX XXXX XXXX" type="text" class="form-input">
-    </app-natiart-form-field>
-
-    <div class="grid grid-cols-2 gap-4">
-      <app-natiart-form-field label="Expiration Date" controlName="expirationDate" [form]="paymentInfoGroup">
-        <input formControlName="expirationDate" id="expirationDate" placeholder="MM/YY" type="text" class="form-input">
+  @if (isCardPaymentSelected()) {
+    <ng-container @fadeIn>
+      <app-natiart-form-field label="Card Number" controlName="cardNumber" [form]="paymentInfoGroup">
+        <input formControlName="cardNumber" id="cardNumber" placeholder="XXXX XXXX XXXX XXXX" type="text" class="form-input">
       </app-natiart-form-field>
+      <div class="grid grid-cols-2 gap-4">
+        <app-natiart-form-field label="Expiration Date" controlName="expirationDate" [form]="paymentInfoGroup">
+          <input formControlName="expirationDate" id="expirationDate" placeholder="MM/YY" type="text" class="form-input">
+        </app-natiart-form-field>
+        <app-natiart-form-field label="CVV" controlName="cvv" [form]="paymentInfoGroup">
+          <input formControlName="cvv" id="cvv" placeholder="123" type="text" class="form-input">
+        </app-natiart-form-field>
+      </div>
+    </ng-container>
+  }
 
-      <app-natiart-form-field label="CVV" controlName="cvv" [form]="paymentInfoGroup">
-        <input formControlName="cvv" id="cvv" placeholder="123" type="text" class="form-input">
-      </app-natiart-form-field>
+  @if (isPixSelected()) {
+    <div @fadeIn class="pt-2">
+      <p class="text-sm text-text-muted mb-3">
+        You will be redirected to a secure page to complete your PIX payment after clicking "Place Order".
+      </p>
     </div>
-  </ng-container>
-
-  <div *ngIf="isPixSelected()" @fadeIn class="pt-2">
-    <p class="text-sm text-text-muted mb-3">
-      You will be redirected to a secure page to complete your PIX payment after clicking "Place Order".
-    </p>
-  </div>
+  }
 </div>

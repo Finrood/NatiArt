@@ -1,10 +1,12 @@
 <div class="flex justify-center items-center space-x-4">
-  <div *ngFor="let step of [1, 2]"
+  @for (step of [1, 2]; track step) {
+    <div
        [ngClass]="{
          'bg-primary scale-110 shadow-lg': currentStep === step,
          'bg-surface-variant': currentStep !== step
        }"
-       class="w-12 h-12 rounded-full transition-all duration-300 flex items-center justify-center text-surface-contrast font-bold ring-4 ring-surface">
-    {{ step }}
-  </div>
+      class="w-12 h-12 rounded-full transition-all duration-300 flex items-center justify-center text-surface-contrast font-bold ring-4 ring-surface">
+      {{ step }}
+    </div>
+  }
 </div>

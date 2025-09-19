@@ -1,5 +1,5 @@
 import {Component, HostListener, OnInit} from '@angular/core';
-import {AsyncPipe, NgIf} from "@angular/common";
+import { AsyncPipe } from "@angular/common";
 import {CartService} from "../../../service/cart.service";
 import {Observable} from "rxjs";
 import {CartModalComponent} from "../cart-modal/cart-modal.component";
@@ -7,10 +7,9 @@ import {CartModalComponent} from "../cart-modal/cart-modal.component";
 @Component({
     selector: 'app-top-menu',
     imports: [
-        NgIf,
-        CartModalComponent,
-        AsyncPipe
-    ],
+    CartModalComponent,
+    AsyncPipe
+],
     templateUrl: './top-menu.component.html',
     styleUrl: './top-menu.component.css'
 })

@@ -3,7 +3,7 @@ import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/
 import {CustomPasswordValidators} from '../../../validator/CustomPasswordValidators';
 import {animate, style, transition, trigger} from '@angular/animations';
 import {Router, RouterLink} from '@angular/router';
-import {NgIf} from '@angular/common';
+
 import {SignupService} from "../../../service/signup.service";
 import {UserRegistration} from "../../../models/user-registration.model";
 import {Profile} from "../../../models/profile.model";
@@ -35,13 +35,11 @@ import {CustomCepValidators} from "../../../validator/CustomCepValidators";
   ],
   imports: [
     ReactiveFormsModule,
-    NgIf,
     RouterLink,
     SignupProfileComponent,
     SignupCredentialsComponent,
-    StepIndicatorComponent,
-
-  ]
+    StepIndicatorComponent
+]
 })
 export class SignupComponent implements OnInit {
   signupForm: FormGroup;

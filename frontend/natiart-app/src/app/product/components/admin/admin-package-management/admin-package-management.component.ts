@@ -3,7 +3,7 @@ import {PackageService} from '../../../service/package.service';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {BehaviorSubject} from 'rxjs';
 import {Package} from '../../../models/package.model';
-import {AsyncPipe, NgClass, NgForOf, NgIf} from '@angular/common';
+import { AsyncPipe, NgClass } from '@angular/common';
 import {AlertMessageComponent} from "../../../../shared/components/alert-message/alert-message.component";
 import {NatiartFormFieldComponent} from "../../../../shared/components/natiart-form-field/natiart-form-field.component";
 import {ButtonComponent} from "../../../../shared/components/button.component";
@@ -13,14 +13,12 @@ import {ButtonComponent} from "../../../../shared/components/button.component";
   standalone: true,
   imports: [
     AsyncPipe,
-    NgForOf,
-    NgIf,
     ReactiveFormsModule,
     NgClass,
     AlertMessageComponent,
     NatiartFormFieldComponent,
     ButtonComponent
-  ],
+],
   templateUrl: './admin-package-management.component.html',
   styleUrls: ['./admin-package-management.component.css']
 })

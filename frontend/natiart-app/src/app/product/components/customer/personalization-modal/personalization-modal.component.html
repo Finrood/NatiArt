@@ -1,46 +1,53 @@
-<div *ngIf="show"
-     class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
-  <div class="bg-white p-5 rounded-lg shadow-xl max-w-md w-full m-4">
-    <h2 class="text-xl font-bold mb-4">Personalize Your Product</h2>
-    <p class="mb-4 text-gray-700">{{ product?.label }}</p>
-
-    <!-- Personalization Options -->
-    <div class="mb-6 space-y-4">
-      <h3 class="text-lg font-semibold mb-2 border-b pb-1">Options:</h3>
-
-      <!-- Gold Border Option -->
-      <div *ngIf="canAddGoldBorder" class="flex items-center">
-        <input type="checkbox" id="goldBorder" name="goldBorder" [(ngModel)]="goldBorder" class="mr-2 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
-        <label for="goldBorder" class="text-sm text-gray-700">Add Golden Border</label>
+@if (show) {
+  <div
+    class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+    <div class="bg-white p-5 rounded-lg shadow-xl max-w-md w-full m-4">
+      <h2 class="text-xl font-bold mb-4">Personalize Your Product</h2>
+      <p class="mb-4 text-gray-700">{{ product?.label }}</p>
+      <!-- Personalization Options -->
+      <div class="mb-6 space-y-4">
+        <h3 class="text-lg font-semibold mb-2 border-b pb-1">Options:</h3>
+        <!-- Gold Border Option -->
+        @if (canAddGoldBorder) {
+          <div class="flex items-center">
+            <input type="checkbox" id="goldBorder" name="goldBorder" [(ngModel)]="goldBorder" class="mr-2 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+            <label for="goldBorder" class="text-sm text-gray-700">Add Golden Border</label>
+          </div>
+        }
+        <!-- Custom Image Option -->
+        @if (canAddCustomImage) {
+          <div>
+            <label for="customImage" class="block text-sm font-medium text-gray-700 mb-1">Upload Custom Image:</label>
+            <input type="file" id="customImage" name="customImage" (change)="onFileSelected($event)" accept="image/*"
+              class="block w-full text-sm text-gray-500 border border-gray-300 rounded-md p-1 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-light file:text-primary hover:file:bg-primary-lighter cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary">
+            <!-- Display selected file name -->
+            @if (customImage) {
+              <p class="text-xs text-gray-500 mt-1">Selected: {{ customImage.name }}</p>
+            }
+            <!-- Validation message -->
+            @if (!isValid() && canAddCustomImage && !customImage) {
+              <p class="text-xs text-red-500 mt-1">
+                Custom image is required for this product.
+              </p>
+            }
+          </div>
+        }
+        <!-- Message if no options available (edge case) -->
+        @if (!canAddGoldBorder && !canAddCustomImage) {
+          <p class="text-sm text-gray-500 italic">
+            No personalization options available for this product.
+          </p>
+        }
       </div>
-
-      <!-- Custom Image Option -->
-      <div *ngIf="canAddCustomImage">
-        <label for="customImage" class="block text-sm font-medium text-gray-700 mb-1">Upload Custom Image:</label>
-        <input type="file" id="customImage" name="customImage" (change)="onFileSelected($event)" accept="image/*"
-               class="block w-full text-sm text-gray-500 border border-gray-300 rounded-md p-1 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-light file:text-primary hover:file:bg-primary-lighter cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary">
-        <!-- Display selected file name -->
-        <p *ngIf="customImage" class="text-xs text-gray-500 mt-1">Selected: {{ customImage.name }}</p>
-        <!-- Validation message -->
-        <p *ngIf="!isValid() && canAddCustomImage && !customImage" class="text-xs text-red-500 mt-1">
-          Custom image is required for this product.
-        </p>
+      <!-- Action Buttons -->
+      <div class="flex justify-end space-x-2">
+        <app-button (click)="onCancel()" type="button" color="secondary" size="md">
+          Cancel
+        </app-button>
+        <app-button (click)="onSubmit()" [disabled]="!isValid()" type="button" color="primary" size="md">
+          Add to Cart with Options
+        </app-button>
       </div>
-
-      <!-- Message if no options available (edge case) -->
-      <p *ngIf="!canAddGoldBorder && !canAddCustomImage" class="text-sm text-gray-500 italic">
-        No personalization options available for this product.
-      </p>
-    </div>
-
-    <!-- Action Buttons -->
-    <div class="flex justify-end space-x-2">
-      <app-button (click)="onCancel()" type="button" color="secondary" size="md">
-        Cancel
-      </app-button>
-      <app-button (click)="onSubmit()" [disabled]="!isValid()" type="button" color="primary" size="md">
-        Add to Cart with Options
-      </app-button>
     </div>
   </div>
-</div>
+}

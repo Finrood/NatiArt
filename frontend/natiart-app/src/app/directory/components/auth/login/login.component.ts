@@ -2,7 +2,7 @@ import {Component, OnInit} from '@angular/core';
 import {animate, state, style, transition, trigger} from '@angular/animations';
 import {Router} from "@angular/router";
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from "@angular/forms";
-import {NgIf} from "@angular/common";
+
 import {RedirectService} from "../../../service/redirect.service";
 import {AuthenticationService} from "../../../service/authentication.service";
 import {User} from "../../../models/user.model";
@@ -15,11 +15,10 @@ import {TokenService} from "../../../service/token.service";
   selector: 'app-login',
   imports: [
     FormsModule,
-    NgIf,
     ReactiveFormsModule,
     NatiartFormFieldComponent,
     ButtonComponent
-  ],
+],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css',
   animations: [

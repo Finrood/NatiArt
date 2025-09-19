@@ -3,7 +3,7 @@ import {switchMap} from "rxjs/operators";
 import {interval, Subscription} from "rxjs";
 import {PaymentService} from "../../../../service/payment.service";
 import {ActivatedRoute, Router} from "@angular/router";
-import {DatePipe, NgClass, NgIf} from "@angular/common";
+import { DatePipe, NgClass } from "@angular/common";
 import * as confetti from 'canvas-confetti';
 import {ButtonComponent} from "../../../../../shared/components/button.component";
 
@@ -11,10 +11,9 @@ import {ButtonComponent} from "../../../../../shared/components/button.component
   selector: 'app-pix-payment-confirmation',
   imports: [
     DatePipe,
-    NgIf,
     NgClass,
     ButtonComponent
-  ],
+],
   templateUrl: './pix-payment-confirmation.component.html',
 })
 export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {

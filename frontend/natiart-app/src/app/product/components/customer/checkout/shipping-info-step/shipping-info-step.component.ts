@@ -1,6 +1,6 @@
 import {ChangeDetectionStrategy, Component, EventEmitter, Input, OnDestroy, OnInit, Output} from '@angular/core';
 import {FormGroup, ReactiveFormsModule, Validators} from "@angular/forms";
-import {CommonModule, NgIf} from "@angular/common";
+
 import {Subject} from "rxjs";
 import {takeUntil} from "rxjs/operators";
 import {animate, style, transition, trigger} from "@angular/animations";
@@ -10,11 +10,9 @@ import {AddressFormComponent} from "../address-form/address-form.component";
   selector: 'app-shipping-info-step',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
-    NgIf,
     AddressFormComponent
-  ],
+],
   templateUrl: './shipping-info-step.component.html',
   animations: [
     trigger('slideInRight', [

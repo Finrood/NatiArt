@@ -6,19 +6,21 @@
 
   <div class="flex items-center space-x-3 p-3 bg-surface-variant/50 rounded-md">
     <input id="sameAsShipping" type="checkbox"
-           [checked]="_sameShippingAsBilling"
-           (change)="toggleSameShippingAsBilling($event)"
-           class="h-5 w-5 text-primary rounded border-primary-light/70 focus:ring-primary focus:ring-offset-surface-variant">
-    <label for="sameAsShipping" class="text-sm font-medium text-secondary">
-      My billing address is the same as my shipping address.
-    </label>
-  </div>
+      [checked]="_sameShippingAsBilling"
+      (change)="toggleSameShippingAsBilling($event)"
+      class="h-5 w-5 text-primary rounded border-primary-light/70 focus:ring-primary focus:ring-offset-surface-variant">
+      <label for="sameAsShipping" class="text-sm font-medium text-secondary">
+        My billing address is the same as my shipping address.
+      </label>
+    </div>
 
-  <div *ngIf="!_sameShippingAsBilling" [@slideInRight]>
-    <app-address-form
-      [addressFormGroup]="billingInfoFormGroup"
-      title="Billing Address"
-      [isBillingAddress]="true">
-    </app-address-form>
-  </div>
+    @if (!_sameShippingAsBilling) {
+      <div [@slideInRight]>
+        <app-address-form
+          [addressFormGroup]="billingInfoFormGroup"
+          title="Billing Address"
+          [isBillingAddress]="true">
+      </app-address-form>
+    </div>
+  }
 </div>

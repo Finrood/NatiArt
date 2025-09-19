@@ -1,5 +1,5 @@
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit} from '@angular/core';
-import {AsyncPipe, CommonModule, NgIf} from '@angular/common';
+import { AsyncPipe, CommonModule } from '@angular/common';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {catchError, firstValueFrom, map, Observable, Subject, throwError} from 'rxjs';
 import {CartItem} from '../../../models/CartItem.model';
@@ -29,7 +29,6 @@ import {ButtonComponent} from "../../../../shared/components/button.component";
   selector: 'app-checkout',
   standalone: true,
   imports: [
-    NgIf,
     AsyncPipe,
     CommonModule,
     ReactiveFormsModule,
@@ -40,7 +39,7 @@ import {ButtonComponent} from "../../../../shared/components/button.component";
     PaymentInfoStepComponent,
     LoadingSpinnerComponent,
     ButtonComponent
-  ],
+],
   animations: [
     trigger('fadeIn', [
       transition(':enter', [

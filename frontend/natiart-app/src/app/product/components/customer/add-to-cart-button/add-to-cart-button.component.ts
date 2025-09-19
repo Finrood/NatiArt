@@ -3,13 +3,13 @@ import {PersonalizationModalComponent} from "../personalization-modal/personaliz
 import {Product} from "../../../models/product.model";
 import {CartService} from "../../../service/cart.service";
 import {PersonalizationOption} from "../../../models/support/personalization-option";
-import {CommonModule} from "@angular/common";
+
 import {ButtonComponent} from "../../../../shared/components/button.component";
 
 @Component({
   selector: 'app-add-to-cart-button',
   standalone: true,
-  imports: [CommonModule, PersonalizationModalComponent, PersonalizationModalComponent, ButtonComponent],
+  imports: [PersonalizationModalComponent, PersonalizationModalComponent, ButtonComponent],
   template: `
     <app-button
       (click)="addToCartOrPersonalize(product, $event)"

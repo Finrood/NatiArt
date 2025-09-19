@@ -1,5 +1,5 @@
 import {ChangeDetectionStrategy, Component, Input, OnDestroy, OnInit} from '@angular/core';
-import {CurrencyPipe, NgForOf, NgIf} from "@angular/common";
+import { CurrencyPipe } from "@angular/common";
 import {CartItem} from "../../../../models/CartItem.model";
 import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
 import {ProductService} from "../../../../service/product.service";
@@ -12,10 +12,8 @@ import {RouterLink} from "@angular/router";
   standalone: true,
   imports: [
     CurrencyPipe,
-    NgForOf,
-    NgIf,
     RouterLink
-  ],
+],
   templateUrl: './order-summary.component.html',
   // styleUrls: ['./order-summary.component.css'] // Keep if you have specific styles
   changeDetection: ChangeDetectionStrategy.OnPush

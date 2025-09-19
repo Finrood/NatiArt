@@ -1,5 +1,5 @@
 import {Component, ElementRef, OnDestroy, OnInit, Renderer2, ViewChild} from '@angular/core';
-import {AsyncPipe, CurrencyPipe, KeyValuePipe, NgForOf, NgIf, NgStyle} from "@angular/common";
+import { AsyncPipe, CurrencyPipe, KeyValuePipe, NgStyle } from "@angular/common";
 import {FormsModule} from "@angular/forms";
 import {BehaviorSubject, Subscription} from "rxjs";
 import {Product} from "../../../models/product.model";
@@ -19,9 +19,7 @@ import {ButtonComponent} from "../../../../shared/components/button.component";
   standalone: true, // Add standalone: true if not already
   imports: [
     AsyncPipe,
-    NgForOf,
     FormsModule,
-    NgIf,
     CurrencyPipe,
     TopMenuComponent,
     LeftMenuComponent,
@@ -31,7 +29,7 @@ import {ButtonComponent} from "../../../../shared/components/button.component";
     RouterLink,
     AddToCartButtonComponent,
     ButtonComponent
-  ],
+],
   templateUrl: './product-detail.component.html',
   styleUrls: ['./product-detail.component.css']
 })

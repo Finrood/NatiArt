@@ -10,7 +10,7 @@ import {
   LoadingSpinnerComponent
 } from "../../../../../shared/components/shared/loading-spinner/loading-spinner.component";
 import {ButtonComponent} from "../../../../../shared/components/button.component";
-import {NgIf} from "@angular/common";
+
 import {finalize} from "rxjs/operators";
 import {ViaCEPResponse} from "../../../../models/viaCEPResponse.model";
 import {SignupService} from "../../../../service/signup.service";
@@ -24,9 +24,8 @@ import {SignupService} from "../../../../service/signup.service";
     CpfFormatDirective,
     CepFormatDirective,
     LoadingSpinnerComponent,
-    NgIf,
     ButtonComponent
-  ],
+],
   templateUrl: './signup-profile.component.html',
   styleUrl: './signup-profile.component.css'
 })

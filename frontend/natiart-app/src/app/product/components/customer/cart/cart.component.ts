@@ -4,7 +4,7 @@ import {BehaviorSubject, combineLatest, Observable, of, Subject} from 'rxjs';
 import {catchError, finalize, map, startWith, takeUntil, tap} from 'rxjs/operators';
 import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 import {Router, RouterLink} from '@angular/router';
-import {AsyncPipe, CurrencyPipe, NgForOf, NgIf} from "@angular/common";
+import { AsyncPipe, CurrencyPipe } from "@angular/common";
 import {ShippingEstimationComponent} from "../shipping-estimation/shipping-estimation.component";
 import {
   ConfirmationModalComponent
@@ -27,14 +27,12 @@ interface CartState {
   imports: [
     ConfirmationModalComponent,
     RouterLink,
-    NgIf,
     AsyncPipe,
     CurrencyPipe,
     ShippingEstimationComponent,
-    NgForOf,
     LoadingSpinnerComponent,
     ButtonComponent
-  ],
+],
   templateUrl: './cart.component.html',
   styleUrls: ['./cart.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush

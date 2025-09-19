@@ -1,5 +1,5 @@
 import {ChangeDetectionStrategy, Component, Input} from '@angular/core';
-import {CommonModule} from "@angular/common";
+
 import {FormGroup, ReactiveFormsModule} from "@angular/forms";
 import {
   NatiartFormFieldComponent
@@ -11,12 +11,11 @@ import {PhoneFormatBrazilDirective} from "../../../../../directory/directive/pho
   selector: 'app-user-info-step',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     NatiartFormFieldComponent,
     CpfFormatDirective,
     PhoneFormatBrazilDirective
-  ],
+],
   templateUrl: './user-info-step.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
