@@ -1,3 +1,5 @@
+@reference "tailwindcss";
+
 .form-input {
   @apply w-full px-3 py-2 text-base text-secondary bg-surface-variant border border-primary-lighter/50 rounded-md shadow-sm;
   @apply focus:ring-2 focus:ring-primary/50 focus:border-primary;

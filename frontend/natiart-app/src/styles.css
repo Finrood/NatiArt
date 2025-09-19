@@ -1,6 +1,109 @@
-/* You can add global styles to this file and also import other style files */
-@import 'tailwindcss';
+/* Import Tailwind CSS v4 */
+@import "tailwindcss";
 
+/* v4 Plugins via @plugin */
+@plugin "@tailwindcss/forms";
+@plugin "@tailwindcss/typography";
+
+/* v3-Compatible Base Styles for ring/border */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: theme('colors.gray.200 / DEFAULT');
+  }
+}
+
+/* v4 Theme Extensions: All custom colors defined here for opacity support */
+@theme {
+  /* Custom Colors with Alpha Support (enables /30, etc.) */
+  --color-primary: rgb(var(--primary) / <alpha-value>);
+  --color-primary-light: rgb(var(--primary-light) / <alpha-value>);
+  --color-primary-lighter: rgb(var(--primary-lighter) / <alpha-value>);
+  --color-primary-dark: rgb(var(--primary-dark) / <alpha-value>);
+  --color-primary-contrast: rgb(var(--primary-contrast) / <alpha-value>);
+
+  --color-secondary: rgb(var(--secondary) / <alpha-value>);
+  --color-secondary-light: rgb(var(--secondary-light) / <alpha-value>);
+  --color-secondary-dark: rgb(var(--secondary-dark) / <alpha-value>);
+  --color-secondary-contrast: rgb(var(--secondary-contrast) / <alpha-value>);
+
+  --color-error: #ef4444;
+  --color-success: #22c55e;
+  --color-warning: #eab308;
+  --color-info: #3b82f6;
+
+  --color-surface: rgb(var(--surface) / <alpha-value>);
+  --color-surface-variant: rgb(var(--surface-variant) / <alpha-value>);
+  --color-surface-contrast: rgb(var(--on-surface) / <alpha-value>); /* For border-surface-contrast/30 */
+
+  --color-background: rgb(var(--background) / <alpha-value>);
+  --color-background-variant: rgb(var(--background-variant) / <alpha-value>);
+
+  --color-accent: rgb(var(--accent) / <alpha-value>);
+  --color-accent-contrast: rgb(var(--accent-contrast) / <alpha-value>);
+
+  --color-text-muted: rgb(var(--text-muted) / <alpha-value>);
+
+  /* Fonts, Sizes, Spacing, etc. (unchanged) */
+  --font-family-sans: "Poppins", sans-serif;
+  --font-family-serif: "Playfair Display", serif;
+  --font-family-mono: "Fira Code", monospace;
+  --font-family-display: "Bebas Neue", cursive;
+
+  --font-size-2xs: 0.625rem;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  --font-size-4xl: 2.25rem;
+  --font-size-5xl: 3rem;
+  --font-size-6xl: 4rem;
+
+  --spacing-4.5: 1.125rem;
+  --spacing-18: 4.5rem;
+  --spacing-22: 5.5rem;
+  --spacing-30: 7.5rem;
+  --spacing-112: 28rem;
+  --spacing-128: 32rem;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+  --shadow-input: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-focus: 0 0 0 3px rgb(var(--primary) / 0.15);
+  --shadow-elevated: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
+  --animate-fade-in: fadeIn 0.5s ease-out;
+  --animate-slide-up: slideUp 0.3s ease-out;
+  --animate-spin: spin 1s linear infinite;
+
+  --z-1: 1;
+  --z-60: 60;
+  --z-70: 70;
+  --z-80: 80;
+  --z-90: 90;
+  --z-100: 100;
+
+  --kf-fade-in-0: opacity 0, translateY 10px;
+  --kf-fade-in-100: opacity 1, translateY 0;
+  --kf-slide-up-0: translateY 100%;
+  --kf-slide-up-100: translateY 0;
+  --kf-spin-100: rotate 360deg;
+
+  --aspect-video: 16 / 9;
+  --aspect-square: 1 / 1;
+}
+
+/* Root Vars for Custom Colors (unchanged) */
 :root {
   --primary: 212 165 154;
   --primary-light: 227 193 184;
@@ -22,4 +125,6 @@
 
   --accent: 59 130 246;
   --accent-contrast: 255 255 255;
+
+  --text-muted: 74 74 74;
 }
