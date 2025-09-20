@@ -1,4 +1,4 @@
-@reference "tailwindcss";
+@reference "../../../../styles.css";
 
 :host {
   display: block;

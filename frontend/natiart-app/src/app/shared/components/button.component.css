@@ -1,5 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-@reference "tailwindcss";
+@reference "../../../styles.css";
 
 .btn {
   @apply px-6 py-3 rounded-lg font-semibold transition-all duration-200 ease-in-out
