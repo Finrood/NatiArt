@@ -20,7 +20,7 @@ const isAuthRequest = (url: string): boolean =>
   url.includes('/register-user') || url.includes('/login') || url.includes("/register-ghost-user");
 
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
-  if (isExcludedDomain(req.url)) {
+  if (isExcludedDomain(req.url) || isAuthRequest(req.url)) {
     return next(req);
   }
 
@@ -40,7 +40,8 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   return next(cloned).pipe(
     catchError(error => {
       if (error.status === 401 && !isAuthRequest(req.url)) {
-        router.navigate(['/logout'])
+        console.log("ERRROOOR")
+        //router.navigate(['/logout'])
       }
       return throwError(() => error);
     })

@@ -33,6 +33,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/register-user").permitAll()
                         .requestMatchers(HttpMethod.POST, "/register-ghost-user").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/validate-token").permitAll()
                         .anyRequest().authenticated());
 
         return http.build();

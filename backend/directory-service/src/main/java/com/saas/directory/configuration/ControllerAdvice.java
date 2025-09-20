@@ -29,4 +29,10 @@ public class ControllerAdvice {
         logger.error("Asaas API error: status={}, message={}", e.getHttpStatus(), e.getMessage(), e);
         return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
     }
+
+    @ExceptionHandler(IllegalAccessException.class)
+    public ResponseEntity<Object> illegalAccessException(IllegalAccessException e) {
+        logger.error("Asaas API error: status={}, message={}", 401, e.getMessage(), e);
+        return new ResponseEntity<>(e.getMessage(), HttpStatus.FORBIDDEN);
+    }
 }

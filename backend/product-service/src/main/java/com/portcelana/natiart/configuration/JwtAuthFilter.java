@@ -1,11 +1,14 @@
 package com.portcelana.natiart.configuration;
 
+import com.portcelana.natiart.dto.AuthenticationResponseDto;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -27,13 +30,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         final String token = extractToken(request);
         if (token != null) {
             try {
-                final Authentication authentication = webClientBuilder.build()
+                final AuthenticationResponseDto authenticationResponse = webClientBuilder.build()
                         .post()
                         .uri(directoryServiceUrl + "/validate-token")
                         .header("Authorization", "Bearer " + token)
                         .retrieve()
-                        .bodyToMono(Authentication.class)
+                        .bodyToMono(AuthenticationResponseDto.class)
                         .block();
+
+                Authentication authentication = new UsernamePasswordAuthenticationToken(
+                        authenticationResponse.getPrincipal(),
+                        authenticationResponse.getAuthorities().stream()
+                                .map(a -> new SimpleGrantedAuthority(a.getAuthority()))
+                                .toList()
+                );
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (Exception e) {
