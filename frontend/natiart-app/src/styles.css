@@ -19,33 +19,33 @@
 /* v4 Theme Extensions: All custom colors defined here for opacity support */
 @theme {
   /* Custom Colors with Alpha Support (enables /30, etc.) */
-  --color-primary: rgb(var(--primary) / <alpha-value>);
-  --color-primary-light: rgb(var(--primary-light) / <alpha-value>);
-  --color-primary-lighter: rgb(var(--primary-lighter) / <alpha-value>);
-  --color-primary-dark: rgb(var(--primary-dark) / <alpha-value>);
-  --color-primary-contrast: rgb(var(--primary-contrast) / <alpha-value>);
+  --color-primary: rgb(var(--primary));
+  --color-primary-light: rgb(var(--primary-light));
+  --color-primary-lighter: rgb(var(--primary-lighter));
+  --color-primary-dark: rgb(var(--primary-dark));
+  --color-primary-contrast: rgb(var(--primary-contrast));
 
-  --color-secondary: rgb(var(--secondary) / <alpha-value>);
-  --color-secondary-light: rgb(var(--secondary-light) / <alpha-value>);
-  --color-secondary-dark: rgb(var(--secondary-dark) / <alpha-value>);
-  --color-secondary-contrast: rgb(var(--secondary-contrast) / <alpha-value>);
+  --color-secondary: rgb(var(--secondary));
+  --color-secondary-light: rgb(var(--secondary-light));
+  --color-secondary-dark: rgb(var(--secondary-dark));
+  --color-secondary-contrast: rgb(var(--secondary-contrast));
 
   --color-error: #ef4444;
   --color-success: #22c55e;
   --color-warning: #eab308;
   --color-info: #3b82f6;
 
-  --color-surface: rgb(var(--surface) / <alpha-value>);
-  --color-surface-variant: rgb(var(--surface-variant) / <alpha-value>);
-  --color-surface-contrast: rgb(var(--on-surface) / <alpha-value>); /* For border-surface-contrast/30 */
+  --color-surface: rgb(var(--surface));
+  --color-surface-variant: rgb(var(--surface-variant));
+  --color-surface-contrast: rgb(var(--on-surface)); /* For border-surface-contrast/30 */
 
-  --color-background: rgb(var(--background) / <alpha-value>);
-  --color-background-variant: rgb(var(--background-variant) / <alpha-value>);
+  --color-background: rgb(var(--background));
+  --color-background-variant: rgb(var(--background-variant));
 
-  --color-accent: rgb(var(--accent) / <alpha-value>);
-  --color-accent-contrast: rgb(var(--accent-contrast) / <alpha-value>);
+  --color-accent: rgb(var(--accent));
+  --color-accent-contrast: rgb(var(--accent-contrast));
 
-  --color-text-muted: rgb(var(--text-muted) / <alpha-value>);
+  --color-text-muted: rgb(var(--text-muted));
 
   /* Fonts, Sizes, Spacing, etc. (unchanged) */
   --font-family-sans: "Poppins", sans-serif;
@@ -65,7 +65,7 @@
   --font-size-5xl: 3rem;
   --font-size-6xl: 4rem;
 
-  --spacing-4.5: 1.125rem;
+  --spacing-4: 1.125rem;
   --spacing-18: 4.5rem;
   --spacing-22: 5.5rem;
   --spacing-30: 7.5rem;
