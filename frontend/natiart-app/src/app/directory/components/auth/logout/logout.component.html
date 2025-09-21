@@ -1,0 +1,17 @@
+<div class="min-h-screen bg-background flex items-center justify-center px-4 sm:px-6 lg:px-8">
+  <div class="w-full max-w-md space-y-8 text-center">
+    @if (!loggedOut) {
+      <div>
+        <h2 class="text-2xl font-semibold text-secondary-dark mb-4">Logging Out</h2>
+        <app-loading-spinner></app-loading-spinner>
+        <p class="mt-2 text-secondary-light">Please wait while we securely log you out.</p>
+      </div>
+    }
+    @if (loggedOut) {
+      <div>
+        <h2 class="text-2xl font-semibold text-secondary-dark mb-4">Logged Out</h2>
+        <p class="text-secondary-light">You have been successfully logged out.</p>
+      </div>
+    }
+  </div>
+</div>

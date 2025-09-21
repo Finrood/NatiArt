@@ -46,6 +46,11 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
     this.resetInactivityTimer();
   }
 
+  private clearLocalAuthState() {
+    this.tokenService.clearTokens();
+    this.updateState(null);
+  }
+
   resetInactivityTimer() {
     if (this.inactivityTimerSubscription) {
       this.inactivityTimerSubscription.unsubscribe();
@@ -55,13 +60,13 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
         if (this.isTokenExpired(this.tokenService.refreshToken)) {
-          this.resetAuthState(); // Logout if refresh token is expired
+          this.resetAuthStateAndRedirect(); // Logout if refresh token is expired
         } else {
           // If refresh token is still valid, try to refresh it to prolong the session
           this.doRefreshToken().pipe(takeUntil(this.destroy$)).subscribe({
             error: () => {
               // If refresh token fails, then log out
-              this.resetAuthState();
+              this.resetAuthStateAndRedirect();
             }
           });
         }
@@ -102,10 +107,13 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
   }
 
   logout(): Observable<void> {
-    // No need to pass null if the endpoint doesn't expect a body for logout
     return this.http.post<void>(`${this.apiUrl}${environment.api.directory.endpoints.logout}`, {}).pipe(
-      tap(() => this.resetAuthState()),
-      catchError(error => this.handleError(error, 'Logout failed'))
+      tap(() => this.clearLocalAuthState()),
+      catchError(error => {
+        console.error('Logout API call failed, clearing local state anyway:', error);
+        this.clearLocalAuthState();
+        return throwError(() => error);
+      })
     );
   }
 
@@ -129,7 +137,7 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
       catchError(error => {
         // If fetching current user fails (e.g., 401), it likely means token is invalid/expired
         if (error.status === 401) {
-          this.resetAuthState(); // Reset state if unauthorized
+          this.resetAuthStateAndRedirect(); // Reset state if unauthorized
         }
         return this.handleError(error, 'Failed to fetch user');
       })
@@ -142,7 +150,7 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
 
   private doRefreshToken(): Observable<void> {
     if (!this.tokenService.refreshToken || this.isTokenExpired(this.tokenService.refreshToken)) {
-      this.resetAuthState();
+      this.resetAuthStateAndRedirect();
       return throwError(() => new Error('Refresh token expired or missing'));
     }
 
@@ -159,7 +167,7 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
       }),
       map(() => void 0), // Transform to Observable<void>
       catchError(error => {
-        this.resetAuthState(); // Critical: If refresh fails, user is logged out
+        this.resetAuthStateAndRedirect(); // Critical: If refresh fails, user is logged out
         return this.handleError(error, 'Token refresh failed');
       })
     );
@@ -178,7 +186,7 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
       });
     }
     else {
-      this.resetAuthState(); // Ensure clean state if no valid tokens
+      this.resetAuthStateAndRedirect(); // Ensure clean state if no valid tokens
     }
   }
 
@@ -201,7 +209,7 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
         // If access token is expired and refresh token is also expired or missing, reset auth state
         else if (this.tokenService.accessToken && this.isTokenExpired(this.tokenService.accessToken) &&
                    (this.isTokenExpired(this.tokenService.refreshToken) || !this.tokenService.refreshToken)) {
-          this.resetAuthState();
+          this.resetAuthStateAndRedirect();
         }
       });
   }
@@ -238,9 +246,8 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
     }
   }
 
-  private resetAuthState() {
-    this.tokenService.clearTokens();
-    this.updateState(null); // This will make isLoggedIn$ emit false
+  public resetAuthStateAndRedirect() {
+    this.clearLocalAuthState();
     // Only navigate if not already on login/register/checkout page to avoid navigation loops
     if (!this.router.url.includes('/login') && !this.router.url.includes('/register') && !this.router.url.includes('/checkout')) {
       this.router.navigate(['/login']);
@@ -251,7 +258,7 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
     console.error(`${message}:`, error.message); // Log error message
     // Consider specific error handling, e.g., for 401 Unauthorized
     if (error.status === 401 && !message.toLowerCase().includes('login failed')) { // Avoid resetting state during login attempt itself
-      this.resetAuthState();
+      this.resetAuthStateAndRedirect();
     }
     return throwError(() => new Error(`${message}. Status: ${error.status}. Details: ${error.message}`));
   }
