@@ -1,37 +1,39 @@
-<div class="min-h-screen bg-linear-to-br from-background to-background-variant flex items-center justify-center px-4 sm:px-6 lg:px-8">
-  <div class="w-full max-w-2xl space-y-8">
-    <header class="text-center space-y-4">
-      <h1 class="text-5xl font-display text-primary-contrast">Join Porcelain Elegance</h1>
-      <p class="text-surface-contrast/85 text-lg font-serif">Create your account in two simple steps</p>
-    </header>
+<div class="min-h-screen bg-background font-serif">
+  <div class="grid grid-cols-1 lg:grid-cols-2 min-h-screen">
+    <!-- Left Column: Branding & Image -->
+    <div class="hidden lg:flex flex-col justify-center items-center p-8 bg-primary-lighter/40 border-r border-primary-lighter">
+      <div class="text-center max-w-sm">
+        <h1 class="text-5xl font-bold font-serif text-primary-dark mb-4">Create Your Account</h1>
+        <p class="text-lg text-secondary">Join our community to experience the timeless beauty of handcrafted porcelain.</p>
+        <img src="assets/img/a3.jpg" alt="Elegant porcelain" class="mt-8 rounded-lg shadow-2xl max-w-xs h-auto object-cover mx-auto">
+      </div>
+    </div>
 
-    <!-- Step Indicator -->
-    <app-step-indicator [currentStep]="currentStep"></app-step-indicator>
+    <!-- Right Column: Signup Form -->
+    <div class="flex items-center justify-center p-6 sm:p-12">
+      <div class="w-full max-w-2xl">
+        <div class="lg:hidden text-center mb-8">
+          <h1 class="text-4xl font-bold font-serif text-primary-dark">Create Your Account</h1>
+        </div>
 
-    <!-- Signup Forms -->
-    <form (ngSubmit)="doRegisterUser()" [formGroup]="signupForm" class="mt-8 space-y-6">
-      @if (currentStep === 1) {
-        <app-signup-credentials
-          [credentialForm]="credentialsForm"
-          (nextStep)="onNextStep()">
-        </app-signup-credentials>
-      }
+        <div class="bg-surface p-4 rounded-2xl shadow-lg border border-primary-lighter/20">
+          <!-- Step Indicator -->
+          <app-step-indicator [currentStep]="currentStep"></app-step-indicator>
 
-      @if (currentStep === 2) {
-        <app-signup-profile
-          [profileForm]="profileForm"
-          [errorMessage] = "errorMessage"
-          (previousStep)="onPreviousStep()"
-          (nextStep)="onNextStep()">
-        </app-signup-profile>
-      }
-    </form>
+          <!-- Signup Forms -->
+          <form (ngSubmit)="doRegisterUser()" [formGroup]="signupForm" class="mt-8">
+            <div [ngSwitch]="currentStep">
+              <app-signup-credentials *ngSwitchCase="1" [credentialForm]="credentialsForm" (nextStep)="onNextStep()"></app-signup-credentials>
+              <app-signup-profile *ngSwitchCase="2" [profileForm]="profileForm" [errorMessage]="errorMessage" (previousStep)="onPreviousStep()" (nextStep)="onNextStep()"></app-signup-profile>
+            </div>
+          </form>
+        </div>
 
-    <p class="text-center text-surface-contrast/85">
-      Already have an account?
-      <a routerLink="/login" class="text-primary hover:text-primary-dark font-semibold underline underline-offset-4 transition-colors">
-        Sign in here
-      </a>
-    </p>
+        <p class="mt-8 text-center text-sm text-secondary-light">
+          Already have an account?
+          <a routerLink="/login" class="font-semibold text-primary hover:text-primary-dark underline underline-offset-2">Sign in here</a>
+        </p>
+      </div>
+    </div>
   </div>
 </div>

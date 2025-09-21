@@ -3,6 +3,7 @@ import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/
 import {CustomPasswordValidators} from '../../../validator/CustomPasswordValidators';
 import {animate, style, transition, trigger} from '@angular/animations';
 import {Router, RouterLink} from '@angular/router';
+import {CommonModule} from "@angular/common";
 
 import {SignupService} from "../../../service/signup.service";
 import {UserRegistration} from "../../../models/user-registration.model";
@@ -16,6 +17,7 @@ import {CustomCepValidators} from "../../../validator/CustomCepValidators";
 
 @Component({
   selector: 'app-signup',
+  standalone: true,
   templateUrl: './signup.component.html',
   styleUrls: ['./signup.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -38,7 +40,8 @@ import {CustomCepValidators} from "../../../validator/CustomCepValidators";
     RouterLink,
     SignupProfileComponent,
     SignupCredentialsComponent,
-    StepIndicatorComponent
+    StepIndicatorComponent,
+    CommonModule
 ]
 })
 export class SignupComponent implements OnInit {
@@ -137,6 +140,4 @@ export class SignupComponent implements OnInit {
   private clearErrorMessage(): void {
     this.errorMessage = '';
   }
-
-  protected readonly FormGroup = FormGroup;
 }

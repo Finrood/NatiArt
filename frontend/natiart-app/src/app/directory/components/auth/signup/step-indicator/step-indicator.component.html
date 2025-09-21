@@ -1,12 +1,27 @@
-<div class="flex justify-center items-center space-x-4">
-  @for (step of [1, 2]; track step) {
-    <div
-       [ngClass]="{
-         'bg-primary scale-110 shadow-lg': currentStep === step,
-         'bg-surface-variant': currentStep !== step
-       }"
-      class="w-12 h-12 rounded-full transition-all duration-300 flex items-center justify-center text-surface-contrast font-bold ring-4 ring-surface">
-      {{ step }}
+<div class="flex justify-center items-center space-x-6 mb-8">
+  <div class="flex flex-col items-center">
+    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300"
+         [ngClass]="{
+           'bg-primary text-primary-contrast shadow-md': currentStep === 1,
+           'bg-primary-lighter text-primary-dark': currentStep > 1,
+           'bg-surface-variant text-secondary-light': currentStep < 1
+         }">
+      1
     </div>
-  }
+    <span class="mt-2 text-sm font-medium text-secondary-dark">Account</span>
+  </div>
+
+  <div class="flex-1 h-0.5 bg-primary-lighter/50 transition-all duration-300"
+       [ngClass]="{'bg-primary': currentStep > 1}"></div>
+
+  <div class="flex flex-col items-center">
+    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300"
+         [ngClass]="{
+           'bg-primary text-primary-contrast shadow-md': currentStep === 2,
+           'bg-surface-variant text-secondary-light': currentStep < 2
+         }">
+      2
+    </div>
+    <span class="mt-2 text-sm font-medium text-secondary-dark">Profile</span>
+  </div>
 </div>

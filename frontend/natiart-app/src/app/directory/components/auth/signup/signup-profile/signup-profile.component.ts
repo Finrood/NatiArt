@@ -17,6 +17,7 @@ import {SignupService} from "../../../../service/signup.service";
 
 @Component({
   selector: 'app-signup-profile',
+  standalone: true,
   imports: [
     NatiartFormFieldComponent,
     ReactiveFormsModule,

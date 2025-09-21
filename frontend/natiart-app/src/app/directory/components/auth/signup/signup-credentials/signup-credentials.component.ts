@@ -6,6 +6,7 @@ import {PasswordRequirementsComponent} from "../password-requirements/password-r
 
 @Component({
   selector: 'app-signup-credentials',
+  standalone: true,
   imports: [
     ReactiveFormsModule,
     NatiartFormFieldComponent,
