@@ -70,6 +70,10 @@ export class LoginComponent implements OnInit {
     this.loginForm = this.initForm();
   }
 
+  get credentialsForm(): FormGroup {
+    return this.loginForm.get('credentials') as FormGroup;
+  }
+
   ngOnInit(): void {
     if (this.tokenService.accessToken) {
       this.authenticationService.fetchCurrentUser();
@@ -88,11 +92,7 @@ export class LoginComponent implements OnInit {
       return;
     }
 
-    const formValue = this.loginForm.getRawValue();
-    const credentials: Credentials = {
-      username: formValue.credentials.username,
-      password: formValue.credentials.password,
-    };
+    const credentials = this.credentialsForm.value;
 
     this.authenticationService.login(credentials)
       .subscribe({

@@ -1,0 +1,9 @@
+@reference "../../../../../styles.css";
+
+.form-input {
+  @apply block w-full rounded-md border-0 py-2.5 px-3.5 text-secondary shadow-sm ring-1 ring-inset ring-primary-lighter/50 placeholder:text-secondary/50 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 transition-all duration-150 ease-in-out bg-surface-variant;
+}
+
+.form-input:focus {
+  @apply bg-surface;
+}
