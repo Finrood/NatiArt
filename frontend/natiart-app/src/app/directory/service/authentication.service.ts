@@ -1,24 +1,18 @@
-import {Injectable, OnDestroy} from '@angular/core'; // Added OnDestroy
+import {Injectable, OnDestroy} from '@angular/core';
 import {HttpClient, HttpErrorResponse, HttpHeaders} from "@angular/common/http";
 import {Router} from "@angular/router";
 import {RoleName, User} from "../models/user.model";
 import {environment} from "../../../environments/environment";
-import {BehaviorSubject, catchError, Observable, Subject, throwError, timer, Subscription} from "rxjs"; // Added Subject, Subscription
+import {BehaviorSubject, catchError, Observable, Subject, throwError, timer, Subscription, of} from "rxjs";
 import {Credentials} from "../models/credentials.model";
-import {map, switchMap, takeUntil, tap} from "rxjs/operators"; // Added takeUntil
+import {map, switchMap, takeUntil, tap} from "rxjs/operators";
 import {LoginResponse} from "../models/loginResponse.model";
 import {TokenService} from "./token.service";
-
-// Interface AuthState is not strictly needed if we derive isLoggedIn$ from authState$
-// interface AuthState {
-//   isLoggedIn: boolean;
-//   user: User | null;
-// }
 
 @Injectable({
   providedIn: 'root'
 })
-export class AuthenticationService implements OnDestroy { // Implemented OnDestroy
+export class AuthenticationService implements OnDestroy {
   private readonly apiUrl: string = `${environment.api.directory.url}`;
   private readonly tokenCheckInterval = 60000; // 1 minute
   private readonly tokenRefreshBuffer = 300000; // 5 minutes before expiration
@@ -27,22 +21,19 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
 
   private inactivityTimerSubscription: Subscription | undefined;
 
-  // stateSubject holds the current User object or null
   private stateSubject = new BehaviorSubject<User | null>(null);
 
-  // Public observable for the User object
   public readonly currentUser$: Observable<User | null> = this.stateSubject.asObservable();
 
-  // Public observable for the login status, derived from currentUser$
   public readonly isLoggedIn$: Observable<boolean> = this.currentUser$.pipe(
-    map(user => !!user) // Converts User|null to boolean
+    map(user => !!user)
   );
 
-  private destroy$ = new Subject<void>(); // For cleaning up subscriptions within this service
+  private destroy$ = new Subject<void>();
 
   constructor(private http: HttpClient, private router: Router, private tokenService: TokenService) {
-    this.initializeAuthState(); // Call this in constructor
-    this.startTokenMonitoring(); // Call this in constructor
+    this.initializeAuthState();
+    this.startTokenMonitoring();
     this.resetInactivityTimer();
   }
 
@@ -60,12 +51,10 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
         if (this.isTokenExpired(this.tokenService.refreshToken)) {
-          this.resetAuthStateAndRedirect(); // Logout if refresh token is expired
+          this.resetAuthStateAndRedirect();
         } else {
-          // If refresh token is still valid, try to refresh it to prolong the session
           this.doRefreshToken().pipe(takeUntil(this.destroy$)).subscribe({
             error: () => {
-              // If refresh token fails, then log out
               this.resetAuthStateAndRedirect();
             }
           });
@@ -73,9 +62,7 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
       });
   }
 
-  
-
-  ngOnDestroy(): void { // Implement OnDestroy
+  ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
     if (this.inactivityTimerSubscription) {
@@ -92,12 +79,11 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
         this.tokenService.accessToken = loginResponse.accessToken;
         this.tokenService.refreshToken = loginResponse.refreshToken;
       }),
-      switchMap(() => this.fetchCurrentUser()), // fetchCurrentUser will update stateSubject
+      switchMap(() => this.fetchCurrentUser()),
       catchError(error => this.handleError(error, 'Login failed'))
     );
   }
 
-  // New method for setting tokens and user directly (for ghost users)
   setAuthTokensAndUser(loginResponse: LoginResponse): Observable<User> {
     this.tokenService.accessToken = loginResponse.accessToken;
     this.tokenService.refreshToken = loginResponse.refreshToken;
@@ -122,29 +108,27 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
   }
 
   fetchCurrentUser(): Observable<User> {
-    // Ensure Authorization header is set if tokens exist
     const headers = this.tokenService.accessToken
       ? new HttpHeaders({ Authorization: `Bearer ${this.tokenService.accessToken}` })
       : new HttpHeaders();
 
     return this.http.get<User>(
       `${this.apiUrl}${environment.api.directory.endpoints.user}${environment.api.directory.endpoints.current}`,
-      { headers } // Pass headers
+      { headers }
     ).pipe(
       tap(user => {
         this.updateState(user);
       }),
       catchError(error => {
-        // If fetching current user fails (e.g., 401), it likely means token is invalid/expired
         if (error.status === 401) {
-          this.resetAuthStateAndRedirect(); // Reset state if unauthorized
+          this.resetAuthStateAndRedirect();
         }
         return this.handleError(error, 'Failed to fetch user');
       })
     );
   }
 
-  private updateState(user: User | null) { // Parameter changed to User | null
+  private updateState(user: User | null) {
     this.stateSubject.next(user);
   }
 
@@ -155,59 +139,74 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
     }
 
     return this.http.post<{ accessToken: string, refreshToken: string }>(
-      `${this.apiUrl}/refresh-token`, // Assuming this is the correct refresh endpoint
-      null, // Body can be null if not required by backend
+      `${this.apiUrl}/refresh-token`,
+      null,
       { headers: new HttpHeaders({ Authorization: `Bearer ${this.tokenService.refreshToken}` }) }
     ).pipe(
       tap(({ accessToken, refreshToken }) => {
         this.tokenService.accessToken = accessToken;
         this.tokenService.refreshToken = refreshToken;
-        // Optionally, re-fetch current user after successful token refresh to update roles/details
         this.fetchCurrentUser().pipe(takeUntil(this.destroy$)).subscribe();
       }),
-      map(() => void 0), // Transform to Observable<void>
+      map(() => void 0),
       catchError(error => {
-        this.resetAuthStateAndRedirect(); // Critical: If refresh fails, user is logged out
+        this.resetAuthStateAndRedirect();
         return this.handleError(error, 'Token refresh failed');
       })
     );
   }
 
-  private initializeAuthState(): void { // Return type void
-    if (this.tokenService.accessToken && !this.isTokenExpired(this.tokenService.accessToken)) {
-      // Subscribe to fetchCurrentUser and manage the subscription
-      this.fetchCurrentUser().pipe(takeUntil(this.destroy$)).subscribe({
-        // Error handling is done within fetchCurrentUser and handleError
-      });
-    } else if (this.tokenService.refreshToken && !this.isTokenExpired(this.tokenService.refreshToken)) {
-      // If access token is gone/expired but refresh token is good, try to refresh
-      this.doRefreshToken().pipe(takeUntil(this.destroy$)).subscribe({
-        error: () => { /* Error handled in doRefreshToken, state reset there */ }
-      });
-    }
-    else {
-      this.resetAuthStateAndRedirect(); // Ensure clean state if no valid tokens
+  public initializeAuthState(): Observable<void> {
+    const accessToken = this.tokenService.accessToken;
+    const refreshToken = this.tokenService.refreshToken;
+
+    console.log('initializeAuthState: Access Token:', accessToken);
+    console.log('initializeAuthState: Refresh Token:', refreshToken);
+    console.log('initializeAuthState: Access Token Expired:', this.isTokenExpired(accessToken));
+    console.log('initializeAuthState: Refresh Token Expired:', this.isTokenExpired(refreshToken));
+
+    if (accessToken && !this.isTokenExpired(accessToken)) {
+      return this.fetchCurrentUser().pipe(
+        map(() => void 0), // Transform to Observable<void>
+        catchError(() => {
+          // If fetchCurrentUser fails, try refresh token or reset state
+          if (refreshToken && !this.isTokenExpired(refreshToken)) {
+            return this.doRefreshToken().pipe(
+              map(() => void 0), // Transform to Observable<void>
+              catchError(() => {
+                this.resetAuthStateAndRedirect();
+                return of(void 0); // Complete the observable
+              })
+            );
+          } else {
+            this.resetAuthStateAndRedirect();
+            return of(void 0); // Complete the observable
+          }
+        })
+      );
+    } else if (refreshToken && !this.isTokenExpired(refreshToken)) {
+      return this.doRefreshToken().pipe(
+        map(() => void 0), // Transform to Observable<void>
+        catchError(() => {
+          this.resetAuthStateAndRedirect();
+          return of(void 0); // Complete the observable
+        })
+      );
+    } else {
+      this.resetAuthStateAndRedirect();
+      return of(void 0); // Complete the observable immediately if no tokens
     }
   }
 
   private startTokenMonitoring() {
     timer(0, this.tokenCheckInterval)
-      .pipe(takeUntil(this.destroy$)) // Manage this timer subscription
+      .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
-        // Proactively refresh access token if expiring soon and refresh token is valid
         if (this.tokenService.accessToken && this.isAccessTokenExpiringSoon() && !this.isTokenExpired(this.tokenService.refreshToken)) {
-          this.doRefreshToken().pipe(takeUntil(this.destroy$)).subscribe({
-            error: () => { /* Error handled in doRefreshToken, state reset there */ }
-          });
-        }
-        // Proactively refresh refresh token if expiring soon
-        else if (this.tokenService.refreshToken && this.isRefreshTokenExpiringSoon()) {
-          this.doRefreshToken().pipe(takeUntil(this.destroy$)).subscribe({
-            error: () => { /* Error handled in doRefreshToken, state reset there */ }
-          });
-        }
-        // If access token is expired and refresh token is also expired or missing, reset auth state
-        else if (this.tokenService.accessToken && this.isTokenExpired(this.tokenService.accessToken) &&
+          this.doRefreshToken().pipe(takeUntil(this.destroy$)).subscribe({});
+        } else if (this.tokenService.refreshToken && this.isRefreshTokenExpiringSoon()) {
+          this.doRefreshToken().pipe(takeUntil(this.destroy$)).subscribe({});
+        } else if (this.tokenService.accessToken && this.isTokenExpired(this.tokenService.accessToken) &&
                    (this.isTokenExpired(this.tokenService.refreshToken) || !this.tokenService.refreshToken)) {
           this.resetAuthStateAndRedirect();
         }
@@ -239,7 +238,10 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
       const payload = token.split('.')[1];
       if (!payload) return 0;
       const decodedPayload = JSON.parse(atob(payload));
-      return (decodedPayload.exp || 0) * 1000; // exp is in seconds
+      const expiration = (decodedPayload.exp || 0) * 1000;
+      console.log('getTokenExpiration: Decoded Payload:', decodedPayload);
+      console.log('getTokenExpiration: Expiration Time (ms):', expiration);
+      return expiration;
     } catch (e) {
       console.error("Error decoding token: ", e);
       return 0;
@@ -248,16 +250,15 @@ export class AuthenticationService implements OnDestroy { // Implemented OnDestr
 
   public resetAuthStateAndRedirect() {
     this.clearLocalAuthState();
-    // Only navigate if not already on login/register/checkout page to avoid navigation loops
-    if (!this.router.url.includes('/login') && !this.router.url.includes('/register') && !this.router.url.includes('/checkout')) {
+    console.log('resetAuthStateAndRedirect called. Current window.location.pathname:', window.location.pathname);
+    if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register') && !window.location.pathname.includes('/checkout')) {
       this.router.navigate(['/login']);
     }
   }
 
   private handleError(error: HttpErrorResponse, message: string): Observable<never> {
-    console.error(`${message}:`, error.message); // Log error message
-    // Consider specific error handling, e.g., for 401 Unauthorized
-    if (error.status === 401 && !message.toLowerCase().includes('login failed')) { // Avoid resetting state during login attempt itself
+    console.error(`${message}:`, error.message);
+    if (error.status === 401 && !message.toLowerCase().includes('login failed')) {
       this.resetAuthStateAndRedirect();
     }
     return throwError(() => new Error(`${message}. Status: ${error.status}. Details: ${error.message}`));

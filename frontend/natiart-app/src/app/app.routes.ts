@@ -11,6 +11,8 @@ import {CheckoutComponent} from './product/components/customer/checkout/checkout
 import {
   PixPaymentConfirmationComponent
 } from "./product/components/customer/checkout/pix-payment-confirmation/pix-payment-confirmation.component";
+import {authGuard} from "./directory/guards/auth.guard";
+import {adminGuard} from "./directory/guards/admin.guard";
 
 export const routes: Routes = [
   {path: 'login', component: LoginComponent},
@@ -19,33 +21,33 @@ export const routes: Routes = [
   {
     path: 'dashboard',
     component: DashboardComponent,
-    // canActivate: [authGuard]
+    canActivate: [authGuard]
   },
   {
     path: 'product/:id',
     component: ProductDetailComponent,
-   // canActivate: [authGuard],
+    canActivate: [authGuard],
     canDeactivate: [productGuard]
   },
    {
      path: 'cart',
      component: CartComponent,
-  //   canActivate: [authGuard]
+     canActivate: [authGuard]
    },
    {
      path: 'checkout',
      component: CheckoutComponent,
-  //   canActivate: [authGuard]
+     canActivate: [authGuard]
    },
    {
      path: 'pix-payment/:paymentId',
      component: PixPaymentConfirmationComponent,
-  //   canActivate: [authGuard]
+     canActivate: [authGuard]
    },
   {
     path: 'admin',
     component: AdminDashboardComponent,
-    // canActivate: [authGuard, adminGuard],
+    canActivate: [authGuard, adminGuard],
     children: [
       {
         path: 'dashboard',

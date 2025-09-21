@@ -10,7 +10,7 @@ export const authGuard: CanActivateFn = (route, state) => {
 
   // Return an Observable/Promise that resolves after user data is loaded
   console.log(authService.isAdmin)
-  return authService.authState$.pipe(
+  return authService.currentUser$.pipe(
     map((authState) => {
       console.log(authState)
       if (!authState) {
