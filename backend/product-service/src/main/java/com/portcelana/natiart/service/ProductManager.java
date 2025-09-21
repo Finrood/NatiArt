@@ -15,7 +15,11 @@ import java.util.Optional;
 public interface ProductManager {
     Optional<Product> getProduct(String id);
 
+    Optional<Product> getProductWithImages(String id);
+
     Product getProductOrDie(String id);
+
+    Product getProductWithImagesOrDie(String id);
 
     List<Product> getProducts(Pageable pageable);
 

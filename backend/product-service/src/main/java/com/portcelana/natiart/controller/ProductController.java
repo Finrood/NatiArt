@@ -40,7 +40,7 @@ public class ProductController {
     public ProductDto getProduct(@PathVariable String productId) {
         LOGGER.info("Getting product with id [{}]", productId);
 
-        return ProductDto.from(productManager.getProductOrDie(productId));
+        return ProductDto.from(productManager.getProductWithImagesOrDie(productId));
     }
 
     @GetMapping("/products")
@@ -59,7 +59,7 @@ public class ProductController {
                                            @RequestParam(required = false, defaultValue = "20") int size) {
         LOGGER.info("Getting new products");
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "label"));
-        return productManager.getProducts(pageable).stream()
+        return productManager.getNewProducts(pageable).stream()
                 .map(ProductDto::from)
                 .toList();
     }
@@ -69,7 +69,7 @@ public class ProductController {
                                                 @RequestParam(required = false, defaultValue = "20") int size) {
         LOGGER.info("Getting featured products");
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "label"));
-        return productManager.getProducts(pageable).stream()
+        return productManager.getFeaturedProducts(pageable).stream()
                 .map(ProductDto::from)
                 .toList();
     }

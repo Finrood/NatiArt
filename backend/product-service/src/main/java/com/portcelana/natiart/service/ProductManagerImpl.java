@@ -52,6 +52,12 @@ public class ProductManagerImpl implements ProductManager {
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<Product> getProductWithImages(String id) {
+        return productRepository.findByIdWithImages(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Product getProductOrDie(String id) {
         return getProduct(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product with id [" + id + "] not found"));
@@ -59,8 +65,15 @@ public class ProductManagerImpl implements ProductManager {
 
     @Override
     @Transactional(readOnly = true)
+    public Product getProductWithImagesOrDie(String id) {
+        return getProductWithImages(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product with id [" + id + "] not found"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Product> getProducts(Pageable pageable) {
-       return  productRepository.findAll(pageable).getContent();
+       return  productRepository.findAllWithImages(pageable).getContent();
     }
 
     @Override
