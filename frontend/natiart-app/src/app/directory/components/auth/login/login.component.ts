@@ -10,6 +10,7 @@ import {NatiartFormFieldComponent} from "../../../../shared/components/natiart-f
 import {ButtonComponent} from "../../../../shared/components/button.component";
 import {Credentials} from "../../../models/credentials.model";
 import {TokenService} from "../../../service/token.service";
+import {RouterLink} from "@angular/router";
 
 @Component({
   selector: 'app-login',
@@ -17,7 +18,8 @@ import {TokenService} from "../../../service/token.service";
     FormsModule,
     ReactiveFormsModule,
     NatiartFormFieldComponent,
-    ButtonComponent
+    ButtonComponent,
+    RouterLink
 ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css',
