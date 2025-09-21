@@ -1,96 +1,34 @@
-<nav [class]="getNavClasses()">
-  <!-- Menu Content -->
-  <div class="h-full overflow-y-auto relative">
-    <!-- Menu Header with Toggle Button -->
-    <div class="flex items-center justify-between p-4">
-      @if (isOpen) {
-        <h2 class="text-xl font-bold text-gray-800">Menu</h2>
-      }
-      <app-button (click)="toggleMenu()" color="light" size="sm" [customClass]="!isOpen ? 'right-2 top-2' : ''" aria-label="Toggle menu">
-        <svg
-          [class]="getToggleButtonClasses()"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg">
-          <path
-            d="M4 6h16M4 12h16m-7 6h7"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"/>
-        </svg>
-      </app-button>
-    </div>
-
-    <!-- Main Menu Items -->
+<aside class="bg-surface text-secondary transition-all duration-300 ease-in-out hidden lg:block border-r border-primary-lighter/30" [ngClass]="isOpen ? 'w-64' : 'w-20'">
+  <div class="flex items-center h-20 px-6" [ngClass]="isOpen ? 'justify-between' : 'justify-center'">
     @if (isOpen) {
-      <ul class="space-y-2 mt-4 px-4">
-        <!-- See all products -->
+      <span class="text-lg font-semibold font-serif">Categories</span>
+    }
+    <button (click)="toggleMenu()" class="p-2 rounded-full hover:bg-primary-lighter/50 transition-colors">
+      <svg class="h-6 w-6 transition-transform duration-300" [ngClass]="!isOpen ? 'rotate-180' : ''" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+    </button>
+  </div>
+
+  <nav class="mt-4">
+    <ul>
+      <li>
+        <a href="#" class="flex items-center py-3 px-6 text-secondary hover:bg-primary-lighter/50 hover:text-primary-dark transition-colors duration-200">
+          <svg class="h-6 w-6" [ngClass]="isOpen ? 'mr-4' : 'mx-auto'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+          @if (isOpen) {
+            <span class="font-medium">All Products</span>
+          }
+        </a>
+      </li>
+      @for (category of categories; track category) {
         <li>
-          <a aria-label="See all products"
-            class="flex items-center py-2 px-3 rounded-md text-gray-600 hover:bg-beige-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-beige-300"
-            href="#">
-            <svg class="h-5 w-5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg">
-              <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-            </svg>
-            <span>See all products</span>
+          <a href="#" class="flex items-center py-3 px-6 text-secondary hover:bg-primary-lighter/50 hover:text-primary-dark transition-colors duration-200">
+            <!-- Placeholder Icon -->
+            <svg class="h-6 w-6" [ngClass]="isOpen ? 'mr-4' : 'mx-auto'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+            @if (isOpen) {
+              <span class="font-medium">{{ category.label }}</span>
+            }
           </a>
         </li>
-        <!-- Category Items -->
-        @for (category of categories; track category) {
-          <li>
-            <a [attr.aria-label]="category.label"
-              class="flex items-center py-2 px-3 rounded-md text-gray-600 hover:bg-beige-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-beige-300"
-              href="#">
-              <svg class="h-5 w-5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg">
-                <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-              </svg>
-              <span>{{ category.label }}</span>
-            </a>
-          </li>
-        }
-      </ul>
-    }
-
-    <!-- Additional Menu Items -->
-    @if (isOpen) {
-      <div class="mt-8 px-4 space-y-2">
-        <!-- New Arrivals -->
-        <a aria-label="New Arrivals"
-          class="flex items-center py-2 px-3 rounded-md text-gray-600 hover:bg-beige-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-beige-300"
-          href="#">
-          <svg class="h-5 w-5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-          </svg>
-          <span>New Arrivals</span>
-        </a>
-        <!-- Sale -->
-        <a aria-label="Sale"
-          class="flex items-center py-2 px-3 rounded-md text-gray-600 hover:bg-beige-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-beige-300"
-          href="#">
-          <svg class="h-5 w-5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 3h18M3 7h18m-9 4v6m6-6h6M3 15h6m-6 4h18" stroke-linecap="round" stroke-linejoin="round"
-              stroke-width="2"/>
-          </svg>
-          <span>Sale</span>
-        </a>
-        <!-- Contact -->
-        <a aria-label="Contact"
-          class="flex items-center py-2 px-3 rounded-md text-gray-600 hover:bg-beige-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-beige-300"
-          href="#">
-          <svg class="h-5 w-5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg">
-            <path d="M8 10h.01M12 14h.01M16 10h.01M12 18h.01M16 6h.01M12 2h.01M8 6h.01M5 10h.01M19 10h.01"
-              stroke-linecap="round" stroke-linejoin="round"
-              stroke-width="2"/>
-          </svg>
-          <span>Contact</span>
-        </a>
-      </div>
-    }
-  </div>
-</nav>
+      }
+    </ul>
+  </nav>
+</aside>

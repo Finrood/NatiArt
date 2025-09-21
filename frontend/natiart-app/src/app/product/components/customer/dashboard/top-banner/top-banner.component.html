@@ -1,36 +1,31 @@
-<!-- Full-width banner -->
-<div class="relative w-full h-[400px] mb-8">
+<div class="relative w-full h-96 md:h-[500px] mb-12 group">
+  <!-- Image Slides -->
   @for (image of bannerImages; track image; let i = $index) {
-    <img
-      [alt]="'Banner ' + (i + 1)"
-      [class.opacity-0]="i !== currentBannerIndex"
-      [class.opacity-100]="i === currentBannerIndex"
-      [src]="image"
-      class="absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-500">
-  }
-  <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-4">
-    <div class="container mx-auto">
-      <h2 class="text-3xl font-bold">Welcome to Our Porcelain Collection</h2>
-      <p class="mt-2">Discover elegance in every piece</p>
+    <div class="absolute inset-0 w-full h-full transition-opacity duration-1000 ease-in-out" [class.opacity-100]="i === currentBannerIndex" [class.opacity-0]="i !== currentBannerIndex">
+      <img [src]="image" [alt]="'Banner Image ' + (i + 1)" class="w-full h-full object-cover">
+      <div class="absolute inset-0 bg-black/30"></div> <!-- Dark overlay for better text contrast -->
     </div>
+  }
+
+  <!-- Text Content -->
+  <div class="relative container mx-auto h-full flex flex-col justify-center items-start text-white p-8">
+    <h2 class="text-4xl md:text-6xl font-serif font-bold mb-4 shadow-lg">The Art of Porcelain</h2>
+    <p class="text-lg md:text-xl max-w-lg shadow-md">Experience the fusion of timeless tradition and modern design in every piece.</p>
+    <app-button customClass="mt-8 bg-white/90 text-secondary hover:bg-white backdrop-blur-sm">Explore Collections</app-button>
   </div>
 
   <!-- Navigation Arrows -->
-  <app-button (click)="prevSlide()" color="light" size="sm" shape="rounded-full" customClass="absolute top-1/2 left-4 transform -translate-y-1/2 shadow-md">
-    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-    </svg>
-  </app-button>
-  <app-button (click)="nextSlide()" color="light" size="sm" shape="rounded-full" customClass="absolute top-1/2 right-4 transform -translate-y-1/2 shadow-md">
-    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-    </svg>
-  </app-button>
+  <button (click)="prevSlide()" class="absolute top-1/2 left-4 -translate-y-1/2 bg-white/50 hover:bg-white text-secondary p-2 rounded-full transition-opacity duration-300 opacity-0 group-hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-white">
+    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+  </button>
+  <button (click)="nextSlide()" class="absolute top-1/2 right-4 -translate-y-1/2 bg-white/50 hover:bg-white text-secondary p-2 rounded-full transition-opacity duration-300 opacity-0 group-hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-white">
+    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+  </button>
 
   <!-- Navigation Dots -->
-  <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+  <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex space-x-3">
     @for (image of bannerImages; track image; let i = $index) {
-      <app-button (click)="goToSlide(i)" [class.bg-gray-400]="i !== currentBannerIndex" [class.bg-white]="i === currentBannerIndex" customClass="w-3 h-3 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"></app-button>
+      <button (click)="goToSlide(i)" class="w-3 h-3 rounded-full transition-colors duration-300" [ngClass]="i === currentBannerIndex ? 'bg-white' : 'bg-white/50 hover:bg-white'"></button>
     }
   </div>
 </div>

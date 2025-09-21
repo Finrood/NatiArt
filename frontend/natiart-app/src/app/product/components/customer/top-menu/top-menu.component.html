@@ -1,53 +1,78 @@
-<div class="bg-primary-lighter shadow-input">
-  <div class="container mx-auto px-4 py-4 sm:py-6 flex flex-col sm:flex-row justify-between items-center">
-    <h1 class="text-2xl sm:text-3xl font-light tracking-wider mb-4 sm:mb-0">PORCELAIN ELEGANCE</h1>
-
-    <nav class="hidden sm:flex space-x-6">
-      <a class="hover:text-primary transition-colors" href="#">Home</a>
-      <a class="hover:text-primary transition-colors" href="#">Collections</a>
-      <a class="hover:text-primary transition-colors" href="#">About</a>
-      <a class="hover:text-primary transition-colors" href="#">Contact</a>
-    </nav>
-
-    <div class="flex items-center space-x-4">
-      <svg class="w-5 h-5 text-secondary hover:text-primary cursor-pointer" fill="none"
-        stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round"
-        stroke-width="2"></path>
-      </svg>
-
-      <div (mouseenter)="showCartModal()" (mouseleave)="hideCartModal()" class="relative cart-container">
-        <svg class="w-5 h-5 text-secondary hover:text-primary" fill="none" stroke="currentColor"
-          viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path
-            d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-            stroke-linecap="round" stroke-linejoin="round"
-          stroke-width="2"></path>
-        </svg>
-        @if ((cartItemCount$ | async); as count) {
-          <span
-            class="absolute -top-2 -right-2 bg-error text-white rounded-full text-xs px-1.5">
-            {{ count }}
-          </span>
-        }
-        @if (isCartHovered) {
-          <app-cart-modal></app-cart-modal>
-        }
+<header class="sticky top-0 bg-background/80 backdrop-blur-lg z-50 shadow-sm border-b border-primary-lighter/30 font-sans">
+  <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-20">
+      <!-- Logo -->
+      <div class="flex-shrink-0">
+        <a routerLink="/dashboard" class="text-2xl font-semibold font-serif text-primary-dark tracking-wider">Porcelain Elegance</a>
       </div>
 
-      <svg (click)="toggleMobileMenu()" class="w-5 h-5 text-secondary hover:text-primary sm:hidden" fill="none"
-        stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
-      </svg>
+      <!-- Desktop Navigation -->
+      <nav class="hidden lg:flex items-center space-x-8">
+        <a routerLink="/dashboard" class="text-secondary hover:text-primary transition-colors duration-200">Home</a>
+        <a routerLink="/products" class="text-secondary hover:text-primary transition-colors duration-200">Collections</a>
+        <a routerLink="/about" class="text-secondary hover:text-primary transition-colors duration-200">About</a>
+        <a routerLink="/contact" class="text-secondary hover:text-primary transition-colors duration-200">Contact</a>
+      </nav>
+
+      <!-- Icons & Actions -->
+      <div class="flex items-center space-x-4">
+        <!-- Search -->
+        <div class="relative hidden md:block">
+          <input type="search" placeholder="Search..." class="bg-surface-variant/50 rounded-full py-2 pl-10 pr-4 w-48 focus:w-56 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary/50">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-secondary-light" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+        </div>
+
+        <!-- Cart -->
+        <div (mouseenter)="showCartModal()" (mouseleave)="hideCartModal()" class="relative cart-container">
+          <a routerLink="/cart" class="relative block text-secondary hover:text-primary transition-colors">
+            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+            @if ((cartItemCount$ | async); as count) {
+              @if (count > 0) {
+                <span class="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-error text-white text-xs font-bold">{{ count }}</span>
+              }
+            }
+          </a>
+          @if (isCartHovered) {
+            <app-cart-modal></app-cart-modal>
+          }
+        </div>
+
+        <!-- User Account -->
+        <div class="hidden lg:block">
+          @if (isLoggedIn) {
+            <a routerLink="/account" class="text-secondary hover:text-primary transition-colors">My Account</a>
+          } @else {
+            <a routerLink="/login" class="text-secondary hover:text-primary transition-colors">Login</a>
+          }
+        </div>
+
+        <!-- Mobile Menu Button -->
+        <div class="lg:hidden">
+          <button (click)="toggleMobileMenu()" class="text-secondary hover:text-primary">
+            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
+  <!-- Mobile Menu Overlay -->
   @if (isMobileMenuOpen) {
-    <div class="md:hidden bg-white px-4 py-2">
-      <a class="block py-2 hover:text-primary transition-colors" href="#">Home</a>
-      <a class="block py-2 hover:text-primary transition-colors" href="#">Collections</a>
-      <a class="block py-2 hover:text-primary transition-colors" href="#">About</a>
-      <a class="block py-2 hover:text-primary transition-colors" href="#">Contact</a>
+    <div class="lg:hidden fixed inset-0 bg-black/40 z-40" (click)="toggleMobileMenu()"></div>
+    <div class="lg:hidden fixed inset-y-0 right-0 bg-background w-72 shadow-xl z-50 p-6 transform transition-transform duration-300 ease-in-out" [class.translate-x-0]="isMobileMenuOpen" [class.translate-x-full]="!isMobileMenuOpen">
+      <nav class="flex flex-col space-y-6 text-lg">
+        <a routerLink="/dashboard" class="text-secondary hover:text-primary transition-colors duration-200">Home</a>
+        <a routerLink="/products" class="text-secondary hover:text-primary transition-colors duration-200">Collections</a>
+        <a routerLink="/about" class="text-secondary hover:text-primary transition-colors duration-200">About</a>
+        <a routerLink="/contact" class="text-secondary hover:text-primary transition-colors duration-200">Contact</a>
+        <hr class="border-primary-lighter/50">
+        @if (isLoggedIn) {
+          <a routerLink="/account" class="text-secondary hover:text-primary transition-colors">My Account</a>
+          <a routerLink="/logout" class="text-secondary hover:text-primary transition-colors">Logout</a>
+        } @else {
+          <a routerLink="/login" class="text-secondary hover:text-primary transition-colors">Login</a>
+        }
+      </nav>
     </div>
   }
-</div>
+</header>

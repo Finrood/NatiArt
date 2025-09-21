@@ -1,30 +1,44 @@
-import {Component, HostListener, OnInit} from '@angular/core';
+import {Component, HostListener, OnDestroy, OnInit} from '@angular/core';
 import { AsyncPipe } from "@angular/common";
 import {CartService} from "../../../service/cart.service";
-import {Observable} from "rxjs";
+import {Observable, Subscription} from "rxjs";
 import {CartModalComponent} from "../cart-modal/cart-modal.component";
+import {AuthenticationService} from "../../../../directory/service/authentication.service";
+import {RouterLink} from "@angular/router";
 
 @Component({
     selector: 'app-top-menu',
     imports: [
     CartModalComponent,
-    AsyncPipe
+    AsyncPipe,
+    RouterLink
 ],
     templateUrl: './top-menu.component.html',
     styleUrl: './top-menu.component.css'
 })
-export class TopMenuComponent implements OnInit {
+export class TopMenuComponent implements OnInit, OnDestroy {
   isLoggedIn = false;
   cartItemCount$: Observable<number>;
   isCartHovered = false;
   isMobileMenuOpen = false;
 
-  constructor(private cartService: CartService) {
+  private authSubscription: Subscription | undefined;
+
+  constructor(
+    private cartService: CartService,
+    private authService: AuthenticationService
+  ) {
     this.cartItemCount$ = this.cartService.getCartCount();
   }
 
   ngOnInit() {
-    // Initialize any necessary data
+    this.authSubscription = this.authService.isLoggedIn$.subscribe(isLoggedIn => {
+      this.isLoggedIn = isLoggedIn;
+    });
+  }
+
+  ngOnDestroy() {
+    this.authSubscription?.unsubscribe();
   }
 
   @HostListener('document:click', ['$event'])
@@ -49,14 +63,6 @@ export class TopMenuComponent implements OnInit {
         this.isCartHovered = false;
       }
     }, 200);
-  }
-
-  login() {
-    this.isLoggedIn = true;
-  }
-
-  logout() {
-    this.isLoggedIn = false;
   }
 
   search(term: string) {
