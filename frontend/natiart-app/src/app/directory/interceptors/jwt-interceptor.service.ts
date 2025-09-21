@@ -19,8 +19,11 @@ const isExcludedDomain = (url: string): boolean => {
 const isAuthRequest = (url: string): boolean =>
   url.includes('/register-user') || url.includes('/login') || url.includes("/register-ghost-user");
 
+const isRefreshTokenRequest = (url: string): boolean =>
+  url.includes('/refresh-token');
+
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
-  if (isExcludedDomain(req.url) || isAuthRequest(req.url)) {
+  if (isExcludedDomain(req.url) || isAuthRequest(req.url) || isRefreshTokenRequest(req.url)) {
     return next(req);
   }
 
