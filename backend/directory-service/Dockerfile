@@ -7,12 +7,11 @@ COPY backend/gradle/ gradle/
 COPY backend/gradlew gradlew
 COPY backend/settings.gradle.kts settings.gradle.kts
 COPY backend/build.gradle.kts build.gradle.kts
+COPY backend/directory-service/ directory-service/
+COPY backend/product-service/ product-service/
 
 # Download dependencies to cache them
 RUN ./gradlew --no-daemon dependencies
-
-# Copy source code
-COPY backend/directory-service directory-service/
 
 # Build the application, skipping tests
 WORKDIR /app/directory-service
