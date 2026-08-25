@@ -1,10 +1,13 @@
 package com.portcelana.natiart.controller;
 
+import com.portcelana.natiart.dto.AuthenticationResponseDto;
 import com.portcelana.natiart.dto.payment.PaymentCreationRequest;
 import com.portcelana.natiart.dto.payment.PaymentCreationResponse;
 import com.portcelana.natiart.dto.payment.PaymentPixQrCodeResponse;
 import com.portcelana.natiart.dto.payment.PaymentStatusResponse;
 import com.portcelana.natiart.service.PaymentService;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,12 +24,16 @@ public class PaymentController {
     }
 
     @GetMapping("/api/payment/{paymentId}/status")
-    public PaymentStatusResponse getPaymentStatus(@PathVariable String paymentId) {
-        return paymentService.getPaymentStatus(paymentId);
+    @PreAuthorize("isAuthenticated()")
+    public PaymentStatusResponse getPaymentStatus(@PathVariable String paymentId,
+                                                  @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
+        return paymentService.getPaymentStatus(paymentId, principal != null ? principal.getExternalId() : null);
     }
 
     @GetMapping("/api/payment/{paymentId}/pixQrCode")
-    public PaymentPixQrCodeResponse getPixQrCode(@PathVariable String paymentId) {
-        return paymentService.getPixQrCode(paymentId);
+    @PreAuthorize("isAuthenticated()")
+    public PaymentPixQrCodeResponse getPixQrCode(@PathVariable String paymentId,
+                                                 @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
+        return paymentService.getPixQrCode(paymentId, principal != null ? principal.getExternalId() : null);
     }
 }

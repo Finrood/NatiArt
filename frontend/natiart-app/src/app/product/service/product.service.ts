@@ -19,7 +19,8 @@ export class ProductService {
   }
 
   getProductsByCategory(categoryId: string): Observable<any> {
-    return this.http.get<any>(this.apiUrl);
+    const params = {categoryId};
+    return this.http.get<any>(this.apiUrl, {params});
   }
 
   getFeaturedProducts(): Observable<any> {

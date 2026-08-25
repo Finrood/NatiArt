@@ -27,20 +27,13 @@ export class PaymentService {
         success: boolean;
         encodedImage: string;
         payload: string;
-        expirationDate: [number, number, number, number, number, number];
+        expirationDate: string | [number, number, number, number, number, number];
       }>(`${this.apiUrl}/api/payment/${paymentId}/pixQrCode`)
       .pipe(
         map((response) => ({
           encodedImage: `data:image/png;base64,${response.encodedImage}`,
           payload: response.payload,
-          expirationDate: new Date(
-            response.expirationDate[0], // Year
-            response.expirationDate[1] - 1, // Month (0-indexed)
-            response.expirationDate[2], // Day
-            response.expirationDate[3], // Hour
-            response.expirationDate[4], // Minute
-            response.expirationDate[5] // Second
-          ),
+          expirationDate: parseExpirationDate(response.expirationDate),
         }))
       );
   }
@@ -51,4 +44,11 @@ export class PaymentService {
       status: string;
     }>(`${this.apiUrl}/api/payment/${paymentId}/status`);
   }
+}
+
+function parseExpirationDate(value: string | [number, number, number, number, number, number]): Date {
+  if (Array.isArray(value)) {
+    return new Date(value[0], value[1] - 1, value[2], value[3], value[4], value[5]);
+  }
+  return new Date(value);
 }
