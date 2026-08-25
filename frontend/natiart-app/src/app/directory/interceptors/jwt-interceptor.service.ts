@@ -23,17 +23,20 @@ const isAuthRequest = (url: string): boolean =>
 const isRefreshTokenRequest = (url: string): boolean =>
   url.includes('/refresh-token');
 
+const RETRY_HEADER = 'X-Auth-Retried';
+
 let refreshInProgress$: BehaviorSubject<string | null> | null = null;
 
 const performRefresh = (http: HttpClient, tokenService: TokenService): BehaviorSubject<string | null> => {
   if (!refreshInProgress$) {
-    refreshInProgress$ = new BehaviorSubject<string | null>(null);
+    const subject = new BehaviorSubject<string | null>(null);
+    refreshInProgress$ = subject;
 
     const refreshTokenValue = tokenService.refreshToken;
     if (!refreshTokenValue) {
-      refreshInProgress$.error(new Error('No refresh token available'));
       refreshInProgress$ = null;
-      return new BehaviorSubject<string | null>(null);
+      subject.error(new Error('No refresh token available'));
+      return subject;
     }
 
     http.post<{ accessToken: string; refreshToken: string }>(
@@ -44,19 +47,22 @@ const performRefresh = (http: HttpClient, tokenService: TokenService): BehaviorS
       next: (response) => {
         tokenService.accessToken = response.accessToken;
         tokenService.refreshToken = response.refreshToken;
-        refreshInProgress$?.next(response.accessToken);
-        refreshInProgress$?.complete();
-        refreshInProgress$ = null;
+        subject.next(response.accessToken);
+        subject.complete();
+        if (refreshInProgress$ === subject) {
+          refreshInProgress$ = null;
+        }
       },
       error: (error) => {
-        const pending = refreshInProgress$;
-        refreshInProgress$ = null;
         tokenService.clearTokens();
-        pending?.error(error);
+        if (refreshInProgress$ === subject) {
+          refreshInProgress$ = null;
+        }
+        subject.error(error);
       }
     });
   }
-  return refreshInProgress$;
+  return refreshInProgress$!;
 };
 
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
@@ -68,13 +74,17 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const http = inject(HttpClient);
 
-  const cloned = tokenService.accessToken
+  const alreadyRetried = req.headers.has(RETRY_HEADER);
+
+  const cloned = (tokenService.accessToken && !alreadyRetried)
     ? req.clone({setHeaders: {Authorization: `Bearer ${tokenService.accessToken}`}})
-    : req;
+    : (alreadyRetried
+      ? req.clone({headers: req.headers.delete(RETRY_HEADER)})
+      : req);
 
   return next(cloned).pipe(
     catchError(error => {
-      if (error.status === 401 && !isAuthRequest(req.url) && !isRefreshTokenRequest(req.url)) {
+      if (error.status === 401 && !isAuthRequest(req.url) && !isRefreshTokenRequest(req.url) && !alreadyRetried) {
         if (!tokenService.refreshToken) {
           router.navigate(['/login']);
           return throwError(() => error);
@@ -82,7 +92,9 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
         return performRefresh(http, tokenService).pipe(
           filter(token => token !== null),
           first(),
-          switchMap(token => next(req.clone({setHeaders: {Authorization: `Bearer ${token}`}}))),
+          switchMap(token => next(req.clone({
+            setHeaders: {Authorization: `Bearer ${token}`, [RETRY_HEADER]: '1'}
+          }))),
           catchError(refreshError => {
             router.navigate(['/login']);
             return throwError(() => refreshError);
