@@ -35,7 +35,6 @@ public interface ProductManager {
 
     Product updateProduct(ProductDto productDto, List<InputFile> imagesInput);
 
-    Product decreaseProductStockQuantityBy(String productId, int quantityToDecrease);
 
     void deleteProduct(String id);
 

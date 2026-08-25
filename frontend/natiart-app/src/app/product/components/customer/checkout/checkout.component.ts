@@ -356,7 +356,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   private generateRandomPassword(): string {
-    return Math.random().toString(36).slice(-12);
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    const randomValues = new Uint32Array(16);
+    crypto.getRandomValues(randomValues);
+    return Array.from(randomValues, value => alphabet[value % alphabet.length]).join('');
   }
 
   private setInfoMessage(message: string): void {

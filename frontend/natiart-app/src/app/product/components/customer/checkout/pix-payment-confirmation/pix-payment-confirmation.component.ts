@@ -1,6 +1,6 @@
 import {Component, OnDestroy, OnInit} from '@angular/core';
-import {switchMap} from "rxjs/operators";
-import {interval, Subscription} from "rxjs";
+import {switchMap, tap} from "rxjs/operators";
+import {catchError, interval, Subscription, throwError} from "rxjs";
 import {PaymentService} from "../../../../service/payment.service";
 import {ActivatedRoute, Router} from "@angular/router";
 import { DatePipe, NgClass } from "@angular/common";
@@ -46,8 +46,18 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   }
 
   startPolling(paymentId: string) {
+    let consecutiveErrors = 0;
     this.pollingInterval = interval(5000)
-      .pipe(switchMap(() => this.paymentService.getPaymentStatus(paymentId)))
+      .pipe(switchMap(() => this.paymentService.getPaymentStatus(paymentId).pipe(
+        catchError(error => {
+          consecutiveErrors++;
+          if (consecutiveErrors >= 5) {
+            this.stopPolling();
+          }
+          return throwError(() => error);
+        }),
+        tap(() => (consecutiveErrors = 0))
+      )))
       .subscribe((status) => {
         this.paymentStatus = status.status;
         if (this.paymentStatus === 'COMPLETED') {

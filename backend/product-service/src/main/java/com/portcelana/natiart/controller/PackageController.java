@@ -2,6 +2,7 @@ package com.portcelana.natiart.controller;
 
 import com.portcelana.natiart.dto.PackageDto;
 import com.portcelana.natiart.service.PackageManager;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,11 +31,13 @@ public class PackageController {
     }
 
     @PostMapping("/packages/create")
+    @PreAuthorize("hasRole('ADMIN')")
     public PackageDto createCategory(@RequestBody PackageDto packageDto) {
         return PackageDto.from(packageManager.createPackage(packageDto));
     }
 
     @PutMapping("/packages/{packageId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public PackageDto updateCategory(@PathVariable String packageId, @RequestBody PackageDto packageDto) {
         Assert.isTrue(packageId.equals(packageDto.getId()), "package ids are not equals !");
 
@@ -42,6 +45,7 @@ public class PackageController {
     }
 
     @DeleteMapping("/packages/{packageId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public void deleteCategory(@PathVariable String packageId) {
         packageManager.deletePackage(packageId);
     }
