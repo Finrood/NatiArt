@@ -11,6 +11,7 @@ import java.io.IOException;
 @Component
 public class PerformanceLoggingFilter implements Filter {
     private static final Logger LOGGER = LoggerFactory.getLogger(PerformanceLoggingFilter.class);
+    private static final long SLOW_REQUEST_THRESHOLD_MS = 1_000L;
 
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
@@ -28,7 +29,11 @@ public class PerformanceLoggingFilter implements Filter {
 
         final long duration = System.currentTimeMillis() - startTime;
 
-        LOGGER.info("Request [{}] to [{}] took [{}] ms", method, requestURI, duration);
+        if (duration >= SLOW_REQUEST_THRESHOLD_MS) {
+            LOGGER.info("SLOW request [{}] to [{}] took [{}] ms", method, requestURI, duration);
+        } else {
+            LOGGER.debug("Request [{}] to [{}] took [{}] ms", method, requestURI, duration);
+        }
     }
 
     @Override
