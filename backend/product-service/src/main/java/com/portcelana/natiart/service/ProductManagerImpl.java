@@ -165,19 +165,6 @@ public class ProductManagerImpl implements ProductManager {
 
     @Override
     @Transactional
-    public Product decreaseProductStockQuantityBy(String productId, int quantityToDecrease) {
-        final Product product = getProductOrDie(productId);
-
-        if ((product.getStockQuantity() - quantityToDecrease) < 0) {
-            throw new RuntimeException("Insufficient stock for product with id [%s] " + productId);
-        }
-
-        product.setStockQuantity(product.getStockQuantity() - quantityToDecrease);
-        return productRepository.save(product);
-    }
-
-    @Override
-    @Transactional
     public void deleteProduct(String id) {
         productRepository.deleteById(id);
     }
