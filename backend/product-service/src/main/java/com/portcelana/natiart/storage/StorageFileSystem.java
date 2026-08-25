@@ -4,13 +4,17 @@ import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import org.apache.commons.io.FileUtils;
 import org.apache.poi.util.IOUtils;
 import org.apache.poi.util.TempFile;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.*;
 import java.net.URI;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -18,6 +22,21 @@ import java.util.zip.ZipOutputStream;
 @Component
 public class StorageFileSystem implements Storage {
     private final static String DEFAULT_LOCATION = "/tmp";
+    private static final List<String> DEFAULT_ALLOWED_ROOTS = List.of(
+            System.getProperty("java.io.tmpdir") + "/product-images",
+            System.getProperty("user.dir") + "/product-images"
+    );
+
+    private final List<Path> allowedRoots;
+
+    public StorageFileSystem(@Value("${nati.storage.filesystem.allowed-roots:}") List<String> allowedRoots) {
+        this.allowedRoots = (allowedRoots == null || allowedRoots.isEmpty() ? DEFAULT_ALLOWED_ROOTS : allowedRoots)
+                .stream()
+                .map(Path::of)
+                .map(Path::toAbsolutePath)
+                .map(Path::normalize)
+                .toList();
+    }
 
     @Override
     public String getName() {
@@ -31,10 +50,7 @@ public class StorageFileSystem implements Storage {
 
     @Override
     public InputStream openFile(URI path) {
-        final File file = new File(path);
-        if (!file.exists()) {
-            throw new ResourceNotFoundException("Unable to found file on file system for path: " + path);
-        }
+        final File file = resolveAllowedFile(path);
         try {
             return FileUtils.openInputStream(file);
         } catch (IOException e) {
@@ -42,10 +58,28 @@ public class StorageFileSystem implements Storage {
         }
     }
 
+    private File resolveAllowedFile(URI path) {
+        if (!support(path)) {
+            throw new IllegalArgumentException("Unsupported URI scheme for file storage: " + path);
+        }
+        final File candidate = new File(path);
+        final Path normalizedCandidate;
+        try {
+            normalizedCandidate = candidate.getCanonicalFile().toPath();
+        } catch (IOException e) {
+            throw new ResourceNotFoundException("Unable to resolve requested path: " + path);
+        }
+        for (Path root : allowedRoots) {
+            if (normalizedCandidate.startsWith(root)) {
+                return normalizedCandidate.toFile();
+            }
+        }
+        throw new ResourceNotFoundException("Requested path is outside of the allowed storage roots: " + path);
+    }
+
     @Override
     public boolean exists(URI uri) {
-        final File file = new File(uri);
-        return file.exists();
+        return resolveAllowedFile(uri).exists();
     }
 
     @Override
@@ -75,10 +109,10 @@ public class StorageFileSystem implements Storage {
                 uriSet.forEach((uri) -> {
                     final String path = uri.getPath();
                     final String fileName = Paths.get(path).getFileName().toString();
-                    addZipEntry(zip, fileName, uri);
+                    addZipEntry(zip, fileName, resolveAllowedFile(uri));
                 });
-                return Files.newInputStream(tempFile.toPath(), StandardOpenOption.DELETE_ON_CLOSE);
             }
+            return Files.newInputStream(tempFile.toPath(), StandardOpenOption.DELETE_ON_CLOSE);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -87,7 +121,10 @@ public class StorageFileSystem implements Storage {
     @Override
     public InputStream downloadDirectory(URI uri) {
         try {
-            final File directory = new File(uri);
+            final File directory = resolveAllowedFile(uri);
+            if (!directory.isDirectory()) {
+                throw new ResourceNotFoundException("Requested path is not a directory: " + uri);
+            }
             final File zipFile = TempFile.createTempFile("zip-file", "");
 
             try (final ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(zipFile))) {

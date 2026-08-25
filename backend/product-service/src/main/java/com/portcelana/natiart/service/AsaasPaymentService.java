@@ -10,11 +10,12 @@ import com.portcelana.natiart.dto.payment.asaas.*;
 import com.portcelana.natiart.dto.payment.helper.PaymentMethod;
 import com.portcelana.natiart.dto.payment.helper.PaymentStatus;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -22,15 +23,21 @@ import java.util.Optional;
 
 @Service
 public class AsaasPaymentService implements PaymentService {
-    private final String asaasPaymentUrl = "https://sandbox.asaas.com/api/v3/payments";
-
+    private final String asaasPaymentUrl;
     private final RestTemplate restTemplate;
 
     @Value("${natiart.payment.asaas.apikey}")
     private String asaasApiKey;
 
-    public AsaasPaymentService(RestTemplateBuilder restTemplateBuilder) {
-        this.restTemplate = restTemplateBuilder.build();
+    public AsaasPaymentService(
+            @Value("${natiart.payment.asaas.apikey}") String asaasApiKey,
+            @Value("${natiart.payment.asaas.payments-url:https://sandbox.asaas.com/api/v3/payments}") String asaasPaymentUrl) {
+        this.asaasApiKey = asaasApiKey;
+        this.asaasPaymentUrl = asaasPaymentUrl;
+        final SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(Duration.ofSeconds(15));
+        this.restTemplate = new RestTemplate(factory);
     }
 
     public PaymentCreationResponse createPayment(PaymentCreationRequest paymentCreationRequest) {
@@ -64,7 +71,9 @@ public class AsaasPaymentService implements PaymentService {
         }
     }
 
-    public PaymentPixQrCodeResponse getPixQrCode(String paymentId) {
+    public PaymentPixQrCodeResponse getPixQrCode(String paymentId, String requesterExternalId) {
+        requireOwnedPayment(fetchPaymentOrDie(paymentId).getCustomer(), requesterExternalId);
+
         final HttpEntity<String> entity = new HttpEntity<>(getRequestHeaders());
 
         final ResponseEntity<AsaasPaymentPixQrCodeResponse> response = restTemplate.exchange(
@@ -93,30 +102,45 @@ public class AsaasPaymentService implements PaymentService {
         }
     }
 
-    public PaymentStatusResponse getPaymentStatus(String paymentId) {
-        final HttpEntity<String> entity = new HttpEntity<>(getRequestHeaders());
+    public PaymentStatusResponse getPaymentStatus(String paymentId, String requesterExternalId) {
+        final AsaasPaymentCreationResponse payment = fetchPaymentOrDie(paymentId);
+        requireOwnedPayment(payment.getCustomer(), requesterExternalId);
 
-        final ResponseEntity<AsaasPaymentStatusResponse> response = restTemplate.exchange(
-                String.format("%s/%s/status", asaasPaymentUrl, paymentId),
-                HttpMethod.GET,
-                entity,
-                AsaasPaymentStatusResponse.class
+        return new PaymentStatusResponse(
+                paymentId,
+                convertAsaasPaymentStatusToGeneralPaymentStatus(parseAsaasStatus(payment.getStatus()))
         );
+    }
 
-        if (response.getStatusCode() == HttpStatus.OK) {
-            final Optional<AsaasPaymentStatusResponse> asaasPaymentStatusResponse = Optional.ofNullable(response.getBody());
-            return asaasPaymentStatusResponse
-                    .map(responseBody -> new PaymentStatusResponse(
-                            paymentId,
-                            convertAsaasPaymentStatusToGeneralPaymentStatus(responseBody.getStatus())
-                    ))
-                    .orElseThrow(() -> new IllegalArgumentException("Received a null response body from " + asaasPaymentUrl));
-        } else if (response.getStatusCode() == HttpStatus.UNAUTHORIZED || response.getStatusCode() == HttpStatus.FORBIDDEN) {
-            throw new UserNotAllowedException("Unauthorized api call to " + asaasPaymentUrl);
-        } else if (response.getStatusCode() == HttpStatus.NOT_FOUND) {
+    private AsaasPaymentCreationResponse fetchPaymentOrDie(String paymentId) {
+        final ResponseEntity<AsaasPaymentCreationResponse> response = restTemplate.exchange(
+                String.format("%s/%s", asaasPaymentUrl, paymentId),
+                HttpMethod.GET,
+                new HttpEntity<>(getRequestHeaders()),
+                AsaasPaymentCreationResponse.class
+        );
+        if (response.getStatusCode() == HttpStatus.NOT_FOUND) {
             throw new ResourceNotFoundException(String.format("Payment with id [%s] not found", paymentId));
-        } else {
-            throw new IllegalArgumentException("Bad request");
+        }
+        if (response.getStatusCode() != HttpStatus.OK || response.getBody() == null) {
+            throw new IllegalArgumentException("Received an invalid response from " + asaasPaymentUrl);
+        }
+        return response.getBody();
+    }
+
+    void requireOwnedPayment(String paymentOwnerCustomerId, String requesterExternalId) {
+        if (requesterExternalId == null
+                || paymentOwnerCustomerId == null
+                || !paymentOwnerCustomerId.equals(requesterExternalId)) {
+            throw new UserNotAllowedException("The authenticated user does not own this payment");
+        }
+    }
+
+    private AsaasPaymentStatus parseAsaasStatus(String status) {
+        try {
+            return AsaasPaymentStatus.valueOf(status);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new IllegalArgumentException("Unexpected Asaas status: " + status);
         }
     }
 
