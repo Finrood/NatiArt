@@ -24,6 +24,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
   products = new BehaviorSubject<Product[]>([]);
   imageUrls: { [productId: string]: SafeUrl | null } = {};
   private subscriptions: Subscription[] = [];
+  private objectUrls: string[] = [];
 
   // Personalization modal
   showPersonalizationModal = false;
@@ -43,6 +44,8 @@ export class ProductListComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.subscriptions.forEach(sub => sub.unsubscribe());
+    this.objectUrls.forEach(url => URL.revokeObjectURL(url));
+    this.objectUrls = [];
   }
 
   private getProducts(): void {
@@ -70,6 +73,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
   private fetchImage(productId: string, imagePath: string): void {
     const sub = this.productService.getImage(imagePath).subscribe(blob => {
       const objectUrl = URL.createObjectURL(blob);
+      this.objectUrls.push(objectUrl);
       this.imageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
       this.products.next([...this.products.value]);
     });

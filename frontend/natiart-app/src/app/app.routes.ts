@@ -1,53 +1,54 @@
 import {Routes} from '@angular/router';
-import {LoginComponent} from "./directory/components/auth/login/login.component";
-import {LogoutComponent} from "./directory/components/auth/logout/logout.component";
-import {SignupComponent} from "./directory/components/auth/signup/signup.component";
-import {AdminDashboardComponent} from "./product/components/admin/admin-dashboard/admin-dashboard.component";
-import {DashboardComponent} from "./product/components/customer/dashboard/dashboard.component";
-import {ProductDetailComponent} from "./product/components/customer/product-detail/product-detail.component";
-import {productGuard} from "./product/guards/product-guard.guard";
-import {CartComponent} from "./product/components/customer/cart/cart.component";
-import {CheckoutComponent} from './product/components/customer/checkout/checkout.component';
-import {
-  PixPaymentConfirmationComponent
-} from "./product/components/customer/checkout/pix-payment-confirmation/pix-payment-confirmation.component";
 import {authGuard} from "./directory/guards/auth.guard";
 import {adminGuard} from "./directory/guards/admin.guard";
+import {productGuard} from "./product/guards/product-guard.guard";
 
 export const routes: Routes = [
-  {path: 'login', component: LoginComponent},
-  {path: 'logout', component: LogoutComponent},
-  {path: 'register', component: SignupComponent},
+  {
+    path: 'login',
+    loadComponent: () => import('./directory/components/auth/login/login.component').then(m => m.LoginComponent)
+  },
+  {
+    path: 'logout',
+    loadComponent: () => import('./directory/components/auth/logout/logout.component').then(m => m.LogoutComponent)
+  },
+  {
+    path: 'register',
+    loadComponent: () => import('./directory/components/auth/signup/signup.component').then(m => m.SignupComponent)
+  },
   {
     path: 'dashboard',
-    component: DashboardComponent,
-    canActivate: [authGuard]
+    canActivate: [authGuard],
+    loadComponent: () => import('./product/components/customer/dashboard/dashboard.component').then(m => m.DashboardComponent)
   },
   {
     path: 'product/:id',
-    component: ProductDetailComponent,
     canActivate: [authGuard],
-    canDeactivate: [productGuard]
+    canDeactivate: [productGuard],
+    loadComponent: () => import('./product/components/customer/product-detail/product-detail.component').then(m => m.ProductDetailComponent)
   },
-   {
-     path: 'cart',
-     component: CartComponent,
-     canActivate: [authGuard]
-   },
-   {
-     path: 'checkout',
-     component: CheckoutComponent,
-     canActivate: [authGuard]
-   },
-   {
-     path: 'pix-payment/:paymentId',
-     component: PixPaymentConfirmationComponent,
-     canActivate: [authGuard]
-   },
+  {
+    path: 'cart',
+    canActivate: [authGuard],
+    loadComponent: () => import('./product/components/customer/cart/cart.component').then(m => m.CartComponent)
+  },
+  {
+    path: 'checkout',
+    canActivate: [authGuard],
+    loadComponent: () => import('./product/components/customer/checkout/checkout.component').then(m => m.CheckoutComponent)
+  },
+  {
+    path: 'pix-payment/:paymentId',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./product/components/customer/checkout/pix-payment-confirmation/pix-payment-confirmation.component')
+        .then(m => m.PixPaymentConfirmationComponent)
+  },
   {
     path: 'admin',
-    component: AdminDashboardComponent,
     canActivate: [authGuard, adminGuard],
+    loadComponent: () =>
+      import('./product/components/admin/admin-dashboard/admin-dashboard.component').then(m => m.AdminDashboardComponent),
     children: [
       {
         path: 'dashboard',

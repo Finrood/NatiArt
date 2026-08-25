@@ -1,8 +1,19 @@
-import {CpfFormatDirectiveDirective} from './cpf-format-directive.directive';
+import {ElementRef, Renderer2} from '@angular/core';
+import {TestBed} from '@angular/core/testing';
+import {CpfFormatDirective} from './cpf-format-directive.directive';
 
-describe('CpfFormatDirectiveDirective', () => {
-  it('should create an instance', () => {
-    const directive = new CpfFormatDirectiveDirective();
+describe('CpfFormatDirective', () => {
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        {provide: ElementRef, useValue: {nativeElement: document.createElement('input')}},
+        Renderer2,
+      ]
+    });
+  });
+
+  it('should be created', () => {
+    const directive = TestBed.inject(CpfFormatDirective);
     expect(directive).toBeTruthy();
   });
 });
