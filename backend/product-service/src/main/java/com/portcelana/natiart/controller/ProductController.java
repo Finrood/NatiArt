@@ -14,6 +14,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -75,6 +76,7 @@ public class ProductController {
     }
 
     @PostMapping(value = "/products/create")
+    @PreAuthorize("hasRole('ADMIN')")
     public ProductDto createProduct(@RequestPart("productDto") ProductDto productDto,
                                     @RequestPart(value = "newImages", required = false) List<MultipartFile> newImages) throws IOException {
         LOGGER.info("Creating new product with label [{}] description [{}]",
@@ -87,6 +89,7 @@ public class ProductController {
     }
 
     @PutMapping("/products/{productId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ProductDto updateProduct(@PathVariable String productId,
                                     @RequestPart("productDto") ProductDto productDto,
                                     @RequestPart(value = "newImages", required = false) List<MultipartFile> newImages) throws IOException {
@@ -98,11 +101,13 @@ public class ProductController {
     }
 
     @PatchMapping("/products/{productId}/visibility/inverse")
+    @PreAuthorize("hasRole('ADMIN')")
     public ProductDto inverseProductVisibility(@PathVariable String productId) {
         return ProductDto.from(productManager.inverseVisibility(productId));
     }
 
     @DeleteMapping("/products/{productId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public void deleteProduct(@PathVariable String productId) {
         productManager.deleteProduct(productId);
     }

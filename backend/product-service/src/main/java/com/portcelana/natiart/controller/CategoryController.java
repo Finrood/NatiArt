@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,6 +41,7 @@ public class CategoryController {
     }
 
     @PostMapping("/categories/create")
+    @PreAuthorize("hasRole('ADMIN')")
     public CategoryDto createCategory(@RequestBody CategoryDto categoryDto) {
         LOGGER.info("Creating new category with label [{}] description [{}] and active [{}]",
                 categoryDto.getLabel(),
@@ -50,6 +52,7 @@ public class CategoryController {
     }
 
     @PutMapping("/categories/{categoryId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public CategoryDto updateCategory(@PathVariable String categoryId, @RequestBody CategoryDto categoryDto) {
         Assert.isTrue(categoryId.equals(categoryDto.getId()), "category ids are not equals !");
 
@@ -63,6 +66,7 @@ public class CategoryController {
     }
 
     @PatchMapping("/categories/{categoryId}/visibility/inverse")
+    @PreAuthorize("hasRole('ADMIN')")
     public CategoryDto inverseCategoryVisibility(@PathVariable String categoryId) {
         LOGGER.info("Inverting visibility of category with id [{}]", categoryId);
 
@@ -70,6 +74,7 @@ public class CategoryController {
     }
 
     @DeleteMapping("/categories/{categoryId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public void deleteCategory(@PathVariable String categoryId) {
         LOGGER.info("Deleting category with id [{}]", categoryId);
 

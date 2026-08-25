@@ -50,7 +50,7 @@ public class AuthenticationController {
     public ResponseEntity<Boolean> logout(@TargetUser String username, HttpServletRequest request) {
         LOGGER.info("User [{}] is logging out", username);
 
-        authenticationManager.logout(request);
+        authenticationManager.logout(request, username);
         return ResponseEntity.ok(true);
     }
 

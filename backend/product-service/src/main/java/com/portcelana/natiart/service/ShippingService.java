@@ -5,13 +5,14 @@ import com.portcelana.natiart.dto.shipping.ShippingEstimateRequest;
 import com.portcelana.natiart.service.support.MelhorenvioShippingCalculationRequest;
 import com.portcelana.natiart.service.support.MelhorenvioShippingCalculationResponse;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,10 +25,12 @@ public class ShippingService {
     private final String apiUrl;
     private final String apiToken;
 
-    public ShippingService(RestTemplateBuilder restTemplateBuilder,
-                           @Value("${melhorenvio.api.url}") String apiUrl,
+    public ShippingService(@Value("${melhorenvio.api.url}") String apiUrl,
                            @Value("${melhorenvio.api.token}") String apiToken) {
-        this.restTemplate = restTemplateBuilder.build();
+        final SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(Duration.ofSeconds(15));
+        this.restTemplate = new RestTemplate(factory);
         this.apiUrl = apiUrl;
         this.apiToken = apiToken;
     }
