@@ -18,8 +18,7 @@ class AsaasPaymentServiceTest {
     private RestTemplate restTemplate;
 
     private AsaasPaymentService newService() {
-        RestTemplateBuilder builder = mock(RestTemplateBuilder.class);
-        return new AsaasPaymentService(builder);
+        return new AsaasPaymentService("test-api-key", "https://sandbox.asaas.com/api/v3/payments");
     }
 
     @Test
