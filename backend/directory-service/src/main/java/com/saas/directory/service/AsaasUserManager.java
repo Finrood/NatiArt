@@ -4,26 +4,36 @@ import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationRequest;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
 @Service
 public class AsaasUserManager {
-    private final String asaasCustomerUrl = "https://sandbox.asaas.com/api/v3/customers";
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(15);
 
+    private final String asaasCustomerUrl;
     private final RestTemplate restTemplate;
 
     @Value("${natiart.payment.asaas.apikey}")
     private String asaasApiKey;
 
-    public AsaasUserManager(RestTemplateBuilder restTemplateBuilder) {
-        this.restTemplate = restTemplateBuilder.build();
+    public AsaasUserManager(
+            @Value("${natiart.payment.asaas.apikey}") String asaasApiKey,
+            @Value("${natiart.payment.asaas.customers-url:https://sandbox.asaas.com/api/v3/customers}") String asaasCustomerUrl) {
+        this.asaasApiKey = asaasApiKey;
+        this.asaasCustomerUrl = asaasCustomerUrl;
+        final SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(CONNECT_TIMEOUT);
+        factory.setReadTimeout(READ_TIMEOUT);
+        this.restTemplate = new RestTemplate(factory);
     }
 
     public AsaasCustomerCreationResponse registerUser(UserDto userDto) throws Exception {
@@ -31,11 +41,10 @@ public class AsaasUserManager {
 
         final HttpEntity<AsaasCustomerCreationRequest> asaasPaymentCreationRequestHttpEntity = new HttpEntity<>(AsaasCustomerCreationRequest.from(userDto), headers);
 
-        final ResponseEntity<AsaasCustomerCreationResponse> response;
         try {
-            response = restTemplate.postForEntity(asaasCustomerUrl, asaasPaymentCreationRequestHttpEntity, AsaasCustomerCreationResponse.class);
+            final AsaasCustomerCreationResponse response = restTemplate.postForObject(asaasCustomerUrl, asaasPaymentCreationRequestHttpEntity, AsaasCustomerCreationResponse.class);
 
-            return Optional.ofNullable(response.getBody())
+            return Optional.ofNullable(response)
                     .orElseThrow(() -> new RuntimeException("Received a null response body from " + asaasCustomerUrl));
         } catch (HttpClientErrorException e) {
             throw new AsaasApiException(
@@ -43,7 +52,7 @@ public class AsaasUserManager {
                 (HttpStatus) e.getStatusCode()
             );
         } catch (Exception e) {
-            throw new Exception("Unexpected error during asaas user registration: " + e);
+            throw new Exception("Unexpected error during asaas user registration: " + e.getMessage(), e);
         }
     }
 
