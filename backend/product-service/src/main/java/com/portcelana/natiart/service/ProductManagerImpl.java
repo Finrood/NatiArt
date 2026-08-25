@@ -12,6 +12,7 @@ import com.portcelana.natiart.storage.StorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,8 +22,11 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductManagerImpl implements ProductManager {
@@ -73,25 +77,37 @@ public class ProductManagerImpl implements ProductManager {
     @Override
     @Transactional(readOnly = true)
     public List<Product> getProducts(Pageable pageable) {
-       return  productRepository.findAllWithImages(pageable).getContent();
+        return fetchPageWithImages(productRepository.findAllIds(pageable));
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Product> getNewProducts(Pageable pageable) {
-        return productRepository.findAllByNewProduct(true, pageable).getContent();
+        return fetchPageWithImages(productRepository.findAllIdsByNewProduct(true, pageable));
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Product> getFeaturedProducts(Pageable pageable) {
-        return productRepository.findAllByFeaturedProduct(true, pageable).getContent();
+        return fetchPageWithImages(productRepository.findAllIdsByFeaturedProduct(true, pageable));
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Product> getProductsByCategory(Category category, Pageable pageable) {
-        return productRepository.findAllByCategory(category, pageable).getContent();
+        return fetchPageWithImages(productRepository.findAllIdsByCategory(category, pageable));
+    }
+
+    private List<Product> fetchPageWithImages(Page<String> idPage) {
+        final List<String> ids = idPage.getContent();
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        final Map<String, Product> byId = productRepository.findAllWithImagesByIds(ids).stream()
+                .collect(Collectors.toMap(Product::getId, Function.identity()));
+        return ids.stream()
+                .map(byId::get)
+                .toList();
     }
     @Override
     @Transactional(readOnly = true)
