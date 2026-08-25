@@ -8,7 +8,7 @@ import com.portcelana.natiart.dto.payment.PaymentStatusResponse;
 public interface PaymentService {
     PaymentCreationResponse createPayment(PaymentCreationRequest paymentCreationRequest);
 
-    PaymentPixQrCodeResponse getPixQrCode(String paymentId);
+    PaymentPixQrCodeResponse getPixQrCode(String paymentId, String requesterExternalId);
 
-    PaymentStatusResponse getPaymentStatus(String paymentId);
+    PaymentStatusResponse getPaymentStatus(String paymentId, String requesterExternalId);
 }
