@@ -16,7 +16,7 @@ export class AuthenticationService implements OnDestroy {
   private readonly apiUrl: string = `${environment.api.directory.url}`;
   private readonly tokenCheckInterval = 60000; // 1 minute
   private readonly tokenRefreshBuffer = 300000; // 5 minutes before expiration
-  private readonly refreshTokenRefreshBuffer = 86400000 * 7; // 7 days before refresh token expiration
+  private readonly refreshTokenRefreshBuffer = 86400000; // refresh again 1 day before the 7-day refresh token expires
   private readonly inactivityTimeout = 900000; // 15 minutes
 
   private inactivityTimerSubscription: Subscription | undefined;
@@ -160,11 +160,6 @@ export class AuthenticationService implements OnDestroy {
     const accessToken = this.tokenService.accessToken;
     const refreshToken = this.tokenService.refreshToken;
 
-    console.log('initializeAuthState: Access Token:', accessToken);
-    console.log('initializeAuthState: Refresh Token:', refreshToken);
-    console.log('initializeAuthState: Access Token Expired:', this.isTokenExpired(accessToken));
-    console.log('initializeAuthState: Refresh Token Expired:', this.isTokenExpired(refreshToken));
-
     if (accessToken && !this.isTokenExpired(accessToken)) {
       return this.fetchCurrentUser().pipe(
         map(() => void 0), // Transform to Observable<void>
@@ -237,11 +232,10 @@ export class AuthenticationService implements OnDestroy {
     try {
       const payload = token.split('.')[1];
       if (!payload) return 0;
-      const decodedPayload = JSON.parse(atob(payload));
-      const expiration = (decodedPayload.exp || 0) * 1000;
-      console.log('getTokenExpiration: Decoded Payload:', decodedPayload);
-      console.log('getTokenExpiration: Expiration Time (ms):', expiration);
-      return expiration;
+      const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '=');
+      const decodedPayload = JSON.parse(atob(padded));
+      return (decodedPayload.exp || 0) * 1000;
     } catch (e) {
       console.error("Error decoding token: ", e);
       return 0;
@@ -250,7 +244,6 @@ export class AuthenticationService implements OnDestroy {
 
   public resetAuthStateAndRedirect() {
     this.clearLocalAuthState();
-    console.log('resetAuthStateAndRedirect called. Current window.location.pathname:', window.location.pathname);
     if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register') && !window.location.pathname.includes('/checkout')) {
       this.router.navigate(['/login']);
     }

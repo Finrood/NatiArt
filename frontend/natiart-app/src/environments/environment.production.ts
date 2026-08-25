@@ -5,7 +5,7 @@ export const environment = {
       url: 'https://natiart.samuelpetre.com/server/directory',
       endpoints: {
         login: '/login',
-        logout: '/logout',
+        logout: '/signout',
         current: '/current',
         user: '/users',
       }
