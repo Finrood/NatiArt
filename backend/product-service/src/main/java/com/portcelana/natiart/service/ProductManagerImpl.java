@@ -23,6 +23,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
@@ -107,6 +108,9 @@ public class ProductManagerImpl implements ProductManager {
                 .collect(Collectors.toMap(Product::getId, Function.identity()));
         return ids.stream()
                 .map(byId::get)
+                // A product deleted between the id-page query and the fetch query simply drops from the page
+                // instead of surfacing a NullPointerException to the storefront.
+                .filter(Objects::nonNull)
                 .toList();
     }
     @Override
