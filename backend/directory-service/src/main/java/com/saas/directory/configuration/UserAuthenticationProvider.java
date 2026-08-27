@@ -55,6 +55,11 @@ public class UserAuthenticationProvider {
 
     @PostConstruct
     protected void init() {
+        if (secretKey == null || secretKey.isBlank()) {
+            throw new IllegalStateException(
+                    "saas.security.jwt.key.secret is blank: set the SAAS_SECURITY_JWT_KEY_SECRET environment variable "
+                            + "(a strong secret is required to sign authentication tokens)");
+        }
         secretKey = Base64.getEncoder().encodeToString(secretKey.getBytes());
     }
 
