@@ -1,19 +1,13 @@
-import {ElementRef, Renderer2} from '@angular/core';
-import {TestBed} from '@angular/core/testing';
-import {CepFormatDirective} from './cep-format-directive.directive';
+import { Renderer2 } from '@angular/core';
+import { NgControl } from '@angular/forms';
+
+import { CepFormatDirective } from './cep-format-directive.directive';
 
 describe('CepFormatDirective', () => {
-  beforeEach(async () => {
-    TestBed.configureTestingModule({
-      providers: [
-        {provide: ElementRef, useValue: {nativeElement: document.createElement('input')}},
-        Renderer2,
-      ]
-    });
-  });
-
   it('should be created', () => {
-    const directive = TestBed.inject(CepFormatDirective);
+    const renderer = {} as Renderer2;
+    const control = { control: null } as unknown as NgControl;
+    const directive = new CepFormatDirective(renderer, control);
     expect(directive).toBeTruthy();
   });
 });

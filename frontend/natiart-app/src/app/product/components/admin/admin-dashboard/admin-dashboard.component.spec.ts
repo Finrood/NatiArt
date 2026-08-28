@@ -1,23 +1,21 @@
-import {ComponentFixture, TestBed} from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+import { provideAnimations } from '@angular/platform-browser/animations';
 
-import {AdminDashboardComponent} from './admin-dashboard.component';
+import { AdminDashboardComponent } from './admin-dashboard.component';
 
 describe('AdminDashboardComponent', () => {
-  let component: AdminDashboardComponent;
-  let fixture: ComponentFixture<AdminDashboardComponent>;
-
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [AdminDashboardComponent]
-    })
-      .compileComponents();
-
-    fixture = TestBed.createComponent(AdminDashboardComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
+      imports: [AdminDashboardComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideAnimations()],
+    }).compileComponents();
   });
 
   it('should create', () => {
-    expect(component).toBeTruthy();
+    const fixture = TestBed.createComponent(AdminDashboardComponent);
+    expect(fixture.componentInstance).toBeTruthy();
   });
 });

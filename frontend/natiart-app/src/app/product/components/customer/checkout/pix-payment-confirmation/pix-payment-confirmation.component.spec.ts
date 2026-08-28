@@ -1,23 +1,21 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+import { provideAnimations } from '@angular/platform-browser/animations';
 
 import { PixPaymentConfirmationComponent } from './pix-payment-confirmation.component';
 
 describe('PixPaymentConfirmationComponent', () => {
-  let component: PixPaymentConfirmationComponent;
-  let fixture: ComponentFixture<PixPaymentConfirmationComponent>;
-
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [PixPaymentConfirmationComponent]
-    })
-    .compileComponents();
-
-    fixture = TestBed.createComponent(PixPaymentConfirmationComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
+      imports: [PixPaymentConfirmationComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideAnimations()],
+    }).compileComponents();
   });
 
   it('should create', () => {
-    expect(component).toBeTruthy();
+    const fixture = TestBed.createComponent(PixPaymentConfirmationComponent);
+    expect(fixture.componentInstance).toBeTruthy();
   });
 });

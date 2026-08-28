@@ -1,23 +1,21 @@
-import {ComponentFixture, TestBed} from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+import { provideAnimations } from '@angular/platform-browser/animations';
 
-import {UserInfoStepComponent} from './user-info-step.component';
+import { UserInfoStepComponent } from './user-info-step.component';
 
 describe('UserInfoStepComponent', () => {
-  let component: UserInfoStepComponent;
-  let fixture: ComponentFixture<UserInfoStepComponent>;
-
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [UserInfoStepComponent]
-    })
-      .compileComponents();
-
-    fixture = TestBed.createComponent(UserInfoStepComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
+      imports: [UserInfoStepComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideAnimations()],
+    }).compileComponents();
   });
 
   it('should create', () => {
-    expect(component).toBeTruthy();
+    const fixture = TestBed.createComponent(UserInfoStepComponent);
+    expect(fixture.componentInstance).toBeTruthy();
   });
 });

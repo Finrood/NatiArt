@@ -1,23 +1,21 @@
-import {ComponentFixture, TestBed} from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+import { provideAnimations } from '@angular/platform-browser/animations';
 
-import {PersonalizationModalComponent} from './personalization-modal.component';
+import { PersonalizationModalComponent } from './personalization-modal.component';
 
 describe('PersonalizationModalComponent', () => {
-  let component: PersonalizationModalComponent;
-  let fixture: ComponentFixture<PersonalizationModalComponent>;
-
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [PersonalizationModalComponent]
-    })
-      .compileComponents();
-
-    fixture = TestBed.createComponent(PersonalizationModalComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
+      imports: [PersonalizationModalComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideAnimations()],
+    }).compileComponents();
   });
 
   it('should create', () => {
-    expect(component).toBeTruthy();
+    const fixture = TestBed.createComponent(PersonalizationModalComponent);
+    expect(fixture.componentInstance).toBeTruthy();
   });
 });
