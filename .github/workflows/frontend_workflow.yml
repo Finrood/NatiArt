@@ -29,3 +29,9 @@ jobs:
         run: |
           npm ci
           npm run build
+
+      - name: Unit tests (Karma, ChromeHeadless)
+        working-directory: frontend/natiart-app
+        env:
+          CHROME_BIN: /usr/bin/google-chrome
+        run: npm test -- --watch=false --browsers=ChromeHeadless

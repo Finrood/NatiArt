@@ -18,7 +18,6 @@ import java.util.List;
 public class ImageConversionService {
     static final int MAX_IMAGE_DIMENSION = 6000;
     static final long MAX_PIXELS = 24_000_000L;
-    private static final int MAX_CONVERSION_THREADS = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
 
     public List<MultipartFile> convertToWebP(List<MultipartFile> images) throws IOException {
         return images.stream()

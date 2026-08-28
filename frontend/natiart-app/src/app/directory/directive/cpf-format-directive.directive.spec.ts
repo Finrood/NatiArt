@@ -1,19 +1,13 @@
-import {ElementRef, Renderer2} from '@angular/core';
-import {TestBed} from '@angular/core/testing';
-import {CpfFormatDirective} from './cpf-format-directive.directive';
+import { Renderer2 } from '@angular/core';
+import { NgControl } from '@angular/forms';
+
+import { CpfFormatDirective } from './cpf-format-directive.directive';
 
 describe('CpfFormatDirective', () => {
-  beforeEach(async () => {
-    TestBed.configureTestingModule({
-      providers: [
-        {provide: ElementRef, useValue: {nativeElement: document.createElement('input')}},
-        Renderer2,
-      ]
-    });
-  });
-
   it('should be created', () => {
-    const directive = TestBed.inject(CpfFormatDirective);
+    const renderer = {} as Renderer2;
+    const control = { control: null } as unknown as NgControl;
+    const directive = new CpfFormatDirective(renderer, control);
     expect(directive).toBeTruthy();
   });
 });
