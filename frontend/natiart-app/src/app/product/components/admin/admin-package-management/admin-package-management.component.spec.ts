@@ -1,23 +1,21 @@
-import {ComponentFixture, TestBed} from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+import { provideAnimations } from '@angular/platform-browser/animations';
 
-import {PackageManagementComponent} from './admin-package-management.component';
+import { PackageManagementComponent } from './admin-package-management.component';
 
 describe('PackageManagementComponent', () => {
-  let component: PackageManagementComponent;
-  let fixture: ComponentFixture<PackageManagementComponent>;
-
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [PackageManagementComponent]
-    })
-      .compileComponents();
-
-    fixture = TestBed.createComponent(PackageManagementComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
+      imports: [PackageManagementComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideAnimations()],
+    }).compileComponents();
   });
 
   it('should create', () => {
-    expect(component).toBeTruthy();
+    const fixture = TestBed.createComponent(PackageManagementComponent);
+    expect(fixture.componentInstance).toBeTruthy();
   });
 });

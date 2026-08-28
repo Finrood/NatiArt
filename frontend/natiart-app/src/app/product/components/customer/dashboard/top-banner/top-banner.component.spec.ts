@@ -1,23 +1,21 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+import { provideAnimations } from '@angular/platform-browser/animations';
 
 import { TopBannerComponent } from './top-banner.component';
 
 describe('TopBannerComponent', () => {
-  let component: TopBannerComponent;
-  let fixture: ComponentFixture<TopBannerComponent>;
-
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TopBannerComponent]
-    })
-    .compileComponents();
-
-    fixture = TestBed.createComponent(TopBannerComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
+      imports: [TopBannerComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideAnimations()],
+    }).compileComponents();
   });
 
   it('should create', () => {
-    expect(component).toBeTruthy();
+    const fixture = TestBed.createComponent(TopBannerComponent);
+    expect(fixture.componentInstance).toBeTruthy();
   });
 });

@@ -1,23 +1,21 @@
-import {ComponentFixture, TestBed} from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+import { provideAnimations } from '@angular/platform-browser/animations';
 
-import {TopMenuComponent} from './top-menu.component';
+import { TopMenuComponent } from './top-menu.component';
 
 describe('TopMenuComponent', () => {
-  let component: TopMenuComponent;
-  let fixture: ComponentFixture<TopMenuComponent>;
-
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TopMenuComponent]
-    })
-      .compileComponents();
-
-    fixture = TestBed.createComponent(TopMenuComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
+      imports: [TopMenuComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideAnimations()],
+    }).compileComponents();
   });
 
   it('should create', () => {
-    expect(component).toBeTruthy();
+    const fixture = TestBed.createComponent(TopMenuComponent);
+    expect(fixture.componentInstance).toBeTruthy();
   });
 });
