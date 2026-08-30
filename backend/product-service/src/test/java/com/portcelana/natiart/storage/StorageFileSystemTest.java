@@ -9,7 +9,11 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -90,6 +94,85 @@ class StorageFileSystemTest {
         assertTrue(storage.exists(uri));
         assertThrows(ResourceNotFoundException.class,
                 () -> storage.exists(URI.create("file:///etc/passwd")));
+    }
+
+    @Test
+    void openFileRejectsSymlinkThatEscapesAllowedRoot() throws IOException {
+        Path root = tempDir.resolve("product-images");
+        Files.createDirectories(root);
+        Path secret = tempDir.resolve("secret.txt");
+        Files.writeString(secret, "classified");
+        Path link = root.resolve("evil-link");
+        try {
+            Files.createSymbolicLink(link, secret);
+        } catch (IOException | UnsupportedOperationException e) {
+            return; // filesystem without symlink support
+        }
+        StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+
+        assertThrows(ResourceNotFoundException.class, () -> storage.openFile(link.toUri()));
+    }
+
+    @Test
+    void downloadFilesZipsFilesUnderAllowedRoot() throws IOException {
+        Path root = tempDir.resolve("product-images");
+        URI a = writeInside(root, "p1/a.webp", "aaa");
+        URI b = writeInside(root, "p2/b.webp", "bbb");
+        StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+
+        try (var in = storage.downloadFiles(Set.of(a, b));
+             var zipIn = new ZipInputStream(in)) {
+            List<String> names = new ArrayList<>();
+            ZipEntry entry;
+            while ((entry = zipIn.getNextEntry()) != null) {
+                names.add(entry.getName());
+            }
+            assertEquals(Set.of("a.webp", "b.webp"), Set.copyOf(names));
+        }
+    }
+
+    @Test
+    void downloadFilesRejectsOutsideRoot() {
+        StorageFileSystem storage = storageWithRoots(List.of(tempDir.resolve("product-images").toString()));
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> storage.downloadFiles(Set.of(URI.create("file:///etc/passwd"))));
+    }
+
+    @Test
+    void downloadDirectoryZipsContentsRecursively() throws IOException {
+        Path root = tempDir.resolve("product-images");
+        writeInside(root, "gallery/cat.webp", "cat");
+        writeInside(root, "gallery/dog.webp", "dog");
+        StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+
+        try (var in = storage.downloadDirectory(root.resolve("gallery").toUri());
+             var zipIn = new ZipInputStream(in)) {
+            List<String> names = new ArrayList<>();
+            ZipEntry entry;
+            while ((entry = zipIn.getNextEntry()) != null) {
+                names.add(entry.getName());
+            }
+            assertTrue(names.contains("gallery/cat.webp"));
+            assertTrue(names.contains("gallery/dog.webp"));
+        }
+    }
+
+    @Test
+    void downloadDirectoryRejectsNonDirectoryPath() throws IOException {
+        Path root = tempDir.resolve("product-images");
+        URI file = writeInside(root, "p1/img.webp", "x");
+        StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+
+        assertThrows(ResourceNotFoundException.class, () -> storage.downloadDirectory(file));
+    }
+
+    @Test
+    void downloadDirectoryRejectsOutsideRoot() {
+        StorageFileSystem storage = storageWithRoots(List.of(tempDir.resolve("product-images").toString()));
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> storage.downloadDirectory(URI.create("file:///etc")));
     }
 
     private void cleanupRecursively(Path path) {
