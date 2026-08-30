@@ -6,6 +6,11 @@ import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
@@ -77,6 +82,67 @@ class RateLimitFilterTest {
             MockHttpServletResponse response = new MockHttpServletResponse();
             filter.doFilter(post("/products", "9.9.9.9"), response, new MockFilterChain());
             assertNotEquals(429, response.getStatus());
+        }
+    }
+
+    @Test
+    void blockedResponseCarriesRetryAfterHeader() throws Exception {
+        for (int i = 0; i < 3; i++) {
+            filter.doFilter(post("/login", "1.2.3.4"), new MockHttpServletResponse(), new MockFilterChain());
+        }
+
+        MockHttpServletResponse blocked = new MockHttpServletResponse();
+        filter.doFilter(post("/login", "1.2.3.4"), blocked, new MockFilterChain());
+
+        assertEquals(429, blocked.getStatus());
+        assertEquals("60", blocked.getHeader("Retry-After"));
+    }
+
+    @Test
+    void windowResetsAfterTheFixedWindowElapses() throws Exception {
+        MutableClock clock = new MutableClock(0L);
+        RateLimitFilter clockedFilter = new RateLimitFilter(3, clock);
+
+        for (int i = 0; i < 3; i++) {
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            clockedFilter.doFilter(post("/login", "7.7.7.7"), response, new MockFilterChain());
+            assertNotEquals(429, response.getStatus());
+        }
+        MockHttpServletResponse blocked = new MockHttpServletResponse();
+        clockedFilter.doFilter(post("/login", "7.7.7.7"), blocked, new MockFilterChain());
+        assertEquals(429, blocked.getStatus());
+
+        // After 60s elapse the same client gets a fresh window and is allowed again.
+        clock.advance(61_000L);
+        MockHttpServletResponse afterReset = new MockHttpServletResponse();
+        clockedFilter.doFilter(post("/login", "7.7.7.7"), afterReset, new MockFilterChain());
+        assertNotEquals(429, afterReset.getStatus());
+    }
+
+    private static final class MutableClock extends Clock {
+        private long millis;
+
+        MutableClock(long millis) {
+            this.millis = millis;
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return ZoneOffset.UTC;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return this;
+        }
+
+        @Override
+        public Instant instant() {
+            return Instant.ofEpochMilli(millis);
+        }
+
+        void advance(long ms) {
+            this.millis += ms;
         }
     }
 }

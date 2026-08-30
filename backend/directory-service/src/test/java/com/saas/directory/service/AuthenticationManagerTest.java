@@ -13,12 +13,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.saas.directory.dto.UserAuthDto;
 import com.saas.directory.service.TokenManager;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -78,5 +82,33 @@ public class AuthenticationManagerTest {
 
         assertEquals("access", result.getAccessToken());
         assertEquals("refresh", result.getRefreshToken());
+    }
+
+    @Test
+    public void logout_clears_every_token_of_the_user() {
+        final String username = "testUser";
+        final User user = new User(username, "testPassword");
+        when(userManager.getUserOrDie(username)).thenReturn(user);
+
+        final MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession(); // ensure a session exists
+        authenticationManager.logout(request, username);
+
+        // Logout must invalidate the HTTP session and clear ALL tokens (access AND refresh)
+        // for the user, not just the presented access token.
+        assertNull(request.getSession(false));
+        verify(tokenManager).clearTokensOfUser(user);
+    }
+
+    @Test
+    public void logout_without_username_falls_back_to_presented_bearer_token() {
+        final MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession();
+        request.addHeader("Authorization", "Bearer some-jti");
+        authenticationManager.logout(request, null);
+
+        // Without a resolvable username the tokenManager is not involved; the bearer fallback
+        // path only clears the presented token. No username -> no bulk token purge.
+        verify(tokenManager, never()).clearTokensOfUser(any());
     }
 }
