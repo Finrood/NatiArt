@@ -14,6 +14,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.IOException;
+import java.util.List;
 
 public class JwtAuthFilter extends OncePerRequestFilter {
 
@@ -38,11 +39,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         .bodyToMono(AuthenticationResponseDto.class)
                         .block();
 
-                Authentication authentication = new UsernamePasswordAuthenticationToken(
-                        authenticationResponse.getPrincipal(),
+                // MUST use the three-arg constructor: the two-arg variant treats the second argument
+                // as CREDENTIALS and builds an *unauthenticated* token with empty authorities, which
+                // made @PreAuthorize deny every legitimate (and admin) request.
+                final List<SimpleGrantedAuthority> grantedAuthorities =
                         authenticationResponse.getAuthorities().stream()
                                 .map(a -> new SimpleGrantedAuthority(a.getAuthority()))
-                                .toList()
+                                .toList();
+                Authentication authentication = new UsernamePasswordAuthenticationToken(
+                        authenticationResponse.getPrincipal(),
+                        authenticationResponse.getCredentials(),
+                        grantedAuthorities
                 );
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
