@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
@@ -27,6 +28,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final Clock clock;
     private final ConcurrentHashMap<String, AtomicReference<Window>> windowsByClient = new ConcurrentHashMap<>();
 
+    @Autowired
     public RateLimitFilter(@Value("${saas.security.rate-limit.max-requests-per-minute:10}") int maxRequestsPerWindow) {
         this(maxRequestsPerWindow, Clock.systemUTC());
     }
