@@ -16,6 +16,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.List;
 
 public class JwtAuthFilter extends OncePerRequestFilter {
     private static final org.slf4j.Logger LOGGER =
@@ -43,11 +44,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         .timeout(Duration.ofSeconds(5))
                         .block();
 
-                Authentication authentication = new UsernamePasswordAuthenticationToken(
-                        authenticationResponse.getPrincipal(),
+                // MUST use the three-arg constructor: the two-arg variant treats the second argument
+                // as CREDENTIALS and builds an *unauthenticated* token with empty authorities, which
+                // made @PreAuthorize deny every legitimate (and admin) request.
+                final List<SimpleGrantedAuthority> grantedAuthorities =
                         authenticationResponse.getAuthorities().stream()
                                 .map(a -> new SimpleGrantedAuthority(a.getAuthority()))
-                                .toList()
+                                .toList();
+                Authentication authentication = new UsernamePasswordAuthenticationToken(
+                        authenticationResponse.getPrincipal(),
+                        authenticationResponse.getCredentials(),
+                        grantedAuthorities
                 );
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
