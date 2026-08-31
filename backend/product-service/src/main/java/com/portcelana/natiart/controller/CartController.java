@@ -22,7 +22,7 @@ public class CartController {
     }
 
     @GetMapping("/cart")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isFullyAuthenticated()")
     public List<ProductDto> getCart(@TargetUser String username) {
         LOGGER.info("Getting cart of user [{}]", username);
 
@@ -30,7 +30,7 @@ public class CartController {
     }
 
     @DeleteMapping("/cart/clear")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isFullyAuthenticated()")
     public void clearCart(@TargetUser String username) {
         LOGGER.info("Clearing cart of user [{}]", username);
 
@@ -38,14 +38,14 @@ public class CartController {
     }
 
     @PostMapping("/cart/item/{productId}/add")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isFullyAuthenticated()")
     public CartItem addProductToCart(@TargetUser String username, @PathVariable String productId) {
         LOGGER.info("Adding product with id [{}] to cart of user [{}]", productId, username);
         return cartManager.createCartItem(username, productId);
     }
 
     @DeleteMapping("/cart/item/{productId}/delete")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isFullyAuthenticated()")
     public void deleteCartItem(@TargetUser String username, @PathVariable String productId) {
         LOGGER.info("Deleting product with id [{}] in cart of user [{}]", productId, username);
 

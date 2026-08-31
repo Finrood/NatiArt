@@ -24,14 +24,14 @@ public class PaymentController {
     }
 
     @GetMapping("/api/payment/{paymentId}/status")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isFullyAuthenticated()")
     public PaymentStatusResponse getPaymentStatus(@PathVariable String paymentId,
                                                   @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
         return paymentService.getPaymentStatus(paymentId, principal != null ? principal.getExternalId() : null);
     }
 
     @GetMapping("/api/payment/{paymentId}/pixQrCode")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isFullyAuthenticated()")
     public PaymentPixQrCodeResponse getPixQrCode(@PathVariable String paymentId,
                                                  @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
         return paymentService.getPixQrCode(paymentId, principal != null ? principal.getExternalId() : null);
