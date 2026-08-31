@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.Clock;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -23,10 +24,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final int MAX_TRACKED_CLIENTS = 50_000;
 
     private final int maxRequestsPerWindow;
+    private final Clock clock;
     private final ConcurrentHashMap<String, AtomicReference<Window>> windowsByClient = new ConcurrentHashMap<>();
 
     public RateLimitFilter(@Value("${saas.security.rate-limit.max-requests-per-minute:10}") int maxRequestsPerWindow) {
+        this(maxRequestsPerWindow, Clock.systemUTC());
+    }
+
+    RateLimitFilter(int maxRequestsPerWindow, Clock clock) {
         this.maxRequestsPerWindow = maxRequestsPerWindow;
+        this.clock = clock;
     }
 
     @Override
@@ -41,7 +48,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         final String clientKey = clientIp(request);
-        final long now = System.currentTimeMillis();
+        final long now = clock.millis();
 
         if (windowsByClient.size() > MAX_TRACKED_CLIENTS) {
             windowsByClient.entrySet().removeIf(e -> e.getValue().get().isStale(now));
