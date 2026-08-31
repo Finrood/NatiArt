@@ -124,4 +124,27 @@ class OrderManagerImplTest {
         assertEquals(new BigDecimal("25.99"), captor.getValue().getItems().get(0).getPrice());
         assertEquals(saved, captor.getValue());
     }
+
+    @Test
+    void createOrderFailsWholeOrderWhenAnyLineHasInsufficientStock() {
+        // First line is fine, second line runs out of stock: the whole order must be aborted
+        // (no CustomerOrder persisted) instead of persisting a partial order with one decrement.
+        Product plate = product("p1", "Plate", new BigDecimal("15.00"), null, 100);
+        Product mug = product("p2", "Mug", new BigDecimal("10.00"), null, 1);
+        when(productManager.getProductOrDie("p1")).thenReturn(plate);
+        when(productManager.getProductOrDie("p2")).thenReturn(mug);
+        // Product ids are auto-generated, so stub the atomic decrement by invocation order:
+        // 1st line succeeds, 2nd line is refused.
+        when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1, 0);
+
+        OrderDto dto = new OrderDto()
+                .setDeliveryAmount(BigDecimal.ZERO)
+                .setItems(List.of(item("p1", 1), item("p2", 50)));
+
+        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto));
+        // Stock was attempted for both lines (the first decrements, the second is refused)...
+        verify(productRepository, times(2)).decreaseStockIfAvailable(anyString(), anyInt());
+        // ...but nothing was persisted: the @Transactional boundary rolls the whole order back.
+        verify(orderRepository, never()).save(any());
+    }
 }
