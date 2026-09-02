@@ -12,11 +12,15 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 
 public class JwtAuthFilter extends OncePerRequestFilter {
+    private static final org.slf4j.Logger LOGGER =
+            org.slf4j.LoggerFactory.getLogger(JwtAuthFilter.class);
 
     private final WebClient.Builder webClientBuilder;
     private final String directoryServiceUrl;
@@ -37,6 +41,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         .header("Authorization", "Bearer " + token)
                         .retrieve()
                         .bodyToMono(AuthenticationResponseDto.class)
+                        .timeout(Duration.ofSeconds(5))
                         .block();
 
                 // MUST use the three-arg constructor: the two-arg variant treats the second argument
@@ -53,9 +58,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 );
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-            } catch (Exception e) {
+            } catch (WebClientResponseException.Unauthorized | WebClientResponseException.Forbidden e) {
                 SecurityContextHolder.clearContext();
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                return;
+            } catch (Exception e) {
+                LOGGER.warn("Token validation is temporarily unavailable: {}", e.getMessage());
+                SecurityContextHolder.clearContext();
+                response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, "Authentication service unavailable");
                 return;
             }
         }

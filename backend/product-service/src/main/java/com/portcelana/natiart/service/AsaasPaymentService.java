@@ -10,11 +10,12 @@ import com.portcelana.natiart.dto.payment.asaas.*;
 import com.portcelana.natiart.dto.payment.helper.PaymentMethod;
 import com.portcelana.natiart.dto.payment.helper.PaymentStatus;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -22,15 +23,21 @@ import java.util.Optional;
 
 @Service
 public class AsaasPaymentService implements PaymentService {
-    private final String asaasPaymentUrl = "https://sandbox.asaas.com/api/v3/payments";
-
+    private final String asaasPaymentUrl;
     private final RestTemplate restTemplate;
 
     @Value("${natiart.payment.asaas.apikey}")
     private String asaasApiKey;
 
-    public AsaasPaymentService(RestTemplateBuilder restTemplateBuilder) {
-        this.restTemplate = restTemplateBuilder.build();
+    public AsaasPaymentService(
+            @Value("${natiart.payment.asaas.apikey}") String asaasApiKey,
+            @Value("${natiart.payment.asaas.payments-url:https://sandbox.asaas.com/api/v3/payments}") String asaasPaymentUrl) {
+        this.asaasApiKey = asaasApiKey;
+        this.asaasPaymentUrl = asaasPaymentUrl;
+        final SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(Duration.ofSeconds(15));
+        this.restTemplate = new RestTemplate(factory);
     }
 
     public PaymentCreationResponse createPayment(PaymentCreationRequest paymentCreationRequest) {
