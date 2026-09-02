@@ -1,0 +1,26 @@
+# EditorConfig — https://editorconfig.org
+# Keeps editor formatting aligned with the Gradle Spotless config
+# (palantirJavaFormat: 4-space indent, 120-col lines, K&R braces).
+# This file does NOT enforce the formatter; it is developer-experience only.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.java]
+indent_style = space
+indent_size = 4
+max_line_length = 120
+
+[*.{kt,kts}]
+indent_style = space
+indent_size = 4
+max_line_length = 120
+
+# Gradle wrapper scripts and shell snippets
+[*.{gradle,gradle.kts}]
+indent_style = space
+indent_size = 4
