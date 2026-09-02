@@ -5,7 +5,7 @@ export const environment = {
       url: 'http://localhost:8081',
       endpoints: {
         login: '/login',
-        logout: '/logout',
+        logout: '/signout',
         current: '/current',
         user: '/users',
       }

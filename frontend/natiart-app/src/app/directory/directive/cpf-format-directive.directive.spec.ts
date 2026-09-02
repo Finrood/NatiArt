@@ -1,8 +1,13 @@
-import {CpfFormatDirectiveDirective} from './cpf-format-directive.directive';
+import { Renderer2 } from '@angular/core';
+import { NgControl } from '@angular/forms';
 
-describe('CpfFormatDirectiveDirective', () => {
-  it('should create an instance', () => {
-    const directive = new CpfFormatDirectiveDirective();
+import { CpfFormatDirective } from './cpf-format-directive.directive';
+
+describe('CpfFormatDirective', () => {
+  it('should be created', () => {
+    const renderer = {} as Renderer2;
+    const control = { control: null } as unknown as NgControl;
+    const directive = new CpfFormatDirective(renderer, control);
     expect(directive).toBeTruthy();
   });
 });

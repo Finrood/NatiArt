@@ -1,23 +1,21 @@
-import {ComponentFixture, TestBed} from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+import { provideAnimations } from '@angular/platform-browser/animations';
 
-import {ShippingInfoStepComponent} from './shipping-info-step.component';
+import { ShippingInfoStepComponent } from './shipping-info-step.component';
 
 describe('ShippingInfoStepComponent', () => {
-  let component: ShippingInfoStepComponent;
-  let fixture: ComponentFixture<ShippingInfoStepComponent>;
-
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ShippingInfoStepComponent]
-    })
-      .compileComponents();
-
-    fixture = TestBed.createComponent(ShippingInfoStepComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
+      imports: [ShippingInfoStepComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideAnimations()],
+    }).compileComponents();
   });
 
   it('should create', () => {
-    expect(component).toBeTruthy();
+    const fixture = TestBed.createComponent(ShippingInfoStepComponent);
+    expect(fixture.componentInstance).toBeTruthy();
   });
 });

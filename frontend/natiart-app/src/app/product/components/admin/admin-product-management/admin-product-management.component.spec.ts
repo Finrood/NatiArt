@@ -1,23 +1,21 @@
-import {ComponentFixture, TestBed} from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+import { provideAnimations } from '@angular/platform-browser/animations';
 
-import {AdminProductManagementComponent} from './admin-product-management.component';
+import { ProductManagementComponent } from './admin-product-management.component';
 
-describe('AdminProductManagementComponent', () => {
-  let component: AdminProductManagementComponent;
-  let fixture: ComponentFixture<AdminProductManagementComponent>;
-
+describe('ProductManagementComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [AdminProductManagementComponent]
-    })
-      .compileComponents();
-
-    fixture = TestBed.createComponent(AdminProductManagementComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
+      imports: [ProductManagementComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideAnimations()],
+    }).compileComponents();
   });
 
   it('should create', () => {
-    expect(component).toBeTruthy();
+    const fixture = TestBed.createComponent(ProductManagementComponent);
+    expect(fixture.componentInstance).toBeTruthy();
   });
 });
