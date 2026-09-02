@@ -17,29 +17,35 @@ public class AuthenticationManager {
     private final UserManager userManager;
     private final PasswordEncoder passwordEncoder;
     private final UserAuthenticationProvider userAuthenticationProvider;
+    private final TokenManager tokenManager;
 
     public AuthenticationManager(UserManager userManager,
                                  PasswordEncoder passwordEncoder,
-                                 UserAuthenticationProvider userAuthenticationProvider) {
+                                 UserAuthenticationProvider userAuthenticationProvider,
+                                 TokenManager tokenManager) {
         this.userManager = userManager;
         this.passwordEncoder = passwordEncoder;
         this.userAuthenticationProvider = userAuthenticationProvider;
+        this.tokenManager = tokenManager;
     }
 
     @Transactional
     public UserAuthDto login(CredentialsDto credentialsDto) {
-        final User user = userManager.getUserOrDie(credentialsDto.username());
-        if (passwordEncoder.matches(credentialsDto.password(), user.getPasswordHash())) {
-            final UserDto userDto = UserDto.from(user, null);
-            return new UserAuthDto(userAuthenticationProvider.createAccessToken(userDto), userAuthenticationProvider.createRefreshToken(userDto));
-        } else {
-            throw new ResourceNotFoundException("Password is invalid. Try again", HttpStatus.BAD_REQUEST);
-        }
+        final User user = userManager.getUser(credentialsDto.username())
+                .filter(u -> passwordEncoder.matches(credentialsDto.password(), u.getPasswordHash()))
+                .orElseThrow(() -> new ResourceNotFoundException("Invalid credentials", HttpStatus.UNAUTHORIZED));
+        final UserDto userDto = UserDto.from(user, null);
+        return new UserAuthDto(userAuthenticationProvider.createAccessToken(userDto), userAuthenticationProvider.createRefreshToken(userDto));
     }
 
     @Transactional
-    public void logout(HttpServletRequest request) {
+    public void logout(HttpServletRequest request, String username) {
         request.getSession().invalidate();
+
+        if (username != null && !username.isEmpty()) {
+            tokenManager.clearTokensOfUser(userManager.getUserOrDie(username));
+            return;
+        }
 
         final String authorizationHeader = request.getHeader("Authorization");
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
