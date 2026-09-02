@@ -1,7 +1,5 @@
 package com.portcelana.natiart.configuration;
 
-import com.portcelana.natiart.dto.AuthenticationResponseDto;
-import com.portcelana.natiart.helper.TargetUser;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -10,6 +8,9 @@ import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
+
+import com.portcelana.natiart.dto.AuthenticationResponseDto;
+import com.portcelana.natiart.helper.TargetUser;
 
 /**
  * Resolves {@link TargetUser @TargetUser} parameters without relying on a SpEL expression over
@@ -30,8 +31,11 @@ public class TargetUserArgumentResolver implements HandlerMethodArgumentResolver
     }
 
     @Override
-    public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
-                                  NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
+    public Object resolveArgument(
+            MethodParameter parameter,
+            ModelAndViewContainer mavContainer,
+            NativeWebRequest webRequest,
+            WebDataBinderFactory binderFactory) {
         final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || authentication instanceof AnonymousAuthenticationToken) {
             // Anonymous callers must never hit the protected handler: leave the parameter null so the

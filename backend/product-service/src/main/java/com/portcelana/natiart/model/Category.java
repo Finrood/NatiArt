@@ -1,28 +1,34 @@
 package com.portcelana.natiart.model;
 
-import jakarta.persistence.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
+import jakarta.persistence.*;
+
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 @Entity
 @EntityListeners(AuditingEntityListener.class)
 public class Category {
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
     private final Set<Product> products = new HashSet<>();
+
     @Id
     private String id;
+
     @Version
     private long version;
+
     @Column(nullable = false, unique = true)
     private String label;
+
     private String description;
+
     @Column(nullable = false)
     private boolean active;
 
@@ -33,8 +39,7 @@ public class Category {
     @LastModifiedDate
     private Instant updatedAt;
 
-    protected Category() {
-    }
+    protected Category() {}
 
     public Category(String label) {
         this.id = UUID.randomUUID().toString();

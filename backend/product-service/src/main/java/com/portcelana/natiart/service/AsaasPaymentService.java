@@ -1,5 +1,17 @@
 package com.portcelana.natiart.service;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.controller.helper.UserNotAllowedException;
 import com.portcelana.natiart.dto.payment.PaymentCreationRequest;
@@ -9,17 +21,6 @@ import com.portcelana.natiart.dto.payment.PaymentStatusResponse;
 import com.portcelana.natiart.dto.payment.asaas.*;
 import com.portcelana.natiart.dto.payment.helper.PaymentMethod;
 import com.portcelana.natiart.dto.payment.helper.PaymentStatus;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Optional;
 
 @Service
 public class AsaasPaymentService implements PaymentService {
@@ -31,7 +32,8 @@ public class AsaasPaymentService implements PaymentService {
 
     public AsaasPaymentService(
             @Value("${natiart.payment.asaas.apikey}") String asaasApiKey,
-            @Value("${natiart.payment.asaas.payments-url:https://sandbox.asaas.com/api/v3/payments}") String asaasPaymentUrl) {
+            @Value("${natiart.payment.asaas.payments-url:https://sandbox.asaas.com/api/v3/payments}")
+                    String asaasPaymentUrl) {
         this.asaasApiKey = asaasApiKey;
         this.asaasPaymentUrl = asaasPaymentUrl;
         final SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
@@ -43,15 +45,14 @@ public class AsaasPaymentService implements PaymentService {
     public PaymentCreationResponse createPayment(PaymentCreationRequest paymentCreationRequest) {
         final HttpHeaders headers = getRequestHeaders();
 
-        final HttpEntity<AsaasPaymentCreationRequest> asaasPaymentCreationRequestHttpEntity = new HttpEntity<>(AsaasPaymentCreationRequest.from(paymentCreationRequest), headers);
+        final HttpEntity<AsaasPaymentCreationRequest> asaasPaymentCreationRequestHttpEntity =
+                new HttpEntity<>(AsaasPaymentCreationRequest.from(paymentCreationRequest), headers);
         final ResponseEntity<AsaasPaymentCreationResponse> response = restTemplate.postForEntity(
-                asaasPaymentUrl,
-                asaasPaymentCreationRequestHttpEntity,
-                AsaasPaymentCreationResponse.class
-        );
+                asaasPaymentUrl, asaasPaymentCreationRequestHttpEntity, AsaasPaymentCreationResponse.class);
 
         if (response.getStatusCode() == HttpStatus.OK) {
-            final Optional<AsaasPaymentCreationResponse> asaasPaymentCreationResponse = Optional.ofNullable(response.getBody());
+            final Optional<AsaasPaymentCreationResponse> asaasPaymentCreationResponse =
+                    Optional.ofNullable(response.getBody());
             return asaasPaymentCreationResponse
                     .map(responseBody -> new PaymentCreationResponse(
                             responseBody.getId(),
@@ -61,9 +62,9 @@ public class AsaasPaymentService implements PaymentService {
                             PaymentStatus.valueOf(responseBody.getStatus()),
                             responseBody.getDueDate().atStartOfDay(),
                             responseBody.getInvoiceUrl(),
-                            responseBody.getInvoiceNumber()
-                    ))
-                    .orElseThrow(() -> new IllegalArgumentException("Received a null response body from " + asaasPaymentUrl));
+                            responseBody.getInvoiceNumber()))
+                    .orElseThrow(() ->
+                            new IllegalArgumentException("Received a null response body from " + asaasPaymentUrl));
         } else if (response.getStatusCode() == HttpStatus.UNAUTHORIZED) {
             throw new UserNotAllowedException("Unauthorized api call to " + asaasPaymentUrl);
         } else {
@@ -80,20 +81,23 @@ public class AsaasPaymentService implements PaymentService {
                 String.format("%s/%s/pixQrCode", asaasPaymentUrl, paymentId),
                 HttpMethod.GET,
                 entity,
-                AsaasPaymentPixQrCodeResponse.class
-        );
+                AsaasPaymentPixQrCodeResponse.class);
 
         if (response.getStatusCode() == HttpStatus.OK) {
-            final Optional<AsaasPaymentPixQrCodeResponse> asaasPaymentPixQrCodeResponse = Optional.ofNullable(response.getBody());
+            final Optional<AsaasPaymentPixQrCodeResponse> asaasPaymentPixQrCodeResponse =
+                    Optional.ofNullable(response.getBody());
             return asaasPaymentPixQrCodeResponse
                     .map(responseBody -> new PaymentPixQrCodeResponse(
                             responseBody.isSuccess(),
                             responseBody.getEncodedImage(),
                             responseBody.getPayload(),
-                            LocalDateTime.parse(responseBody.getExpirationDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-                    ))
-                    .orElseThrow(() -> new IllegalArgumentException("Received a null response body from " + asaasPaymentUrl));
-        } else if (response.getStatusCode() == HttpStatus.UNAUTHORIZED || response.getStatusCode() == HttpStatus.FORBIDDEN) {
+                            LocalDateTime.parse(
+                                    responseBody.getExpirationDate(),
+                                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))))
+                    .orElseThrow(() ->
+                            new IllegalArgumentException("Received a null response body from " + asaasPaymentUrl));
+        } else if (response.getStatusCode() == HttpStatus.UNAUTHORIZED
+                || response.getStatusCode() == HttpStatus.FORBIDDEN) {
             throw new UserNotAllowedException("Unauthorized api call to " + asaasPaymentUrl);
         } else if (response.getStatusCode() == HttpStatus.NOT_FOUND) {
             throw new ResourceNotFoundException(String.format("Payment with id [%s] not found", paymentId));
@@ -107,9 +111,7 @@ public class AsaasPaymentService implements PaymentService {
         requireOwnedPayment(payment.getCustomer(), requesterExternalId);
 
         return new PaymentStatusResponse(
-                paymentId,
-                convertAsaasPaymentStatusToGeneralPaymentStatus(parseAsaasStatus(payment.getStatus()))
-        );
+                paymentId, convertAsaasPaymentStatusToGeneralPaymentStatus(parseAsaasStatus(payment.getStatus())));
     }
 
     private AsaasPaymentCreationResponse fetchPaymentOrDie(String paymentId) {
@@ -117,8 +119,7 @@ public class AsaasPaymentService implements PaymentService {
                 String.format("%s/%s", asaasPaymentUrl, paymentId),
                 HttpMethod.GET,
                 new HttpEntity<>(getRequestHeaders()),
-                AsaasPaymentCreationResponse.class
-        );
+                AsaasPaymentCreationResponse.class);
         if (response.getStatusCode() == HttpStatus.NOT_FOUND) {
             throw new ResourceNotFoundException(String.format("Payment with id [%s] not found", paymentId));
         }

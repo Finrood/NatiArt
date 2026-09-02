@@ -1,11 +1,12 @@
 package com.portcelana.natiart.dto.payment.asaas;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.portcelana.natiart.dto.payment.PaymentCreationRequest;
-
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import com.portcelana.natiart.dto.payment.PaymentCreationRequest;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AsaasPaymentCreationRequest {
@@ -46,8 +47,7 @@ public class AsaasPaymentCreationRequest {
                 paymentCreationRequest.getCustomerId(),
                 paymentCreationRequest.getBillingType().name(),
                 paymentCreationRequest.getValue(),
-                paymentCreationRequest.getDueDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-        );
+                paymentCreationRequest.getDueDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
     }
 
     public String getCustomer() {
@@ -99,7 +99,8 @@ public class AsaasPaymentCreationRequest {
         return daysAfterDueDateToRegistrationCancellation;
     }
 
-    public AsaasPaymentCreationRequest setDaysAfterDueDateToRegistrationCancellation(Integer daysAfterDueDateToRegistrationCancellation) {
+    public AsaasPaymentCreationRequest setDaysAfterDueDateToRegistrationCancellation(
+            Integer daysAfterDueDateToRegistrationCancellation) {
         this.daysAfterDueDateToRegistrationCancellation = daysAfterDueDateToRegistrationCancellation;
         return this;
     }

@@ -1,12 +1,12 @@
 package com.saas.directory.configuration;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.lang.reflect.Constructor;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Constructor-agnostic on purpose: the provider's constructor signature changes across
@@ -28,7 +28,8 @@ class UserAuthenticationProviderTest {
     @Test
     void initFailsFastOnBlankSecretInsteadOfSilentlySigningWithEmptyKey() throws ReflectiveOperationException {
         assertThrows(IllegalStateException.class, () -> providerWithSecret("").init());
-        assertThrows(IllegalStateException.class, () -> providerWithSecret("   ").init());
+        assertThrows(
+                IllegalStateException.class, () -> providerWithSecret("   ").init());
         assertThrows(IllegalStateException.class, () -> providerWithSecret(null).init());
     }
 

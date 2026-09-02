@@ -1,11 +1,11 @@
 package com.portcelana.natiart.dto.payment;
 
-import com.portcelana.natiart.dto.payment.helper.PaymentMethod;
-import com.portcelana.natiart.dto.payment.helper.PaymentProcessor;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+
+import com.portcelana.natiart.dto.payment.helper.PaymentMethod;
+import com.portcelana.natiart.dto.payment.helper.PaymentProcessor;
 
 public class PaymentCreationRequest {
     private final PaymentProcessor paymentProcessor;
@@ -14,7 +14,8 @@ public class PaymentCreationRequest {
     private final PaymentMethod billingType;
     private final LocalDate dueDate;
 
-    public PaymentCreationRequest(PaymentProcessor paymentProcessor, String customerId, Double value, PaymentMethod billingType) {
+    public PaymentCreationRequest(
+            PaymentProcessor paymentProcessor, String customerId, Double value, PaymentMethod billingType) {
         this.paymentProcessor = paymentProcessor;
         this.customerId = customerId;
         this.value = value;

@@ -1,14 +1,15 @@
 package com.portcelana.natiart.service;
 
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.PackageDto;
 import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.repository.PackageRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.Optional;
 
 @Service
 public class PackageManagerImpl implements PackageManager {
@@ -44,11 +45,7 @@ public class PackageManagerImpl implements PackageManager {
     @Transactional
     public Package createPackage(PackageDto packageDto) {
         final Package pack = new Package(
-                packageDto.getLabel(),
-                packageDto.getHeight(),
-                packageDto.getWidth(),
-                packageDto.getDepth()
-        );
+                packageDto.getLabel(), packageDto.getHeight(), packageDto.getWidth(), packageDto.getDepth());
         return packageRepository.save(pack);
     }
 

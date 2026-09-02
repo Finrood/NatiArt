@@ -1,14 +1,10 @@
 package com.saas.directory.controller;
 
+import java.io.IOException;
 
-import com.saas.directory.configuration.UserAuthenticationProvider;
-import com.saas.directory.dto.CredentialsDto;
-import com.saas.directory.dto.UserAuthDto;
-import com.saas.directory.helper.TargetUser;
-import com.saas.directory.model.TokenType;
-import com.saas.directory.service.AuthenticationManager;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +13,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.io.IOException;
+import com.saas.directory.configuration.UserAuthenticationProvider;
+import com.saas.directory.dto.CredentialsDto;
+import com.saas.directory.dto.UserAuthDto;
+import com.saas.directory.helper.TargetUser;
+import com.saas.directory.model.TokenType;
+import com.saas.directory.service.AuthenticationManager;
 
 @RestController
 public class AuthenticationController {
@@ -26,7 +27,8 @@ public class AuthenticationController {
     private final AuthenticationManager authenticationManager;
     private final UserAuthenticationProvider userAuthenticationProvider;
 
-    public AuthenticationController(AuthenticationManager authenticationManager, UserAuthenticationProvider userAuthenticationProvider) {
+    public AuthenticationController(
+            AuthenticationManager authenticationManager, UserAuthenticationProvider userAuthenticationProvider) {
         this.authenticationManager = authenticationManager;
         this.userAuthenticationProvider = userAuthenticationProvider;
     }
@@ -40,7 +42,8 @@ public class AuthenticationController {
     }
 
     @PostMapping("/refresh-token")
-    public void refreshToken(@TargetUser String username, HttpServletRequest request, HttpServletResponse response) throws IOException, IllegalAccessException {
+    public void refreshToken(@TargetUser String username, HttpServletRequest request, HttpServletResponse response)
+            throws IOException, IllegalAccessException {
         LOGGER.info("User [{}] is refreshing is access token", username);
 
         userAuthenticationProvider.refreshToken(username, request, response);
@@ -57,7 +60,8 @@ public class AuthenticationController {
     @PostMapping("/validate-token")
     public ResponseEntity<Authentication> validateToken(HttpServletRequest request) throws IllegalAccessException {
         final String token = userAuthenticationProvider.extractToken(request);
-        final Authentication authentication = userAuthenticationProvider.authenticateWithToken(token, TokenType.AUTH_ACCESS);
+        final Authentication authentication =
+                userAuthenticationProvider.authenticateWithToken(token, TokenType.AUTH_ACCESS);
         return ResponseEntity.ok(authentication);
     }
 }

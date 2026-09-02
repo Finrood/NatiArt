@@ -1,15 +1,15 @@
 package com.portcelana.natiart.service;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.web.multipart.MultipartFile;
+import static org.junit.jupiter.api.Assertions.*;
 
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import javax.imageio.ImageIO;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
 class ImageConversionServiceTest {
 
@@ -41,7 +41,8 @@ class ImageConversionServiceTest {
 
     @Test
     void rejectsExcessivePixelCountEvenWithBalancedSides() throws IOException {
-        final MultipartFile dense = pngOf(ImageConversionService.MAX_IMAGE_DIMENSION,
+        final MultipartFile dense = pngOf(
+                ImageConversionService.MAX_IMAGE_DIMENSION,
                 (int) (ImageConversionService.MAX_PIXELS / ImageConversionService.MAX_IMAGE_DIMENSION) + 1);
 
         assertThrows(RuntimeException.class, () -> service.convertToWebP(java.util.List.of(dense)));

@@ -1,18 +1,19 @@
 package com.portcelana.natiart.service;
 
-import com.luciad.imageio.webp.WebPWriteParam;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.List;
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageOutputStream;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.luciad.imageio.webp.WebPWriteParam;
 
 @Service
 public class ImageConversionService {
@@ -42,7 +43,8 @@ public class ImageConversionService {
 
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-        final ImageWriter writer = ImageIO.getImageWritersByMIMEType("image/webp").next();
+        final ImageWriter writer =
+                ImageIO.getImageWritersByMIMEType("image/webp").next();
         if (writer == null) {
             throw new IOException("No WebP ImageWriter found");
         }
@@ -63,12 +65,7 @@ public class ImageConversionService {
         final String originalName = image.getOriginalFilename();
         final String outputName = (originalName != null ? originalName : "image").replaceAll("\\.[^.]+$", ".webp");
 
-        return new CustomMultipartFile(
-                image.getName(),
-                outputName,
-                "image/webp",
-                baos.toByteArray()
-        );
+        return new CustomMultipartFile(image.getName(), outputName, "image/webp", baos.toByteArray());
     }
 
     private void validateDimensionsWithinLimit(MultipartFile image) throws IOException {
@@ -85,8 +82,7 @@ public class ImageConversionService {
                 reader.setInput(stream);
                 final int width = reader.getWidth(0);
                 final int height = reader.getHeight(0);
-                if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION
-                        || (long) width * height > MAX_PIXELS) {
+                if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION || (long) width * height > MAX_PIXELS) {
                     throw new IOException(String.format(
                             "Image dimensions %dx%d exceed the allowed limit of %dx%d pixels",
                             width, height, MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION));

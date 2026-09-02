@@ -1,15 +1,15 @@
 package com.portcelana.natiart.dto;
 
-import com.portcelana.natiart.model.Category;
-import com.portcelana.natiart.model.Package;
-import com.portcelana.natiart.model.Product;
-import com.portcelana.natiart.model.support.PersonalizationOption;
-
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import com.portcelana.natiart.model.Category;
+import com.portcelana.natiart.model.Package;
+import com.portcelana.natiart.model.Product;
+import com.portcelana.natiart.model.support.PersonalizationOption;
 
 public class ProductDto {
     private String id;
@@ -37,19 +37,12 @@ public class ProductDto {
         if (product == null) return null;
         return new ProductDto(product.getLabel(), product.getOriginalPrice())
                 .setId(product.getId())
-                .setDescription(product.getDescription()
-                        .orElse(null))
-                .setMarkedPrice(product.getMarkedPrice()
-                        .orElseGet(product::getOriginalPrice))
+                .setDescription(product.getDescription().orElse(null))
+                .setMarkedPrice(product.getMarkedPrice().orElseGet(product::getOriginalPrice))
                 .setStockQuantity(product.getStockQuantity())
-                .setCategoryId(product.getCategory()
-                        .map(Category::getId)
-                        .orElse(null))
-                .setPackageId(product.getPackaging()
-                        .map(Package::getId)
-                        .orElse(null))
-                .setHasFixedGoldenBorder(product.getHasFixedGoldenBorder()
-                        .orElse(null))
+                .setCategoryId(product.getCategory().map(Category::getId).orElse(null))
+                .setPackageId(product.getPackaging().map(Package::getId).orElse(null))
+                .setHasFixedGoldenBorder(product.getHasFixedGoldenBorder().orElse(null))
                 .setAvailablePersonalizations(product.getAvailablePersonalizations())
                 .setTags(product.getTags())
                 .setImages(product.getImages())
@@ -111,7 +104,6 @@ public class ProductDto {
         this.stockQuantity = stockQuantity;
         return this;
     }
-
 
     public String getCategoryId() {
         return categoryId;

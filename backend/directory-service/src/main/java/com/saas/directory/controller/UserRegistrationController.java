@@ -1,5 +1,12 @@
 package com.saas.directory.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.saas.directory.configuration.UserAuthenticationProvider;
 import com.saas.directory.dto.UserAuthDto;
 import com.saas.directory.dto.UserDto;
@@ -8,12 +15,6 @@ import com.saas.directory.model.ExternalUser;
 import com.saas.directory.model.User;
 import com.saas.directory.repository.ExternalUserRepository;
 import com.saas.directory.service.UserManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class UserRegistrationController {
@@ -23,7 +24,10 @@ public class UserRegistrationController {
     private final UserAuthenticationProvider userAuthenticationProvider;
     private final ExternalUserRepository externalUserRepository;
 
-    public UserRegistrationController(UserManager userManager, UserAuthenticationProvider userAuthenticationProvider, ExternalUserRepository externalUserRepository) {
+    public UserRegistrationController(
+            UserManager userManager,
+            UserAuthenticationProvider userAuthenticationProvider,
+            ExternalUserRepository externalUserRepository) {
         this.userManager = userManager;
         this.userAuthenticationProvider = userAuthenticationProvider;
         this.externalUserRepository = externalUserRepository;
@@ -38,7 +42,8 @@ public class UserRegistrationController {
     }
 
     @PostMapping("/register-ghost-user")
-    public ResponseEntity<UserAuthDto> registerGhostUser(@RequestBody UserRegistrationDto userRegistrationDto) throws Exception {
+    public ResponseEntity<UserAuthDto> registerGhostUser(@RequestBody UserRegistrationDto userRegistrationDto)
+            throws Exception {
         LOGGER.info("Registering ghost user [{}]", userRegistrationDto.username());
 
         final User user = userManager.registerGhostUser(userRegistrationDto);

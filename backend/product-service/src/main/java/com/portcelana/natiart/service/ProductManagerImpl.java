@@ -1,22 +1,5 @@
 package com.portcelana.natiart.service;
 
-import com.portcelana.natiart.controller.ProductController;
-import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
-import com.portcelana.natiart.dto.ProductDto;
-import com.portcelana.natiart.model.Category;
-import com.portcelana.natiart.model.Package;
-import com.portcelana.natiart.model.Product;
-import com.portcelana.natiart.repository.ProductRepository;
-import com.portcelana.natiart.storage.InputFile;
-import com.portcelana.natiart.storage.StorageService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -29,6 +12,24 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.portcelana.natiart.controller.ProductController;
+import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
+import com.portcelana.natiart.dto.ProductDto;
+import com.portcelana.natiart.model.Category;
+import com.portcelana.natiart.model.Package;
+import com.portcelana.natiart.model.Product;
+import com.portcelana.natiart.repository.ProductRepository;
+import com.portcelana.natiart.storage.InputFile;
+import com.portcelana.natiart.storage.StorageService;
+
 @Service
 public class ProductManagerImpl implements ProductManager {
     public static Logger LOGGER = LoggerFactory.getLogger(ProductController.class);
@@ -39,10 +40,11 @@ public class ProductManagerImpl implements ProductManager {
     private final PackageManager packageManager;
     private final StorageService storageService;
 
-    public ProductManagerImpl(ProductRepository productRepository,
-                              CategoryManager categoryManager,
-                              PackageManager packageManager,
-                              StorageService storageService) {
+    public ProductManagerImpl(
+            ProductRepository productRepository,
+            CategoryManager categoryManager,
+            PackageManager packageManager,
+            StorageService storageService) {
         this.productRepository = productRepository;
         this.categoryManager = categoryManager;
         this.packageManager = packageManager;
@@ -113,6 +115,7 @@ public class ProductManagerImpl implements ProductManager {
                 .filter(Objects::nonNull)
                 .toList();
     }
+
     @Override
     @Transactional(readOnly = true)
     public boolean existsByCategory(Category category) {
@@ -124,7 +127,8 @@ public class ProductManagerImpl implements ProductManager {
     public Product createProduct(ProductDto productDto, List<InputFile> imagesInput) {
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
         final Optional<Package> pack = packageManager.getPackage(productDto.getPackageId());
-        final Product product = productRepository.save(new Product(productDto.getLabel(), productDto.getOriginalPrice())
+        final Product product = productRepository
+                .save(new Product(productDto.getLabel(), productDto.getOriginalPrice())
                         .setDescription(productDto.getDescription())
                         .setCategory(category)
                         .setPackaging(pack.orElse(null))
@@ -189,14 +193,19 @@ public class ProductManagerImpl implements ProductManager {
     }
 
     private List<String> processImages(Product product, List<String> existingImages, List<InputFile> newImages) {
-        LOGGER.info("Processing [{}] images for product labelled [{}] with id [{}]", newImages.size(), product.getLabel(), product.getId());
+        LOGGER.info(
+                "Processing [{}] images for product labelled [{}] with id [{}]",
+                newImages.size(),
+                product.getLabel(),
+                product.getId());
 
         final List<String> imagesUris = existingImages != null ? new ArrayList<>(existingImages) : new ArrayList<>();
 
         List<String> newUris = newImages.parallelStream()
                 .map(inputFile -> {
                     final String imagePath = IMAGE_BASE_PATH + product.getId() + "/" + UUID.randomUUID();
-                    final URI imageUri = storageService.uploadFile(imagePath, inputFile, UUID.randomUUID().toString());
+                    final URI imageUri = storageService.uploadFile(
+                            imagePath, inputFile, UUID.randomUUID().toString());
                     return imageUri.toString();
                 })
                 .toList();

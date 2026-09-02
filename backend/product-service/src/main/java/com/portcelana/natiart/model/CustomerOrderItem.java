@@ -1,10 +1,10 @@
 package com.portcelana.natiart.model;
 
-import jakarta.persistence.*;
-
 import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.UUID;
+
+import jakarta.persistence.*;
 
 @Entity
 public class CustomerOrderItem {

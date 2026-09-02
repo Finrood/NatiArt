@@ -32,7 +32,37 @@ public class AsaasCustomerCreationResponse {
     private final String state;
     private final String country;
 
-    public AsaasCustomerCreationResponse(String object, String id, String dateCreated, String name, String email, String company, String phone, String mobilePhone, String address, String addressNumber, String complement, String province, String postalCode, String cpfCnpj, String personType, boolean deleted, String additionalEmails, String externalReference, boolean notificationDisabled, String observations, String municipalInscription, String stateInscription, boolean canDelete, String cannotBeDeletedReason, boolean canEdit, String cannotEditReason, int city, String cityName, String state, String country) {
+    public AsaasCustomerCreationResponse(
+            String object,
+            String id,
+            String dateCreated,
+            String name,
+            String email,
+            String company,
+            String phone,
+            String mobilePhone,
+            String address,
+            String addressNumber,
+            String complement,
+            String province,
+            String postalCode,
+            String cpfCnpj,
+            String personType,
+            boolean deleted,
+            String additionalEmails,
+            String externalReference,
+            boolean notificationDisabled,
+            String observations,
+            String municipalInscription,
+            String stateInscription,
+            boolean canDelete,
+            String cannotBeDeletedReason,
+            boolean canEdit,
+            String cannotEditReason,
+            int city,
+            String cityName,
+            String state,
+            String country) {
         this.object = object;
         this.id = id;
         this.dateCreated = dateCreated;

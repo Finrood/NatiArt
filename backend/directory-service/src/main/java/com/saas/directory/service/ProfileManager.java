@@ -1,11 +1,12 @@
 package com.saas.directory.service;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.saas.directory.dto.ProfileDto;
 import com.saas.directory.model.Profile;
 import com.saas.directory.model.User;
 import com.saas.directory.repository.ProfileRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ProfileManager {

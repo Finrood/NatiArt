@@ -1,8 +1,6 @@
 package com.portcelana.natiart.storage;
 
-import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,7 +13,10 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 
 class StorageFileSystemTest {
 
@@ -49,8 +50,7 @@ class StorageFileSystemTest {
         writeInside(root, "p1/img.webp", "image-bytes");
         StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
 
-        assertThrows(ResourceNotFoundException.class,
-                () -> storage.openFile(URI.create("file:///etc/passwd")));
+        assertThrows(ResourceNotFoundException.class, () -> storage.openFile(URI.create("file:///etc/passwd")));
     }
 
     @Test
@@ -67,8 +67,8 @@ class StorageFileSystemTest {
     void openFileRejectsUnsupportedScheme() {
         StorageFileSystem storage = storageWithRoots(List.of(tempDir.toString()));
 
-        assertThrows(IllegalArgumentException.class,
-                () -> storage.openFile(URI.create("https://evil.example.com/secret")));
+        assertThrows(
+                IllegalArgumentException.class, () -> storage.openFile(URI.create("https://evil.example.com/secret")));
     }
 
     @Test
@@ -92,8 +92,7 @@ class StorageFileSystemTest {
         StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
 
         assertTrue(storage.exists(uri));
-        assertThrows(ResourceNotFoundException.class,
-                () -> storage.exists(URI.create("file:///etc/passwd")));
+        assertThrows(ResourceNotFoundException.class, () -> storage.exists(URI.create("file:///etc/passwd")));
     }
 
     @Test
@@ -121,7 +120,7 @@ class StorageFileSystemTest {
         StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
 
         try (var in = storage.downloadFiles(Set.of(a, b));
-             var zipIn = new ZipInputStream(in)) {
+                var zipIn = new ZipInputStream(in)) {
             List<String> names = new ArrayList<>();
             ZipEntry entry;
             while ((entry = zipIn.getNextEntry()) != null) {
@@ -133,10 +132,11 @@ class StorageFileSystemTest {
 
     @Test
     void downloadFilesRejectsOutsideRoot() {
-        StorageFileSystem storage = storageWithRoots(List.of(tempDir.resolve("product-images").toString()));
+        StorageFileSystem storage =
+                storageWithRoots(List.of(tempDir.resolve("product-images").toString()));
 
-        assertThrows(ResourceNotFoundException.class,
-                () -> storage.downloadFiles(Set.of(URI.create("file:///etc/passwd"))));
+        assertThrows(
+                ResourceNotFoundException.class, () -> storage.downloadFiles(Set.of(URI.create("file:///etc/passwd"))));
     }
 
     @Test
@@ -147,7 +147,7 @@ class StorageFileSystemTest {
         StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
 
         try (var in = storage.downloadDirectory(root.resolve("gallery").toUri());
-             var zipIn = new ZipInputStream(in)) {
+                var zipIn = new ZipInputStream(in)) {
             List<String> names = new ArrayList<>();
             ZipEntry entry;
             while ((entry = zipIn.getNextEntry()) != null) {
@@ -169,10 +169,10 @@ class StorageFileSystemTest {
 
     @Test
     void downloadDirectoryRejectsOutsideRoot() {
-        StorageFileSystem storage = storageWithRoots(List.of(tempDir.resolve("product-images").toString()));
+        StorageFileSystem storage =
+                storageWithRoots(List.of(tempDir.resolve("product-images").toString()));
 
-        assertThrows(ResourceNotFoundException.class,
-                () -> storage.downloadDirectory(URI.create("file:///etc")));
+        assertThrows(ResourceNotFoundException.class, () -> storage.downloadDirectory(URI.create("file:///etc")));
     }
 
     private void cleanupRecursively(Path path) {

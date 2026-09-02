@@ -1,8 +1,8 @@
 package com.portcelana.natiart.model;
 
-import jakarta.persistence.*;
-
 import java.util.UUID;
+
+import jakarta.persistence.*;
 
 /**
  * This cart only applies to logged-in customers. Customers that are not logged-in will have their cart saved in their browser's cookie

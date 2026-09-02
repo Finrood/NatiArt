@@ -1,20 +1,5 @@
 package com.saas.directory.service;
 
-import com.saas.directory.configuration.UserAuthenticationProvider;
-import com.saas.directory.controller.helper.ResourceNotFoundException;
-import com.saas.directory.dto.CredentialsDto;
-import com.saas.directory.model.User;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.crypto.password.PasswordEncoder;
-
-import com.saas.directory.dto.UserAuthDto;
-import com.saas.directory.service.TokenManager;
-import org.springframework.mock.web.MockHttpServletRequest;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -24,6 +9,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import com.saas.directory.configuration.UserAuthenticationProvider;
+import com.saas.directory.controller.helper.ResourceNotFoundException;
+import com.saas.directory.dto.CredentialsDto;
+import com.saas.directory.dto.UserAuthDto;
+import com.saas.directory.model.User;
 
 @ExtendWith(MockitoExtension.class)
 public class AuthenticationManagerTest {
@@ -36,12 +35,8 @@ public class AuthenticationManagerTest {
 
     @BeforeEach
     public void initContext() {
-        authenticationManager = new AuthenticationManager(
-                userManager,
-                passwordEncoder,
-                userAuthenticationProvider,
-                tokenManager
-        );
+        authenticationManager =
+                new AuthenticationManager(userManager, passwordEncoder, userAuthenticationProvider, tokenManager);
     }
 
     // Unknown users and wrong passwords must be indistinguishable
@@ -49,7 +44,8 @@ public class AuthenticationManagerTest {
     public void login_with_unknown_user_is_generic() {
         when(userManager.getUser("ghost@attacker.com")).thenReturn(java.util.Optional.empty());
 
-        final ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
+        final ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
                 () -> authenticationManager.login(new CredentialsDto("ghost@attacker.com", "whatever")));
         assertEquals(HttpStatus.UNAUTHORIZED, exception.getHttpStatus());
         assertEquals("Invalid credentials", exception.getMessage());
@@ -62,8 +58,8 @@ public class AuthenticationManagerTest {
         when(userManager.getUser(username)).thenReturn(java.util.Optional.of(user));
         when(passwordEncoder.matches(any(), eq(user.getPasswordHash()))).thenReturn(false);
 
-        final ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                () -> authenticationManager.login(new CredentialsDto(username, null)));
+        final ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class, () -> authenticationManager.login(new CredentialsDto(username, null)));
         assertEquals(HttpStatus.UNAUTHORIZED, exception.getHttpStatus());
         assertEquals("Invalid credentials", exception.getMessage());
     }

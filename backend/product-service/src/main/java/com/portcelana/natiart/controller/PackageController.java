@@ -1,17 +1,18 @@
 package com.portcelana.natiart.controller;
 
-import com.portcelana.natiart.dto.PackageDto;
-import com.portcelana.natiart.service.PackageManager;
+import java.util.Comparator;
+import java.util.List;
+
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Comparator;
-import java.util.List;
+import com.portcelana.natiart.dto.PackageDto;
+import com.portcelana.natiart.service.PackageManager;
 
 @RestController
 public class PackageController {
-    final private PackageManager packageManager;
+    private final PackageManager packageManager;
 
     public PackageController(PackageManager packageManager) {
         this.packageManager = packageManager;

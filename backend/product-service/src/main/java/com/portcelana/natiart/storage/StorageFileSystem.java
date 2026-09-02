@@ -1,41 +1,40 @@
 package com.portcelana.natiart.storage;
 
-import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
-import org.apache.commons.io.FileUtils;
-import org.apache.poi.util.IOUtils;
-import org.apache.poi.util.TempFile;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
 import java.io.*;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.poi.util.IOUtils;
+import org.apache.poi.util.TempFile;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
+
 @Component
 public class StorageFileSystem implements Storage {
-    private final static String DEFAULT_LOCATION = "/tmp";
+    private static final String DEFAULT_LOCATION = "/tmp";
     private static final List<String> DEFAULT_ALLOWED_ROOTS = List.of(
             System.getProperty("java.io.tmpdir") + "/product-images",
-            System.getProperty("user.dir") + "/product-images"
-    );
+            System.getProperty("user.dir") + "/product-images");
 
     private final List<Path> allowedRoots;
 
     public StorageFileSystem(@Value("${nati.storage.filesystem.allowed-roots:}") List<String> allowedRoots) {
         this.allowedRoots = (allowedRoots == null || allowedRoots.isEmpty() ? DEFAULT_ALLOWED_ROOTS : allowedRoots)
                 .stream()
-                .map(Path::of)
-                .map(Path::toAbsolutePath)
-                .map(Path::normalize)
-                .toList();
+                        .map(Path::of)
+                        .map(Path::toAbsolutePath)
+                        .map(Path::normalize)
+                        .toList();
     }
 
     @Override
@@ -54,7 +53,8 @@ public class StorageFileSystem implements Storage {
         try {
             return FileUtils.openInputStream(file);
         } catch (IOException e) {
-            throw new IllegalStateException(String.format("Error while reading file [%s] on local storage.", file.getName()), e);
+            throw new IllegalStateException(
+                    String.format("Error while reading file [%s] on local storage.", file.getName()), e);
         }
     }
 
@@ -97,7 +97,8 @@ public class StorageFileSystem implements Storage {
             }
             return file.toURI();
         } catch (IOException e) {
-            throw new IllegalStateException(String.format("An error has occurred while storing file [%s] in [%s]", file.getName(), key));
+            throw new IllegalStateException(
+                    String.format("An error has occurred while storing file [%s] in [%s]", file.getName(), key));
         }
     }
 

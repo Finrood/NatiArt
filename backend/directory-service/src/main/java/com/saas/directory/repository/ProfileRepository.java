@@ -1,10 +1,9 @@
 package com.saas.directory.repository;
 
-import com.saas.directory.model.Profile;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-@Repository
-public interface ProfileRepository extends JpaRepository<Profile, String> {
+import com.saas.directory.model.Profile;
 
-}
+@Repository
+public interface ProfileRepository extends JpaRepository<Profile, String> {}

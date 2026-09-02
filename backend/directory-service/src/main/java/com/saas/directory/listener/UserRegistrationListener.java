@@ -1,12 +1,5 @@
 package com.saas.directory.listener;
 
-import com.saas.directory.dto.UserDto;
-import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
-import com.saas.directory.event.UserRegisteredEvent;
-import com.saas.directory.model.ExternalUser;
-import com.saas.directory.service.AsaasUserManager;
-import com.saas.directory.service.UserManager;
-import com.saas.directory.service.support.RetryExternalApiCall;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.retry.annotation.Recover;
@@ -17,6 +10,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.client.HttpClientErrorException;
+
+import com.saas.directory.dto.UserDto;
+import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
+import com.saas.directory.event.UserRegisteredEvent;
+import com.saas.directory.model.ExternalUser;
+import com.saas.directory.service.AsaasUserManager;
+import com.saas.directory.service.UserManager;
+import com.saas.directory.service.support.RetryExternalApiCall;
 
 @Component
 public class UserRegistrationListener {
@@ -65,16 +66,14 @@ public class UserRegistrationListener {
             LOGGER.error(
                     "Unrecoverable 400 Bad Request error for user [{}]. The request is malformed and will not be retried. Error: {}",
                     event.username(),
-                    e.getMessage()
-            );
+                    e.getMessage());
             return;
         }
 
         LOGGER.error(
                 "CRITICAL: All retry attempts to register user [{}] with Asaas failed. Manual intervention may be required. Final error: {}",
                 event.username(),
-                e.getMessage()
-        );
+                e.getMessage());
         // We could add logic to alert an admin or add to a persistent "dead-letter" queue.
     }
 }

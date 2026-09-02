@@ -1,17 +1,18 @@
 package com.saas.directory.service;
 
-import com.saas.directory.model.Token;
-import com.saas.directory.model.TokenType;
-import com.saas.directory.model.User;
-import com.saas.directory.repository.TokenRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.saas.directory.model.Token;
+import com.saas.directory.model.TokenType;
+import com.saas.directory.model.User;
+import com.saas.directory.repository.TokenRepository;
 
 @Service
 public class TokenManager {
@@ -22,9 +23,7 @@ public class TokenManager {
     }
 
     public static boolean isTokenValid(Optional<Token> token) {
-        return token
-                .map(t -> !t.isExpired())
-                .orElse(false);
+        return token.map(t -> !t.isExpired()).orElse(false);
     }
 
     @Transactional(readOnly = true)
@@ -34,9 +33,10 @@ public class TokenManager {
 
     @Transactional(readOnly = true)
     public Token getTokenByJtiAndTokenTypeOrDie(String jti, TokenType tokenType) {
-        return tokenRepository.findByJtiAndTokenType(jti, tokenType)
-                .orElseThrow(() -> new IllegalArgumentException(String.format("[%s] Token [%s] does not exist", tokenType, jti)));
-
+        return tokenRepository
+                .findByJtiAndTokenType(jti, tokenType)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(String.format("[%s] Token [%s] does not exist", tokenType, jti)));
     }
 
     @Transactional(readOnly = true)

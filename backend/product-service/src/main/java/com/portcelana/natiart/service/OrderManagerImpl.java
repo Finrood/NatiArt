@@ -1,5 +1,12 @@
 package com.portcelana.natiart.service;
 
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.OrderDto;
 import com.portcelana.natiart.dto.OrderItemDto;
@@ -9,12 +16,6 @@ import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.ProductRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.List;
 
 @Service
 public class OrderManagerImpl implements OrderManager {
@@ -22,7 +23,8 @@ public class OrderManagerImpl implements OrderManager {
     private final ProductManager productManager;
     private final ProductRepository productRepository;
 
-    public OrderManagerImpl(OrderRepository orderRepository, ProductManager productManager, ProductRepository productRepository) {
+    public OrderManagerImpl(
+            OrderRepository orderRepository, ProductManager productManager, ProductRepository productRepository) {
         this.orderRepository = orderRepository;
         this.productManager = productManager;
         this.productRepository = productRepository;
@@ -31,7 +33,8 @@ public class OrderManagerImpl implements OrderManager {
     @Override
     @Transactional(readOnly = true)
     public CustomerOrder getOrderById(String orderId) {
-        return orderRepository.findById(orderId)
+        return orderRepository
+                .findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("CustomerOrder with id " + orderId + " not found"));
     }
 
@@ -48,7 +51,8 @@ public class OrderManagerImpl implements OrderManager {
         requireNonNegativeAmount(orderDto.getDeliveryAmount(), "delivery amount");
 
         final CustomerOrder customerOrder = new CustomerOrder();
-        customerOrder.setOrderDate(Instant.now())
+        customerOrder
+                .setOrderDate(Instant.now())
                 .setStatus(OrderStatus.PENDING)
                 .setFirstname(orderDto.getFirstname())
                 .setLastname(orderDto.getLastname())

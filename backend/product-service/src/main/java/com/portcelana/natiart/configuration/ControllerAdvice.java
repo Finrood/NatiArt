@@ -1,8 +1,5 @@
 package com.portcelana.natiart.configuration;
 
-import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
-import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
-import com.portcelana.natiart.controller.helper.UserNotAllowedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -10,9 +7,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
+import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
+import com.portcelana.natiart.controller.helper.UserNotAllowedException;
+
 @org.springframework.web.bind.annotation.ControllerAdvice
 public class ControllerAdvice {
-    private final static Logger logger = LoggerFactory.getLogger(ControllerAdvice.class);
+    private static final Logger logger = LoggerFactory.getLogger(ControllerAdvice.class);
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Object> handleAccessDeniedException(AccessDeniedException e) throws AccessDeniedException {

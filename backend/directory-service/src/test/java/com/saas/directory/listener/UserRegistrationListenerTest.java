@@ -1,5 +1,16 @@
 package com.saas.directory.listener;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.*;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
 import com.saas.directory.event.UserRegisteredEvent;
@@ -8,16 +19,6 @@ import com.saas.directory.model.RoleName;
 import com.saas.directory.model.User;
 import com.saas.directory.service.AsaasUserManager;
 import com.saas.directory.service.UserManager;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class UserRegistrationListenerTest {
@@ -44,7 +45,37 @@ public class UserRegistrationListenerTest {
     void handleUserRegistration_shouldCallAsaasAndSaveExternalId_onSuccess() throws Exception {
         // Arrange
         UserRegisteredEvent event = new UserRegisteredEvent("testuser");
-        AsaasCustomerCreationResponse asaasResponse = new AsaasCustomerCreationResponse("customer", "cus_12345", "2025-01-01", "Test User", "test@test.com", null, null, null, null, null, null, null, null, null, null, false, null, null, false, null, null, null, false, null, false, null, 0, null, null, null);
+        AsaasCustomerCreationResponse asaasResponse = new AsaasCustomerCreationResponse(
+                "customer",
+                "cus_12345",
+                "2025-01-01",
+                "Test User",
+                "test@test.com",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                null,
+                null,
+                false,
+                null,
+                null,
+                null,
+                false,
+                null,
+                false,
+                null,
+                0,
+                null,
+                null,
+                null);
 
         when(userManager.getUserOrDie("testuser")).thenReturn(testUser);
         when(asaasUserManager.registerUser(any(UserDto.class))).thenReturn(asaasResponse);
@@ -63,7 +94,8 @@ public class UserRegistrationListenerTest {
         // --- Arrange ---
         UserRegisteredEvent event = new UserRegisteredEvent("testuser");
         when(userManager.getUserOrDie("testuser")).thenReturn(testUser);
-        when(asaasUserManager.registerUser(any(UserDto.class))).thenThrow(new RuntimeException("Asaas service unavailable"));
+        when(asaasUserManager.registerUser(any(UserDto.class)))
+                .thenThrow(new RuntimeException("Asaas service unavailable"));
 
         // --- Act & Assert ---
         // This test is now correct because the listener's try-catch is removed.

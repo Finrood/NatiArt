@@ -1,10 +1,11 @@
 package com.portcelana.natiart.controller;
 
-import com.portcelana.natiart.dto.ProductDto;
-import com.portcelana.natiart.helper.TargetUser;
-import com.portcelana.natiart.service.ImageConversionService;
-import com.portcelana.natiart.service.ProductManager;
-import com.portcelana.natiart.storage.InputFile;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
@@ -20,21 +21,20 @@ import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.concurrent.TimeUnit;
-import java.util.ArrayList;
-import java.util.List;
+import com.portcelana.natiart.dto.ProductDto;
+import com.portcelana.natiart.helper.TargetUser;
+import com.portcelana.natiart.service.ImageConversionService;
+import com.portcelana.natiart.service.ProductManager;
+import com.portcelana.natiart.storage.InputFile;
 
 @RestController
 public class ProductController {
     public static Logger LOGGER = LoggerFactory.getLogger(ProductController.class);
 
-    final private ProductManager productManager;
+    private final ProductManager productManager;
     private final ImageConversionService imageConversionService;
 
-    public ProductController(ProductManager productManager,
-                             ImageConversionService imageConversionService) {
+    public ProductController(ProductManager productManager, ImageConversionService imageConversionService) {
         this.productManager = productManager;
         this.imageConversionService = imageConversionService;
     }
@@ -47,9 +47,10 @@ public class ProductController {
     }
 
     @GetMapping("/products")
-    public List<ProductDto> getProducts(@TargetUser String username,
-                                        @RequestParam(required = false, defaultValue = "0") int page,
-                                        @RequestParam(required = false, defaultValue = "20") int size) {
+    public List<ProductDto> getProducts(
+            @TargetUser String username,
+            @RequestParam(required = false, defaultValue = "0") int page,
+            @RequestParam(required = false, defaultValue = "20") int size) {
         LOGGER.info("Getting all products");
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "label"));
         return productManager.getProducts(pageable).stream()
@@ -58,8 +59,9 @@ public class ProductController {
     }
 
     @GetMapping("/products/new")
-    public List<ProductDto> getNewProducts(@RequestParam(required = false, defaultValue = "0") int page,
-                                           @RequestParam(required = false, defaultValue = "20") int size) {
+    public List<ProductDto> getNewProducts(
+            @RequestParam(required = false, defaultValue = "0") int page,
+            @RequestParam(required = false, defaultValue = "20") int size) {
         LOGGER.info("Getting new products");
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "label"));
         return productManager.getNewProducts(pageable).stream()
@@ -68,8 +70,9 @@ public class ProductController {
     }
 
     @GetMapping("/products/featured")
-    public List<ProductDto> getFeaturedProducts(@RequestParam(required = false, defaultValue = "0") int page,
-                                                @RequestParam(required = false, defaultValue = "20") int size) {
+    public List<ProductDto> getFeaturedProducts(
+            @RequestParam(required = false, defaultValue = "0") int page,
+            @RequestParam(required = false, defaultValue = "20") int size) {
         LOGGER.info("Getting featured products");
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "label"));
         return productManager.getFeaturedProducts(pageable).stream()
@@ -79,9 +82,12 @@ public class ProductController {
 
     @PostMapping(value = "/products/create")
     @PreAuthorize("hasRole('ADMIN')")
-    public ProductDto createProduct(@RequestPart("productDto") ProductDto productDto,
-                                    @RequestPart(value = "newImages", required = false) List<MultipartFile> newImages) throws IOException {
-        LOGGER.info("Creating new product with label [{}] description [{}]",
+    public ProductDto createProduct(
+            @RequestPart("productDto") ProductDto productDto,
+            @RequestPart(value = "newImages", required = false) List<MultipartFile> newImages)
+            throws IOException {
+        LOGGER.info(
+                "Creating new product with label [{}] description [{}]",
                 productDto.getLabel(),
                 productDto.getDescription());
 
@@ -92,9 +98,11 @@ public class ProductController {
 
     @PutMapping("/products/{productId}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ProductDto updateProduct(@PathVariable String productId,
-                                    @RequestPart("productDto") ProductDto productDto,
-                                    @RequestPart(value = "newImages", required = false) List<MultipartFile> newImages) throws IOException {
+    public ProductDto updateProduct(
+            @PathVariable String productId,
+            @RequestPart("productDto") ProductDto productDto,
+            @RequestPart(value = "newImages", required = false) List<MultipartFile> newImages)
+            throws IOException {
         Assert.isTrue(productId.equals(productDto.getId()), "product ids are not equal!");
 
         final List<InputFile> imagesInput = processImages(newImages);

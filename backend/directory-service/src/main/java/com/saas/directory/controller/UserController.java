@@ -1,14 +1,15 @@
 package com.saas.directory.controller;
 
-import com.saas.directory.dto.UserDto;
-import com.saas.directory.helper.TargetUser;
-import com.saas.directory.model.ExternalUser;
-import com.saas.directory.service.UserManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.saas.directory.dto.UserDto;
+import com.saas.directory.helper.TargetUser;
+import com.saas.directory.model.ExternalUser;
+import com.saas.directory.service.UserManager;
 
 @RestController
 public class UserController {
@@ -28,7 +29,8 @@ public class UserController {
             return ResponseEntity.ok(null);
         }
         final UserDto userDto = UserDto.from(userManager.getUserOrDie(username), null);
-        userDto.setExternalId(userManager.getAsaasCustomer(username)
+        userDto.setExternalId(userManager
+                .getAsaasCustomer(username)
                 .map(ExternalUser::getExternalId)
                 .orElse(null));
         return ResponseEntity.ok(userDto);

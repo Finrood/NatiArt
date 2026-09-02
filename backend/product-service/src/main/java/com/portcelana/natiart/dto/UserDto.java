@@ -6,8 +6,7 @@ public class UserDto {
     private String role;
     private String externalId;
 
-    public UserDto() {
-    }
+    public UserDto() {}
 
     public String getId() {
         return id;

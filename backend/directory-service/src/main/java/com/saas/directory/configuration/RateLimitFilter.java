@@ -1,26 +1,26 @@
 package com.saas.directory.configuration;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpMethod;
-import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
-
 import java.io.IOException;
 import java.time.Clock;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpMethod;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
-    private static final List<String> PROTECTED_ROUTES = List.of(
-            "/login", "/register-user", "/register-ghost-user", "/validate-token", "/refresh-token"
-    );
+    private static final List<String> PROTECTED_ROUTES =
+            List.of("/login", "/register-user", "/register-ghost-user", "/validate-token", "/refresh-token");
     private static final long WINDOW_MILLIS = 60_000L;
     private static final int MAX_TRACKED_CLIENTS = 50_000;
 
@@ -58,8 +58,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         final AtomicReference<Window> windowRef =
                 windowsByClient.computeIfAbsent(clientKey, k -> new AtomicReference<>(new Window(now, 0)));
-        final Window updated = windowRef.accumulateAndGet(new Window(now, 1), (current, incoming) ->
-                current.isStale(incoming.start) ? incoming : new Window(current.start, current.count + incoming.count));
+        final Window updated = windowRef.accumulateAndGet(
+                new Window(now, 1),
+                (current, incoming) -> current.isStale(incoming.start)
+                        ? incoming
+                        : new Window(current.start, current.count + incoming.count));
 
         if (updated.count > maxRequestsPerWindow) {
             response.setStatus(429);

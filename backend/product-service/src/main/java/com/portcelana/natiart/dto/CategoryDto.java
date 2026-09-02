@@ -8,8 +8,7 @@ public class CategoryDto {
     private String description;
     private boolean active;
 
-    public CategoryDto() {
-    }
+    public CategoryDto() {}
 
     public CategoryDto(String label) {
         this.label = label;
@@ -61,10 +60,9 @@ public class CategoryDto {
 
     @Override
     public String toString() {
-        return "CategoryDto{" +
-                "id='" + id + '\'' +
-                ", label='" + label + '\'' +
-                ", description='" + description + '\'' +
-                '}';
+        return "CategoryDto{" + "id='"
+                + id + '\'' + ", label='"
+                + label + '\'' + ", description='"
+                + description + '\'' + '}';
     }
 }

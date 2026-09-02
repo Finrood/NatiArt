@@ -42,7 +42,44 @@ public class AsaasPaymentCreationResponse {
     private final Object custody;
     private final List<Object> refunds;
 
-    private AsaasPaymentCreationResponse(String object, String id, LocalDate dateCreated, String customer, String paymentLink, Double value, Double netValue, Double originalValue, Double interestValue, String description, String billingType, Object pixTransaction, String status, LocalDate dueDate, LocalDate originalDueDate, LocalDate paymentDate, LocalDate clientPaymentDate, Integer installmentNumber, String invoiceUrl, String invoiceNumber, String externalReference, boolean deleted, boolean anticipated, boolean anticipable, LocalDate creditDate, LocalDate estimatedCreditDate, String transactionReceiptUrl, String nossoNumero, String bankSlipUrl, LocalDate lastInvoiceViewedDate, LocalDate lastBankSlipViewedDate, Discount discount, Fine fine, Interest interest, boolean postalService, Object custody, List<Object> refunds) {
+    private AsaasPaymentCreationResponse(
+            String object,
+            String id,
+            LocalDate dateCreated,
+            String customer,
+            String paymentLink,
+            Double value,
+            Double netValue,
+            Double originalValue,
+            Double interestValue,
+            String description,
+            String billingType,
+            Object pixTransaction,
+            String status,
+            LocalDate dueDate,
+            LocalDate originalDueDate,
+            LocalDate paymentDate,
+            LocalDate clientPaymentDate,
+            Integer installmentNumber,
+            String invoiceUrl,
+            String invoiceNumber,
+            String externalReference,
+            boolean deleted,
+            boolean anticipated,
+            boolean anticipable,
+            LocalDate creditDate,
+            LocalDate estimatedCreditDate,
+            String transactionReceiptUrl,
+            String nossoNumero,
+            String bankSlipUrl,
+            LocalDate lastInvoiceViewedDate,
+            LocalDate lastBankSlipViewedDate,
+            Discount discount,
+            Fine fine,
+            Interest interest,
+            boolean postalService,
+            Object custody,
+            List<Object> refunds) {
         this.object = object;
         this.id = id;
         this.dateCreated = dateCreated;

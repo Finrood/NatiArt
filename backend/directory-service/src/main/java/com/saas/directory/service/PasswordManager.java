@@ -1,14 +1,15 @@
 package com.saas.directory.service;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
 import com.saas.directory.dto.ResetPasswordDto;
 import com.saas.directory.model.Token;
 import com.saas.directory.model.TokenType;
 import com.saas.directory.model.User;
 import com.saas.directory.repository.UserRepository;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 @Service
 public class PasswordManager {
@@ -17,10 +18,11 @@ public class PasswordManager {
     private final TokenManager tokenManager;
     private final PasswordEncoder passwordEncoder;
 
-    public PasswordManager(UserManager userManager,
-                           UserRepository userRepository,
-                           TokenManager tokenManager,
-                           PasswordEncoder passwordEncoder) {
+    public PasswordManager(
+            UserManager userManager,
+            UserRepository userRepository,
+            TokenManager tokenManager,
+            PasswordEncoder passwordEncoder) {
         this.userManager = userManager;
         this.userRepository = userRepository;
         this.tokenManager = tokenManager;
@@ -37,9 +39,9 @@ public class PasswordManager {
         return tokenManager.getValidTokenByJtiAndTokenTypeOrDie(jti, TokenType.PASSWORD_RESET);
     }
 
-    //TODO CALL NOTIFICATION SERVICE TO SEND THE RESET PASSWORD EMAIL
+    // TODO CALL NOTIFICATION SERVICE TO SEND THE RESET PASSWORD EMAIL
     public void notifyResetPassword(String username) {
-        //passwordResetService.notifyResetPassword(username);
+        // passwordResetService.notifyResetPassword(username);
     }
 
     @Transactional

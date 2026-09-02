@@ -1,12 +1,12 @@
 package com.portcelana.natiart.service;
 
-import com.portcelana.natiart.dto.OrderDto;
-import com.portcelana.natiart.dto.OrderItemDto;
-import com.portcelana.natiart.model.CustomerOrder;
-import com.portcelana.natiart.model.CustomerOrderItem;
-import com.portcelana.natiart.model.Product;
-import com.portcelana.natiart.repository.OrderRepository;
-import com.portcelana.natiart.repository.ProductRepository;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+import java.math.BigDecimal;
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,12 +14,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import com.portcelana.natiart.dto.OrderDto;
+import com.portcelana.natiart.dto.OrderItemDto;
+import com.portcelana.natiart.model.CustomerOrder;
+import com.portcelana.natiart.model.CustomerOrderItem;
+import com.portcelana.natiart.model.Product;
+import com.portcelana.natiart.repository.OrderRepository;
+import com.portcelana.natiart.repository.ProductRepository;
 
 @ExtendWith(MockitoExtension.class)
 class OrderManagerImplTest {
@@ -57,9 +58,7 @@ class OrderManagerImplTest {
         when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1);
         when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        OrderDto dto = new OrderDto()
-                .setDeliveryAmount(new BigDecimal("5.00"))
-                .setItems(List.of(item("p1", 2)));
+        OrderDto dto = new OrderDto().setDeliveryAmount(new BigDecimal("5.00")).setItems(List.of(item("p1", 2)));
 
         CustomerOrder saved = orderManager.createOrder(dto);
 
@@ -74,9 +73,7 @@ class OrderManagerImplTest {
 
     @Test
     void createOrderRejectsNonPositiveQuantity() {
-        OrderDto dto = new OrderDto()
-                .setDeliveryAmount(BigDecimal.ONE)
-                .setItems(List.of(item("p1", -3)));
+        OrderDto dto = new OrderDto().setDeliveryAmount(BigDecimal.ONE).setItems(List.of(item("p1", -3)));
 
         assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto));
         verify(productRepository, never()).decreaseStockIfAvailable(any(), anyInt());
@@ -85,9 +82,7 @@ class OrderManagerImplTest {
 
     @Test
     void createOrderRejectsNegativeDeliveryAmount() {
-        OrderDto dto = new OrderDto()
-                .setDeliveryAmount(new BigDecimal("-1"))
-                .setItems(List.of(item("p1", 1)));
+        OrderDto dto = new OrderDto().setDeliveryAmount(new BigDecimal("-1")).setItems(List.of(item("p1", 1)));
 
         assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto));
         verify(orderRepository, never()).save(any());
@@ -99,9 +94,7 @@ class OrderManagerImplTest {
         when(productManager.getProductOrDie("p2")).thenReturn(mug);
         when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(0);
 
-        OrderDto dto = new OrderDto()
-                .setDeliveryAmount(BigDecimal.ZERO)
-                .setItems(List.of(item("p2", 50)));
+        OrderDto dto = new OrderDto().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p2", 50)));
 
         assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto));
         verify(orderRepository, never()).save(any());
@@ -114,14 +107,13 @@ class OrderManagerImplTest {
         when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1);
         when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        OrderDto dto = new OrderDto()
-                .setDeliveryAmount(BigDecimal.ZERO)
-                .setItems(List.of(item("p3", 1)));
+        OrderDto dto = new OrderDto().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p3", 1)));
 
         CustomerOrder saved = orderManager.createOrder(dto);
         ArgumentCaptor<CustomerOrder> captor = ArgumentCaptor.forClass(CustomerOrder.class);
         verify(orderRepository).save(captor.capture());
-        assertEquals(new BigDecimal("25.99"), captor.getValue().getItems().get(0).getPrice());
+        assertEquals(
+                new BigDecimal("25.99"), captor.getValue().getItems().get(0).getPrice());
         assertEquals(saved, captor.getValue());
     }
 
@@ -137,9 +129,8 @@ class OrderManagerImplTest {
         // 1st line succeeds, 2nd line is refused.
         when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1, 0);
 
-        OrderDto dto = new OrderDto()
-                .setDeliveryAmount(BigDecimal.ZERO)
-                .setItems(List.of(item("p1", 1), item("p2", 50)));
+        OrderDto dto =
+                new OrderDto().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p1", 1), item("p2", 50)));
 
         assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto));
         // Stock was attempted for both lines (the first decrements, the second is refused)...

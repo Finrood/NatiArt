@@ -8,7 +8,8 @@ public class PaymentPixQrCodeResponse {
     private final String payload;
     private final LocalDateTime expirationDate;
 
-    public PaymentPixQrCodeResponse(boolean success, String encodedImage, String payload, LocalDateTime expirationDate) {
+    public PaymentPixQrCodeResponse(
+            boolean success, String encodedImage, String payload, LocalDateTime expirationDate) {
         this.success = success;
         this.encodedImage = encodedImage;
         this.payload = payload;

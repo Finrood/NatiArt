@@ -57,7 +57,7 @@ subprojects {
     configure<com.diffplug.gradle.spotless.SpotlessExtension> {
         // Setup-only: keep Spotless out of the `check` lifecycle until the tree is formatted
         // (the follow-up formatting PR flips this to true).
-        setEnforceCheck(false)
+        setEnforceCheck(true)
         java {
             palantirJavaFormat("2.97.0")
             removeUnusedImports()
