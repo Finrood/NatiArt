@@ -1,4 +1,4 @@
-import {ApplicationConfig, APP_INITIALIZER, inject} from '@angular/core';
+import {ApplicationConfig, APP_INITIALIZER} from '@angular/core';
 import {provideRouter} from '@angular/router';
 
 import {routes} from './app.routes';
@@ -16,9 +16,9 @@ export const appConfig: ApplicationConfig = {
     ),
     {
       provide: APP_INITIALIZER,
-      useFactory: (authService: AuthenticationService) => () => authService.initializeAuthState(),
-      deps: [AuthenticationService],
-      multi: true
+      multi: true,
+      useFactory: (authService: AuthenticationService) => () => authService.authResolved$.subscribe(),
+      deps: [AuthenticationService]
     }
   ]
 };

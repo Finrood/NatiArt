@@ -1,6 +1,6 @@
 import {Component, OnDestroy, OnInit} from '@angular/core';
-import {switchMap} from "rxjs/operators";
-import {interval, Subscription} from "rxjs";
+import {map, switchMap} from "rxjs/operators";
+import {catchError, interval, of, Subscription, throwError} from "rxjs";
 import {PaymentService} from "../../../../service/payment.service";
 import {ActivatedRoute, Router} from "@angular/router";
 import { DatePipe, NgClass } from "@angular/common";
@@ -46,14 +46,43 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   }
 
   startPolling(paymentId: string) {
+    let consecutiveErrors = 0;
     this.pollingInterval = interval(5000)
-      .pipe(switchMap(() => this.paymentService.getPaymentStatus(paymentId)))
-      .subscribe((status) => {
-        this.paymentStatus = status.status;
-        if (this.paymentStatus === 'COMPLETED') {
-          this.triggerFireworks();
+      .pipe(
+        switchMap(() =>
+          this.paymentService.getPaymentStatus(paymentId).pipe(
+            map((status) => ({ok: true as const, status: status.status})),
+            catchError((error) => {
+              consecutiveErrors++;
+              if (consecutiveErrors >= 5) {
+                // Give up only after 5 consecutive failures (surfaced via the error handler below).
+                return throwError(() => error);
+              }
+              // Transient failure (network hiccup, 5xx): do NOT kill the polling chain.
+              return of({ok: false as const});
+            }),
+          ),
+        ),
+      )
+      .subscribe({
+        next: (result) => {
+          if (!result.ok) {
+            // Keep the previous PENDING visual state during transient failures.
+            this.paymentStatus = 'PENDING';
+            return;
+          }
+          consecutiveErrors = 0;
+          this.paymentStatus = result.status;
+          if (this.paymentStatus === 'COMPLETED') {
+            this.triggerFireworks();
+            this.stopPolling();
+          }
+        },
+        error: () => {
+          // 5 consecutive errors: stop polling and surface a non-success state instead of dying silently.
           this.stopPolling();
-        }
+          this.paymentStatus = 'ERROR';
+        },
       });
   }
 

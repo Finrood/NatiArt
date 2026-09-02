@@ -5,7 +5,7 @@ import {RoleName, User} from "../models/user.model";
 import {environment} from "../../../environments/environment";
 import {BehaviorSubject, catchError, Observable, Subject, throwError, timer, Subscription, of} from "rxjs";
 import {Credentials} from "../models/credentials.model";
-import {map, switchMap, takeUntil, tap} from "rxjs/operators";
+import {map, switchMap, takeUntil, tap, finalize} from "rxjs/operators";
 import {LoginResponse} from "../models/loginResponse.model";
 import {TokenService} from "./token.service";
 
@@ -25,6 +25,10 @@ export class AuthenticationService implements OnDestroy {
 
   public readonly currentUser$: Observable<User | null> = this.stateSubject.asObservable();
 
+  private authResolvedSubject = new BehaviorSubject<boolean>(false);
+
+  public readonly authResolved$: Observable<boolean> = this.authResolvedSubject.asObservable();
+
   public readonly isLoggedIn$: Observable<boolean> = this.currentUser$.pipe(
     map(user => !!user)
   );
@@ -32,7 +36,9 @@ export class AuthenticationService implements OnDestroy {
   private destroy$ = new Subject<void>();
 
   constructor(private http: HttpClient, private router: Router, private tokenService: TokenService) {
-    this.initializeAuthState();
+    this.initializeAuthState()
+      .pipe(finalize(() => this.authResolvedSubject.next(true)))
+      .subscribe();
     this.startTokenMonitoring();
     this.resetInactivityTimer();
   }
