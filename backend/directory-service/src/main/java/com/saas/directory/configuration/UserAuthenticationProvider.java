@@ -8,9 +8,11 @@ import com.auth0.jwt.interfaces.JWTVerifier;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.saas.directory.dto.UserAuthDto;
 import com.saas.directory.dto.UserDto;
+import com.saas.directory.model.ExternalUser;
 import com.saas.directory.model.Token;
 import com.saas.directory.model.TokenType;
 import com.saas.directory.model.User;
+import com.saas.directory.repository.ExternalUserRepository;
 import com.saas.directory.repository.TokenRepository;
 import com.saas.directory.service.UserManager;
 import jakarta.annotation.PostConstruct;
@@ -40,6 +42,7 @@ import java.util.UUID;
 public class UserAuthenticationProvider {
     private static final Logger logger = LoggerFactory.getLogger(UserAuthenticationProvider.class);
     private final TokenRepository tokenRepository;
+    private final ExternalUserRepository externalUserRepository;
     private final UserManager userManager;
     @Value("${saas.security.jwt.key.secret}")
     private String secretKey;
@@ -48,8 +51,11 @@ public class UserAuthenticationProvider {
     @Value("${saas.security.jwt.refresh.expiration}")
     private Long refreshTokenExpiration;
 
-    public UserAuthenticationProvider(TokenRepository tokenRepository, UserManager userManager) {
+    public UserAuthenticationProvider(TokenRepository tokenRepository,
+                                      ExternalUserRepository externalUserRepository,
+                                      UserManager userManager) {
         this.tokenRepository = tokenRepository;
+        this.externalUserRepository = externalUserRepository;
         this.userManager = userManager;
     }
 
@@ -152,7 +158,11 @@ public class UserAuthenticationProvider {
             authority = new SimpleGrantedAuthority("ROLE_" + dbToken.get().getUser().getRole().getLabel());
         }
 
-        return new UsernamePasswordAuthenticationToken(UserDto.from(dbToken.get().getUser(), null), null, Collections.singletonList(authority));
+        final User authenticatedUser = dbToken.get().getUser();
+        final ExternalUser externalUser = externalUserRepository.findByUser(authenticatedUser)
+                .orElse(null);
+
+        return new UsernamePasswordAuthenticationToken(UserDto.from(authenticatedUser, externalUser), null, Collections.singletonList(authority));
     }
 
     @Transactional
