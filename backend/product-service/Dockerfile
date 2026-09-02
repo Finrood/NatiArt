@@ -28,8 +28,8 @@ USER appuser
 # Copy only the built JAR from the build stage
 COPY --from=build --chown=appuser:appgroup /app/product-service/build/libs/*.jar app.jar
 
-# Expose the default Spring Boot port
-EXPOSE 8080
+# Expose the application port
+EXPOSE 8082
 
 # Optimize JVM flags for Spring Boot in a container
 ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
