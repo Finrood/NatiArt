@@ -16,8 +16,11 @@ import java.util.List;
 
 @Service
 public class ImageConversionService {
+    static final int MAX_IMAGE_DIMENSION = 6000;
+    static final long MAX_PIXELS = 24_000_000L;
+
     public List<MultipartFile> convertToWebP(List<MultipartFile> images) throws IOException {
-        return images.parallelStream()
+        return images.stream()
                 .map(image -> {
                     try {
                         return convertToWebP(image);
@@ -29,6 +32,8 @@ public class ImageConversionService {
     }
 
     private MultipartFile convertToWebP(MultipartFile image) throws IOException {
+        validateDimensionsWithinLimit(image);
+
         final BufferedImage bufferedImage = ImageIO.read(image.getInputStream());
 
         if (bufferedImage == null) {
@@ -55,11 +60,40 @@ public class ImageConversionService {
             writer.dispose();
         }
 
+        final String originalName = image.getOriginalFilename();
+        final String outputName = (originalName != null ? originalName : "image").replaceAll("\\.[^.]+$", ".webp");
+
         return new CustomMultipartFile(
                 image.getName(),
-                image.getOriginalFilename().replaceAll("\\.[^.]+$", ".webp"),
+                outputName,
                 "image/webp",
                 baos.toByteArray()
         );
+    }
+
+    private void validateDimensionsWithinLimit(MultipartFile image) throws IOException {
+        try (javax.imageio.stream.ImageInputStream stream = ImageIO.createImageInputStream(image.getInputStream())) {
+            if (stream == null) {
+                return;
+            }
+            final java.util.Iterator<javax.imageio.ImageReader> readers = ImageIO.getImageReaders(stream);
+            if (!readers.hasNext()) {
+                return;
+            }
+            final javax.imageio.ImageReader reader = readers.next();
+            try {
+                reader.setInput(stream);
+                final int width = reader.getWidth(0);
+                final int height = reader.getHeight(0);
+                if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION
+                        || (long) width * height > MAX_PIXELS) {
+                    throw new IOException(String.format(
+                            "Image dimensions %dx%d exceed the allowed limit of %dx%d pixels",
+                            width, height, MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION));
+                }
+            } finally {
+                reader.dispose();
+            }
+        }
     }
 }
