@@ -1,12 +1,12 @@
 package com.portcelana.natiart.dto;
 
-import com.portcelana.natiart.model.CustomerOrder;
-import com.portcelana.natiart.model.support.OrderStatus;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.portcelana.natiart.model.CustomerOrder;
+import com.portcelana.natiart.model.support.OrderStatus;
 
 public class OrderDto {
     private String id;
@@ -27,8 +27,7 @@ public class OrderDto {
     private BigDecimal totalAmount;
     private OrderStatus status;
 
-    public OrderDto() {
-    }
+    public OrderDto() {}
 
     public static OrderDto from(CustomerOrder customerOrder) {
         return new OrderDto()

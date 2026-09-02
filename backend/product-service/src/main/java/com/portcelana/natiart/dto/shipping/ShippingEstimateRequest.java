@@ -1,12 +1,12 @@
 package com.portcelana.natiart.dto.shipping;
 
 public class ShippingEstimateRequest {
-    final private String to;
-    final private float weight; // in KG
-    final private float length; // in CM
-    final private float width; // in CM
-    final private float height; // in CM
-    final private int quantity;
+    private final String to;
+    private final float weight; // in KG
+    private final float length; // in CM
+    private final float width; // in CM
+    private final float height; // in CM
+    private final int quantity;
 
     public ShippingEstimateRequest(String to, float weight, float length, float width, float height, int quantity) {
         this.to = to;

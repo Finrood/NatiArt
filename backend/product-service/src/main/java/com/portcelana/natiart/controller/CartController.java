@@ -1,21 +1,22 @@
 package com.portcelana.natiart.controller;
 
-import com.portcelana.natiart.dto.ProductDto;
-import com.portcelana.natiart.helper.TargetUser;
-import com.portcelana.natiart.model.CartItem;
-import com.portcelana.natiart.service.CartManager;
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import com.portcelana.natiart.dto.ProductDto;
+import com.portcelana.natiart.helper.TargetUser;
+import com.portcelana.natiart.model.CartItem;
+import com.portcelana.natiart.service.CartManager;
 
 @RestController
 public class CartController {
     public static Logger LOGGER = LoggerFactory.getLogger(CartController.class);
 
-    final private CartManager cartManager;
+    private final CartManager cartManager;
 
     public CartController(CartManager cartManager) {
         this.cartManager = cartManager;

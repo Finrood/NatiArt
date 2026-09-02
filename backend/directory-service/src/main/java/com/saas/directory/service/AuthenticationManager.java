@@ -1,16 +1,18 @@
 package com.saas.directory.service;
 
+import jakarta.servlet.http.HttpServletRequest;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.saas.directory.configuration.UserAuthenticationProvider;
 import com.saas.directory.controller.helper.ResourceNotFoundException;
 import com.saas.directory.dto.CredentialsDto;
 import com.saas.directory.dto.UserAuthDto;
 import com.saas.directory.dto.UserDto;
 import com.saas.directory.model.User;
-import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthenticationManager {
@@ -19,10 +21,11 @@ public class AuthenticationManager {
     private final UserAuthenticationProvider userAuthenticationProvider;
     private final TokenManager tokenManager;
 
-    public AuthenticationManager(UserManager userManager,
-                                 PasswordEncoder passwordEncoder,
-                                 UserAuthenticationProvider userAuthenticationProvider,
-                                 TokenManager tokenManager) {
+    public AuthenticationManager(
+            UserManager userManager,
+            PasswordEncoder passwordEncoder,
+            UserAuthenticationProvider userAuthenticationProvider,
+            TokenManager tokenManager) {
         this.userManager = userManager;
         this.passwordEncoder = passwordEncoder;
         this.userAuthenticationProvider = userAuthenticationProvider;
@@ -31,11 +34,14 @@ public class AuthenticationManager {
 
     @Transactional
     public UserAuthDto login(CredentialsDto credentialsDto) {
-        final User user = userManager.getUser(credentialsDto.username())
+        final User user = userManager
+                .getUser(credentialsDto.username())
                 .filter(u -> passwordEncoder.matches(credentialsDto.password(), u.getPasswordHash()))
                 .orElseThrow(() -> new ResourceNotFoundException("Invalid credentials", HttpStatus.UNAUTHORIZED));
         final UserDto userDto = UserDto.from(user, null);
-        return new UserAuthDto(userAuthenticationProvider.createAccessToken(userDto), userAuthenticationProvider.createRefreshToken(userDto));
+        return new UserAuthDto(
+                userAuthenticationProvider.createAccessToken(userDto),
+                userAuthenticationProvider.createRefreshToken(userDto));
     }
 
     @Transactional

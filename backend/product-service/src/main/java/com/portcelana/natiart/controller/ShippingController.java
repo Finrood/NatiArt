@@ -1,13 +1,14 @@
 package com.portcelana.natiart.controller;
 
-import com.portcelana.natiart.dto.shipping.ShippingEstimate;
-import com.portcelana.natiart.dto.shipping.ShippingEstimateRequest;
-import com.portcelana.natiart.service.ShippingService;
+import java.util.List;
+
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+import com.portcelana.natiart.dto.shipping.ShippingEstimate;
+import com.portcelana.natiart.dto.shipping.ShippingEstimateRequest;
+import com.portcelana.natiart.service.ShippingService;
 
 @RestController
 public class ShippingController {

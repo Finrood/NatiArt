@@ -1,24 +1,29 @@
 package com.saas.directory.model;
 
-import jakarta.persistence.*;
-
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
+
+import jakarta.persistence.*;
 
 @Entity
 public class Token {
     @Id
     private String id;
+
     @Version
     private long version;
+
     @Column(nullable = false, unique = true)
     private String jti;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TokenType tokenType;
+
     @Column(nullable = false)
     private Instant expiry;
+
     @ManyToOne(optional = false)
     @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false)
     private User user;

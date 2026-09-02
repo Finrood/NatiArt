@@ -28,8 +28,10 @@ public class AsaasCustomerCreationRequest {
     }
 
     public static AsaasCustomerCreationRequest from(UserDto userDto) {
-        final String customerFullName = userDto.getProfile().getFirstname() + " " + userDto.getProfile().getLastname();
-        return new AsaasCustomerCreationRequest(customerFullName, userDto.getProfile().getCpf())
+        final String customerFullName =
+                userDto.getProfile().getFirstname() + " " + userDto.getProfile().getLastname();
+        return new AsaasCustomerCreationRequest(
+                        customerFullName, userDto.getProfile().getCpf())
                 .setEmail(userDto.getUsername())
                 .setPhone(userDto.getProfile().getPhone())
                 .setPostalCode(userDto.getProfile().getZipCode())

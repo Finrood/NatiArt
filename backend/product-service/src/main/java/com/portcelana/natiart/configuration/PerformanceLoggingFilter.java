@@ -1,12 +1,13 @@
 package com.portcelana.natiart.configuration;
 
+import java.io.IOException;
+
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-
-import java.io.IOException;
 
 @Component
 public class PerformanceLoggingFilter implements Filter {
@@ -14,11 +15,11 @@ public class PerformanceLoggingFilter implements Filter {
     private static final long SLOW_REQUEST_THRESHOLD_MS = 1_000L;
 
     @Override
-    public void init(FilterConfig filterConfig) throws ServletException {
-    }
+    public void init(FilterConfig filterConfig) throws ServletException {}
 
     @Override
-    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
         final HttpServletRequest httpRequest = (HttpServletRequest) request;
         final String method = httpRequest.getMethod();
         final String requestURI = httpRequest.getRequestURI();
@@ -37,7 +38,5 @@ public class PerformanceLoggingFilter implements Filter {
     }
 
     @Override
-    public void destroy() {
-    }
+    public void destroy() {}
 }
-

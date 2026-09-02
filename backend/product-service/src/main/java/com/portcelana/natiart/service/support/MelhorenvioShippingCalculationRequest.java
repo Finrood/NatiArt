@@ -1,11 +1,11 @@
 package com.portcelana.natiart.service.support;
 
-import com.portcelana.natiart.dto.shipping.ShippingEstimateRequest;
+import static com.portcelana.natiart.service.ShippingService.FROM_POSTAL_CODE;
 
 import java.util.Collections;
 import java.util.List;
 
-import static com.portcelana.natiart.service.ShippingService.FROM_POSTAL_CODE;
+import com.portcelana.natiart.dto.shipping.ShippingEstimateRequest;
 
 public class MelhorenvioShippingCalculationRequest {
     private Address from;

@@ -3,10 +3,8 @@ package com.portcelana.natiart.dto.payment.asaas;
 public class AsaasPaymentStatusResponse {
     private AsaasPaymentStatus status;
 
-    AsaasPaymentStatusResponse() {
+    AsaasPaymentStatusResponse() {}
 
-    }
-    
     AsaasPaymentStatusResponse(AsaasPaymentStatus status) {
         this.status = status;
     }

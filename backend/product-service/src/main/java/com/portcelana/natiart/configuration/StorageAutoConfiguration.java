@@ -1,12 +1,13 @@
 package com.portcelana.natiart.configuration;
 
-import com.portcelana.natiart.storage.Storage;
-import com.portcelana.natiart.storage.StorageService;
-import com.portcelana.natiart.storage.StorageServiceImpl;
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.List;
+import com.portcelana.natiart.storage.Storage;
+import com.portcelana.natiart.storage.StorageService;
+import com.portcelana.natiart.storage.StorageServiceImpl;
 
 @Configuration
 public class StorageAutoConfiguration {

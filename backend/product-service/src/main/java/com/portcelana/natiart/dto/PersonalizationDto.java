@@ -1,10 +1,10 @@
 package com.portcelana.natiart.dto;
 
-import com.portcelana.natiart.model.Personalization;
-import com.portcelana.natiart.model.support.PersonalizationOption;
-
 import java.util.HashMap;
 import java.util.Map;
+
+import com.portcelana.natiart.model.Personalization;
+import com.portcelana.natiart.model.support.PersonalizationOption;
 
 public class PersonalizationDto {
     private String id;

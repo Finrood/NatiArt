@@ -1,13 +1,13 @@
 package com.portcelana.natiart.storage;
 
-import org.springframework.beans.factory.annotation.Value;
-
 import java.io.InputStream;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+
+import org.springframework.beans.factory.annotation.Value;
 
 public class StorageServiceImpl implements StorageService {
 
@@ -61,13 +61,15 @@ public class StorageServiceImpl implements StorageService {
         return storages.stream()
                 .filter(manager -> manager.support(uri))
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException(String.format("There is no manager handling the uri [%s]", uri)));
+                .orElseThrow(() ->
+                        new IllegalStateException(String.format("There is no manager handling the uri [%s]", uri)));
     }
 
     private Storage getStorage(String name) {
         return storages.stream()
                 .filter(manager -> manager.getName().equals(name))
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException(String.format("There is no manager with name [%s]", name)));
+                .orElseThrow(
+                        () -> new IllegalStateException(String.format("There is no manager with name [%s]", name)));
     }
 }

@@ -1,36 +1,45 @@
 package com.saas.directory.model;
 
-import jakarta.persistence.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
+import jakarta.persistence.*;
+
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
 @Entity
 @Table(name = "users")
 @EntityListeners(AuditingEntityListener.class)
 public class User {
     private static final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private final Set<Token> tokens = new HashSet<>();
+
     @Id
     private String id;
+
     @Version
     private long version;
+
     @Column(nullable = false, unique = true)
     private String username;
+
     @Column(nullable = false)
     private String passwordHash;
+
     @Column(nullable = false)
     private boolean emailConfirmed;
+
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Profile profile;
+
     @ManyToOne(optional = false, fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", referencedColumnName = "id", nullable = false)
     private Role role;
@@ -62,7 +71,6 @@ public class User {
         this.active = true;
         this.userType = UserType.ACTIVE;
     }
-
 
     public String getId() {
         return id;

@@ -1,9 +1,9 @@
 package com.portcelana.natiart.dto.payment;
 
+import java.time.LocalDateTime;
+
 import com.portcelana.natiart.dto.payment.helper.PaymentMethod;
 import com.portcelana.natiart.dto.payment.helper.PaymentStatus;
-
-import java.time.LocalDateTime;
 
 public class PaymentCreationResponse {
     private final String paymentId;
@@ -15,7 +15,15 @@ public class PaymentCreationResponse {
     private final String invoiceUrl;
     private final String invoiceNumber;
 
-    public PaymentCreationResponse(String paymentId, LocalDateTime creationDate, String customerId, PaymentMethod billingType, PaymentStatus status, LocalDateTime dueDate, String invoiceUrl, String invoiceNumber) {
+    public PaymentCreationResponse(
+            String paymentId,
+            LocalDateTime creationDate,
+            String customerId,
+            PaymentMethod billingType,
+            PaymentStatus status,
+            LocalDateTime dueDate,
+            String invoiceUrl,
+            String invoiceNumber) {
         this.paymentId = paymentId;
         this.creationDate = creationDate;
         this.customerId = customerId;

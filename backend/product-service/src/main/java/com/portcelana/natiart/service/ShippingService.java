@@ -1,9 +1,11 @@
 package com.portcelana.natiart.service;
 
-import com.portcelana.natiart.dto.shipping.ShippingEstimate;
-import com.portcelana.natiart.dto.shipping.ShippingEstimateRequest;
-import com.portcelana.natiart.service.support.MelhorenvioShippingCalculationRequest;
-import com.portcelana.natiart.service.support.MelhorenvioShippingCalculationResponse;
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
@@ -11,11 +13,10 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.math.BigDecimal;
-import java.time.Duration;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
+import com.portcelana.natiart.dto.shipping.ShippingEstimate;
+import com.portcelana.natiart.dto.shipping.ShippingEstimateRequest;
+import com.portcelana.natiart.service.support.MelhorenvioShippingCalculationRequest;
+import com.portcelana.natiart.service.support.MelhorenvioShippingCalculationResponse;
 
 @Service
 public class ShippingService {
@@ -25,8 +26,8 @@ public class ShippingService {
     private final String apiUrl;
     private final String apiToken;
 
-    public ShippingService(@Value("${melhorenvio.api.url}") String apiUrl,
-                           @Value("${melhorenvio.api.token}") String apiToken) {
+    public ShippingService(
+            @Value("${melhorenvio.api.url}") String apiUrl, @Value("${melhorenvio.api.token}") String apiToken) {
         final SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(5));
         factory.setReadTimeout(Duration.ofSeconds(15));
@@ -45,14 +46,13 @@ public class ShippingService {
                 apiUrl,
                 HttpMethod.POST,
                 new HttpEntity<>(createMelhorEnvioRequest(shippingEstimateRequest), headers),
-                new ParameterizedTypeReference<>() {
-                }
-        );
+                new ParameterizedTypeReference<>() {});
 
         return parseAndFilterResponse(response.getBody());
     }
 
-    private MelhorenvioShippingCalculationRequest createMelhorEnvioRequest(ShippingEstimateRequest shippingEstimateRequest) {
+    private MelhorenvioShippingCalculationRequest createMelhorEnvioRequest(
+            ShippingEstimateRequest shippingEstimateRequest) {
         return MelhorenvioShippingCalculationRequest.from(shippingEstimateRequest);
     }
 
@@ -76,7 +76,9 @@ public class ShippingService {
     private ShippingEstimate mapToShippingEstimate(MelhorenvioShippingCalculationResponse response) {
         return new ShippingEstimate()
                 .setService(response.getCompanyName())
-                .setPrice(response.getPrice().add(BigDecimal.valueOf(5)))   // We add 5 to compensate for differences between API prices and post office prices
+                .setPrice(response.getPrice()
+                        .add(BigDecimal.valueOf(
+                                5))) // We add 5 to compensate for differences between API prices and post office prices
                 .setEstimatedDeliveryDays(response.getDelivery_time());
     }
 }

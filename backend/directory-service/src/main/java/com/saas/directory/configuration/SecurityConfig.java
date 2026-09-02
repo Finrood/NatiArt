@@ -24,17 +24,20 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf(AbstractHttpConfigurer::disable)
+        http.csrf(AbstractHttpConfigurer::disable)
                 .addFilterBefore(new JwtAuthFilter(userAuthenticationProvider), BasicAuthenticationFilter.class)
                 .sessionManagement(customizer -> customizer.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .cors(cors -> cors.configurationSource(corsFilter))
-                .authorizeHttpRequests(request -> request
-                        .requestMatchers(HttpMethod.POST, "/login").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/register-user").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/register-ghost-user").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/validate-token").permitAll()
-                        .anyRequest().authenticated());
+                .authorizeHttpRequests(request -> request.requestMatchers(HttpMethod.POST, "/login")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/register-user")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/register-ghost-user")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/validate-token")
+                        .permitAll()
+                        .anyRequest()
+                        .authenticated());
 
         return http.build();
     }

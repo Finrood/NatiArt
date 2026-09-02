@@ -1,20 +1,24 @@
 package com.saas.directory.model;
 
-import com.saas.directory.model.helper.PaymentProcessor;
+import java.util.UUID;
+
 import jakarta.persistence.*;
 
-import java.util.UUID;
+import com.saas.directory.model.helper.PaymentProcessor;
 
 @Entity
 public class ExternalUser {
     @Id
     private String id;
+
     @ManyToOne(optional = false, fetch = FetchType.EAGER)
     @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false)
     private User user;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PaymentProcessor paymentProcessor;
+
     @Column(nullable = false)
     private String externalId;
 

@@ -1,10 +1,10 @@
 package com.portcelana.natiart.service;
 
+import java.util.List;
+
 import com.portcelana.natiart.dto.OrderDto;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.support.OrderStatus;
-
-import java.util.List;
 
 public interface OrderManager {
     CustomerOrder getOrderById(String orderId);

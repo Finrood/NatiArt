@@ -1,16 +1,18 @@
 package com.portcelana.natiart.model;
 
-import com.portcelana.natiart.model.support.PersonalizationOption;
-import com.portcelana.natiart.support.SetPersonalizationOptionJpaConverter;
-import com.portcelana.natiart.support.SetStringJpaConverter;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.*;
+
 import jakarta.persistence.*;
+
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.*;
+import com.portcelana.natiart.model.support.PersonalizationOption;
+import com.portcelana.natiart.support.SetPersonalizationOptionJpaConverter;
+import com.portcelana.natiart.support.SetStringJpaConverter;
 
 @Entity
 @EntityListeners(AuditingEntityListener.class)
@@ -43,7 +45,8 @@ public class Product {
     @JoinColumn(name = "package_id", referencedColumnName = "id")
     private Package packaging;
 
-    private Boolean hasFixedGoldenBorder;  // true = fixed with border, false = fixed without border, null = can be personalized
+    private Boolean
+            hasFixedGoldenBorder; // true = fixed with border, false = fixed without border, null = can be personalized
 
     @Column(length = 1000)
     @Convert(converter = SetPersonalizationOptionJpaConverter.class)
@@ -59,6 +62,7 @@ public class Product {
 
     @Column(nullable = false)
     private boolean newProduct;
+
     @Column(nullable = false)
     private boolean featuredProduct;
 

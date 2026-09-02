@@ -1,16 +1,17 @@
 package com.portcelana.natiart.service;
 
-import com.portcelana.natiart.dto.ProductDto;
-import com.portcelana.natiart.model.Category;
-import com.portcelana.natiart.model.Product;
-import com.portcelana.natiart.storage.InputFile;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.data.domain.Pageable;
-
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.data.domain.Pageable;
+
+import com.portcelana.natiart.dto.ProductDto;
+import com.portcelana.natiart.model.Category;
+import com.portcelana.natiart.model.Product;
+import com.portcelana.natiart.storage.InputFile;
 
 public interface ProductManager {
     Optional<Product> getProduct(String id);
@@ -34,7 +35,6 @@ public interface ProductManager {
     Product createProduct(ProductDto productDto, List<InputFile> imagesInput);
 
     Product updateProduct(ProductDto productDto, List<InputFile> imagesInput);
-
 
     void deleteProduct(String id);
 

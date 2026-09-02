@@ -1,7 +1,15 @@
 package com.portcelana.natiart.configuration;
 
-import com.portcelana.natiart.dto.AuthenticationResponseDto;
-import com.sun.net.httpserver.HttpServer;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.Executors;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,15 +21,9 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
-import java.util.concurrent.Executors;
+import com.sun.net.httpserver.HttpServer;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.portcelana.natiart.dto.AuthenticationResponseDto;
 
 /**
  * Regression for the token->SecurityContext contract of {@link JwtAuthFilter} against a real
@@ -130,7 +132,8 @@ class JwtAuthFilterTest {
                 (AuthenticationResponseDto.Principal) authentication.getPrincipal();
         assertEquals("jane", principal.getUsername());
         assertEquals("cus_MINE", principal.getExternalId());
-        assertTrue(authentication.getAuthorities().stream()
+        assertTrue(
+                authentication.getAuthorities().stream()
                         .map(GrantedAuthority::getAuthority)
                         .anyMatch("ROLE_USER"::equals),
                 "authorities from validate-token must be mapped onto the authenticated token");
@@ -162,11 +165,11 @@ class JwtAuthFilterTest {
         assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 
-
     @Test
     void directoryServiceOutageResponds503Not401() throws Exception {
         // Simulate a real outage: bind a socket, then close it so connections are promptly refused.
-        final java.net.ServerSocket socket = new java.net.ServerSocket(0, 0, java.net.InetAddress.getByName("localhost"));
+        final java.net.ServerSocket socket =
+                new java.net.ServerSocket(0, 0, java.net.InetAddress.getByName("localhost"));
         port = socket.getLocalPort();
         socket.close();
 

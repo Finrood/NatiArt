@@ -1,8 +1,8 @@
 package com.portcelana.natiart.dto;
 
-import com.portcelana.natiart.model.CustomerOrderItem;
-
 import java.math.BigDecimal;
+
+import com.portcelana.natiart.model.CustomerOrderItem;
 
 public class OrderItemDto {
     private String id;
@@ -11,8 +11,7 @@ public class OrderItemDto {
     private Integer quantity;
     private BigDecimal price;
 
-    public OrderItemDto() {
-    }
+    public OrderItemDto() {}
 
     public static OrderItemDto from(CustomerOrderItem customerOrderItem) {
         return new OrderItemDto()

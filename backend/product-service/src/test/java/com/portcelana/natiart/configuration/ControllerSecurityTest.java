@@ -1,10 +1,12 @@
 package com.portcelana.natiart.configuration;
 
-import com.portcelana.natiart.service.CartManager;
-import com.portcelana.natiart.service.CategoryManager;
-import com.portcelana.natiart.service.ImageConversionService;
-import com.portcelana.natiart.service.PackageManager;
-import com.portcelana.natiart.service.ProductManager;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -19,19 +21,20 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.portcelana.natiart.service.CartManager;
+import com.portcelana.natiart.service.CategoryManager;
+import com.portcelana.natiart.service.ImageConversionService;
+import com.portcelana.natiart.service.PackageManager;
+import com.portcelana.natiart.service.ProductManager;
 
-@WebMvcTest(controllers = {
-        com.portcelana.natiart.controller.ProductController.class,
-        com.portcelana.natiart.controller.CategoryController.class,
-        com.portcelana.natiart.controller.PackageController.class,
-        com.portcelana.natiart.controller.CartController.class
-}, properties = "directory.service.url=http://localhost:8081")
+@WebMvcTest(
+        controllers = {
+            com.portcelana.natiart.controller.ProductController.class,
+            com.portcelana.natiart.controller.CategoryController.class,
+            com.portcelana.natiart.controller.PackageController.class,
+            com.portcelana.natiart.controller.CartController.class
+        },
+        properties = "directory.service.url=http://localhost:8081")
 @Import({SecurityConfig.class, MvcConfig.class})
 class ControllerSecurityTest {
 
@@ -90,13 +93,17 @@ class ControllerSecurityTest {
     }
 
     @Test
-    @WithMockUser(username = "customer", roles = {"USER"})
+    @WithMockUser(
+            username = "customer",
+            roles = {"USER"})
     void nonAdminCannotDeleteProduct() throws Exception {
         mockMvc.perform(delete("/products/some-id")).andExpect(status().isForbidden());
     }
 
     @Test
-    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    @WithMockUser(
+            username = "admin",
+            roles = {"ADMIN"})
     void adminIsNotRejectedBySecurityOnDelete() throws Exception {
         expectPassesSecurity(delete("/products/some-id"));
     }
@@ -116,26 +123,34 @@ class ControllerSecurityTest {
     @Test
     @WithAnonymousUser
     void anonymousCannotCreateCategory() throws Exception {
-        expectForbiddenButNotAuthenticated(
-                post("/categories/create").contentType(MediaType.APPLICATION_JSON).content("{}"));
+        expectForbiddenButNotAuthenticated(post("/categories/create")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"));
     }
 
     @Test
-    @WithMockUser(username = "customer", roles = {"USER"})
+    @WithMockUser(
+            username = "customer",
+            roles = {"USER"})
     void nonAdminCannotUpdateCategory() throws Exception {
-        mockMvc.perform(put("/categories/cat-1").contentType(MediaType.APPLICATION_JSON).content("{}"))
+        mockMvc.perform(put("/categories/cat-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    @WithMockUser(username = "customer", roles = {"USER"})
+    @WithMockUser(
+            username = "customer",
+            roles = {"USER"})
     void nonAdminCannotInverseCategoryVisibility() throws Exception {
-        mockMvc.perform(patch("/categories/cat-1/visibility/inverse"))
-                .andExpect(status().isForbidden());
+        mockMvc.perform(patch("/categories/cat-1/visibility/inverse")).andExpect(status().isForbidden());
     }
 
     @Test
-    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    @WithMockUser(
+            username = "admin",
+            roles = {"ADMIN"})
     void adminIsNotRejectedBySecurityOnCategoryDelete() throws Exception {
         expectPassesSecurity(delete("/categories/cat-1"));
     }
@@ -148,13 +163,17 @@ class ControllerSecurityTest {
     }
 
     @Test
-    @WithMockUser(username = "customer", roles = {"USER"})
+    @WithMockUser(
+            username = "customer",
+            roles = {"USER"})
     void nonAdminCannotDeletePackage() throws Exception {
         mockMvc.perform(delete("/packages/pkg-1")).andExpect(status().isForbidden());
     }
 
     @Test
-    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    @WithMockUser(
+            username = "admin",
+            roles = {"ADMIN"})
     void adminIsNotRejectedBySecurityOnPackageDelete() throws Exception {
         expectPassesSecurity(delete("/packages/pkg-1"));
     }

@@ -19,8 +19,7 @@ public class MelhorenvioShippingCalculationResponse {
     private Company company;
     private String error;
 
-    public MelhorenvioShippingCalculationResponse() {
-    }
+    public MelhorenvioShippingCalculationResponse() {}
 
     // Getters and setters
 
@@ -148,8 +147,7 @@ class DeliveryRange {
     private int min;
     private int max;
 
-    public DeliveryRange() {
-    }
+    public DeliveryRange() {}
 
     // Getters and setters
 
@@ -178,8 +176,7 @@ class Package {
     private String weight;
     private String insurance_value;
 
-    public Package() {
-    }
+    public Package() {}
 
     // Getters and setters
 
@@ -237,8 +234,7 @@ class Dimensions {
     private int width;
     private int length;
 
-    public Dimensions() {
-    }
+    public Dimensions() {}
 
     // Getters and setters
 
@@ -272,8 +268,7 @@ class AdditionalServices {
     private boolean own_hand;
     private boolean collect;
 
-    public AdditionalServices() {
-    }
+    public AdditionalServices() {}
 
     // Getters and setters
 
@@ -307,8 +302,7 @@ class Company {
     private String name;
     private String picture;
 
-    public Company() {
-    }
+    public Company() {}
 
     // Getters and setters
 

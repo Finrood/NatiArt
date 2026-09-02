@@ -1,14 +1,15 @@
 package com.portcelana.natiart.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
 import com.portcelana.natiart.dto.AuthenticationResponseDto;
 import com.portcelana.natiart.dto.payment.PaymentCreationRequest;
 import com.portcelana.natiart.dto.payment.PaymentCreationResponse;
 import com.portcelana.natiart.dto.payment.PaymentPixQrCodeResponse;
 import com.portcelana.natiart.dto.payment.PaymentStatusResponse;
 import com.portcelana.natiart.service.PaymentService;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
 
 @RestController
 public class PaymentController {
@@ -25,15 +26,15 @@ public class PaymentController {
 
     @GetMapping("/api/payment/{paymentId}/status")
     @PreAuthorize("isFullyAuthenticated()")
-    public PaymentStatusResponse getPaymentStatus(@PathVariable String paymentId,
-                                                  @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
+    public PaymentStatusResponse getPaymentStatus(
+            @PathVariable String paymentId, @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
         return paymentService.getPaymentStatus(paymentId, principal != null ? principal.getExternalId() : null);
     }
 
     @GetMapping("/api/payment/{paymentId}/pixQrCode")
     @PreAuthorize("isFullyAuthenticated()")
-    public PaymentPixQrCodeResponse getPixQrCode(@PathVariable String paymentId,
-                                                 @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
+    public PaymentPixQrCodeResponse getPixQrCode(
+            @PathVariable String paymentId, @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
         return paymentService.getPixQrCode(paymentId, principal != null ? principal.getExternalId() : null);
     }
 }

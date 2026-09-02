@@ -1,16 +1,17 @@
 package com.portcelana.natiart.service;
 
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.CategoryDto;
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.repository.CategoryRepository;
 import com.portcelana.natiart.repository.ProductRepository;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.Optional;
 
 @Service
 public class CategoryManagerImpl implements CategoryManager {
@@ -38,8 +39,7 @@ public class CategoryManagerImpl implements CategoryManager {
     @Override
     @Transactional(readOnly = true)
     public List<Category> getCategories(Pageable pageable) {
-        return categoryRepository.findAll(pageable).stream()
-                .toList();
+        return categoryRepository.findAll(pageable).stream().toList();
     }
 
     @Override
@@ -49,8 +49,7 @@ public class CategoryManagerImpl implements CategoryManager {
             throw new IllegalArgumentException("Category with label [" + categoryDto.getLabel() + "] already exists");
         }
 
-        final Category category = new Category(categoryDto.getLabel())
-                .setDescription(categoryDto.getDescription());
+        final Category category = new Category(categoryDto.getLabel()).setDescription(categoryDto.getDescription());
         return categoryRepository.save(category);
     }
 
@@ -58,8 +57,7 @@ public class CategoryManagerImpl implements CategoryManager {
     @Transactional
     public Category updateCategory(CategoryDto categoryDto) {
         final Category category = getCategoryOrDie(categoryDto.getId());
-        category.setLabel(categoryDto.getLabel())
-                .setDescription(categoryDto.getDescription());
+        category.setLabel(categoryDto.getLabel()).setDescription(categoryDto.getDescription());
         return categoryRepository.save(category);
     }
 

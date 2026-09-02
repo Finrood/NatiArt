@@ -1,11 +1,12 @@
 package com.portcelana.natiart.service;
 
-import com.portcelana.natiart.dto.CategoryDto;
-import com.portcelana.natiart.model.Category;
-import org.springframework.data.domain.Pageable;
-
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.data.domain.Pageable;
+
+import com.portcelana.natiart.dto.CategoryDto;
+import com.portcelana.natiart.model.Category;
 
 public interface CategoryManager {
     Optional<Category> getCategory(String categoryId);

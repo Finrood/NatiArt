@@ -1,23 +1,17 @@
 package com.saas.directory.configuration;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.algorithms.Algorithm;
-import com.auth0.jwt.exceptions.JWTVerificationException;
-import com.auth0.jwt.interfaces.DecodedJWT;
-import com.auth0.jwt.interfaces.JWTVerifier;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.saas.directory.dto.UserAuthDto;
-import com.saas.directory.dto.UserDto;
-import com.saas.directory.model.ExternalUser;
-import com.saas.directory.model.Token;
-import com.saas.directory.model.TokenType;
-import com.saas.directory.model.User;
-import com.saas.directory.repository.ExternalUserRepository;
-import com.saas.directory.repository.TokenRepository;
-import com.saas.directory.service.UserManager;
+import java.io.IOException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.Optional;
+import java.util.UUID;
+
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,14 +23,22 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.Optional;
-import java.util.UUID;
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import com.auth0.jwt.interfaces.JWTVerifier;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.saas.directory.dto.UserAuthDto;
+import com.saas.directory.dto.UserDto;
+import com.saas.directory.model.ExternalUser;
+import com.saas.directory.model.Token;
+import com.saas.directory.model.TokenType;
+import com.saas.directory.model.User;
+import com.saas.directory.repository.ExternalUserRepository;
+import com.saas.directory.repository.TokenRepository;
+import com.saas.directory.service.UserManager;
 
 @Component
 public class UserAuthenticationProvider {
@@ -44,16 +46,18 @@ public class UserAuthenticationProvider {
     private final TokenRepository tokenRepository;
     private final ExternalUserRepository externalUserRepository;
     private final UserManager userManager;
+
     @Value("${saas.security.jwt.key.secret}")
     private String secretKey;
+
     @Value("${saas.security.jwt.expiration}")
     private Long accessTokenExpiration;
+
     @Value("${saas.security.jwt.refresh.expiration}")
     private Long refreshTokenExpiration;
 
-    public UserAuthenticationProvider(TokenRepository tokenRepository,
-                                      ExternalUserRepository externalUserRepository,
-                                      UserManager userManager) {
+    public UserAuthenticationProvider(
+            TokenRepository tokenRepository, ExternalUserRepository externalUserRepository, UserManager userManager) {
         this.tokenRepository = tokenRepository;
         this.externalUserRepository = externalUserRepository;
         this.userManager = userManager;
@@ -108,7 +112,8 @@ public class UserAuthenticationProvider {
     }
 
     @Transactional
-    public void refreshToken(String username, HttpServletRequest request, HttpServletResponse response) throws IOException, IllegalAccessException {
+    public void refreshToken(String username, HttpServletRequest request, HttpServletResponse response)
+            throws IOException, IllegalAccessException {
         final String header = request.getHeader(HttpHeaders.AUTHORIZATION);
 
         if (header != null) {
@@ -121,7 +126,8 @@ public class UserAuthenticationProvider {
                     final UserDto userDto = (UserDto) currentAuth.getPrincipal();
 
                     if (!username.equals(userDto.getUsername())) {
-                        throw new IllegalAccessException("User from access token does not match user from refresh token.");
+                        throw new IllegalAccessException(
+                                "User from access token does not match user from refresh token.");
                     }
 
                     final String accessToken = createAccessToken(userDto);
@@ -138,16 +144,15 @@ public class UserAuthenticationProvider {
         final String jti = decodedJWT.getId();
 
         final Optional<Token> dbToken = tokenRepository.findByJtiAndTokenType(jti, tokenType);
-        final boolean isTokenValid = dbToken
-                .map(t -> !t.isExpired())
-                .orElse(false);
+        final boolean isTokenValid = dbToken.map(t -> !t.isExpired()).orElse(false);
         if (!isTokenValid) {
             throw new IllegalAccessException(String.format("Authentication Token [%s] is not valid", token));
         }
 
         if (!dbToken.get().getUser().getUsername().equals(decodedJWT.getIssuer())) {
             invalidateToken(token);
-            throw new IllegalAccessException(String.format("User [%s] is not the authentication token issuer for token [%s]", decodedJWT.getIssuer(), token));
+            throw new IllegalAccessException(String.format(
+                    "User [%s] is not the authentication token issuer for token [%s]", decodedJWT.getIssuer(), token));
         }
 
         final String role = decodedJWT.getClaim("roles").asString();
@@ -155,14 +160,16 @@ public class UserAuthenticationProvider {
         if (role != null) {
             authority = new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
         } else {
-            authority = new SimpleGrantedAuthority("ROLE_" + dbToken.get().getUser().getRole().getLabel());
+            authority = new SimpleGrantedAuthority(
+                    "ROLE_" + dbToken.get().getUser().getRole().getLabel());
         }
 
         final User authenticatedUser = dbToken.get().getUser();
-        final ExternalUser externalUser = externalUserRepository.findByUser(authenticatedUser)
-                .orElse(null);
+        final ExternalUser externalUser =
+                externalUserRepository.findByUser(authenticatedUser).orElse(null);
 
-        return new UsernamePasswordAuthenticationToken(UserDto.from(authenticatedUser, externalUser), null, Collections.singletonList(authority));
+        return new UsernamePasswordAuthenticationToken(
+                UserDto.from(authenticatedUser, externalUser), null, Collections.singletonList(authority));
     }
 
     @Transactional

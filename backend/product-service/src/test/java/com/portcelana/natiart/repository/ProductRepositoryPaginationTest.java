@@ -1,9 +1,12 @@
 package com.portcelana.natiart.repository;
 
-import com.portcelana.natiart.model.Category;
-import com.portcelana.natiart.model.Product;
-import org.junit.jupiter.api.BeforeEach;
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.math.BigDecimal;
+import java.util.List;
+
 import org.hibernate.Hibernate;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -11,10 +14,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
-import java.math.BigDecimal;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
+import com.portcelana.natiart.model.Category;
+import com.portcelana.natiart.model.Product;
 
 @DataJpaTest(properties = "spring.sql.init.mode=never")
 class ProductRepositoryPaginationTest {
@@ -59,8 +60,8 @@ class ProductRepositoryPaginationTest {
         assertEquals(5, page.getTotalElements());
         assertEquals(List.of(first.getId(), second.getId()), page.getContent());
 
-        Page<String> featuredPage = productRepository.findAllIdsByFeaturedProduct(true,
-                PageRequest.of(0, 2, Sort.by("label")));
+        Page<String> featuredPage =
+                productRepository.findAllIdsByFeaturedProduct(true, PageRequest.of(0, 2, Sort.by("label")));
         assertEquals(3, featuredPage.getTotalElements());
     }
 
@@ -73,8 +74,7 @@ class ProductRepositoryPaginationTest {
         productRepository.save(b);
         productRepository.save(c);
 
-        List<Product> fetched = productRepository.findAllWithImagesByIds(
-                List.of(c.getId(), b.getId()));
+        List<Product> fetched = productRepository.findAllWithImagesByIds(List.of(c.getId(), b.getId()));
 
         assertEquals(2, fetched.size());
         for (Product product : fetched) {

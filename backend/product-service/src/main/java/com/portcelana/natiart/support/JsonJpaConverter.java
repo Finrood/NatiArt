@@ -1,14 +1,16 @@
 package com.portcelana.natiart.support;
 
+import java.io.IOException;
+import java.util.Optional;
+
+import jakarta.persistence.AttributeConverter;
+
+import org.springframework.util.Assert;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.persistence.AttributeConverter;
-import org.springframework.util.Assert;
-
-import java.io.IOException;
-import java.util.Optional;
 
 public class JsonJpaConverter<T> implements AttributeConverter<T, String> {
 
@@ -40,9 +42,7 @@ public class JsonJpaConverter<T> implements AttributeConverter<T, String> {
 
     @Override
     public T convertToEntityAttribute(String dbData) {
-        return Optional.ofNullable(dbData)
-                .map(this::readValue)
-                .orElseGet(this::onNullValue);
+        return Optional.ofNullable(dbData).map(this::readValue).orElseGet(this::onNullValue);
     }
 
     public T onNullValue() {
@@ -68,7 +68,8 @@ public class JsonJpaConverter<T> implements AttributeConverter<T, String> {
             }
         } catch (IOException e) {
             Object targetClazz = clazz == null ? typeReference : clazz;
-            throw new IllegalStateException(String.format("Unable to convert String to %s [%s]", targetClazz, dbData), e);
+            throw new IllegalStateException(
+                    String.format("Unable to convert String to %s [%s]", targetClazz, dbData), e);
         }
     }
 }

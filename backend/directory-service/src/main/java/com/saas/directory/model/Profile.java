@@ -1,13 +1,14 @@
 package com.saas.directory.model;
 
-import jakarta.persistence.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
+
+import jakarta.persistence.*;
+
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @Entity
 @EntityListeners(AuditingEntityListener.class)
@@ -54,7 +55,17 @@ public class Profile {
         // FOR JPA
     }
 
-    public Profile(String firstname, String lastname, String cpf, String country, String state, String city, String neighborhood, String zipCode, String street, User user) {
+    public Profile(
+            String firstname,
+            String lastname,
+            String cpf,
+            String country,
+            String state,
+            String city,
+            String neighborhood,
+            String zipCode,
+            String street,
+            User user) {
         this.id = UUID.randomUUID().toString();
         this.firstname = firstname;
         this.lastname = lastname;

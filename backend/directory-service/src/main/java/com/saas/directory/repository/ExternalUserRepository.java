@@ -1,11 +1,12 @@
 package com.saas.directory.repository;
 
-import com.saas.directory.model.ExternalUser;
-import com.saas.directory.model.User;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
+import com.saas.directory.model.ExternalUser;
+import com.saas.directory.model.User;
 
 @Repository
 public interface ExternalUserRepository extends JpaRepository<ExternalUser, String> {

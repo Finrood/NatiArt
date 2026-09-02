@@ -1,18 +1,19 @@
 package com.saas.directory.service;
 
-import com.saas.directory.dto.ProfileDto;
-import com.saas.directory.model.Profile;
-import com.saas.directory.model.User;
-import com.saas.directory.repository.ProfileRepository;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import com.saas.directory.dto.ProfileDto;
+import com.saas.directory.model.Profile;
+import com.saas.directory.model.User;
+import com.saas.directory.repository.ProfileRepository;
 
 @ExtendWith(MockitoExtension.class)
 public class ProfileManagerTest {
@@ -40,7 +41,17 @@ public class ProfileManagerTest {
                 .setComplement("Apartment 123");
 
         // Mock the repository behavior
-        final Profile expectedProfile = new Profile("John", "Doe", "00000000011", "USA", "California", "Los Angeles", "Campinas", "12345", "Main Street", user);
+        final Profile expectedProfile = new Profile(
+                "John",
+                "Doe",
+                "00000000011",
+                "USA",
+                "California",
+                "Los Angeles",
+                "Campinas",
+                "12345",
+                "Main Street",
+                user);
         when(profileRepository.save(any(Profile.class))).thenReturn(expectedProfile);
 
         // Act

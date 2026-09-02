@@ -1,7 +1,12 @@
 package com.portcelana.natiart.service;
 
-import com.portcelana.natiart.model.Product;
-import com.portcelana.natiart.repository.ProductRepository;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.when;
+
+import java.math.BigDecimal;
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,12 +15,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
-import java.math.BigDecimal;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.when;
+import com.portcelana.natiart.model.Product;
+import com.portcelana.natiart.repository.ProductRepository;
 
 @ExtendWith(MockitoExtension.class)
 class ProductManagerPaginationTest {

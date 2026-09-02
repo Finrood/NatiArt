@@ -20,7 +20,10 @@ public class SecurityConfig {
     private final WebClient.Builder webClientBuilder;
     private final String directoryServiceUrl;
 
-    public SecurityConfig(CorsConfigurationSource corsFilter, WebClient.Builder webClientBuilder, @Value("${directory.service.url}") String directoryServiceUrl) {
+    public SecurityConfig(
+            CorsConfigurationSource corsFilter,
+            WebClient.Builder webClientBuilder,
+            @Value("${directory.service.url}") String directoryServiceUrl) {
         this.corsFilter = corsFilter;
         this.webClientBuilder = webClientBuilder;
         this.directoryServiceUrl = directoryServiceUrl;
@@ -28,12 +31,11 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf(AbstractHttpConfigurer::disable)
-                .addFilterBefore(new JwtAuthFilter(webClientBuilder, directoryServiceUrl), BasicAuthenticationFilter.class)
+        http.csrf(AbstractHttpConfigurer::disable)
+                .addFilterBefore(
+                        new JwtAuthFilter(webClientBuilder, directoryServiceUrl), BasicAuthenticationFilter.class)
                 .cors(cors -> cors.configurationSource(corsFilter))
-                .authorizeHttpRequests(request -> request
-                        .anyRequest().permitAll());
+                .authorizeHttpRequests(request -> request.anyRequest().permitAll());
 
         return http.build();
     }

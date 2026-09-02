@@ -1,14 +1,15 @@
 package com.portcelana.natiart.model;
 
-import com.portcelana.natiart.model.support.OrderStatus;
-import jakarta.persistence.*;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+
+import jakarta.persistence.*;
+
+import com.portcelana.natiart.model.support.OrderStatus;
 
 @Entity
 public class CustomerOrder {

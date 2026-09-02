@@ -1,13 +1,14 @@
 package com.saas.directory.model;
 
-import jakarta.persistence.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
+
+import jakarta.persistence.*;
+
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @Entity
 @EntityListeners(AuditingEntityListener.class)
@@ -21,6 +22,7 @@ public class Role {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, unique = true)
     private RoleName label;
+
     private String description;
 
     @CreatedDate
@@ -44,7 +46,6 @@ public class Role {
         this.label = label;
         this.active = true;
     }
-
 
     public String getId() {
         return id;

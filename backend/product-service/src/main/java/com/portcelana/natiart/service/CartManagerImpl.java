@@ -1,13 +1,14 @@
 package com.portcelana.natiart.service;
 
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.portcelana.natiart.dto.ProductDto;
 import com.portcelana.natiart.model.CartItem;
 import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.repository.CartItemRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class CartManagerImpl implements CartManager {
@@ -32,7 +33,8 @@ public class CartManagerImpl implements CartManager {
     @Transactional
     public CartItem createCartItem(String username, String productId) {
         final Product product = productManager.getProductOrDie(productId);
-        final CartItem cartItem = cartItemRepository.findCartItemByUsernameAndProduct(username, product)
+        final CartItem cartItem = cartItemRepository
+                .findCartItemByUsernameAndProduct(username, product)
                 .map(CartItem::increaseQuantity)
                 .orElseGet(() -> new CartItem(username, product));
         return cartItemRepository.save(cartItem);
@@ -41,7 +43,8 @@ public class CartManagerImpl implements CartManager {
     @Override
     @Transactional
     public void decreaseCartItemQuantity(String username, String productId) {
-        productManager.getProduct(productId)
+        productManager
+                .getProduct(productId)
                 .flatMap(product -> cartItemRepository.findCartItemByUsernameAndProduct(username, product))
                 .ifPresent(cartItem -> {
                     if (cartItem.getQuantity() > 1) {
@@ -56,7 +59,8 @@ public class CartManagerImpl implements CartManager {
     @Override
     @Transactional
     public void deleteCartItem(String username, String productId) {
-        productManager.getProduct(productId)
+        productManager
+                .getProduct(productId)
                 .flatMap(product -> cartItemRepository.findCartItemByUsernameAndProduct(username, product))
                 .ifPresent(cartItemRepository::delete);
     }

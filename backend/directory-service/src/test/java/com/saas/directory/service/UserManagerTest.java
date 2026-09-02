@@ -1,5 +1,20 @@
 package com.saas.directory.service;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+import java.util.Optional;
+import javax.management.relation.RoleNotFoundException;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+
 import com.saas.directory.controller.helper.ResourceAlreadyExistsException;
 import com.saas.directory.controller.helper.ResourceNotFoundException;
 import com.saas.directory.dto.ProfileDto;
@@ -12,20 +27,6 @@ import com.saas.directory.model.User;
 import com.saas.directory.repository.ExternalUserRepository;
 import com.saas.directory.repository.RoleRepository;
 import com.saas.directory.repository.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
-
-import javax.management.relation.RoleNotFoundException;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class UserManagerTest {
@@ -49,8 +50,7 @@ public class UserManagerTest {
                 roleRepository,
                 profileManager,
                 eventPublisher,
-                asaasUserManager
-        );
+                asaasUserManager);
     }
 
     @Test
@@ -72,10 +72,21 @@ public class UserManagerTest {
         final User user = new User("new_username", "password");
         when(userRepository.existsUserByUsernameIgnoreCase("new_username")).thenReturn(false);
         when(userRepository.save(any())).thenReturn(user);
-        final Profile profile = new Profile("John", "Doe", "00000000011", "USA", "USA", "Los Angeles", "Campinas", "90001", "123 Main St", user)
+        final Profile profile = new Profile(
+                        "John",
+                        "Doe",
+                        "00000000011",
+                        "USA",
+                        "USA",
+                        "Los Angeles",
+                        "Campinas",
+                        "90001",
+                        "123 Main St",
+                        user)
                 .setPhone("+1234567890")
                 .setComplement("Apt 101");
-        when(profileManager.createProfile(any(User.class), any(ProfileDto.class))).thenReturn(profile);
+        when(profileManager.createProfile(any(User.class), any(ProfileDto.class)))
+                .thenReturn(profile);
         when(roleRepository.findRoleByLabel(RoleName.USER)).thenReturn(Optional.of(new Role(RoleName.USER)));
 
         // Perform the registration
@@ -133,10 +144,21 @@ public class UserManagerTest {
         final User user = new User("new_username", "password");
         when(userRepository.existsUserByUsernameIgnoreCase("new_username")).thenReturn(false);
         when(userRepository.save(any())).thenReturn(user);
-        final Profile profile = new Profile("John", "Doe", "00000000011", "USA", "USA", "Los Angeles", "Campinas", "90001", "123 Main St", user)
+        final Profile profile = new Profile(
+                        "John",
+                        "Doe",
+                        "00000000011",
+                        "USA",
+                        "USA",
+                        "Los Angeles",
+                        "Campinas",
+                        "90001",
+                        "123 Main St",
+                        user)
                 .setPhone("+1234567890")
                 .setComplement("Apt 101");
-        when(profileManager.createProfile(any(User.class), any(ProfileDto.class))).thenReturn(profile);
+        when(profileManager.createProfile(any(User.class), any(ProfileDto.class)))
+                .thenReturn(profile);
         when(roleRepository.findRoleByLabel(RoleName.USER)).thenReturn(Optional.of(new Role(RoleName.USER)));
 
         // Perform the registration
@@ -166,7 +188,8 @@ public class UserManagerTest {
         profileDto.setStreet("123 Main St");
         profileDto.setComplement("Apt 101");
 
-        final UserRegistrationDto userRegistrationDto = new UserRegistrationDto("existing_username", "password", profileDto);
+        final UserRegistrationDto userRegistrationDto =
+                new UserRegistrationDto("existing_username", "password", profileDto);
 
         when(userRepository.existsUserByUsernameIgnoreCase("existing_username")).thenReturn(true);
 
@@ -189,7 +212,8 @@ public class UserManagerTest {
         profileDto.setStreet("123 Main St");
         profileDto.setComplement("Apt 101");
 
-        final UserRegistrationDto userRegistrationDto = new UserRegistrationDto("existing_username", "password", profileDto);
+        final UserRegistrationDto userRegistrationDto =
+                new UserRegistrationDto("existing_username", "password", profileDto);
 
         when(userRepository.existsUserByUsernameIgnoreCase("existing_username")).thenReturn(true);
 
@@ -246,7 +270,8 @@ public class UserManagerTest {
         final Profile profile = new Profile("", "", "", "", "", "", "", "", "", user)
                 .setPhone("")
                 .setComplement("");
-        when(profileManager.createProfile(any(User.class), any(ProfileDto.class))).thenReturn(profile);
+        when(profileManager.createProfile(any(User.class), any(ProfileDto.class)))
+                .thenReturn(profile);
         when(roleRepository.findRoleByLabel(RoleName.USER)).thenReturn(Optional.of(new Role(RoleName.USER)));
 
         // Perform the registration
