@@ -35,6 +35,31 @@ and `docs/continuous-improvement-loop.md` guardrails.
    migrate auth, rate-limit infrastructure, or schema management without a human
    decision (strategic items in the findings doc). Report a one-paragraph summary.
 
+## Guideline compliance (prove it, don't claim it)
+
+The full instruction set is 13 files — obey all of them, not just the ones
+named above:
+
+- `AGENTS.md` (+ byte-identical mirrors `CLAUDE.md`, `GEMINI.md`, `.cursorrules`)
+- `agents/commands.md`, `agents/git-workflow.md`, `agents/java-general.md`,
+  `agents/java-modules-and-packages.md`, `agents/java-spring.md`,
+  `agents/java-testing.md`, `agents/java-persistence.md`,
+  `agents/java-documentation.md`, `agents/agents-writing-guide.md`
+- `backend/AGENTS.md`, `frontend/natiart-app/AGENTS.md`
+
+Before editing any instruction or loop-machinery file, read
+`agents/agents-writing-guide.md` first (it says so in its own header).
+
+SELF-MODIFICATION BAN: PRs touching `agents/**`, `AGENTS.md`, `CLAUDE.md`,
+`GEMINI.md`, `.cursorrules`, `scripts/agent-cycle-prompt.md`,
+`scripts/loop-cycle.sh`, `scripts/redteam-addendum.md`, `scripts/systemd/**`,
+`docs/continuous-improvement-loop.md` or `docs/loop-lenses.md` stay OPEN for
+human review — never auto-merge changes to your own brain, even on green CI.
+
+Every PR body ends with a compliance footer naming: tiers read, guideline
+files consulted, hard rules affirmed (Java 25, Gradle, single-tenant, no
+Lombok/MapStruct), `!check` and `!review` outcomes.
+
 ## Anti-starvation protocol (starvation is a bug — "no work" is invalid)
 
 The invocation message names the lens of this cycle (`docs/loop-lenses.md`).

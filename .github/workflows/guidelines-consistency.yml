@@ -1,0 +1,31 @@
+name: Guidelines Consistency
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  guidelines:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Root instruction mirrors must be identical
+        run: |
+          cmp AGENTS.md CLAUDE.md || { echo "CLAUDE.md drifted from AGENTS.md"; exit 1; }
+          cmp AGENTS.md GEMINI.md || { echo "GEMINI.md drifted from AGENTS.md"; exit 1; }
+          cmp AGENTS.md .cursorrules || { echo ".cursorrules drifted from AGENTS.md"; exit 1; }
+          echo "Mirrors identical."
+
+      - name: agents/*.md must carry YAML frontmatter with meta
+        run: |
+          fail=0
+          for f in agents/*.md; do
+            head -1 "$f" | grep -q '^---$' || { echo "$f: missing YAML frontmatter"; fail=1; }
+            head -5 "$f" | grep -q '^meta:' || { echo "$f: missing meta attribute"; fail=1; }
+          done
+          exit $fail
