@@ -4,6 +4,7 @@ target/
 build/
 dist/
 node_modules/
+/logs/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
