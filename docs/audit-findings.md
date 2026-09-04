@@ -20,7 +20,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
   principal's `externalId`, validate `value > 0`. Tests: anonymous POST → 401/403;
   authenticated POST ignores client `customerId`.
 
-### A2. Password-reset expiry never checked — OPEN
+### A2. Password-reset expiry never checked — FIXED (PR #47)
 - `backend/directory-service/.../service/PasswordManager.java:48-56`:
   `doResetPassword` calls `getPasswordResetTokenOrDie` (no expiry check) while
   `getValidPasswordResetTokenOrDie` (`:37-40`) has zero callers. Expired tokens
