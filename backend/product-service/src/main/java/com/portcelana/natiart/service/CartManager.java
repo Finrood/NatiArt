@@ -2,13 +2,12 @@ package com.portcelana.natiart.service;
 
 import java.util.List;
 
-import com.portcelana.natiart.dto.ProductDto;
-import com.portcelana.natiart.model.CartItem;
+import com.portcelana.natiart.dto.CartItemDto;
 
 public interface CartManager {
-    List<ProductDto> getCartItemsByUsername(String username);
+    List<CartItemDto> getCartItemsByUsername(String username);
 
-    CartItem createCartItem(String username, String productId);
+    CartItemDto createCartItem(String username, String productId);
 
     void decreaseCartItemQuantity(String username, String productId);
 

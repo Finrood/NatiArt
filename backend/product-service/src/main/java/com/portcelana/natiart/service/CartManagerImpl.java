@@ -5,7 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.portcelana.natiart.dto.ProductDto;
+import com.portcelana.natiart.dto.CartItemDto;
 import com.portcelana.natiart.model.CartItem;
 import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.repository.CartItemRepository;
@@ -22,22 +22,21 @@ public class CartManagerImpl implements CartManager {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProductDto> getCartItemsByUsername(String username) {
+    public List<CartItemDto> getCartItemsByUsername(String username) {
         return cartItemRepository.findCartItemsByUsername(username).stream()
-                .map(CartItem::getProduct)
-                .map(ProductDto::from)
+                .map(CartItemDto::from)
                 .toList();
     }
 
     @Override
     @Transactional
-    public CartItem createCartItem(String username, String productId) {
+    public CartItemDto createCartItem(String username, String productId) {
         final Product product = productManager.getProductOrDie(productId);
         final CartItem cartItem = cartItemRepository
                 .findCartItemByUsernameAndProduct(username, product)
                 .map(CartItem::increaseQuantity)
                 .orElseGet(() -> new CartItem(username, product));
-        return cartItemRepository.save(cartItem);
+        return CartItemDto.from(cartItemRepository.save(cartItem));
     }
 
     @Override
