@@ -116,6 +116,22 @@ The instruction set is 13 files: root `AGENTS.md` (+ identical mirrors
   appending runner-ups — hunting and fixing alternate *within* the cycle, so
   no cycle is ever hunt-only (zero merged value) or fix-only (backlog drain).
 
+## Reliability rules
+
+- Timebox budget per cycle: reads ≤3 min, implement ≤12 min, CI watch with the
+  rest; at kill-minus-5-min push the branch and stop. An unmerged green PR is
+  fine; a killed dirty tree is the failure mode — hence commit-early and
+  push-before-watch.
+- Pickup: a green unmerged loop PR from the prior cycle gets merged first,
+  then new work. Zero reported CI checks means "not registered yet", never
+  green (Backend, Frontend, Guidelines must all be present + green).
+- Flakes: one `gh run rerun --failed`, then stop-and-report if still red.
+- WIP recovery: dirt on a loop branch with an open PR is auto-committed as
+  `[WIP]` and pushed; dirt anywhere else aborts for a human.
+- Merge-scope errors (e.g. missing `workflow` scope) are reported to the
+  human, never routed around. Token scopes are documented here so the fix is
+  one command: `gh auth refresh -s workflow` (interactive).
+
 ## Backlog
 
 `docs/audit-findings.md` is the queue: statuses `OPEN` → `IN REVIEW` → `FIXED`.

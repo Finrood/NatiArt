@@ -24,11 +24,25 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 log "=== Improvement-loop cycle start (check-only=$CHECK_ONLY) ==="
 cd "$REPO"
 
-# 1. Clean tree guard.
+# 1. Clean tree guard. Recovery: dirt on a loop branch with an open PR is a
+#    killed cycle's snapshot — commit it as WIP and continue fresh from master.
+#    Anything else (dirty master, no owning PR) needs a human: abort.
 if [[ -n "$(git status --porcelain)" ]]; then
-    log "Working tree is dirty; aborting cycle."
-    git status --porcelain | head -20
-    exit 1
+    CUR_BRANCH=$(git branch --show-current)
+    OWNING_PR=$(gh pr list --state open --head "$CUR_BRANCH" --json number --jq length 2>/dev/null || echo 0)
+    if [[ "$CUR_BRANCH" != "master" && "$OWNING_PR" -ge 1 ]]; then
+        log "Dirty tree on $CUR_BRANCH with an open PR: snapshotting interrupted-cycle WIP."
+        if git add -A && git commit -qm "[WIP] Interrupted cycle snapshot (auto-committed by loop guard)" && git push -q origin "$CUR_BRANCH"; then
+            log "WIP snapshot pushed; continuing fresh."
+        else
+            log "WIP snapshot failed; aborting for human review."
+            exit 1
+        fi
+    else
+        log "Working tree is dirty with no safe recovery; aborting cycle."
+        git status --porcelain | head -20
+        exit 1
+    fi
 fi
 
 # 2. Sync master (fast-forward only, never merge/rebase here).
