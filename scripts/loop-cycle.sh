@@ -40,17 +40,28 @@ if ! git pull -q --ff-only origin master; then
 fi
 log "master at $(git rev-parse --short HEAD), tree clean."
 
-# 3. Backlog guard: is there OPEN work?
+# 3. Backlog guard: is there OPEN work? Starvation is a bug, so a low (not
+#    just empty) backlog switches the cycle to generator duty instead of idling.
 if [[ ! -f docs/audit-findings.md ]]; then
     log "docs/audit-findings.md is missing on master; aborting cycle."
     exit 1
 fi
-OPEN_COUNT=$(grep -c "— OPEN" docs/audit-findings.md || true)
-if [[ "$OPEN_COUNT" -eq 0 ]]; then
-    log "No OPEN items in docs/audit-findings.md; nothing to do."
-    exit 0
+if [[ ! -f docs/loop-lenses.md ]]; then
+    log "docs/loop-lenses.md is missing on master; aborting cycle."
+    exit 1
 fi
+OPEN_COUNT=$(grep -c "— OPEN" docs/audit-findings.md || true)
 log "OPEN items remaining: $OPEN_COUNT"
+PREV_COUNT=$(grep -h "OPEN items remaining:" logs/loop-*.log 2>/dev/null | tail -1 | grep -oE '[0-9]+' | tail -1 || true)
+if [[ -n "${PREV_COUNT:-}" ]]; then
+    log "Backlog trend: $PREV_COUNT -> $OPEN_COUNT OPEN."
+fi
+FLOOR=5
+BELOW_FLOOR=0
+if [[ "$OPEN_COUNT" -lt "$FLOOR" ]]; then
+    BELOW_FLOOR=1
+    log "Backlog below floor ($FLOOR): generator duty is ON for this cycle."
+fi
 
 # 4. Pile-up guard: max 1 open loop branch/PR, none failing.
 OPEN_PRS=$(gh pr list --state open --json number,title --jq 'length')
@@ -79,9 +90,27 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
 fi
 
 # 6. Hand one item to the agent (non-interactive, repo permission policy applies;
-#    never --auto). Timeout keeps the 30-minute cadence honest.
+#    never --auto). Timeout keeps the 30-minute cadence honest. The lens rotates
+#    deterministically per 30-minute slot (no state files); every 20th slot is a
+#    red-team cycle (~every 10 days at full cadence).
+SLOT=$(( $(date +%s) / 1800 ))
+LENS_COUNT=$(grep -c '^## Lens ' docs/loop-lenses.md)
+LENS_INDEX=$(( SLOT % LENS_COUNT ))
+LENS_NAME=$(sed -n 's/^## Lens [0-9]*: //p' docs/loop-lenses.md | sed -n "$(( LENS_INDEX + 1 ))p")
+log "Lens of the cycle: #$LENS_INDEX $LENS_NAME (slot $SLOT)."
+CYCLE_MSG="$(cat scripts/agent-cycle-prompt.md)
+---
+Cycle parameters: lens of the cycle: $LENS_NAME. Backlog: $OPEN_COUNT OPEN (floor $FLOOR)."
+if [[ "$BELOW_FLOOR" -eq 1 ]]; then
+    CYCLE_MSG="$CYCLE_MSG BACKLOG BELOW FLOOR: generator duty is ON — end this cycle with new OPEN items or a fix, never with 'no work'."
+fi
+if (( SLOT % 20 == 0 )); then
+    log "Red-team cadence due: adversarial cycle."
+    CYCLE_MSG="$CYCLE_MSG
+$(cat scripts/redteam-addendum.md)"
+fi
 log "Invoking agent for one cycle item."
-timeout 1500 opencode run "$(cat scripts/agent-cycle-prompt.md)" --dir "$REPO" --title "improvement-loop $(date +%Y%m%d-%H%M)"
+timeout 1500 opencode run "$CYCLE_MSG" --dir "$REPO" --title "improvement-loop $(date +%Y%m%d-%H%M)"
 STATUS=$?
 if [[ "$STATUS" -eq 124 ]]; then
     log "Agent cycle hit the 25-minute timeout; leaving state for next cycle."
