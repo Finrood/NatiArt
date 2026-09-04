@@ -113,6 +113,17 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix: `private static final Logger LOGGER = getLogger(OwnClass.class)`;
   constructor injection. No behavior change; include in a boy-scout PR.
 
+### B11. camelCase URL segment `pixQrCode` breaks kebab-case convention — OPEN (Low)
+- `backend/product-service/.../controller/PaymentController.java:38`
+  maps `GET /api/payment/{paymentId}/pixQrCode`; `backend/AGENTS.md`
+  requires kebab-case segments. Callers: `payment.service.ts:31`,
+  `pix-payment-confirmation.component.spec.ts:13`,
+  `PaymentControllerSecurityTest.java`.
+- Fix: rename to `/pix-qr-code` (keep old path as deprecated alias or
+  versioned break with frontend updated in the same PR). Tests: old path
+  404s (or 301s), new path serves the QR payload. Found by Lens 15 hunt,
+  2026-09-04.
+
 ## C. Frontend — Correctness / Security
 
 ### C1. Cart modal updates/removes the wrong item — OPEN (High)
