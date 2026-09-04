@@ -9,19 +9,26 @@ and `docs/continuous-improvement-loop.md` guardrails.
 
 1. `git checkout master && git pull --ff-only`, verify `git status` is clean.
    If dirty or the pull fails, stop and report.
-2. Read `docs/audit-findings.md`. Pick the single highest-priority `OPEN` item
-   (High severity first, in A→B→C order; skip anything marked strategic/deferred).
-   If no `OPEN` item qualifies, run the anti-starvation protocol below instead
-   of stopping.
+2. Read `docs/audit-findings.md`. Assemble a theme batch: 2-4 related `OPEN`
+   items sharing a service, flow, or file area (High severity first, in A→B→C
+   order; skip anything marked strategic/deferred). A single large item alone
+   is a valid batch. Re-verify each finding against current `master` before
+   fixing; mark anything already fixed `INVALID` in the findings doc instead of
+   fixing it. If no `OPEN` item qualifies, run the anti-starvation protocol
+   below instead of stopping.
 3. Check `gh pr list --state open`: if 2+ loop PRs are already open, or any loop
    PR has failing CI, stop and report (do not pile up).
 4. Branch from `master` per `agents/git-workflow.md` naming
    (`fix/…`, `perf/…`, `chore/…`, `docs/…`, `feature/…`). Never touch
    dependabot branches.
-5. Implement the fix plus thorough tests (Mockito unit tests for backend per
-   `agents/java-testing.md`, Karma specs for frontend logic). Run `!check`
-   (compile + full impacted suites until green) and `!review` (docs, JavaDoc
-   where required, no unused imports, no debug artifacts, Spotless clean).
+5. Implement the batch plus thorough tests (Mockito unit tests for backend per
+   `agents/java-testing.md`, Karma specs for frontend logic). One commit per
+   finding (`[Type]` each) so every item stays revertible independently; push
+   once at the end — intermediate pushes only burn CI, since superseded runs
+   cancel. Timebox: stop adding items after ~15 min of implementation. Run
+   `!check` (compile + full impacted suites until green) and `!review` (docs,
+   JavaDoc where required, no unused imports, no debug artifacts, Spotless
+   clean).
 6. Commit with a `[Type]` message (no `Co-Authored-By:`), push, `gh pr create`
    against `master` referencing the findings-doc item.
 7. Re-check the PR: `gh pr checks --watch` (max ~15 min). Fetch and fix review
@@ -30,7 +37,7 @@ and `docs/continuous-improvement-loop.md` guardrails.
    update the item's status in `docs/audit-findings.md` (`OPEN` → `FIXED` with
    the PR number) on a follow-up `docs/` commit directly via its own tiny PR,
    or batched with the next cycle — never push to `master`.
-8. HARD RULES: max one backlog item per cycle. Never force-push. Never push to
+8. HARD RULES: max one theme batch (2-4 related items) per cycle. Never force-push. Never push to
    `master` or to dependabot branches. Never merge on red/yellow CI. Never
    migrate auth, rate-limit infrastructure, or schema management without a human
    decision (strategic items in the findings doc). Report a one-paragraph summary.
@@ -75,6 +82,9 @@ Hunt with that lens, never the previous cycle's lens.
   review, coverage-lowest classes, linter rotation (SpotBugs/Error Prone,
   `npm audit`, dependency-check), dependency freshness triage (own `chore/`
   branches only), strictness ratchet candidates (see below).
+- Every cycle ends with a 5-minute hunt using the cycle lens, fix batch or
+  not: append runner-up findings as new `OPEN` items via the `docs/` path, so
+  searching and fixing interleave every 30 minutes instead of alternating.
 - Ratchet allowance: at most one small strictness tightening per cycle
   (coverage gate bump, tighter pagination cap, one new ArchUnit-style fitness
   rule). It must keep the build green — fix what it breaks in the same PR —

@@ -63,6 +63,18 @@ if [[ "$OPEN_COUNT" -lt "$FLOOR" ]]; then
     log "Backlog below floor ($FLOOR): generator duty is ON for this cycle."
 fi
 
+# Doc-rot check: IN REVIEW items whose PR already merged/closed (statuses the
+# fixer forgot to flip). Fed to the agent so it self-corrects in-cycle.
+ROT_LINES=$(grep -oE 'IN REVIEW \(PR #[0-9]+\)' docs/audit-findings.md 2>/dev/null | grep -oE '[0-9]+' | sort -u | while read -r n; do
+    pr_state=$(gh pr view "$n" --json state --jq .state 2>/dev/null || echo UNKNOWN)
+    case "$pr_state" in
+        MERGED|CLOSED) echo "DOC ROT: findings item references PR #$n ($pr_state) — correct its status this cycle." ;;
+    esac
+done || true)
+if [[ -n "$ROT_LINES" ]]; then
+    log "$ROT_LINES"
+fi
+
 # 4. Pile-up guard: max 1 open loop branch/PR, none failing.
 OPEN_PRS=$(gh pr list --state open --json number,title --jq 'length')
 log "Open PRs: $OPEN_PRS"
@@ -103,6 +115,9 @@ CYCLE_MSG="$(cat scripts/agent-cycle-prompt.md)
 Cycle parameters: lens of the cycle: $LENS_NAME. Backlog: $OPEN_COUNT OPEN (floor $FLOOR)."
 if [[ "$BELOW_FLOOR" -eq 1 ]]; then
     CYCLE_MSG="$CYCLE_MSG BACKLOG BELOW FLOOR: generator duty is ON — end this cycle with new OPEN items or a fix, never with 'no work'."
+fi
+if [[ -n "$ROT_LINES" ]]; then
+    CYCLE_MSG="$CYCLE_MSG $ROT_LINES"
 fi
 if (( SLOT % 20 == 0 )); then
     log "Red-team cadence due: adversarial cycle."

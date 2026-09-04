@@ -9,7 +9,7 @@ The loop is designed to never run dry: a finite backlog is only the seed (see
 ## How it runs
 
 `systemd --user` timer → `scripts/loop-cycle.sh` → `opencode run` with
-`scripts/agent-cycle-prompt.md`, one backlog item per cycle.
+`scripts/agent-cycle-prompt.md`, one theme batch per cycle.
 
 ```
 natiart-improvement-loop.timer   every 30 min (+ up to 5 min jitter)
@@ -96,6 +96,24 @@ The instruction set is 13 files: root `AGENTS.md` (+ identical mirrors
 - `guidelines-consistency` CI backs the rules with tooling: mirror identity +
   frontmatter/`meta` presence, failing the build on drift.
 - Lens 17 audits the instructions themselves for staleness every rotation.
+
+## Throughput model (why batches, not singletons or megabatches)
+
+- **Theme batches (2-4 related items, one commit each, one PR)**: related
+  fixes share pre-flight reads, test runs, and context — near-linear speedup.
+  One commit per finding keeps every item independently revertible.
+- **No megabatches**: all-or-nothing PRs are unreviewable, unbisectable, and
+  cannot fit the 25-minute agent timebox. Timebox guard: stop adding items
+  after ~15 min of implementation.
+- **Single push at the end**: intermediate pushes only burn CI, since
+  superseded runs cancel each other.
+- **Validate-for-free**: each finding is re-verified against current `master`
+  at fix time (stale ones marked `INVALID`) — no separate validate-all pass.
+  A script-side doc-rot check flags `IN REVIEW` items whose PR already
+  merged/closed so the agent self-corrects.
+- **Search interleaves every cycle**: each run ends with a 5-minute lens hunt
+  appending runner-ups — hunting and fixing alternate *within* the cycle, so
+  no cycle is ever hunt-only (zero merged value) or fix-only (backlog drain).
 
 ## Backlog
 
