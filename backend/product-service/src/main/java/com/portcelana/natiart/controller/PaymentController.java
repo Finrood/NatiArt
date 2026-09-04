@@ -20,8 +20,12 @@ public class PaymentController {
     }
 
     @PostMapping("/api/payment/create")
-    public PaymentCreationResponse createPayment(@RequestBody PaymentCreationRequest paymentCreationRequest) {
-        return paymentService.createPayment(paymentCreationRequest);
+    @PreAuthorize("isFullyAuthenticated()")
+    public PaymentCreationResponse createPayment(
+            @RequestBody PaymentCreationRequest paymentCreationRequest,
+            @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
+        return paymentService.createPayment(
+                paymentCreationRequest, principal != null ? principal.getExternalId() : null);
     }
 
     @GetMapping("/api/payment/{paymentId}/status")

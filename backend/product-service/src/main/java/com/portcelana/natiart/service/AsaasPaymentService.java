@@ -42,11 +42,18 @@ public class AsaasPaymentService implements PaymentService {
         this.restTemplate = new RestTemplate(factory);
     }
 
-    public PaymentCreationResponse createPayment(PaymentCreationRequest paymentCreationRequest) {
+    public PaymentCreationResponse createPayment(
+            PaymentCreationRequest paymentCreationRequest, String requesterExternalId) {
+        if (requesterExternalId == null || requesterExternalId.isBlank()) {
+            throw new UserNotAllowedException("Authenticated customer is required to create a payment");
+        }
+        if (paymentCreationRequest.getValue() == null || paymentCreationRequest.getValue() <= 0) {
+            throw new IllegalArgumentException("Payment value must be greater than zero");
+        }
         final HttpHeaders headers = getRequestHeaders();
 
-        final HttpEntity<AsaasPaymentCreationRequest> asaasPaymentCreationRequestHttpEntity =
-                new HttpEntity<>(AsaasPaymentCreationRequest.from(paymentCreationRequest), headers);
+        final HttpEntity<AsaasPaymentCreationRequest> asaasPaymentCreationRequestHttpEntity = new HttpEntity<>(
+                AsaasPaymentCreationRequest.from(paymentCreationRequest, requesterExternalId), headers);
         final ResponseEntity<AsaasPaymentCreationResponse> response = restTemplate.postForEntity(
                 asaasPaymentUrl, asaasPaymentCreationRequestHttpEntity, AsaasPaymentCreationResponse.class);
 
