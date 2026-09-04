@@ -70,3 +70,11 @@ untyped `any` service responses hiding contract breaks.
 ## Lens 16: Dependency and supply chain
 Audit advisories (`npm audit`, dependency-check), stale major upgrades worth
 triaging into our own `chore/` branches — never push to dependabot branches.
+
+## Lens 17: Instruction drift
+Stale commands, paths, or class names in `AGENTS.md`, `agents/*.md`,
+`CLAUDE.md`, `GEMINI.md`, `.cursorrules` and module guides; mirror drift
+between the four root files; missing frontmatter/`meta` in `agents/*.md`.
+Read `agents/agents-writing-guide.md` before editing any instruction file.
+Instruction or loop-machinery fixes go in a PR left OPEN for human review —
+never auto-merge self-modifications.

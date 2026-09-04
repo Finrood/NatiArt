@@ -78,6 +78,25 @@ Note: the timer needs a lingering user session to fire while logged out
   floor → generator duty; repeated thin findings → the lens rotation and
   ratchets widen the frontier without human input.
 
+## Guideline compliance
+
+The instruction set is 13 files: root `AGENTS.md` (+ identical mirrors
+`CLAUDE.md`, `GEMINI.md`, `.cursorrules` — one per tool, same content),
+9 `agents/*.md` topic files, `backend/AGENTS.md`,
+`frontend/natiart-app/AGENTS.md`. Every cycle obeys all of them:
+
+- The cycle prompt carries the full index plus the Pre-flight Protocol, so
+  compliance does not depend on an agent discovering files by itself.
+- `agents/agents-writing-guide.md` must be read before editing any instruction
+  or loop-machinery file.
+- Self-modification ban: loop PRs touching instructions or loop machinery stay
+  OPEN for human review, never auto-merge.
+- Every PR body ends with a compliance footer (tiers read, files consulted,
+  hard rules affirmed, `!check`/`!review` outcomes).
+- `guidelines-consistency` CI backs the rules with tooling: mirror identity +
+  frontmatter/`meta` presence, failing the build on drift.
+- Lens 17 audits the instructions themselves for staleness every rotation.
+
 ## Backlog
 
 `docs/audit-findings.md` is the queue: statuses `OPEN` → `IN REVIEW` → `FIXED`.
