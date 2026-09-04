@@ -6,9 +6,19 @@ on:
   pull_request:
     branches: [ "master" ]
 
+# Least privilege: the check only reads the repo.
+permissions:
+  contents: read
+
+# Superseded runs cancel instead of burning runners.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   guidelines:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Checkout code
