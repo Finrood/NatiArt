@@ -11,7 +11,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 
 ## A. Backend — Security (High)
 
-### A1. `POST /api/payment/create` allows anonymous payment creation — IN REVIEW (PR #45)
+### A1. `POST /api/payment/create` allows anonymous payment creation — FIXED (PR #45)
 - `backend/product-service/.../controller/PaymentController.java:22-25` has no
   `@PreAuthorize`; sibling `status`/`pixQrCode` endpoints require
   `isFullyAuthenticated()`. Any anonymous caller can create real Asaas charges
