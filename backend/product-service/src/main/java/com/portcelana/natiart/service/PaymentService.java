@@ -6,7 +6,11 @@ import com.portcelana.natiart.dto.payment.PaymentPixQrCodeResponse;
 import com.portcelana.natiart.dto.payment.PaymentStatusResponse;
 
 public interface PaymentService {
-    PaymentCreationResponse createPayment(PaymentCreationRequest paymentCreationRequest);
+    /**
+     * Creates a payment owned by the authenticated caller. The Asaas customer is always
+     * taken from {@code requesterExternalId}, never from the request body.
+     */
+    PaymentCreationResponse createPayment(PaymentCreationRequest paymentCreationRequest, String requesterExternalId);
 
     PaymentPixQrCodeResponse getPixQrCode(String paymentId, String requesterExternalId);
 

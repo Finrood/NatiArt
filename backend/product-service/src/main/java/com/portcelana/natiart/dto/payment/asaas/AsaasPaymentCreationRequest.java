@@ -43,8 +43,16 @@ public class AsaasPaymentCreationRequest {
     }
 
     public static AsaasPaymentCreationRequest from(PaymentCreationRequest paymentCreationRequest) {
+        return from(paymentCreationRequest, paymentCreationRequest.getCustomerId());
+    }
+
+    /**
+     * Maps a creation request, forcing the Asaas customer to {@code customerId} so a
+     * caller can never create charges for another customer.
+     */
+    public static AsaasPaymentCreationRequest from(PaymentCreationRequest paymentCreationRequest, String customerId) {
         return new AsaasPaymentCreationRequest(
-                paymentCreationRequest.getCustomerId(),
+                customerId,
                 paymentCreationRequest.getBillingType().name(),
                 paymentCreationRequest.getValue(),
                 paymentCreationRequest.getDueDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
