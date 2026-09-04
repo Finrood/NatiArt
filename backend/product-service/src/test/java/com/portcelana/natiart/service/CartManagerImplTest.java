@@ -60,7 +60,8 @@ class CartManagerImplTest {
     void createCartItem_createsNewLineWithQuantityOne() {
         final Product product = product("Plate");
         when(productManager.getProductOrDie("p1")).thenReturn(product);
-        when(cartItemRepository.findCartItemByUsernameAndProduct("jane", product)).thenReturn(Optional.empty());
+        when(cartItemRepository.findCartItemByUsernameAndProduct("jane", product))
+                .thenReturn(Optional.empty());
         when(cartItemRepository.save(any(CartItem.class))).thenAnswer(inv -> inv.getArgument(0));
 
         final CartItemDto result = cartManager.createCartItem("jane", "p1");

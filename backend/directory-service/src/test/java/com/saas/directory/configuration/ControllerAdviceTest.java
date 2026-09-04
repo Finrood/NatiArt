@@ -29,8 +29,7 @@ class ControllerAdviceTest {
 
     @Test
     void handleException_returnsStaticMessageAnd500() {
-        final ResponseEntity<Object> result =
-                advice.handleException(new RuntimeException("select * from users"));
+        final ResponseEntity<Object> result = advice.handleException(new RuntimeException("select * from users"));
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, result.getStatusCode());
         assertEquals("Internal server error", result.getBody());

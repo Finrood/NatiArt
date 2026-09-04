@@ -28,8 +28,7 @@ class ControllerAdviceTest {
 
     @Test
     void handleAccessDeniedException_returns403WithoutRethrow() {
-        final ResponseEntity<Object> result =
-                advice.handleAccessDeniedException(new AccessDeniedException("denied"));
+        final ResponseEntity<Object> result = advice.handleAccessDeniedException(new AccessDeniedException("denied"));
 
         assertEquals(HttpStatus.FORBIDDEN, result.getStatusCode());
         assertEquals("Access denied", result.getBody());
