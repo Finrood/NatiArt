@@ -75,15 +75,16 @@ if [[ -n "$ROT_LINES" ]]; then
     log "$ROT_LINES"
 fi
 
-# 4. Pile-up guard: max 1 open loop branch/PR, none failing.
-OPEN_PRS=$(gh pr list --state open --json number,title --jq 'length')
-log "Open PRs: $OPEN_PRS"
+# 4. Pile-up guard: max 1 open loop branch/PR, none failing. Dependabot PRs are
+#    triaged separately (Lens 16) and never block the loop.
+OPEN_PRS=$(gh pr list --state open --json headRefName --jq '[.[] | select(.headRefName | startswith("dependabot/") | not)] | length')
+log "Open non-dependabot PRs: $OPEN_PRS"
 if [[ "$OPEN_PRS" -ge 2 ]]; then
     log "Too many open PRs; letting review catch up. Exiting."
     exit 0
 fi
 if [[ "$OPEN_PRS" -ge 1 ]]; then
-    FAILING=$(gh pr list --state open --json number --jq '.[].number' | while read -r n; do
+    FAILING=$(gh pr list --state open --json number,headRefName --jq '.[] | select(.headRefName | startswith("dependabot/") | not) | .number' | while read -r n; do
         if gh pr checks "$n" 2>/dev/null | grep -Eq 'fail|cancel'; then echo "$n"; fi
     done)
     if [[ -n "$FAILING" ]]; then
