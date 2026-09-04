@@ -11,6 +11,7 @@ public class PersonalizationDto {
     private Map<PersonalizationOption, String> personalizationOptions = new HashMap<>();
 
     public static PersonalizationDto from(Personalization personalization) {
+        if (personalization == null) return null;
         return new PersonalizationDto()
                 .setId(personalization.getId())
                 .setPersonalizationOptions(personalization.getPersonalizationOptions());

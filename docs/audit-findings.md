@@ -11,7 +11,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 
 ## A. Backend — Security (High)
 
-### A1. `POST /api/payment/create` allows anonymous payment creation — IN REVIEW (PR #45)
+### A1. `POST /api/payment/create` allows anonymous payment creation — FIXED (PR #45)
 - `backend/product-service/.../controller/PaymentController.java:22-25` has no
   `@PreAuthorize`; sibling `status`/`pixQrCode` endpoints require
   `isFullyAuthenticated()`. Any anonymous caller can create real Asaas charges
@@ -71,14 +71,14 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix: compute freight server-side, cap quantity, reject inactive products,
   persist owner. Tests for each.
 
-### B5. Cart quantity dropped; JPA entity returned from controller — OPEN (Medium)
+### B5. Cart quantity dropped; JPA entity returned from controller — IN REVIEW (PR #61)
 - `CartManagerImpl.java:25-30` maps to `ProductDto`, discarding
   quantity/personalization; `CartController.java:43-46` returns the `CartItem`
   entity (lazy-graph + internal-id leak).
 - Fix: introduce `CartItemDto` (product + quantity + personalization); never
   return entities. Tests: quantity round-trips.
 
-### B6. Advice gaps + 500 message disclosure — OPEN (Medium)
+### B6. Advice gaps + 500 message disclosure — IN REVIEW (PR #61)
 - Directory advice: no handler for `ResourceAlreadyExistsException` (duplicate
   registration → 500, not 409), no generic `Exception` handler.
   Product advice: generic handler returns `e.getMessage()` with 500 (leaks SQL

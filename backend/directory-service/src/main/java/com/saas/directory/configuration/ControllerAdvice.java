@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import com.saas.directory.controller.helper.ResourceAlreadyExistsException;
 import com.saas.directory.controller.helper.ResourceNotFoundException;
 import com.saas.directory.service.AsaasApiException;
 
@@ -31,9 +32,21 @@ public class ControllerAdvice {
         return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
     }
 
+    @ExceptionHandler(ResourceAlreadyExistsException.class)
+    public ResponseEntity<Object> handleResourceAlreadyExistsException(ResourceAlreadyExistsException e) {
+        logger.debug("Exception caught in controller: ", e);
+        return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
+    }
+
     @ExceptionHandler(IllegalAccessException.class)
     public ResponseEntity<Object> illegalAccessException(IllegalAccessException e) {
         logger.error("Asaas API error: status={}, message={}", 401, e.getMessage(), e);
         return new ResponseEntity<>(e.getMessage(), HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Object> handleException(Exception e) {
+        logger.error("Exception caught in controller: ", e);
+        return new ResponseEntity<>("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

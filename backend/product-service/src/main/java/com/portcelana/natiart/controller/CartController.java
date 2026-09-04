@@ -7,14 +7,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import com.portcelana.natiart.dto.ProductDto;
+import com.portcelana.natiart.dto.CartItemDto;
 import com.portcelana.natiart.helper.TargetUser;
-import com.portcelana.natiart.model.CartItem;
 import com.portcelana.natiart.service.CartManager;
 
 @RestController
 public class CartController {
-    public static Logger LOGGER = LoggerFactory.getLogger(CartController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(CartController.class);
 
     private final CartManager cartManager;
 
@@ -24,7 +23,7 @@ public class CartController {
 
     @GetMapping("/cart")
     @PreAuthorize("isFullyAuthenticated()")
-    public List<ProductDto> getCart(@TargetUser String username) {
+    public List<CartItemDto> getCart(@TargetUser String username) {
         LOGGER.info("Getting cart of user [{}]", username);
 
         return cartManager.getCartItemsByUsername(username);
@@ -40,7 +39,7 @@ public class CartController {
 
     @PostMapping("/cart/item/{productId}/add")
     @PreAuthorize("isFullyAuthenticated()")
-    public CartItem addProductToCart(@TargetUser String username, @PathVariable String productId) {
+    public CartItemDto addProductToCart(@TargetUser String username, @PathVariable String productId) {
         LOGGER.info("Adding product with id [{}] to cart of user [{}]", productId, username);
         return cartManager.createCartItem(username, productId);
     }
