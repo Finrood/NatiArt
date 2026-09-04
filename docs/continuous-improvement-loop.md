@@ -1,9 +1,10 @@
 # Continuous-Improvement Loop
 
-Every 30 minutes, one guarded agent cycle picks the top item from
-`docs/audit-findings.md` and ships it exactly the way manual work is done here:
-fresh branch → implement + thorough tests → `!check` + `!review` → push + PR →
-re-check → merge only on green CI → delete the branch.
+Every 30 minutes, one guarded agent cycle ships exactly one improvement the way
+manual work is done here: fresh branch → implement + thorough tests → `!check` +
+`!review` → push + PR → re-check → merge only on green CI → delete the branch.
+The loop is designed to never run dry: a finite backlog is only the seed (see
+"Never runs dry" below).
 
 ## How it runs
 
@@ -51,9 +52,31 @@ Note: the timer needs a lingering user session to fire while logged out
    `master`, never touch dependabot branches.
 4. Strategic items (shared rate-limit store, cookie-auth migration, schema
    tooling) require a human decision — the prompt forbids the agent from taking
-   them.
-5. When the backlog empties, the agent hunts for one new high-signal issue per
-   cycle; a cycle that finds nothing just logs "no work".
+   them. Deferred items are re-evaluated every ~30 cycles; constraints change.
+5. Backlog floor: below 5 `OPEN` items the cycle switches to generator duty
+   (must produce new findings or a fix — "no work" is invalid).
+
+## Never runs dry
+
+- **Rotating lenses** (`docs/loop-lenses.md`): 16 audit lenses, one per cycle,
+  selected deterministically from the 30-minute slot number (no state files).
+  Each lens sees different bugs in the same code.
+- **Generators**: weakest-assertion review, lowest-coverage classes, linter
+  rotation (SpotBugs/Error Prone, `npm audit`, dependency-check), dependency
+  freshness triage into our own `chore/` branches. Generator cycles land as
+  `docs/` PRs appending evidenced `OPEN` items.
+- **Ratchets**: at most one small strictness tightening per cycle (coverage
+  gate, pagination cap, one ArchUnit-style fitness rule) — green build kept,
+  revertible in one commit. Each tightening breeds its own follow-ups.
+- **Red-team cadence**: every 20th slot (~10 days) is adversarial (see
+  `scripts/redteam-addendum.md`): threat-model one flow, file PoCs as backlog
+  items, fix on the spot only if trivial.
+- **Boy-scout ledger**: every PR converts one discovered nit into a tracked
+  backlog item instead of silently fixing or ignoring it.
+- **Health metrics** (read from `logs/`): PRs merged/week, backlog trend
+  (logged every cycle), no-work rate. Escalation is automatic: backlog under
+  floor → generator duty; repeated thin findings → the lens rotation and
+  ratchets widen the frontier without human input.
 
 ## Backlog
 

@@ -11,9 +11,8 @@ and `docs/continuous-improvement-loop.md` guardrails.
    If dirty or the pull fails, stop and report.
 2. Read `docs/audit-findings.md`. Pick the single highest-priority `OPEN` item
    (High severity first, in A→B→C order; skip anything marked strategic/deferred).
-   If no `OPEN` item remains, do a fresh 15-minute hunt for one new
-   high-signal issue (speed, security, optimization, design, tests); if you find
-   nothing worth a PR, stop and report "no work".
+   If no `OPEN` item qualifies, run the anti-starvation protocol below instead
+   of stopping.
 3. Check `gh pr list --state open`: if 2+ loop PRs are already open, or any loop
    PR has failing CI, stop and report (do not pile up).
 4. Branch from `master` per `agents/git-workflow.md` naming
@@ -35,5 +34,27 @@ and `docs/continuous-improvement-loop.md` guardrails.
    `master` or to dependabot branches. Never merge on red/yellow CI. Never
    migrate auth, rate-limit infrastructure, or schema management without a human
    decision (strategic items in the findings doc). Report a one-paragraph summary.
+
+## Anti-starvation protocol (starvation is a bug — "no work" is invalid)
+
+The invocation message names the lens of this cycle (`docs/loop-lenses.md`).
+Hunt with that lens, never the previous cycle's lens.
+
+- If the message says generator duty is ON (backlog below floor): you must end
+  the cycle with either a fix PR or a `docs/` PR appending new `OPEN` items
+  (with file:line evidence and severity) to `docs/audit-findings.md`.
+- Otherwise you may still hunt with the lens when the top backlog item is Low
+  priority: prefer one High-signal lens finding over a Low backlog item, and
+  append any runner-up findings as new `OPEN` items via the `docs/` PR path.
+- Generator techniques, cheapest first: weakest-assertion and missing-spec
+  review, coverage-lowest classes, linter rotation (SpotBugs/Error Prone,
+  `npm audit`, dependency-check), dependency freshness triage (own `chore/`
+  branches only), strictness ratchet candidates (see below).
+- Ratchet allowance: at most one small strictness tightening per cycle
+  (coverage gate bump, tighter pagination cap, one new ArchUnit-style fitness
+  rule). It must keep the build green — fix what it breaks in the same PR —
+  and be revertible in one commit.
+- If the message contains the RED-TEAM addendum, it overrides procedure steps
+  2-6. Follow it exactly.
 
 If anything is ambiguous or risky, open the PR and stop before merging.
