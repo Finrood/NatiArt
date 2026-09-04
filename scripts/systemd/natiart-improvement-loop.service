@@ -1,0 +1,14 @@
+[Unit]
+Description=NatiArt continuous-improvement loop (one guarded cycle)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/finrod/Documents/Programming/Java/Personal/NatiArt
+ExecStart=/home/finrod/Documents/Programming/Java/Personal/NatiArt/scripts/loop-cycle.sh
+TimeoutStartSec=27min
+Nice=10
+
+[Install]
+WantedBy=default.target
