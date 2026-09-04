@@ -41,11 +41,16 @@ fi
 log "master at $(git rev-parse --short HEAD), tree clean."
 
 # 3. Backlog guard: is there OPEN work?
-if ! grep -q "— OPEN" docs/audit-findings.md; then
+if [[ ! -f docs/audit-findings.md ]]; then
+    log "docs/audit-findings.md is missing on master; aborting cycle."
+    exit 1
+fi
+OPEN_COUNT=$(grep -c "— OPEN" docs/audit-findings.md || true)
+if [[ "$OPEN_COUNT" -eq 0 ]]; then
     log "No OPEN items in docs/audit-findings.md; nothing to do."
     exit 0
 fi
-log "OPEN items remaining: $(grep -c "— OPEN" docs/audit-findings.md)"
+log "OPEN items remaining: $OPEN_COUNT"
 
 # 4. Pile-up guard: max 1 open loop branch/PR, none failing.
 OPEN_PRS=$(gh pr list --state open --json number,title --jq 'length')
