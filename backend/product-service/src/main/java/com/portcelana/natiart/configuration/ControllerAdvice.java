@@ -13,40 +13,41 @@ import com.portcelana.natiart.controller.helper.UserNotAllowedException;
 
 @org.springframework.web.bind.annotation.ControllerAdvice
 public class ControllerAdvice {
-    private static final Logger logger = LoggerFactory.getLogger(ControllerAdvice.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ControllerAdvice.class);
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Object> handleAccessDeniedException(AccessDeniedException e) throws AccessDeniedException {
-        throw e;
+    public ResponseEntity<Object> handleAccessDeniedException(AccessDeniedException e) {
+        LOGGER.debug("Access denied: ", e);
+        return new ResponseEntity<>("Access denied", HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> handleException(Exception e) {
-        logger.error("Exception caught in controller: ", e);
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        LOGGER.error("Exception caught in controller: ", e);
+        return new ResponseEntity<>("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Object> handleArgumentException(IllegalArgumentException e) {
-        logger.debug("Exception caught in controller: ", e);
+        LOGGER.debug("Exception caught in controller: ", e);
         return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Object> handleResourceNotFoundException(ResourceNotFoundException e) {
-        logger.debug("Exception caught in controller: ", e);
+        LOGGER.debug("Exception caught in controller: ", e);
         return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
     }
 
     @ExceptionHandler(ResourceAlreadyExistsException.class)
     public ResponseEntity<Object> handleResourceAlreadyExistsException(ResourceAlreadyExistsException e) {
-        logger.debug("Exception caught in controller: ", e);
+        LOGGER.debug("Exception caught in controller: ", e);
         return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
     }
 
     @ExceptionHandler(UserNotAllowedException.class)
     public ResponseEntity<Object> handleResourceUserNotAllowedException(UserNotAllowedException e) {
-        logger.debug("Exception caught in controller: ", e);
+        LOGGER.debug("Exception caught in controller: ", e);
         return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
     }
 }
