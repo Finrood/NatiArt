@@ -53,7 +53,7 @@ public class PasswordManager {
             throw new IllegalArgumentException("Password cannot be empty");
         }
 
-        final Token passwordResetToken = getPasswordResetTokenOrDie(jti);
+        final Token passwordResetToken = getValidPasswordResetTokenOrDie(jti);
 
         final User user = passwordResetToken.getUser();
 
