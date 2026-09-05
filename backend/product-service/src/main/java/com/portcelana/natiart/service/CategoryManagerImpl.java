@@ -45,19 +45,25 @@ public class CategoryManagerImpl implements CategoryManager {
     @Override
     @Transactional
     public Category createCategory(CategoryDto categoryDto) {
-        if (categoryRepository.findCategoryByLabel(categoryDto.getLabel()).isPresent()) {
-            throw new IllegalArgumentException("Category with label [" + categoryDto.getLabel() + "] already exists");
+        final String label = requireNonBlankLabel(categoryDto.getLabel());
+        if (categoryRepository.findCategoryByLabel(label).isPresent()) {
+            throw new IllegalArgumentException("Category with label [" + label + "] already exists");
         }
 
-        final Category category = new Category(categoryDto.getLabel()).setDescription(categoryDto.getDescription());
+        final Category category = new Category(label).setDescription(categoryDto.getDescription());
         return categoryRepository.save(category);
     }
 
     @Override
     @Transactional
     public Category updateCategory(CategoryDto categoryDto) {
+        final String label = requireNonBlankLabel(categoryDto.getLabel());
         final Category category = getCategoryOrDie(categoryDto.getId());
-        category.setLabel(categoryDto.getLabel()).setDescription(categoryDto.getDescription());
+        final Optional<Category> clash = categoryRepository.findCategoryByLabel(label);
+        if (clash.isPresent() && !clash.get().getId().equals(category.getId())) {
+            throw new IllegalArgumentException("Category with label [" + label + "] already exists");
+        }
+        category.setLabel(label).setDescription(categoryDto.getDescription());
         return categoryRepository.save(category);
     }
 
@@ -77,5 +83,12 @@ public class CategoryManagerImpl implements CategoryManager {
             throw new IllegalArgumentException("Category with label [" + category.getLabel() + "] contains products.");
         }
         categoryRepository.delete(category);
+    }
+
+    private static String requireNonBlankLabel(String label) {
+        if (label == null || label.isBlank()) {
+            throw new IllegalArgumentException("Category label must not be blank");
+        }
+        return label.trim();
     }
 }
