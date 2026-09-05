@@ -64,6 +64,12 @@ export class CartModalComponent implements OnInit, OnDestroy {
   private loadProductImages(): void {
     const subscription: Subscription = this.cartItems$.subscribe(items => {
       items.forEach(item => {
+        // Skip lines already loading/loaded: without this guard every cart
+        // emission re-issues GET image for all lines (siblings cart/order-summary
+        // already guard on imageUrls[cartItemId]).
+        if (this.imageUrls[item.cartItemId]) {
+          return;
+        }
         if (item.product.images && item.product.images.length > 0) {
           this.fetchImage(item.cartItemId, item.product.images[0]);
         }
