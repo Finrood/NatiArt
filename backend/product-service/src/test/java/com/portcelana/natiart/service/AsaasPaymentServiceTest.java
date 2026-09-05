@@ -33,6 +33,16 @@ class AsaasPaymentServiceTest {
     }
 
     @Test
+    void constructor_rejectsBlankApiKey() {
+        assertThrows(
+                IllegalStateException.class,
+                () -> new AsaasPaymentService("  ", "https://sandbox.asaas.com/api/v3/payments"));
+        assertThrows(
+                IllegalStateException.class,
+                () -> new AsaasPaymentService(null, "https://sandbox.asaas.com/api/v3/payments"));
+    }
+
+    @Test
     void ownershipCheckRejectsPaymentOwnedByAnotherCustomer() {
         assertThrows(UserNotAllowedException.class, () -> newService().requireOwnedPayment("cus_OTHER", "cus_MINE"));
     }

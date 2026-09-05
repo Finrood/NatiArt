@@ -23,13 +23,16 @@ public class AsaasUserManager {
     private final String asaasCustomerUrl;
     private final RestTemplate restTemplate;
 
-    @Value("${natiart.payment.asaas.apikey}")
-    private String asaasApiKey;
+    private final String asaasApiKey;
 
     public AsaasUserManager(
             @Value("${natiart.payment.asaas.apikey}") String asaasApiKey,
             @Value("${natiart.payment.asaas.customers-url:https://sandbox.asaas.com/api/v3/customers}")
                     String asaasCustomerUrl) {
+        if (asaasApiKey == null || asaasApiKey.isBlank()) {
+            throw new IllegalStateException(
+                    "natiart.payment.asaas.apikey is blank: set the NATIART_PAYMENT_ASAAS_APIKEY environment variable");
+        }
         this.asaasApiKey = asaasApiKey;
         this.asaasCustomerUrl = asaasCustomerUrl;
         final SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
