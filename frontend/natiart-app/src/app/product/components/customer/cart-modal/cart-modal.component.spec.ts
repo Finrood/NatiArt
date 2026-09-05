@@ -3,8 +3,30 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
+import { of } from 'rxjs';
 
 import { CartModalComponent } from './cart-modal.component';
+import { CartService } from '../../../service/cart.service';
+import { CartItem } from '../../../models/CartItem.model';
+import { Product } from '../../../models/product.model';
+
+function makeProduct(): Product {
+  return {
+    id: 'prod-1',
+    label: 'Vase',
+    originalPrice: 100,
+    markedPrice: 80,
+    stockQuantity: 10,
+    categoryId: 'cat-1',
+    availablePersonalizations: [],
+    tags: new Set<string>(),
+    images: []
+  };
+}
+
+function makeItem(cartItemId: string): CartItem {
+  return {cartItemId: cartItemId, product: makeProduct(), quantity: 1};
+}
 
 describe('CartModalComponent', () => {
   beforeEach(async () => {
@@ -17,5 +39,31 @@ describe('CartModalComponent', () => {
   it('should create', () => {
     const fixture = TestBed.createComponent(CartModalComponent);
     expect(fixture.componentInstance).toBeTruthy();
+  });
+
+  it('updates the quantity of the targeted cart line when two lines share a product', () => {
+    const fixture = TestBed.createComponent(CartModalComponent);
+    const cartService: CartService = TestBed.inject(CartService);
+    const updateSpy = spyOn(cartService, 'updateItemQuantity').and.returnValue(of(undefined));
+    const first: CartItem = makeItem('line-1');
+    const second: CartItem = makeItem('line-2');
+
+    fixture.componentInstance.updateQuantity(first, 2);
+    fixture.componentInstance.updateQuantity(second, 3);
+
+    expect(updateSpy).toHaveBeenCalledWith('line-1', 2);
+    expect(updateSpy).toHaveBeenCalledWith('line-2', 3);
+  });
+
+  it('removes the targeted cart line when two lines share a product', () => {
+    const fixture = TestBed.createComponent(CartModalComponent);
+    const cartService: CartService = TestBed.inject(CartService);
+    const removeSpy = spyOn(cartService, 'removeFromCart').and.returnValue(of(undefined));
+    const event: Event = {stopPropagation: (): void => undefined} as Event;
+
+    fixture.componentInstance.removeItem(makeItem('line-2'), event);
+
+    expect(removeSpy).toHaveBeenCalledWith('line-2');
+    expect(removeSpy).not.toHaveBeenCalledWith('line-1');
   });
 });

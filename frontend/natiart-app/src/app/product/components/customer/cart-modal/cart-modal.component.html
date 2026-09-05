@@ -8,13 +8,13 @@
         @for (item of cartItems; track item) {
           <div class="flex items-center mb-4 pb-4 border-b">
             <div class="w-16 h-16 mr-4 overflow-hidden rounded">
-              @if (imageUrls[item.product.id!]) {
-                <img (error)="onImageError(item.product.id!)"
+              @if (imageUrls[item.cartItemId]) {
+                <img (error)="onImageError(item.cartItemId)"
                   [alt]="item.product.label"
-                  [src]="imageUrls[item.product.id!]"
+                  [src]="imageUrls[item.cartItemId]"
                   class="w-full h-full object-cover">
               }
-              @if (!imageUrls[item.product.id!]) {
+              @if (!imageUrls[item.cartItemId]) {
                 <div class="w-full h-full bg-gray-200 flex items-center justify-center">
                   <span class="text-gray-400">No image</span>
                 </div>

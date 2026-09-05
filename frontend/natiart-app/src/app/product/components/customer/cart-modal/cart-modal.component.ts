@@ -1,4 +1,4 @@
-import {Component, OnDestroy, OnInit} from '@angular/core';
+import {Component, inject, OnDestroy, OnInit} from '@angular/core';
 import { AsyncPipe, CurrencyPipe } from "@angular/common";
 import {CartItem} from "../../../models/CartItem.model";
 import {Observable, Subscription} from "rxjs";
@@ -23,16 +23,16 @@ import {ButtonComponent} from "../../../../shared/components/button.component";
 export class CartModalComponent implements OnInit, OnDestroy {
   cartItems$: Observable<CartItem[]>;
   cartTotal$: Observable<number>;
-  imageUrls: { [productId: string]: SafeUrl | null } = {};
+  imageUrls: { [cartItemId: string]: SafeUrl | null } = {};
   private subscriptions: Subscription[] = [];
 
-  constructor(
-    private cartService: CartService,
-    private productService: ProductService,
-    private sanitizer: DomSanitizer
-  ) {
-    this.cartItems$ = this.cartService.getCartItems();
-    this.cartTotal$ = this.cartService.getCartTotal();
+  private readonly _cartService: CartService = inject(CartService);
+  private readonly _productService: ProductService = inject(ProductService);
+  private readonly _sanitizer: DomSanitizer = inject(DomSanitizer);
+
+  constructor() {
+    this.cartItems$ = this._cartService.getCartItems();
+    this.cartTotal$ = this._cartService.getCartTotal();
   }
 
   ngOnInit(): void {
@@ -43,39 +43,39 @@ export class CartModalComponent implements OnInit, OnDestroy {
     this.subscriptions.forEach(subscription => subscription.unsubscribe());
   }
 
-  updateQuantity(item: CartItem, newQuantity: number) {
+  updateQuantity(item: CartItem, newQuantity: number): void {
     if (newQuantity < 1) {
       newQuantity = 1;
     } else if (newQuantity > item.product.stockQuantity) {
       newQuantity = item.product.stockQuantity;
     }
-    this.cartService.updateItemQuantity(item.product.id!, newQuantity);
+    this._cartService.updateItemQuantity(item.cartItemId, newQuantity);
   }
 
-  removeItem(item: CartItem, event: Event) {
+  removeItem(item: CartItem, event: Event): void {
     event.stopPropagation()
-    this.cartService.removeFromCart(item.product.id!);
+    this._cartService.removeFromCart(item.cartItemId);
   }
 
-  onImageError(productId: string): void {
-    this.imageUrls[productId] = null;
+  onImageError(cartItemId: string): void {
+    this.imageUrls[cartItemId] = null;
   }
 
   private loadProductImages(): void {
-    const subscription = this.cartItems$.subscribe(items => {
+    const subscription: Subscription = this.cartItems$.subscribe(items => {
       items.forEach(item => {
         if (item.product.images && item.product.images.length > 0) {
-          this.fetchImage(item.product.id!, item.product.images[0]);
+          this.fetchImage(item.cartItemId, item.product.images[0]);
         }
       });
     });
     this.subscriptions.push(subscription);
   }
 
-  private fetchImage(productId: string, imagePath: string): void {
-    const subscription = this.productService.getImage(imagePath).subscribe(blob => {
-      const objectUrl = URL.createObjectURL(blob);
-      this.imageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
+  private fetchImage(cartItemId: string, imagePath: string): void {
+    const subscription: Subscription = this._productService.getImage(imagePath).subscribe(blob => {
+      const objectUrl: string = URL.createObjectURL(blob);
+      this.imageUrls[cartItemId] = this._sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
     });
     this.subscriptions.push(subscription);
   }
