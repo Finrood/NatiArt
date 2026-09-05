@@ -42,7 +42,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 
 ## B. Backend — Robustness / Correctness
 
-### B1. Dead RestTemplate error branches (Asaas + shipping) — OPEN (Medium-High)
+### B1. Dead RestTemplate error branches (Asaas + shipping) — IN REVIEW (PR #70, Asaas half; ShippingService half remains OPEN)
 - `AsaasPaymentService.java:50-72,80-107,117-130`: branches on 401/404 statuses
   that default `RestTemplate` never returns (throws `HttpStatusCodeException`).
   401/404 from Asaas surfaces as 500 with raw message. Same in
@@ -158,7 +158,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 
 ## C. Frontend — Correctness / Security
 
-### C1. Cart modal updates/removes the wrong item — IN REVIEW (PR #68)
+### C1. Cart modal updates/removes the wrong item — FIXED (PR #68)
 - `cart-modal.component.ts:46-58` uses `item.product.id!` where
   `CartService.updateItemQuantity/removeFromCart` expect `cartItemId`; images
   keyed by product, not cart line. Two lines with same product collide.
@@ -172,7 +172,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix: resolve user once, pass into `onProcessPixPayment(user)`; handle
   `EmptyError`. Spec: single registration call for guest PIX flow.
 
-### C3. Order spinner never clears on failure — IN REVIEW (PR #68)
+### C3. Order spinner never clears on failure — FIXED (PR #68)
 - `order.service.ts:19-24`: `tap(...)` resets `orderProcessing$` on success
   only; spinner stuck forever on HTTP error.
 - Fix: `finalize(...)`. Spec: flag resets on error.
