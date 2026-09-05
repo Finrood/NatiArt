@@ -177,6 +177,23 @@ describe('PixPaymentConfirmationComponent', () => {
     expect(internals.fireworksTimer).toBeNull();
     http.verify();
   }));
+
+  it('surfaces an error state when the QR lookup fails', fakeAsync(() => {
+    const fixture = TestBed.createComponent(PixPaymentConfirmationComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    http.expectOne(qrUrl).flush('boom', {status: 500, statusText: 'Server Error'});
+    tick(0);
+
+    expect(component.paymentStatus).toBe('ERROR');
+
+    fixture.detectChanges();
+    const text: string = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Could not load the payment details');
+
+    component.ngOnDestroy();
+    http.verify();
+  }));
 });
 
 describe('PixPaymentConfirmationComponent without paymentId', () => {

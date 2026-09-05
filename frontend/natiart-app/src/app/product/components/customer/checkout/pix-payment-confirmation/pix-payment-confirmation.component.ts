@@ -58,7 +58,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
     this.stopQrCode();
     this.qrSubscription = this.paymentService.getPixQrCode(paymentId).subscribe(
       (data) => (this.qrCodeData = data),
-      (error) => console.error('Error fetching QR code:', error)
+      () => (this.paymentStatus = 'ERROR')
     );
   }
 
