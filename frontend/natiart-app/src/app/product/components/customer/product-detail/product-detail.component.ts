@@ -1,9 +1,10 @@
 import {Component, ElementRef, OnDestroy, OnInit, Renderer2, ViewChild} from '@angular/core';
 import { AsyncPipe, CurrencyPipe, KeyValuePipe, NgStyle } from "@angular/common";
 import {FormsModule} from "@angular/forms";
-import {BehaviorSubject, Subscription} from "rxjs";
+import {BehaviorSubject, Subscription, of} from "rxjs";
+import {catchError, switchMap, tap} from "rxjs/operators";
 import {Product} from "../../../models/product.model";
-import {ActivatedRoute, RouterLink} from "@angular/router";
+import {ActivatedRoute, ParamMap, RouterLink} from "@angular/router";
 import {ProductService} from "../../../service/product.service";
 import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
 import {TopMenuComponent} from "../top-menu/top-menu.component";
@@ -46,6 +47,9 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   @ViewChild('zoomLens') zoomLens!: ElementRef<HTMLDivElement>;
   @ViewChild('mainImage') mainImage!: ElementRef<HTMLImageElement>;
   private subscriptions: Subscription[] = [];
+  private relatedSubscription: Subscription | null = null;
+  isLoading: boolean = true;
+  loadError: string | null = null;
 
   showPersonalizationModal = false;
   selectedProductForModal: Product | null = null;
@@ -64,11 +68,48 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     return `scale(${this.zoomFactor})`;
   }
 
-  ngOnInit() {
-    const productId = this.route.snapshot.paramMap.get('id');
-    if (productId) {
-      this.loadProduct(productId);
-    }
+  ngOnInit(): void {
+    // Subscribe to param changes (not a one-shot snapshot): Angular reuses this
+    // component when navigating between related products, and the inner
+    // switchMap cancels any in-flight product fetch so stale responses cannot
+    // overwrite the current view.
+    const subscription = this.route.paramMap.pipe(
+      tap((): void => {
+        this.isLoading = true;
+        this.loadError = null;
+        this.product$.next(null);
+        this.quantity = 1;
+        this.selectedImageIndex = 0;
+        this.imageUrls = {};
+        this.relatedProducts$.next([]);
+        this.relatedImageUrls = {};
+      }),
+      switchMap((params: ParamMap) => {
+        const productId: string | null = params.get('id');
+        if (!productId) {
+          throw new Error('Missing product id');
+        }
+        return this.productService.getProduct(productId);
+      }),
+      catchError((error: unknown) => {
+        console.error('Error loading product:', error);
+        this.product$.next(null);
+        this.loadError = 'Could not load this product. Please try again.';
+        this.isLoading = false;
+        return of(null);
+      })
+    ).subscribe({
+      next: (product: Product | null): void => {
+        if (!product) {
+          return;
+        }
+        this.product$.next(product);
+        this.updateProductImages(product);
+        this.loadRelatedProducts(product.categoryId);
+        this.isLoading = false;
+      }
+    });
+    this.subscriptions.push(subscription);
   }
 
   ngOnDestroy() {
@@ -226,18 +267,6 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     }, 700);
   }
 
-  private loadProduct(productId: string): void {
-    const subscription = this.productService.getProduct(productId).subscribe({
-      next: (product) => {
-        this.product$.next(product);
-        this.updateProductImages(product);
-        this.loadRelatedProducts(product.categoryId);
-      },
-      error: (error) => console.error('Error loading product:', error)
-    });
-    this.subscriptions.push(subscription);
-  }
-
   private updateProductImages(product: Product): void {
     this.imageUrls = {};
     (product.images || []).forEach((imagePath, index) => {
@@ -270,6 +299,12 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   }
 
   private loadRelatedProducts(categoryId: string | undefined): void {
+    // Cancel any in-flight related-products fetch: without this, a slow first
+    // response overwrites the related list of the product viewed second.
+    if (this.relatedSubscription) {
+      this.relatedSubscription.unsubscribe();
+      this.relatedSubscription = null;
+    }
     if (!categoryId) {
       this.relatedProducts$.next([]);
       return;
@@ -290,6 +325,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       },
       error: (error) => console.error('Error loading related products:', error)
     });
+    this.relatedSubscription = subscription;
     this.subscriptions.push(subscription);
   }
 
