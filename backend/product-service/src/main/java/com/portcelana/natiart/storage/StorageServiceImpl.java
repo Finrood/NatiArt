@@ -46,6 +46,9 @@ public class StorageServiceImpl implements StorageService {
 
     @Override
     public InputStream downloadFiles(Set<URI> uriSet) {
+        if (uriSet == null || uriSet.isEmpty()) {
+            throw new IllegalArgumentException("File download requires at least one file URI");
+        }
         final Storage storage = getStorage(uriSet.iterator().next());
         return storage.downloadFiles(uriSet);
     }
