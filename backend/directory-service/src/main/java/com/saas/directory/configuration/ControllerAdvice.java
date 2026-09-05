@@ -40,8 +40,10 @@ public class ControllerAdvice {
 
     @ExceptionHandler(IllegalAccessException.class)
     public ResponseEntity<Object> illegalAccessException(IllegalAccessException e) {
-        logger.error("Asaas API error: status={}, message={}", 401, e.getMessage(), e);
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.FORBIDDEN);
+        // Security: auth-decision messages historically echoed the presented JWT — return a static
+        // body so bearer credentials never leak into responses.
+        logger.debug("Access denied: ", e);
+        return new ResponseEntity<>("Invalid or expired token", HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler(Exception.class)
