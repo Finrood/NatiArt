@@ -15,7 +15,7 @@
 set -euo pipefail
 
 REPO="/home/finrod/Documents/Programming/Java/Personal/NatiArt"
-TMP_ROOT="${TMPDIR:-/tmp}"
+TMP_ROOT="${TMPDIR:-/tmp}"   # override with TMPDIR for tests; attempt logs are removed after each run
 
 # --- overridables ----------------------------------------------------------
 ROLE="cycle"          # cycle (1500s budget) | review (360s budget)
@@ -24,6 +24,7 @@ TITLE="improvement-loop"
 STALL_SEC=120          # no-output stall detection per attempt
 SIMULATE_QUOTA_AT=0    # test harness: fail the first N attempts as synthetic quota
 CHECK_ONLY=0
+ALLOWED_ARGS=()        # extra permission args passed to cline (e.g. --auto-approve true)
 
 usage() {
     cat >&2 <<'EOF'
@@ -38,6 +39,7 @@ Options:
   --title TITLE           Session title (passed to CLIs that support it)
   --stall SEC             Kill an attempt that produces no output for SEC (default 120)
   --simulate-quota-at N   Test: fail the first N attempts with synthetic quota
+  --allowed "ARGS"        Extra permission args passed to cline (e.g. "--auto-approve true")
   --check-only            Print the priority list + first model, invoke nothing
   -h, --help              Show this help
 EOF
@@ -55,6 +57,7 @@ while [[ $# -gt 0 ]]; do
         --title) TITLE="$2"; shift 2 ;;
         --stall) STALL_SEC="$2"; shift 2 ;;
         --simulate-quota-at) SIMULATE_QUOTA_AT="$2"; shift 2 ;;
+        --allowed) ALLOWED_ARGS=("$2"); shift 2 ;;
         --check-only) CHECK_ONLY=1; shift ;;
         -h|--help) usage; exit 0 ;;
         --) shift; PROMPT_ARGS+=("$@"); break ;;
@@ -143,7 +146,7 @@ launch_attempt() { # $1=cli $2=model_id $3=think; spawns child bg, sets $PID
         cline)
             local think_arg=()
             [[ -n "$think" ]] && think_arg=(--thinking "$think")
-            (cd "$REPO" && exec cline --cwd "$REPO" -m "$model_id" "${think_arg[@]}" --json "$PROMPT") \
+            (cd "$REPO" && exec cline --cwd "$REPO" -m "$model_id" "${think_arg[@]}" "${ALLOWED_ARG[@]:+${ALLOWED_ARG[@]}}" --json "$PROMPT") \
                 >"$ATT_LOG" 2>&1 &
             ;;
         *)
@@ -209,11 +212,13 @@ while true; do
         if [[ "$reason" == "timeout" ]]; then
             log "Attempt $attempt/${label} consumed the whole budget without finishing."
             print_tail "$ATT_LOG"
+            rm -f "$ATT_LOG"
             exit 124
         fi
 
         if (( rc == 0 )); then
             log "Attempt $attempt succeeded with $label ($model_id${think:+, $think})."
+            rm -f "$ATT_LOG"
             echo "NATIART_ACTIVE_MODEL=$label"
             echo "$label"
             exit 0
@@ -222,11 +227,13 @@ while true; do
         if [[ "$reason" == "stall" ]] || quota_blocked "$rc" "$ATT_LOG"; then
             log "Attempt $attempt/${label} quota-blocked (rc=$rc, reason=$reason); trying next model."
             print_tail "$ATT_LOG"
+            rm -f "$ATT_LOG"
             continue
         fi
 
         log "Attempt $attempt/${label} failed with rc=$rc and no quota signal; aborting."
         print_tail "$ATT_LOG"
+        rm -f "$ATT_LOG"
         exit "$rc"
     done
     log "All $PRIORITY_COUNT models blocked; sleeping 5s and retrying from the top."

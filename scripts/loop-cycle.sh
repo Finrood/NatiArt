@@ -100,8 +100,12 @@ if [[ -n "$ROT_LINES" ]]; then
     log "$ROT_LINES"
 fi
 
-# 4. Pile-up guard: docs-only flips and dependabot PRs never block the loop;
-#    only code PRs count (a pile of zero-risk flips must not livelock cycles).
+# 4. Open-PR self-heal: docs-only flips and dependabot PRs never block the
+#    loop; only code PRs count. A cluster of healthy (green, approved) open
+#    code PRs is merged right here so the loop heals itself and never idles
+#    behind a pickup that the agent (already rate-limited / quota-exhausted)
+#    can never reach. Only fully-green PRs with a VERDICT: APPROVE reviewer
+#    comment are auto-merged; anything red or awaiting review stays open.
 is_docs_only() { # $1 = PR number; true iff every changed file is under docs/
     local files
     files=$(gh pr view "$1" --json files --jq '.files[].path' 2>/dev/null) || return 1
@@ -115,19 +119,45 @@ while read -r n; do
 done < <(gh pr list --state open --json number,headRefName --jq '.[] | select(.headRefName | startswith("dependabot/") | not) | .number')
 OPEN_PRS=$(echo "$CODE_PRS" | wc -w)
 log "Open code PRs: $OPEN_PRS"
-if [[ "$OPEN_PRS" -ge 2 ]]; then
-    log "Too many open PRs; letting review catch up. Exiting."
-    exit 0
-fi
-if [[ "$OPEN_PRS" -ge 1 ]]; then
-    FAILING=""
-    for n in $CODE_PRS; do
-        if gh pr checks "$n" 2>/dev/null | grep -Eq 'fail|cancel'; then FAILING="$FAILING $n"; fi
-    done
-    if [[ -n "$FAILING" ]]; then
-        log "Open PR(s) with failing checks:$FAILING; not starting new work."
-        exit 0
+
+# Merge any healthy code PRs (green CI + VERDICT: APPROVE comment). Bounded: at
+# most 2 per cycle; only branches whose head is exactly their PR head.
+merged=0
+for n in $CODE_PRS; do
+    checks=$(gh pr checks "$n" 2>/dev/null)
+    if echo "$checks" | grep -Eq 'fail|cancel'; then
+        log "PR #$n has failing/cancelled checks; leaving open."
+        continue
     fi
+    if ! echo "$checks" | grep -qE 'pass|success'; then
+        log "PR #$n has no reported green checks yet; leaving open."
+        continue
+    fi
+    if ! gh pr view "$n" --json comments --jq '.comments[].body' 2>/dev/null | grep -q 'VERDICT: APPROVE'; then
+        log "PR #$n has no VERDICT: APPROVE comment yet; leaving open for review."
+        continue
+    fi
+    log "Merging healthy PR #$n (green + approved)."
+    gh pr merge "$n" --merge --delete-branch 2>&1 | tail -2
+    merged=$((merged + 1))
+    [[ "$merged" -ge 2 ]] && { log "Merged 2 this cycle; handing the rest to the agent/next cycle."; break; }
+done
+# Refresh the list after any merges (branches below are deleted by the merge).
+if [[ "$merged" -ge 1 ]]; then
+    git fetch -q --prune origin
+    git pull -q --ff-only origin master || log "ff pull after merge failed (next cycle retries)."
+fi
+
+# Pile guard (after self-heal): a still-crowded loop holds back new work only
+# if something needs attention; one healthy pending PR is fine — the agent will
+# pick it up in Phase 0.
+FAILING=""
+for n in $CODE_PRS; do
+    if gh pr checks "$n" 2>/dev/null | grep -Eq 'fail|cancel'; then FAILING="$FAILING $n"; fi
+done
+if [[ -n "$FAILING" ]]; then
+    log "Open PR(s) with failing checks:$FAILING; not starting new work."
+    exit 0
 fi
 
 # 5. Stale-branch hygiene: prune local branches whose remote is gone.
@@ -138,6 +168,17 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
     log "Check-only mode: all preconditions pass. Agent run skipped."
     exit 0
 fi
+
+# 5. Worktree hygiene: remove abandoned reviewer/staging worktrees that a killed
+# cycle or reboot left behind (they live next to the repo — never inside it —
+# and would otherwise accumulate). Never touch the main checkout.
+git worktree list --porcelain 2>/dev/null | awk -v repo="$REPO" '
+    $1=="worktree" && $2 != repo { print $2 }' | while read -r wt; do
+    log "Removing abandoned worktree $wt."
+    git worktree remove --force "$wt" 2>/dev/null || true
+done || true
+# Also sweep the sibling review-* clones (git worktree list does not see them).
+find "$REPO/.." -maxdepth 1 -type d -name 'review-*' -mtime +1 -exec rm -rf {} + 2>/dev/null || true
 
 # Remote hygiene: retry deletion of merged loop branches (the --delete-branch
 # flag occasionally races GitHub auto-delete and leaves them behind). Only
