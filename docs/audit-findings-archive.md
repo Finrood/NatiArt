@@ -576,3 +576,15 @@ non-finite values).
   hits remain in those files on master @ b259c89). Flipped by the loop's
   pickup rule (merged-PR status flip batch).
 
+### T1. Angular 20.3.1 ships 8 high `npm audit` advisories — FIXED (PR #122)
+- Patched `@angular/*` `^20.3.1` → `^20.3.30` (`@angular/build`/`cli` →
+  `^20.3.36`) inside the `^20` train; lockfile regenerated via clean install
+  (incremental resolution deadlocked on lockstep exact-peer pins). The red
+  `22.x` major stays on dependabot PR #59.
+- Verified: `npm audit --omit=dev` 8 high → 0, `npm run build` green, Karma
+  123/123 SUCCESS.
+
+### T2. `@angular/cdk ^19.0.1` major-skewed against Angular 20 core — FIXED (PR #122)
+- Aligned CDK `^19.0.1` (installed `19.2.19`) → `^20.2.14`, whose peers accept
+  core `^20`. Same verification as T1 (build + 123 specs green, audit 0).
+

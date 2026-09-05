@@ -469,28 +469,6 @@ gaps. Not filed: Spring Boot `3.5.6` → `4.1.1` (PR #55) and Angular `20` →
 `22` (PR #59) majors — both red CI, left on their dependabot branches for a
 human decision per the Lens-16 routine, never touched here.
 
-### T1. Angular 20.3.1 ships 8 high `npm audit` advisories, patch fix available in 20.3.x — IN REVIEW (High)
-- `frontend/natiart-app/package.json:14-27` pins `^20.3.1`; installed
-  `20.3.1` (`npm ls @angular/core`) is inside every advisory range:
-  XSRF token leakage via protocol-relative URLs (`@angular/common`
-  `>=20.0.0-next.0 <20.3.14`, GHSA-58c5-g7wp-6w37), XSS in i18n attribute
-  bindings (`@angular/compiler`, GHSA-g93w-mfhg-p222, CVSS 9.0+), i18n XSS
-  (`@angular/core`, GHSA-prjf-86w9-mfqv). `npm audit` reports
-  `fixAvailable: True` with patched ranges up to `20.3.26` — a patch/minor
-  bump inside the `^20` train, not the red `22.x` major in PR #59.
-- Fix (own `chore/` branch only): `npm update @angular/*` to the latest
-  `20.3.x`, lockfile churn in the same commit; keep the `22.x` major on the
-  dependabot branch. Tests: `npm run build` + Karma suite green.
-
-### T2. `@angular/cdk ^19.0.1` major-skewed against Angular 20 core — IN REVIEW (Medium)
-- `frontend/natiart-app/package.json:15` pins CDK `^19.0.1` (installed
-  `19.2.19`) while every sibling Angular package is `^20.3.1` (installed
-  `20.3.1`). Mixed majors across the Angular family risk subtle CDK/overlay
-  breakage; PR #59 lumps the CDK `19` → `22` jump with the red Angular major.
-- Fix (own `chore/` branch only): align CDK to `^20.x` matching the current
-  core train; leave the `22.x` jump on the dependabot branch. Tests:
-  `npm run build` + Karma suite green.
-
 ### T5. No Gradle dependency locking / checksum verification; no audit gate in CI — OPEN (Low)
 - Repo has no `backend/gradle.lockfile` (or any `*.lockfile`) and no
   `gradle/verification-metadata.xml`, so backend builds float on transitive
