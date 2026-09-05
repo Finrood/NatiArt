@@ -35,6 +35,15 @@ public class PaymentCreationRequest {
             Double value,
             PaymentMethod billingType,
             Clock clock) {
+        if (paymentProcessor == null) {
+            throw new IllegalArgumentException("Payment processor is required");
+        }
+        if (billingType == null) {
+            throw new IllegalArgumentException("Billing type is required");
+        }
+        if (value == null || !Double.isFinite(value) || value <= 0) {
+            throw new IllegalArgumentException("Payment value must be a finite number greater than zero");
+        }
         this.paymentProcessor = paymentProcessor;
         this.customerId = customerId;
         this.value = value;

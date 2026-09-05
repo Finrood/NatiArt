@@ -52,8 +52,9 @@ public class AsaasPaymentService implements PaymentService {
         if (requesterExternalId == null || requesterExternalId.isBlank()) {
             throw new UserNotAllowedException("Authenticated customer is required to create a payment");
         }
-        if (paymentCreationRequest.getValue() == null || paymentCreationRequest.getValue() <= 0) {
-            throw new IllegalArgumentException("Payment value must be greater than zero");
+        final Double value = paymentCreationRequest.getValue();
+        if (value == null || !Double.isFinite(value) || value <= 0) {
+            throw new IllegalArgumentException("Payment value must be a finite number greater than zero");
         }
         final HttpHeaders headers = getRequestHeaders();
 
