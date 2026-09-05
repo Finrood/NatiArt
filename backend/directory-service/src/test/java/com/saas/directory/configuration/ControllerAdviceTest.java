@@ -34,4 +34,14 @@ class ControllerAdviceTest {
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, result.getStatusCode());
         assertEquals("Internal server error", result.getBody());
     }
+
+    @Test
+    void illegalAccessException_returnsStaticBodyWithoutLeakingTheToken() {
+        final String leaked = "eyJhbGciOiJIUzI1NiJ9.payload.signature";
+        final ResponseEntity<Object> result = advice.illegalAccessException(
+                new IllegalAccessException("Authentication Token [" + leaked + "] is not valid"));
+
+        assertEquals(HttpStatus.FORBIDDEN, result.getStatusCode());
+        assertEquals("Invalid or expired token", result.getBody());
+    }
 }

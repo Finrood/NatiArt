@@ -42,7 +42,7 @@ import com.saas.directory.service.UserManager;
 
 @Component
 public class UserAuthenticationProvider {
-    private static final Logger logger = LoggerFactory.getLogger(UserAuthenticationProvider.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(UserAuthenticationProvider.class);
     private final TokenRepository tokenRepository;
     private final ExternalUserRepository externalUserRepository;
     private final UserManager userManager;
@@ -146,13 +146,16 @@ public class UserAuthenticationProvider {
         final Optional<Token> dbToken = tokenRepository.findByJtiAndTokenType(jti, tokenType);
         final boolean isTokenValid = dbToken.map(t -> !t.isExpired()).orElse(false);
         if (!isTokenValid) {
-            throw new IllegalAccessException(String.format("Authentication Token [%s] is not valid", token));
+            // Security: never echo the presented token — it is a bearer credential and must not
+            // leak into responses or logs. Correlate on the jti claim only.
+            LOGGER.debug("Rejected authentication token with jti [{}]", jti);
+            throw new IllegalAccessException("Authentication token is not valid");
         }
 
         if (!dbToken.get().getUser().getUsername().equals(decodedJWT.getIssuer())) {
             invalidateToken(token);
-            throw new IllegalAccessException(String.format(
-                    "User [%s] is not the authentication token issuer for token [%s]", decodedJWT.getIssuer(), token));
+            LOGGER.debug("Rejected authentication token with jti [{}]: issuer mismatch", jti);
+            throw new IllegalAccessException("Authentication token issuer mismatch");
         }
 
         final String role = decodedJWT.getClaim("roles").asString();
@@ -179,7 +182,7 @@ public class UserAuthenticationProvider {
             final String jti = decodedJWT.getId();
             tokenRepository.deleteByJti(jti);
         } catch (JWTVerificationException exception) {
-            logger.error("Error verifying JWT token: {}", exception.getMessage());
+            LOGGER.error("Error verifying JWT token: {}", exception.getMessage());
         }
     }
 
@@ -187,7 +190,7 @@ public class UserAuthenticationProvider {
         try {
             return decodeJWT(token).getClaim("email").asString();
         } catch (JWTVerificationException exception) {
-            logger.error("Error verifying JWT token: {}", exception.getMessage());
+            LOGGER.error("Error verifying JWT token: {}", exception.getMessage());
             return null;
         }
     }
@@ -196,7 +199,7 @@ public class UserAuthenticationProvider {
         try {
             return decodeJWT(token).getClaim("id").asString();
         } catch (JWTVerificationException exception) {
-            logger.error("Error verifying JWT token: {}", exception.getMessage());
+            LOGGER.error("Error verifying JWT token: {}", exception.getMessage());
             return null;
         }
     }
