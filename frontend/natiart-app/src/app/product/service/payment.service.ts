@@ -2,6 +2,7 @@ import {Injectable} from '@angular/core';
 import {HttpClient} from "@angular/common/http";
 import {map, Observable} from 'rxjs';
 import {PaymentCreationRequest} from "../models/paymentCreationRequest.model";
+import {PaymentCreationResponse} from "../models/paymentCreationResonse.model";
 import {environment} from "../../../environments/environment";
 
 @Injectable({
@@ -13,8 +14,8 @@ export class PaymentService {
   constructor(private http: HttpClient) {
   }
 
-  createPixPayment(paymentCreationRequest: PaymentCreationRequest): Observable<any> {
-    return this.http.post(`${this.apiUrl}/api/payment/create`, paymentCreationRequest);
+  createPixPayment(paymentCreationRequest: PaymentCreationRequest): Observable<PaymentCreationResponse> {
+    return this.http.post<PaymentCreationResponse>(`${this.apiUrl}/api/payment/create`, paymentCreationRequest);
   }
 
   getPixQrCode(paymentId: string): Observable<{
@@ -38,7 +39,7 @@ export class PaymentService {
       );
   }
 
-  getPaymentStatus(paymentId: string): Observable<any> {
+  getPaymentStatus(paymentId: string): Observable<{ paymentId: string; status: string }> {
     return this.http.get<{
       paymentId: string;
       status: string;

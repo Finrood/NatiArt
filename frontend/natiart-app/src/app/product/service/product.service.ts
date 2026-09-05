@@ -1,7 +1,8 @@
 import {Injectable} from '@angular/core';
 import {HttpClient} from "@angular/common/http";
-import {Observable} from "rxjs";
+import {Observable, throwError} from "rxjs";
 import {environment} from "../../../environments/environment";
+import {Product} from "../models/product.model";
 
 @Injectable({
   providedIn: 'root'
@@ -14,41 +15,44 @@ export class ProductService {
   constructor(private http: HttpClient) {
   }
 
-  getProducts(): Observable<any> {
-    return this.http.get<any>(this.apiUrl);
+  getProducts(): Observable<Product[]> {
+    return this.http.get<Product[]>(this.apiUrl);
   }
 
-  getProductsByCategory(categoryId: string): Observable<any> {
+  getProductsByCategory(categoryId: string): Observable<Product[]> {
     const params = {categoryId};
-    return this.http.get<any>(this.apiUrl, {params});
+    return this.http.get<Product[]>(this.apiUrl, {params});
   }
 
-  getFeaturedProducts(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/featured`);
+  getFeaturedProducts(): Observable<Product[]> {
+    return this.http.get<Product[]>(`${this.apiUrl}/featured`);
   }
 
-  getNewProducts(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/new`);
+  getNewProducts(): Observable<Product[]> {
+    return this.http.get<Product[]>(`${this.apiUrl}/new`);
   }
 
-  getProduct(productId: string | null): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/${productId}`);
+  getProduct(productId: string | null): Observable<Product> {
+    if (!productId) {
+      return throwError(() => new Error('Missing product id'));
+    }
+    return this.http.get<Product>(`${this.apiUrl}/${productId}`);
   }
 
-  addProduct(newProduct: FormData): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/create`, newProduct);
+  addProduct(newProduct: FormData): Observable<Product> {
+    return this.http.post<Product>(`${this.apiUrl}/create`, newProduct);
   }
 
-  updateProduct(id: string, editProductData: FormData): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/${id}`, editProductData);
+  updateProduct(id: string, editProductData: FormData): Observable<Product> {
+    return this.http.put<Product>(`${this.apiUrl}/${id}`, editProductData);
   }
 
-  deleteProduct(id: string): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}/${id}`);
+  deleteProduct(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 
-  inverseProductVisibility(id: string): Observable<any> {
-    return this.http.patch<any>(`${this.apiUrl}/${id}/visibility/inverse`, null);
+  inverseProductVisibility(id: string): Observable<Product> {
+    return this.http.patch<Product>(`${this.apiUrl}/${id}/visibility/inverse`, null);
   }
 
   getImage(imagePath: string): Observable<Blob> {
