@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
@@ -54,8 +55,13 @@ public class AsaasPaymentService implements PaymentService {
 
         final HttpEntity<AsaasPaymentCreationRequest> asaasPaymentCreationRequestHttpEntity = new HttpEntity<>(
                 AsaasPaymentCreationRequest.from(paymentCreationRequest, requesterExternalId), headers);
-        final ResponseEntity<AsaasPaymentCreationResponse> response = restTemplate.postForEntity(
-                asaasPaymentUrl, asaasPaymentCreationRequestHttpEntity, AsaasPaymentCreationResponse.class);
+        final ResponseEntity<AsaasPaymentCreationResponse> response;
+        try {
+            response = restTemplate.postForEntity(
+                    asaasPaymentUrl, asaasPaymentCreationRequestHttpEntity, AsaasPaymentCreationResponse.class);
+        } catch (HttpStatusCodeException e) {
+            throw mapAsaasError(e);
+        }
 
         if (response.getStatusCode() == HttpStatus.OK) {
             final Optional<AsaasPaymentCreationResponse> asaasPaymentCreationResponse =
@@ -84,11 +90,16 @@ public class AsaasPaymentService implements PaymentService {
 
         final HttpEntity<String> entity = new HttpEntity<>(getRequestHeaders());
 
-        final ResponseEntity<AsaasPaymentPixQrCodeResponse> response = restTemplate.exchange(
-                String.format("%s/%s/pixQrCode", asaasPaymentUrl, paymentId),
-                HttpMethod.GET,
-                entity,
-                AsaasPaymentPixQrCodeResponse.class);
+        final ResponseEntity<AsaasPaymentPixQrCodeResponse> response;
+        try {
+            response = restTemplate.exchange(
+                    String.format("%s/%s/pixQrCode", asaasPaymentUrl, paymentId),
+                    HttpMethod.GET,
+                    entity,
+                    AsaasPaymentPixQrCodeResponse.class);
+        } catch (HttpStatusCodeException e) {
+            throw mapAsaasError(e);
+        }
 
         if (response.getStatusCode() == HttpStatus.OK) {
             final Optional<AsaasPaymentPixQrCodeResponse> asaasPaymentPixQrCodeResponse =
@@ -122,11 +133,16 @@ public class AsaasPaymentService implements PaymentService {
     }
 
     private AsaasPaymentCreationResponse fetchPaymentOrDie(String paymentId) {
-        final ResponseEntity<AsaasPaymentCreationResponse> response = restTemplate.exchange(
-                String.format("%s/%s", asaasPaymentUrl, paymentId),
-                HttpMethod.GET,
-                new HttpEntity<>(getRequestHeaders()),
-                AsaasPaymentCreationResponse.class);
+        final ResponseEntity<AsaasPaymentCreationResponse> response;
+        try {
+            response = restTemplate.exchange(
+                    String.format("%s/%s", asaasPaymentUrl, paymentId),
+                    HttpMethod.GET,
+                    new HttpEntity<>(getRequestHeaders()),
+                    AsaasPaymentCreationResponse.class);
+        } catch (HttpStatusCodeException e) {
+            throw mapAsaasError(e);
+        }
         if (response.getStatusCode() == HttpStatus.NOT_FOUND) {
             throw new ResourceNotFoundException(String.format("Payment with id [%s] not found", paymentId));
         }
@@ -150,6 +166,23 @@ public class AsaasPaymentService implements PaymentService {
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new IllegalArgumentException("Unexpected Asaas status: " + status);
         }
+    }
+
+    /**
+     * Maps an upstream Asaas HTTP error onto a service exception. The default
+     * RestTemplate throws {@link HttpStatusCodeException} instead of returning
+     * 4xx/5xx responses, so the status-code branches above would otherwise be
+     * dead code and every Asaas 401/404 would surface as a 500.
+     */
+    static RuntimeException mapAsaasError(HttpStatusCodeException e) {
+        final HttpStatusCode statusCode = e.getStatusCode();
+        if (statusCode == HttpStatus.UNAUTHORIZED || statusCode == HttpStatus.FORBIDDEN) {
+            return new UserNotAllowedException("Unauthorized api call to the payment provider");
+        }
+        if (statusCode == HttpStatus.NOT_FOUND) {
+            return new ResourceNotFoundException("Payment not found in the payment provider");
+        }
+        return e;
     }
 
     /**

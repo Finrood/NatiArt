@@ -2,14 +2,19 @@ package com.portcelana.natiart.service;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.controller.helper.UserNotAllowedException;
 import com.portcelana.natiart.dto.payment.PaymentCreationRequest;
 import com.portcelana.natiart.dto.payment.asaas.AsaasPaymentCreationRequest;
@@ -106,5 +111,32 @@ class AsaasPaymentServiceTest {
         assertThrows(IllegalArgumentException.class, () -> AsaasPaymentService.parsePaymentStatus("OVERDUE"));
         assertThrows(IllegalArgumentException.class, () -> AsaasPaymentService.parsePaymentStatus(null));
         assertThrows(IllegalArgumentException.class, () -> AsaasPaymentService.parsePaymentStatus(""));
+    }
+
+    @Test
+    void mapAsaasError_mapsAuthFailuresToUserNotAllowed() {
+        assertThrows(UserNotAllowedException.class, () -> {
+            throw AsaasPaymentService.mapAsaasError(
+                    HttpClientErrorException.create(HttpStatus.UNAUTHORIZED, "Unauthorized", null, null, null));
+        });
+        assertThrows(UserNotAllowedException.class, () -> {
+            throw AsaasPaymentService.mapAsaasError(
+                    HttpClientErrorException.create(HttpStatus.FORBIDDEN, "Forbidden", null, null, null));
+        });
+    }
+
+    @Test
+    void mapAsaasError_mapsMissingPaymentToNotFound() {
+        assertThrows(ResourceNotFoundException.class, () -> {
+            throw AsaasPaymentService.mapAsaasError(
+                    HttpClientErrorException.create(HttpStatus.NOT_FOUND, "Not Found", null, null, null));
+        });
+    }
+
+    @Test
+    void mapAsaasError_passesThroughUnexpectedUpstreamFailures() {
+        final HttpServerErrorException upstream =
+                HttpServerErrorException.create(HttpStatus.INTERNAL_SERVER_ERROR, "Bad Gateway", null, null, null);
+        assertSame(upstream, AsaasPaymentService.mapAsaasError(upstream));
     }
 }
