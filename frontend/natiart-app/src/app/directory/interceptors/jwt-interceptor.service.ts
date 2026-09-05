@@ -46,7 +46,7 @@ const performRefresh = (http: HttpClient, tokenService: TokenService): BehaviorS
     }
 
     http.post<{ accessToken: string; refreshToken: string }>(
-      `${environment.api.directory.url}/refresh-token`,
+      `${environment.api.directory.url}${environment.api.directory.endpoints.refreshToken}`,
       null,
       {headers: {Authorization: `Bearer ${refreshTokenValue}`}}
     ).subscribe({

@@ -145,7 +145,7 @@ export class AuthenticationService implements OnDestroy {
     }
 
     return this.http.post<{ accessToken: string, refreshToken: string }>(
-      `${this.apiUrl}/refresh-token`,
+      `${this.apiUrl}${environment.api.directory.endpoints.refreshToken}`,
       null,
       { headers: new HttpHeaders({ Authorization: `Bearer ${this.tokenService.refreshToken}` }) }
     ).pipe(

@@ -10,7 +10,7 @@ import {TokenService} from '../service/token.service';
 import {environment} from '../../../environments/environment';
 
 describe('jwtInterceptor', () => {
-  const REFRESH_URL = `${environment.api.directory.url}/refresh-token`;
+  const REFRESH_URL = `${environment.api.directory.url}${environment.api.directory.endpoints.refreshToken}`;
 
   function setup() {
     TestBed.configureTestingModule({
