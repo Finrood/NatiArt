@@ -19,5 +19,8 @@ export const environment = {
         order: '/orders',
       }
     },
+    viaCep: {
+      url: 'https://viacep.com.br/ws',
+    },
   }
 };
