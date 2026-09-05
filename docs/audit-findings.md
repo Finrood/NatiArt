@@ -72,13 +72,13 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix: add `spring-boot-starter-validation`, annotate DTOs
   (`@NotBlank`/`@Email`/`@Valid`), null-guard `createProfile`. Tests: null/blank → 400.
 
-### B4. Order integrity gaps: client-priced shipping, no owner — OPEN (Medium; qty cap + inactive-product check in flight)
+### B4. Order integrity gaps: client-priced shipping, no owner — OPEN (Medium)
 - `OrderManagerImpl.java` trusts client `deliveryAmount` (send `0` = free
   shipping — only non-negativity is checked); `CustomerOrder` has no owner
   column, `OrderController` takes no `@TargetUser`. Already fixed on master:
   server-side unit pricing from `Product`, atomic stock reservation via
-  `decreaseStockIfAvailable` with whole-order rollback. In flight: per-line
-  quantity cap (`MAX_ITEM_QUANTITY`) and `product.isActive()` rejection.
+  `decreaseStockIfAvailable` with whole-order rollback, per-line quantity cap
+  (`MAX_ITEM_QUANTITY`, PR #77) and `product.isActive()` rejection (PR #77).
 - Fix remainder: compute freight server-side, persist owner. Tests for each.
 
 ### B5. Cart quantity dropped; JPA entity returned from controller — FIXED (PR #61)
@@ -328,15 +328,13 @@ CI on JDK 25 Corretto is source of truth).
   against `totalAmount`, reject mismatches. Tests: under/over-valued payment
   rejected; exact total accepted.
 
-### G2. Cart accepts inactive products, quantity unbounded — OPEN (Low-Medium)
+### G2. Cart accepts inactive products, quantity unbounded — FIXED (PR #78)
 - `backend/product-service/.../service/CartManagerImpl.java:33-40`:
-  `createCartItem` checks existence via `getProductOrDie` but never
-  `product.isActive()`, and `increaseQuantity` has no cap, so deactivated
-  products accumulate in carts and surface as order-time rejections instead of
-  cart-time ones. Found by Lens 4 hunt, 2026-09-05.
-- Fix: reject inactive products in `createCartItem` (mirror the order-creation
-  guard); consider a cart-level quantity cap. Tests: inactive product → 400,
-  no `CartItem` persisted.
+  `createCartItem` checked existence via `getProductOrDie` but never
+  `product.isActive()`, so deactivated products accumulated in carts and
+  surfaced as order-time rejections instead of cart-time ones. Fixed by
+  rejecting inactive products in `createCartItem` (mirrors the order-creation
+  guard); test asserts throw + never save. Found by Lens 4 hunt, 2026-09-05.
 
 ### G3. Payment due-date uses the server default time zone — OPEN (Low)
 - `backend/product-service/.../dto/payment/PaymentCreationRequest.java:24-30`
