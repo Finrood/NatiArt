@@ -613,7 +613,7 @@ CI on JDK 25 Corretto is source of truth).
 - Fix: set an error status (e.g. `paymentStatus = 'ERROR'`) when the param is
   missing. Spec: null param → error state, no HTTP.
 
-### M5. PIX confirmation goes stale when navigating between payment ids — IN REVIEW (fix/frontend-data-identity-m5-m7; Medium)
+### M5. PIX confirmation goes stale when navigating between payment ids — FIXED (PR #102; Medium)
 - `frontend/natiart-app/src/app/product/components/customer/checkout/pix-payment-confirmation/pix-payment-confirmation.component.ts:33`
   reads `route.snapshot.paramMap.get('paymentId')` once in `ngOnInit`; Angular
   reuses the component when navigating `/pix-payment/A` → `/pix-payment/B`, so
@@ -625,7 +625,7 @@ CI on JDK 25 Corretto is source of truth).
   param change A → B issues QR/status HTTP for B and no further status
   requests for A.
 
-### M6. Product-detail main images race across rapid product visits — IN REVIEW (fix/frontend-data-identity-m5-m7; Low-Medium)
+### M6. Product-detail main images race across rapid product visits — FIXED (PR #102; Low-Medium)
 - `frontend/natiart-app/src/app/product/components/customer/product-detail/product-detail.component.ts:279-299`:
   `fetchImage(index, ...)` subscriptions are never cancelled on route-param
   reset (`ngOnInit:77-86` clears `imageUrls` but leaves in-flight `getImage`
@@ -637,7 +637,7 @@ CI on JDK 25 Corretto is source of truth).
   resolutions (success and error) are dropped when the token moved on. Spec:
   P1 image resolving after P2 navigation never populates the image map.
 
-### M7. Cart modal re-fetches every product image on each cart emission — IN REVIEW (fix/frontend-data-identity-m5-m7; Low)
+### M7. Cart modal re-fetches every product image on each cart emission — FIXED (PR #102; Low)
 - `frontend/natiart-app/src/app/product/components/customer/cart-modal/cart-modal.component.ts:64-73`:
   `loadProductImages` re-subscribes over `cartItems$` and calls `fetchImage`
   for every line on every emission with no already-loaded guard (sibling
@@ -811,3 +811,52 @@ non-finite values).
   2026-09-05.
 - Fix: keep the handle (`ReturnType<typeof setTimeout>`) and `clearTimeout` it
   in `ngOnDestroy`. Spec: destroy cancels the pending dismissal.
+
+## Q. Test quality (Lens 13 hunt, 2026-09-05)
+
+Hunt method: enumerated all backend `*Test.java` (29 files) and frontend
+`*.spec.ts` (~55 specs) for weak assertions, unasserted interactions, missing
+specs on money/security paths, and duplicated setup. Cleared as non-findings
+this cycle: `ControllerSecurityTest`/`PaymentControllerSecurityTest` (MockMvc
+`andExpect` assertions, not weak), `CartManagerImplTest` no-op test (asserts
+via `verifyNoInteractions`), `signup.service.spec.ts` (`HttpTestingController`
+`expectOne`/`expectNone` are assertions), `AsaasPaymentServiceTest` (zero
+`verify` because it uses zero mocks — pure constructor-injected unit tests),
+no focused/disabled specs (`fdescribe`/`fit`/`xit`), `button.component.ts`
+has no spec but carries no logic (policy: obvious markup needs no spec).
+The `registerGhostUser` zero-coverage gap found in this hunt is fixed in
+flight (N1, PR #108) rather than tracked separately.
+
+### Q1. `UserManagerTest` near-duplicate create/register tests — OPEN (Low)
+- `backend/directory-service/.../service/UserManagerTest.java:57`
+  (`test_create_new_user_with_unique_username_and_password`) vs `:129`
+  (`test_register_new_user_with_unique_username_and_password`): identical
+  bodies (same profile data, same event-capture assertions). The exact-duplicate
+  `testRegisterUser_DuplicateUsername` pair in the same file was already removed
+  (PR #108); this near-dup pair remains. Found by Lens 13 hunt, 2026-09-05.
+- Fix: collapse into one test, spend the freed slot on an uncovered branch
+  (e.g. null-password `IllegalArgumentException`). Tests: suite still green,
+  single creation-path test.
+
+### Q2. `PaymentCreationRequestTest` covers only the due-date boundary — OPEN (Low-Medium)
+- `backend/product-service/.../dto/payment/PaymentCreationRequestTest.java:26-31`:
+  2 tests, both asserting `getDueDate()`; the N4 money-shape gaps (null
+  `billingType`/`paymentProcessor`, `NaN`/`Infinity` `value`) have no specs,
+  and neither does the `G1` order-reconciliation surface. Found by Lens 13
+  hunt, 2026-09-05.
+- Fix: extend this spec (or the N4 fix PR) with rejection tests for null enums
+  and non-finite values. Tests: `NaN`/`Infinity`/null-enum → 400-path
+  `IllegalArgumentException`; valid request unchanged.
+
+### Q3. Debug `console.log` leftovers in five components — OPEN (Low)
+- `frontend/natiart-app/src/app/directory/components/auth/signup/step-indicator/step-indicator.component.ts:16`,
+  `.../admin-product-management/admin-product-management.component.ts:241`,
+  `.../customer/cart/cart.component.ts:84`,
+  `.../customer/checkout/checkout.component.ts:203`,
+  `.../customer/top-menu/top-menu.component.ts:69`: `console.log` debug
+  output ships to production (the C5 short-term fix already removed one such
+  log from `token.service.ts`). Found by Lens 13 hunt (Lens 14 overlap),
+  2026-09-05.
+- Fix: delete the debug logs (keep user-visible error surfacing where the log
+  was load-bearing, e.g. O2's `showAlert` work). Specs unaffected; no behavior
+  change.
