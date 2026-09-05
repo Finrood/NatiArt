@@ -213,7 +213,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix: move to `environment.api.viaCep`, validate `/^\d{8}$/`. Spec: URL built
   from env; invalid zip rejected before HTTP.
 
-### C8. Blob `ObjectURL` leaks — IN REVIEW (fix/frontend-resource-hygiene; Medium)
+### C8. Blob `ObjectURL` leaks — FIXED (PR #104; Medium)
 - `cart-modal.component.ts:42-44,75-81`,
   `admin-product-management.component.ts:103-105,289-296`: `createObjectURL`
   without revoke (cart/product-list components do it correctly).
@@ -733,7 +733,7 @@ non-finite values).
   `billingType`/`paymentProcessor` → 400-path `IllegalArgumentException`;
   `NaN`/`Infinity` rejected; valid request unchanged.
 
-### N5. PIX confirmation polls upstream forever; QR + fireworks subscriptions leak — IN REVIEW (fix/frontend-resource-hygiene; Low-Medium)
+### N5. PIX confirmation polls upstream forever; QR + fireworks subscriptions leak — FIXED (PR #104; Low-Medium)
 - `frontend/natiart-app/src/app/product/components/customer/checkout/pix-payment-confirmation/pix-payment-confirmation.component.ts`:
   `startPolling` (`:50-89`) runs `interval(5000)` with no backoff, jitter, or
   max duration while status stays `PENDING` — every tick hits
@@ -751,7 +751,7 @@ non-finite values).
 
 ## O. Loading and error UX (Lens 12 hunt, 2026-09-05)
 
-### O1. PIX confirmation QR failure is swallowed: no error state, PENDING forever — IN REVIEW (fix/frontend-resource-hygiene; Low-Medium)
+### O1. PIX confirmation QR failure is swallowed: no error state, PENDING forever — FIXED (PR #104; Low-Medium)
 - `frontend/natiart-app/src/app/product/components/customer/checkout/pix-payment-confirmation/pix-payment-confirmation.component.ts:43-48`:
   `loadQrCode` handles failure with `console.error` only. When the QR fetch
   fails, the view keeps the PENDING visual state with a missing QR and no
