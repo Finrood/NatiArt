@@ -1,7 +1,7 @@
 import {ChangeDetectionStrategy, Component, Input, OnDestroy, OnInit} from '@angular/core';
 import {FormGroup, ReactiveFormsModule} from '@angular/forms';
 
-import {finalize, Subject, takeUntil} from 'rxjs';
+import {debounceTime, distinctUntilChanged, finalize, Subject, Subscription, takeUntil} from 'rxjs';
 import {SignupService} from "../../../../../directory/service/signup.service";
 import {ViaCEPResponse} from "../../../../../directory/models/viaCEPResponse.model";
 import {
@@ -34,13 +34,19 @@ export class AddressFormComponent implements OnInit, OnDestroy {
   errorMessage = '';
 
   private destroy$ = new Subject<void>();
+  private lookupSubscription: Subscription | null = null;
+  private readonly CEP_DEBOUNCE_MS: number = 400;
 
   constructor(private signupService: SignupService) {}
 
   ngOnInit(): void {
     if (this.zipCodeLookupEnabled) {
       this.addressFormGroup.get('zipCode')?.valueChanges
-        .pipe(takeUntil(this.destroy$))
+        .pipe(
+          debounceTime(this.CEP_DEBOUNCE_MS),
+          distinctUntilChanged(),
+          takeUntil(this.destroy$)
+        )
         .subscribe(zip => this.onZipCodeChange(zip));
     }
   }
@@ -66,7 +72,8 @@ export class AddressFormComponent implements OnInit, OnDestroy {
     }
 
     this.isLoadingAddress = true;
-    this.signupService.getAddressFromZipCode(cleanZipCode)
+    this.stopLookup();
+    this.lookupSubscription = this.signupService.getAddressFromZipCode(cleanZipCode)
       .pipe(
         finalize(() => {
           this.isLoadingAddress = false;
@@ -121,11 +128,19 @@ export class AddressFormComponent implements OnInit, OnDestroy {
     this.errorMessage = message;
   }
 
+  private stopLookup(): void {
+    if (this.lookupSubscription) {
+      this.lookupSubscription.unsubscribe();
+      this.lookupSubscription = null;
+    }
+  }
+
   private clearErrorMessage(): void {
     this.errorMessage = '';
   }
 
   ngOnDestroy(): void {
+    this.stopLookup();
     this.destroy$.next();
     this.destroy$.complete();
   }
