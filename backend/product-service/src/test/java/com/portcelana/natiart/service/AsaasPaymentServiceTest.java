@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -83,17 +85,14 @@ class AsaasPaymentServiceTest {
     @Test
     void createPayment_rejectsNonFiniteValue() {
         final AsaasPaymentService service = newService();
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> service.createPayment(
-                        new PaymentCreationRequest(PaymentProcessor.ASAAS, "cus_MINE", Double.NaN, PaymentMethod.PIX),
-                        "cus_MINE"));
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> service.createPayment(
-                        new PaymentCreationRequest(
-                                PaymentProcessor.ASAAS, "cus_MINE", Double.POSITIVE_INFINITY, PaymentMethod.PIX),
-                        "cus_MINE"));
+        // Stubbed DTOs: the real constructor would throw first, so only a stub
+        // proves the service-level guard itself executes.
+        final PaymentCreationRequest nanRequest = mock(PaymentCreationRequest.class);
+        when(nanRequest.getValue()).thenReturn(Double.NaN);
+        assertThrows(IllegalArgumentException.class, () -> service.createPayment(nanRequest, "cus_MINE"));
+        final PaymentCreationRequest infiniteRequest = mock(PaymentCreationRequest.class);
+        when(infiniteRequest.getValue()).thenReturn(Double.NEGATIVE_INFINITY);
+        assertThrows(IllegalArgumentException.class, () -> service.createPayment(infiniteRequest, "cus_MINE"));
     }
 
     @Test
