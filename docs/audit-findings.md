@@ -27,13 +27,13 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
   work until hourly cleanup.
 - Fix: call the `Valid` variant. Test: expired `PASSWORD_RESET` token rejected.
 
-### A3. Raw JWT echoed in exception messages (response + logs) — OPEN
+### A3. Raw JWT echoed in exception messages (response + logs) — FIXED (PR #64)
 - `backend/directory-service/.../configuration/UserAuthenticationProvider.java:149,152-155`
   interpolates the full presented token; both `ControllerAdvice`s return
   `e.getMessage()` verbatim.
 - Fix: static messages (`"Invalid or expired token"`), log only `jti`/expiry.
 
-### A4. Path traversal on file-upload writes (reads are guarded) — OPEN
+### A4. Path traversal on file-upload writes (reads are guarded) — FIXED (PR #65)
 - `backend/product-service/.../storage/StorageFileSystem.java:61-78` vs `:86-103`:
   reads go through `resolveAllowedFile` (canonicalize + `allowedRoots`), both
   `uploadFile` overloads do `new File(location, key)` unchecked.
@@ -60,6 +60,9 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 ### B3. No bean validation; NPE-prone registration path — OPEN (Medium)
 - Zero `jakarta.validation` usage in `backend/`; `ProfileManager.java:21-31`
   calls `.trim()` unconditionally → null profile/field = 500, not 400.
+  Same flaw in `UserManager.java:79,108` (`registerUser`/`registerGhostUser`
+  call `userRegistrationDto.username().trim()` with no null guard — a null
+  username NPEs instead of returning 400). Found by Lens 1 hunt, 2026-09-05.
 - Fix: add `spring-boot-starter-validation`, annotate DTOs
   (`@NotBlank`/`@Email`/`@Valid`), null-guard `createProfile`. Tests: null/blank → 400.
 
@@ -100,6 +103,9 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 ### B9. JWT filter flaws on both services — OPEN (Medium)
 - Directory `JwtAuthFilter.java:33-34,44-52`: `contains("/refresh-token")`
   over-matches; falls through to chain after 401 instead of returning.
+  (Directory slice FIXED in PR #64: exact path+method match, return after 401.
+  Product-service `JwtAuthFilter.java:41,49` still builds a `WebClient` per
+  request and `.block()`s on the servlet thread — any downstream failure → 503.)
   Product `JwtAuthFilter.java:41-49,67-72`: `webClientBuilder.build()` per
   request + `.block()` on servlet thread; any downstream failure → 503 outage.
 - Fix: return after 401; exact path+method match; singleton `WebClient` with
@@ -123,6 +129,32 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
   versioned break with frontend updated in the same PR). Tests: old path
   404s (or 301s), new path serves the QR payload. Found by Lens 15 hunt,
   2026-09-04.
+
+### B12. Unsafe `valueOf` on upstream Asaas enum strings — OPEN (Medium)
+- `backend/product-service/.../service/AsaasPaymentService.java:68-69`:
+  `createPayment` maps the Asaas response with
+  `PaymentMethod.valueOf(responseBody.getBillingType())` and
+  `PaymentStatus.valueOf(responseBody.getStatus())`. Both strings are
+  upstream-controlled; any new Asaas billing type (e.g. `BOLETO`) or status
+  throws uncaught `IllegalArgumentException` → 500 via the generic advice
+  handler. The sibling `parseAsaasStatus` (`:147-153`) already parses safely
+  with try/catch, but the create path does not use it and billing type has
+  no safe parser at all. Found by Lens 1 hunt, 2026-09-05.
+- Fix: route both mappings through safe parsers that fail closed with a
+  static message (never echo raw upstream text). Tests: unknown/null
+  billing type and status → `IllegalArgumentException`; known values map.
+
+### B13. `ShippingEstimateRequest` has zero validation — OPEN (Medium)
+- `backend/product-service/.../dto/shipping/ShippingEstimateRequest.java:3-18`:
+  `to` accepts null/blank, weight/dimensions accept zero/negatives,
+  `quantity` accepts zero/negatives — all flow unchecked into
+  `MelhorenvioShippingCalculationRequest.from` (`:23,27-31`) and out to the
+  Melhor Envio API. `@RequestBody` binding (`ShippingController.java:23`)
+  means a garbage estimate request fails downstream, not at the boundary.
+  Found by Lens 1 hunt, 2026-09-05.
+- Fix: fail-fast constructor guards (`to` non-blank, weight/dimensions > 0,
+  quantity >= 1) → `IllegalArgumentException` (mapped to 400 by the product
+  advice). Tests: null/blank `to`, non-positive weight, zero quantity → 400.
 
 ## C. Frontend — Correctness / Security
 
