@@ -82,6 +82,24 @@ describe('jwtInterceptor', () => {
     httpTesting.verify();
   }));
 
+  it('excludes the configured ViaCEP host even when the env URL is overridden', fakeAsync(() => {
+    const original: string = environment.api.viaCep.url;
+    environment.api.viaCep.url = 'https://zipmirror.test/lookup';
+    try {
+      const {http, httpTesting, tokenService} = setup();
+      tokenService.accessToken = 'abc';
+
+      http.get('https://zipmirror.test/lookup/01001000/json').subscribe(() => {
+      });
+      const req = httpTesting.expectOne('https://zipmirror.test/lookup/01001000/json');
+      expect(req.request.headers.has('Authorization')).toBeFalse();
+      req.flush({});
+      httpTesting.verify();
+    } finally {
+      environment.api.viaCep.url = original;
+    }
+  }));
+
   it('when logged out it sends no Authorization header at all (no "Bearer null")', fakeAsync(() => {
     const {http, httpTesting} = setup();
 

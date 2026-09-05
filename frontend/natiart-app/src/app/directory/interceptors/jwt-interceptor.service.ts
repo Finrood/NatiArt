@@ -5,13 +5,19 @@ import {BehaviorSubject, catchError, filter, first, switchMap, throwError} from 
 import {TokenService} from "../service/token.service";
 import {environment} from "../../../environments/environment";
 
-const EXCLUDED_DOMAINS = ['viacep.com.br'];
+const viaCepHostname = (): string => {
+  try {
+    return new URL(environment.api.viaCep.url).hostname;
+  } catch {
+    return 'viacep.com.br';
+  }
+};
 
 const isExcludedDomain = (url: string): boolean => {
   try {
     const cleanUrl = url.startsWith('http') ? url : `https://${url}`;
     const hostname = new URL(cleanUrl).hostname;
-    return EXCLUDED_DOMAINS.some(domain => hostname.endsWith(domain));
+    return hostname.endsWith(viaCepHostname());
   } catch {
     return false;
   }
