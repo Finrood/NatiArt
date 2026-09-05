@@ -860,3 +860,78 @@ flight (N1, PR #108) rather than tracked separately.
 - Fix: delete the debug logs (keep user-visible error surfacing where the log
   was load-bearing, e.g. O2's `showAlert` work). Specs unaffected; no behavior
   change.
+
+## R. Red-team: payment observability + log hygiene (adversarial cycle, 2026-09-05)
+
+Threat model (one flow, read-only probing, no exploit code merged).
+Flow: PIX payment lifecycle `POST /api/payment/create` → `GET .../pixQrCode`
+→ `GET .../status` (5s frontend poll) → Asaas upstream, plus directory
+`/signout` + `/validate-token` token handling underneath.
+Assets: Asaas charges (real money), order fulfillment, JWT bearer credentials,
+log integrity (disk, SIEM signal).
+Trust boundaries: browser (untrusted) → product-service → directory-service
+(`/validate-token` per request) → Asaas/Melhor Envio (server key attached).
+Attacker capabilities: any authenticated low-priv user (ghost registration is
+open); full body/header tampering; arbitrary bearer strings; abandoned-tab
+polling. Lens of the cycle: Lens 14 (Observability and log hygiene).
+Existing suites for the flow (`AsaasPaymentServiceTest`,
+`PaymentCreationRequestTest`, `ControllerAdvice` tests) are green, but they
+assert status mapping only — no test asserts what is (or is not) logged, and
+no test covers a non-401/403/404 upstream error shape.
+Negative results recorded: no token/PII echo in responses re-verified
+(product advice returns static 500; directory `AsaasApiException` message is
+static since PR #86); no `console.log` of tokens on the PIX confirmation path
+(Q3 leftovers are elsewhere); username INFO logs (emails in
+`AuthenticationController`, cart controllers) accepted as standard practice,
+not filed.
+
+### R1. Zero request correlation across the payment hops — OPEN (Medium)
+- Repo-wide grep for `MDC|correlation|requestId|X-Request|traceId` in
+  `backend/` returns zero hits. `PerformanceLoggingFilter` (both services)
+  logs method + URI only — no user, payment id, or correlation id — so a
+  failed PIX charge cannot be traced across its three hops (browser →
+  product-service → Asaas) or joined to the matching directory
+  `/validate-token` call. Frontend sends no correlation header either.
+  Found by Lens 14 hunt, 2026-09-05.
+- Repro: trigger any payment failure, then try to join the product-service
+  500 line to its Asaas egress and its `/validate-token` line by log content
+  alone — there is no shared key.
+- Fix: generate/propagate one correlation id per inbound request (filter +
+  MDC, forward as header to directory-service and Asaas calls, return it in
+  error responses). Tests: id present in MDC during payment creation;
+  forwarded header asserted on the egress mock.
+
+### R2. Product-side upstream mappers drop the actionable error body — OPEN (Low-Medium)
+- `backend/product-service/.../service/AsaasPaymentService.java:181-190`
+  (`mapAsaasError`) and `service/ShippingService.java:103-112`
+  (`mapShippingError`) fall through to `return e` (raw
+  `HttpStatusCodeException`) for every non-401/403/404 upstream status (Asaas
+  400/422 validation rejects, 5xx). The generic advice
+  (`configuration/ControllerAdvice.java:24-28`) then renders a static 500, so
+  the on-call engineer gets a 500 stack trace with no payment id and no
+  structured upstream status/body — the directory-side twin
+  (`directory/.../service/AsaasUserManager.java:73-77`) logs
+  `status + body` at WARN at mapping time, the product side logs nothing.
+  Found by Lens 14 hunt, 2026-09-05.
+- Repro (unit-shaped, no new test merged): feed `mapAsaasError` a 400
+  carrying a marker body → raw rethrow, zero log output at mapping time;
+  client sees static 500.
+- Fix: mirror the directory pattern — WARN-log upstream status + body
+  server-side at mapping time (never in the response), keep the static
+  client message. Tests: marker body in logs, absent from response.
+
+### R3. Bogus-token paths log at ERROR; two claim extractors are dead code — OPEN (Low)
+- `directory/.../configuration/UserAuthenticationProvider.java:185,193,202`:
+  `invalidateToken`, `extractEmailClaim`, `extractIdClaim` all
+  `LOGGER.error("Error verifying JWT token: {}", exception.getMessage())` on
+  routine invalid input. Only `invalidateToken` has a production caller
+  (`service/AuthenticationManager.java:56-60`, reached from `/signout` when
+  `@TargetUser` resolves empty); the two extractors have zero main-code
+  callers. Exploitability is low today (the signout path resolves
+  `@TargetUser` first), but every future caller inherits ERROR-per-bogus-token
+  semantics — log-noise amplification on an input the caller fully controls.
+  Found by Lens 14 hunt, 2026-09-05.
+- Repro: authenticated session, `POST /signout` with empty user resolution
+  and `Authorization: Bearer garbage` → one ERROR line per request.
+- Fix: downgrade to DEBUG/WARN (jti-only, never token text), delete or wire
+  the dead extractors. Tests: bogus token → no ERROR-level event.
