@@ -42,7 +42,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 
 ## B. Backend — Robustness / Correctness
 
-### B1. Dead RestTemplate error branches (Asaas + shipping) — OPEN (Medium-High, Asaas half FIXED in PR #70; ShippingService half remains)
+### B1. Dead RestTemplate error branches (Asaas + shipping) — IN REVIEW (PR #85; Medium-High, Asaas half FIXED in PR #70; ShippingService half in flight)
 - `AsaasPaymentService.java:50-72,80-107,117-130`: branches on 401/404 statuses
   that default `RestTemplate` never returns (throws `HttpStatusCodeException`).
   401/404 from Asaas surfaces as 500 with raw message. (Asaas half FIXED in
@@ -397,7 +397,7 @@ CI on JDK 25 Corretto is source of truth).
   Tests: 4xx with a marker body → static message without the marker; status
   preserved.
 
-### I2. Caller-controlled `paymentId` interpolated raw into upstream Asaas URLs — OPEN (Low-Medium)
+### I2. Caller-controlled `paymentId` interpolated raw into upstream Asaas URLs — IN REVIEW (PR #85; Low-Medium)
 - `backend/product-service/.../service/AsaasPaymentService.java:99,141-142`:
   `getPixQrCode` and `fetchPaymentOrDie` build the upstream URL with
   `String.format("%s/%s...", asaasPaymentUrl, paymentId)` while
