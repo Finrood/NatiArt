@@ -565,3 +565,14 @@ non-finite values).
   service files. Tests: both `:build` green; artifact no longer contains
   devtools.
 
+### Q3. Debug `console.log` leftovers in five components — FIXED (PR #121)
+- `frontend/natiart-app/.../step-indicator.component.ts:16`,
+  `.../admin-product-management.component.ts:241`,
+  `.../customer/cart/cart.component.ts:84`,
+  `.../customer/checkout/checkout.component.ts:203`,
+  `.../customer/top-menu/top-menu.component.ts:69`: `console.log` debug
+  output shipped to production.
+- Fixed by human PR #121 (removed all five logs; verified zero `console.log`
+  hits remain in those files on master @ b259c89). Flipped by the loop's
+  pickup rule (merged-PR status flip batch).
+

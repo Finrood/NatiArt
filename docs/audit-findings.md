@@ -359,19 +359,6 @@ flight (N1, PR #108) rather than tracked separately.
   and non-finite values. Tests: `NaN`/`Infinity`/null-enum → 400-path
   `IllegalArgumentException`; valid request unchanged.
 
-### Q3. Debug `console.log` leftovers in five components — OPEN (Low)
-- `frontend/natiart-app/src/app/directory/components/auth/signup/step-indicator/step-indicator.component.ts:16`,
-  `.../admin-product-management/admin-product-management.component.ts:241`,
-  `.../customer/cart/cart.component.ts:84`,
-  `.../customer/checkout/checkout.component.ts:203`,
-  `.../customer/top-menu/top-menu.component.ts:69`: `console.log` debug
-  output ships to production (the C5 short-term fix already removed one such
-  log from `token.service.ts`). Found by Lens 13 hunt (Lens 14 overlap),
-  2026-09-05.
-- Fix: delete the debug logs (keep user-visible error surfacing where the log
-  was load-bearing, e.g. O2's `showAlert` work). Specs unaffected; no behavior
-  change.
-
 ## R. Red-team: payment observability + log hygiene (adversarial cycle, 2026-09-05)
 
 Threat model (one flow, read-only probing, no exploit code merged).
@@ -482,7 +469,7 @@ gaps. Not filed: Spring Boot `3.5.6` → `4.1.1` (PR #55) and Angular `20` →
 `22` (PR #59) majors — both red CI, left on their dependabot branches for a
 human decision per the Lens-16 routine, never touched here.
 
-### T1. Angular 20.3.1 ships 8 high `npm audit` advisories, patch fix available in 20.3.x — OPEN (High)
+### T1. Angular 20.3.1 ships 8 high `npm audit` advisories, patch fix available in 20.3.x — IN REVIEW (High)
 - `frontend/natiart-app/package.json:14-27` pins `^20.3.1`; installed
   `20.3.1` (`npm ls @angular/core`) is inside every advisory range:
   XSRF token leakage via protocol-relative URLs (`@angular/common`
@@ -495,7 +482,7 @@ human decision per the Lens-16 routine, never touched here.
   `20.3.x`, lockfile churn in the same commit; keep the `22.x` major on the
   dependabot branch. Tests: `npm run build` + Karma suite green.
 
-### T2. `@angular/cdk ^19.0.1` major-skewed against Angular 20 core — OPEN (Medium)
+### T2. `@angular/cdk ^19.0.1` major-skewed against Angular 20 core — IN REVIEW (Medium)
 - `frontend/natiart-app/package.json:15` pins CDK `^19.0.1` (installed
   `19.2.19`) while every sibling Angular package is `^20.3.1` (installed
   `20.3.1`). Mixed majors across the Angular family risk subtle CDK/overlay
@@ -516,3 +503,55 @@ human decision per the Lens-16 routine, never touched here.
   + committed lockfiles) and checksum verification; add a non-blocking
   `npm audit --omit=dev` / dependency-check report step to CI. Tracked, not
   silently fixed (needs maintainer decision on lockfile churn vs benefit).
+
+## U. Instruction drift (Lens 17 hunt, 2026-09-05)
+
+Hunt method: verified the four root mirrors byte-identical (`md5sum` +
+`Guidelines Consistency` CI re-checks with `cmp`), all `agents/*.md` carry
+`meta` frontmatter, all 17 `## Lens` headers parse, and every version claim
+against the build (Java 25 toolchain in `backend/build.gradle.kts:24-25`,
+Spring Boot `3.5.6` in `backend/build.gradle.kts:15`, Angular `^20.3.1` in
+`frontend/natiart-app/package.json:18`, Tailwind 4 / Adyen present). Cleared
+as non-findings: mirror drift (none), missing frontmatter (none), stale
+Gradle coordinates in `agents/java-testing.md` (root `./gradlew` exists and
+`:backend:product-service:test` resolves via root `settings.gradle.kts`),
+stale cart-route examples in `backend/AGENTS.md` (match
+`CartController.java:24-47`), install paths and `flock`/25-min timeout in the
+loop doc (match `scripts/systemd/` + `scripts/loop-cycle.sh:176`).
+Instruction-file fixes go in a human-review PR per the self-modification ban
+— tracked here, not silently fixed.
+
+### U1. Loop doc says "16 audit lenses", 17 exist — OPEN (Low)
+- `docs/continuous-improvement-loop.md:62` claims "16 audit lenses" but
+  `docs/loop-lenses.md` carries 17 `## Lens` headers (Lens 17 added later;
+  line 99 of the same doc already references "Lens 17").
+- Fix: "16 audit lenses" → "17 audit lenses". Human-review PR (touches loop
+  machinery docs).
+
+### U2. `agents/commands.md` + frontend guide prescribe bare `ng test`, CI uses npm scripts — OPEN (Low)
+- `agents/commands.md:40` (`cd frontend/natiart-app && ng test ...`) and
+  `frontend/natiart-app/AGENTS.md:46,58` (bare `ng test`) vs reality:
+  `.github/workflows/frontend_workflow.yml:53` runs
+  `npm test -- --watch=false --browsers=ChromeHeadless`, and the cycle prompt
+  mandates npm scripts ("never bare `ng`"). Bare `ng` also assumes a global
+  install the repo never declares (`package.json` scripts expose `ng`
+  locally only).
+- Fix: rewrite both lines as `npm test -- --watch=false
+  --browsers=ChromeHeadless`. Human-review PR (touches `agents/**`).
+
+### U3. Red-team cadence "~10 days" is 24x off — OPEN (Low)
+- `docs/continuous-improvement-loop.md:72` says "every 20th slot (~10 days)"
+  but slots are 30 minutes (`scripts/loop-cycle.sh:148,170`: `SLOT = epoch /
+  1800`, red-team when `SLOT % 20 == 0`) → every 20 × 30 min = ~10 hours,
+  not ~10 days. A ~10-day cadence would need `SLOT % 480`.
+- Fix: decide intent (10h adversarial cadence as coded, or rework the modulo
+  to 480) and align the doc. Human-review PR (touches loop machinery docs).
+
+### U4. Frontend guide "7 files done" DI-migration count is stale — OPEN (Low)
+- `frontend/natiart-app/AGENTS.md:27` claims the `inject()` migration is
+  "in progress — 7 files done", but current master has 9 files using
+  `= inject(` and 14 files still on constructor param-property DI
+  (`app.component.ts`, nine services, four components). The count matches
+  neither direction.
+- Fix: recount and reword (e.g. "14 files remaining"). Human-review PR
+  (touches the module guide).
