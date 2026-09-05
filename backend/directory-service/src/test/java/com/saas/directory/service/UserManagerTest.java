@@ -274,8 +274,7 @@ public class UserManagerTest {
         final User existingGhost = new User("victim@example.com", "unseen-random-password")
                 .setRole(new Role(RoleName.USER))
                 .setUserType(UserType.GHOST);
-        when(userRepository.findUserByUsernameIgnoreCase("victim@example.com"))
-                .thenReturn(Optional.of(existingGhost));
+        when(userRepository.findUserByUsernameIgnoreCase("victim@example.com")).thenReturn(Optional.of(existingGhost));
 
         final UserRegistrationDto dto = new UserRegistrationDto("victim@example.com", "password", null);
 
@@ -286,10 +285,8 @@ public class UserManagerTest {
 
     @Test
     public void registerGhostUser_existingUserEmail_throwsWithoutSideEffects() {
-        final User existingUser =
-                new User("taken@example.com", "password").setRole(new Role(RoleName.USER));
-        when(userRepository.findUserByUsernameIgnoreCase("taken@example.com"))
-                .thenReturn(Optional.of(existingUser));
+        final User existingUser = new User("taken@example.com", "password").setRole(new Role(RoleName.USER));
+        when(userRepository.findUserByUsernameIgnoreCase("taken@example.com")).thenReturn(Optional.of(existingUser));
 
         final UserRegistrationDto dto = new UserRegistrationDto("taken@example.com", "password", null);
 
