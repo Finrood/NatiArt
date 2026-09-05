@@ -51,6 +51,9 @@ public class PackageManagerImpl implements PackageManager {
         requirePositiveDimension(packageDto.getHeight(), "height");
         requirePositiveDimension(packageDto.getWidth(), "width");
         requirePositiveDimension(packageDto.getDepth(), "depth");
+        if (packageRepository.findPackageByLabel(label).isPresent()) {
+            throw new IllegalArgumentException("Package with label [" + label + "] already exists");
+        }
         final Package pack = new Package(label, packageDto.getHeight(), packageDto.getWidth(), packageDto.getDepth());
         return packageRepository.save(pack);
     }
@@ -63,6 +66,10 @@ public class PackageManagerImpl implements PackageManager {
         requirePositiveDimension(packageDto.getWidth(), "width");
         requirePositiveDimension(packageDto.getDepth(), "depth");
         final Package pack = getPackageOrDie(packageDto.getId());
+        final Optional<Package> clash = packageRepository.findPackageByLabel(label);
+        if (clash.isPresent() && !clash.get().getId().equals(pack.getId())) {
+            throw new IllegalArgumentException("Package with label [" + label + "] already exists");
+        }
         pack.setLabel(label)
                 .setHeight(packageDto.getHeight())
                 .setWidth(packageDto.getWidth())
@@ -88,7 +95,7 @@ public class PackageManagerImpl implements PackageManager {
     }
 
     private static void requirePositiveDimension(float dimension, String field) {
-        if (dimension <= 0) {
+        if (!(dimension > 0)) {
             throw new IllegalArgumentException("Package " + field + " must be a positive value");
         }
     }

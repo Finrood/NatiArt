@@ -1,5 +1,6 @@
 package com.portcelana.natiart.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -96,5 +97,52 @@ class PackageManagerImplTest {
         assertThrows(IllegalArgumentException.class, () -> packageManager.updatePackage(dto));
 
         verify(packageRepository, never()).save(any(Package.class));
+    }
+
+    @Test
+    void createPackage_duplicateLabel_throwsWithoutSaving() {
+        when(packageRepository.findPackageByLabel("box")).thenReturn(Optional.of(new Package("box", 1.0f, 1.0f, 1.0f)));
+        final PackageDto dto =
+                new PackageDto().setLabel("box").setHeight(1.0f).setWidth(1.0f).setDepth(1.0f);
+
+        assertThrows(IllegalArgumentException.class, () -> packageManager.createPackage(dto));
+
+        verify(packageRepository, never()).save(any(Package.class));
+    }
+
+    @Test
+    void updatePackage_duplicateOfAnotherPackage_throwsWithoutSaving() {
+        final Package current = new Package("old", 1.0f, 1.0f, 1.0f);
+        when(packageRepository.findById(current.getId())).thenReturn(Optional.of(current));
+        when(packageRepository.findPackageByLabel("box")).thenReturn(Optional.of(new Package("box", 1.0f, 1.0f, 1.0f)));
+        final PackageDto dto = new PackageDto()
+                .setId(current.getId())
+                .setLabel("box")
+                .setHeight(1.0f)
+                .setWidth(1.0f)
+                .setDepth(1.0f);
+
+        assertThrows(IllegalArgumentException.class, () -> packageManager.updatePackage(dto));
+
+        verify(packageRepository, never()).save(any(Package.class));
+    }
+
+    @Test
+    void updatePackage_ownLabel_persists() {
+        final Package current = new Package("box", 1.0f, 1.0f, 1.0f);
+        when(packageRepository.findById(current.getId())).thenReturn(Optional.of(current));
+        when(packageRepository.findPackageByLabel("box")).thenReturn(Optional.of(current));
+        when(packageRepository.save(any(Package.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        final PackageDto dto = new PackageDto()
+                .setId(current.getId())
+                .setLabel("box")
+                .setHeight(2.0f)
+                .setWidth(1.0f)
+                .setDepth(1.0f);
+
+        final Package updated = packageManager.updatePackage(dto);
+
+        verify(packageRepository).save(current);
+        assertEquals(2.0f, updated.getHeight());
     }
 }
