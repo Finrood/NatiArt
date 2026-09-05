@@ -126,7 +126,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 
 ## C. Frontend — Correctness / Security
 
-### C1. Cart modal updates/removes the wrong item — OPEN (High)
+### C1. Cart modal updates/removes the wrong item — IN REVIEW (PR #68)
 - `cart-modal.component.ts:46-58` uses `item.product.id!` where
   `CartService.updateItemQuantity/removeFromCart` expect `cartItemId`; images
   keyed by product, not cart line. Two lines with same product collide.
@@ -140,7 +140,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix: resolve user once, pass into `onProcessPixPayment(user)`; handle
   `EmptyError`. Spec: single registration call for guest PIX flow.
 
-### C3. Order spinner never clears on failure — OPEN (High)
+### C3. Order spinner never clears on failure — IN REVIEW (PR #68)
 - `order.service.ts:19-24`: `tap(...)` resets `orderProcessing$` on success
   only; spinner stuck forever on HTTP error.
 - Fix: `finalize(...)`. Spec: flag resets on error.
