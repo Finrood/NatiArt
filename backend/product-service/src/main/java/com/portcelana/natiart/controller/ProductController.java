@@ -30,6 +30,7 @@ import com.portcelana.natiart.storage.InputFile;
 @RestController
 public class ProductController {
     public static Logger LOGGER = LoggerFactory.getLogger(ProductController.class);
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final ProductManager productManager;
     private final ImageConversionService imageConversionService;
@@ -52,7 +53,7 @@ public class ProductController {
             @RequestParam(required = false, defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "20") int size) {
         LOGGER.info("Getting all products");
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "label"));
+        Pageable pageable = toPageable(page, size);
         return productManager.getProducts(pageable).stream()
                 .map(ProductDto::from)
                 .toList();
@@ -63,7 +64,7 @@ public class ProductController {
             @RequestParam(required = false, defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "20") int size) {
         LOGGER.info("Getting new products");
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "label"));
+        Pageable pageable = toPageable(page, size);
         return productManager.getNewProducts(pageable).stream()
                 .map(ProductDto::from)
                 .toList();
@@ -74,7 +75,7 @@ public class ProductController {
             @RequestParam(required = false, defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "20") int size) {
         LOGGER.info("Getting featured products");
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "label"));
+        Pageable pageable = toPageable(page, size);
         return productManager.getFeaturedProducts(pageable).stream()
                 .map(ProductDto::from)
                 .toList();
@@ -131,6 +132,12 @@ public class ProductController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"product-image.webp\"")
                 .cacheControl(CacheControl.maxAge(7, TimeUnit.DAYS).cachePublic())
                 .body(productManager.getProductImage(path));
+    }
+
+    private static Pageable toPageable(int page, int size) {
+        final int safePage = Math.max(0, page);
+        final int safeSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
+        return PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "label"));
     }
 
     private List<InputFile> processImages(List<MultipartFile> images) throws IOException {

@@ -16,7 +16,8 @@ import com.portcelana.natiart.model.Product;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, String> {
-    @Query("SELECT p FROM Product p LEFT JOIN FETCH p.images WHERE p.id = :id")
+    @Query(
+            "SELECT p FROM Product p LEFT JOIN FETCH p.images LEFT JOIN FETCH p.category LEFT JOIN FETCH p.packaging WHERE p.id = :id")
     Optional<Product> findByIdWithImages(String id);
 
     @Modifying
@@ -36,7 +37,8 @@ public interface ProductRepository extends JpaRepository<Product, String> {
     @Query("SELECT p.id FROM Product p WHERE p.category = :category")
     Page<String> findAllIdsByCategory(Category category, Pageable pageable);
 
-    @Query("SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.images WHERE p.id IN :ids")
+    @Query(
+            "SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.images LEFT JOIN FETCH p.category LEFT JOIN FETCH p.packaging WHERE p.id IN :ids")
     List<Product> findAllWithImagesByIds(@Param("ids") List<String> ids);
 
     boolean existsByCategory(Category category);

@@ -84,6 +84,28 @@ class ProductRepositoryPaginationTest {
     }
 
     @Test
+    void fetchByIdsInitializesSingleValuedAssociations() {
+        Product saved = productRepository.save(newProduct("assoc-product", false));
+
+        List<Product> fetched = productRepository.findAllWithImagesByIds(List.of(saved.getId()));
+
+        assertEquals(1, fetched.size());
+        final Product product = fetched.get(0);
+        assertTrue(product.getCategory().isPresent());
+        assertTrue(Hibernate.isInitialized(product.getCategory().orElseThrow()));
+    }
+
+    @Test
+    void findByIdWithImagesInitializesSingleValuedAssociations() {
+        Product saved = productRepository.save(newProduct("single-product", false));
+
+        Product fetched = productRepository.findByIdWithImages(saved.getId()).orElseThrow();
+
+        assertTrue(fetched.getCategory().isPresent());
+        assertTrue(Hibernate.isInitialized(fetched.getCategory().orElseThrow()));
+    }
+
+    @Test
     void emptyIdListReturnsNoRowsAndEmptyPageHasNoContent() {
         Page<String> beyondEnd = productRepository.findAllIds(PageRequest.of(9, 20));
         assertTrue(beyondEnd.getContent().isEmpty());
