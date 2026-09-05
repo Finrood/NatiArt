@@ -1,7 +1,7 @@
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit} from '@angular/core';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
-import {catchError, firstValueFrom, map, Observable, Subject, throwError} from 'rxjs';
+import {catchError, EmptyError, firstValueFrom, map, Observable, Subject, throwError} from 'rxjs';
 import {CartItem} from '../../../models/CartItem.model';
 import {CartService} from '../../../service/cart.service';
 import {OrderService} from '../../../service/order.service';
@@ -288,11 +288,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     );
   }
 
-  async onProcessPixPayment() {
+  async onProcessPixPayment(user: User): Promise<void> {
     this.clearErrorMessage();
     try {
-      let user = await firstValueFrom(this.createUserIfGuestCheckout());
-
       if (!user || !user.externalId) {
         this.setErrorMessage('Could not retrieve customer ID for payment. Please try again.');
         return;
@@ -309,7 +307,13 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         this.paymentService.createPixPayment(pixPaymentData)
       );
 
-      this.router.navigate(['/pix-payment', paymentResponse.paymentId]);
+      const paymentId: string | undefined = paymentResponse?.paymentId;
+      if (!paymentId) {
+        this.setErrorMessage('Could not process PIX payment. Please try again.');
+        return;
+      }
+
+      this.router.navigate(['/pix-payment', paymentId]);
 
     } catch (error) {
       console.error('Error processing PIX payment:', error);
@@ -327,13 +331,21 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     }
 
     try {
-      let user = await firstValueFrom(this.createUserIfGuestCheckout().pipe(takeUntil(this.destroy$)));
+      let user: User;
+      try {
+        user = await firstValueFrom(this.createUserIfGuestCheckout().pipe(takeUntil(this.destroy$)));
+      } catch (error) {
+        if (error instanceof EmptyError) {
+          return;
+        }
+        throw error;
+      }
       if (!user) return;
 
       const paymentMethod = this.checkoutForm.get('paymentInfo.paymentMethod')?.value;
 
       if (paymentMethod === PaymentMethod.PIX) {
-        await this.onProcessPixPayment();
+        await this.onProcessPixPayment(user);
         return;
       }
 
