@@ -253,26 +253,6 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
   404 with zero upstream calls (mock `RestTemplate` unverified); owned id
   still resolves.
 
-### N4. Payment creation request shape gaps: null-enum NPE → 500, non-finite `Double` money — IN REVIEW (Medium)
-- `backend/product-service/.../dto/payment/PaymentCreationRequest.java:22-29`
-  takes `paymentProcessor`/`customerId`/`value`/`billingType` with no guards;
-  `service/AsaasPaymentService.java:55-57` checks only `value != null && > 0`;
-  `dto/payment/asaas/AsaasPaymentCreationRequest.java:53-58` then dereferences
-  `paymentCreationRequest.getBillingType().name()` with no null guard → null
-  `billingType` NPEs into the generic advice
-  (`configuration/ControllerAdvice.java:24-28` → static 500). Null
-  `paymentProcessor` is likewise unchecked. `value` is `Double`: `NaN` passes
-  the `<= 0` check (`NaN <= 0` is false) and `Infinity` passes as `> 0`, flowing
-  downstream toward Asaas serialization; `Double` (not `BigDecimal`) also keeps
-  money on binary floating point, widening the G1 reconciliation gap.
-- Repro: `POST /api/payment/create {"paymentProcessor":"ASAAS","value":10.0,
-  "billingType":null}` → 500 instead of 400; `{"value":NaN,...}` passes
-  validation instead of 400.
-- Fix: fail-fast constructor/bean guards (non-null processor + billing type,
-  finite positive value; prefer `BigDecimal` for money). Tests: null
-  `billingType`/`paymentProcessor` → 400-path `IllegalArgumentException`;
-  `NaN`/`Infinity` rejected; valid request unchanged.
-
 ### O2. Admin product-management image/list loads swallow errors — OPEN (Low)
 - `frontend/natiart-app/src/app/product/components/admin/admin-product-management/admin-product-management.component.ts:289-296`
   (`fetchImage`) and `:304-317` (`fetchImagePreview`) subscribe with a
@@ -348,16 +328,6 @@ flight (N1, PR #108) rather than tracked separately.
 - Fix: collapse into one test, spend the freed slot on an uncovered branch
   (e.g. null-password `IllegalArgumentException`). Tests: suite still green,
   single creation-path test.
-
-### Q2. `PaymentCreationRequestTest` covers only the due-date boundary — IN REVIEW (Low-Medium)
-- `backend/product-service/.../dto/payment/PaymentCreationRequestTest.java:26-31`:
-  2 tests, both asserting `getDueDate()`; the N4 money-shape gaps (null
-  `billingType`/`paymentProcessor`, `NaN`/`Infinity` `value`) have no specs,
-  and neither does the `G1` order-reconciliation surface. Found by Lens 13
-  hunt, 2026-09-05.
-- Fix: extend this spec (or the N4 fix PR) with rejection tests for null enums
-  and non-finite values. Tests: `NaN`/`Infinity`/null-enum → 400-path
-  `IllegalArgumentException`; valid request unchanged.
 
 ## R. Red-team: payment observability + log hygiene (adversarial cycle, 2026-09-05)
 
