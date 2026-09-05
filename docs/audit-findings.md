@@ -612,3 +612,103 @@ CI on JDK 25 Corretto is source of truth).
   this is the confirmation-side half. Found by Lens 10 hunt, 2026-09-05.
 - Fix: set an error status (e.g. `paymentStatus = 'ERROR'`) when the param is
   missing. Spec: null param → error state, no HTTP.
+
+## N. Red-team: guest-checkout → order → PIX payment (adversarial cycle, 2026-09-05)
+
+Threat model (one flow, read-only probing, no exploit code merged).
+Assets: Asaas charges (real money), order fulfillment (ship goods for pennies),
+ghost accounts + PII (email, CPF, address), JWTs (access + refresh).
+Trust boundaries: browser (untrusted: all bodies/ids tamperable) →
+product-service (JWT validated against directory-service) → directory-service →
+Asaas/Melhor Envio (third party, server API key attached).
+Attacker capabilities: anonymous (ghost registration is open) or any
+authenticated low-priv user; full request-body tampering; payment/order id
+replay and enumeration; abandoned-tab polling.
+Existing suites for the flow (`AsaasPaymentServiceTest`,
+`PaymentCreationRequestTest`, `UserManagerTest`) are green, but the
+exploit-shaped inputs below have no covering test (ghost re-registration
+branch has zero test references; payment tests cover only
+`requireOwnedPayment` equality, never fetch ordering, null shapes, or
+non-finite values).
+
+### N1. Ghost-account hijack: re-registering a GHOST email mints fresh JWTs — OPEN (High)
+- `backend/directory-service/.../service/UserManager.java:90-101`:
+  `registerGhostUser` returns the existing user unchanged when the email already
+  maps to a `GHOST` account (no password, no proof of ownership), and
+  `controller/UserRegistrationController.java:44-55` then mints a fresh access +
+  refresh token pair unconditionally. The ghost password is an unseen random
+  UUID (`UserManager.java:107-108`), so re-registration is the de-facto login.
+- Repro: victim guest-checkouts with `victim@example.com` (ghost created).
+  Attacker `POST /register-ghost-user {"username":"victim@example.com", ...}`
+  → `200` with valid JWTs for the victim's account → attacker drives the
+  victim's cart/orders/payments on product-service as the victim.
+- Fix: never issue tokens from the ghost endpoint for a pre-existing ghost
+  without a one-time email proof (or require the original session); at minimum
+  return a distinct status that does not authenticate. Tests: re-registration
+  with the same email does not yield usable tokens for a second party; newborn
+  ghost still gets tokens.
+
+### N2. Ghost endpoint email-enumeration oracle — OPEN (Medium)
+- Same code: pre-existing `USER` email → `ResourceAlreadyExistsException`
+  (`UserManager.java:97-100`, → 409) while a fresh email → `200` with tokens
+  and a pre-existing `GHOST` email → `200` with tokens (N1). Three distinguishable
+  outcomes let an anonymous caller enumerate which emails are registered and
+  which are ghost checkouts. Product-service has no rate limiting (B8), so the
+  oracle is unthrottled.
+- Repro: `POST /register-ghost-user` with `taken-user@example.com` → 409 vs
+  `nobody@example.com` → 200.
+- Fix: uniform response for existing emails (no tokens, same status), plus
+  rate-limit/count KPIs when B8 lands. Tests: all three email classes return
+  the identical unauthenticated response shape.
+
+### N3. Payment status/QR endpoints fetch upstream before authorizing — OPEN (Medium-High)
+- `backend/product-service/.../service/AsaasPaymentService.java:92-93`
+  (`getPixQrCode`) and `:131-133` (`getPaymentStatus`) call
+  `fetchPaymentOrDie(paymentId)` (upstream Asaas GET with the server key) and
+  only then `requireOwnedPayment(...)`. An authenticated attacker probing
+  arbitrary `paymentId`s learns: owned → 200, existent-but-foreign → 403
+  (`UserNotAllowedException`), nonexistent → 404 — an ID-existence oracle —
+  and each probe burns one upstream Asaas call on the server's key (cost +
+  third-party rate-limit amplification).
+- Repro: as user A, `GET /api/payment/<B's paymentId>/status` → 403 vs
+  `GET /api/payment/<random>/status` → 404; watch one Asaas egress per probe.
+- Fix: persist payment→owner at creation, authorize locally before any upstream
+  fetch, return uniform 404 for foreign-or-missing ids. Tests: foreign id →
+  404 with zero upstream calls (mock `RestTemplate` unverified); owned id
+  still resolves.
+
+### N4. Payment creation request shape gaps: null-enum NPE → 500, non-finite `Double` money — OPEN (Medium)
+- `backend/product-service/.../dto/payment/PaymentCreationRequest.java:22-29`
+  takes `paymentProcessor`/`customerId`/`value`/`billingType` with no guards;
+  `service/AsaasPaymentService.java:55-57` checks only `value != null && > 0`;
+  `dto/payment/asaas/AsaasPaymentCreationRequest.java:53-58` then dereferences
+  `paymentCreationRequest.getBillingType().name()` with no null guard → null
+  `billingType` NPEs into the generic advice
+  (`configuration/ControllerAdvice.java:24-28` → static 500). Null
+  `paymentProcessor` is likewise unchecked. `value` is `Double`: `NaN` passes
+  the `<= 0` check (`NaN <= 0` is false) and `Infinity` passes as `> 0`, flowing
+  downstream toward Asaas serialization; `Double` (not `BigDecimal`) also keeps
+  money on binary floating point, widening the G1 reconciliation gap.
+- Repro: `POST /api/payment/create {"paymentProcessor":"ASAAS","value":10.0,
+  "billingType":null}` → 500 instead of 400; `{"value":NaN,...}` passes
+  validation instead of 400.
+- Fix: fail-fast constructor/bean guards (non-null processor + billing type,
+  finite positive value; prefer `BigDecimal` for money). Tests: null
+  `billingType`/`paymentProcessor` → 400-path `IllegalArgumentException`;
+  `NaN`/`Infinity` rejected; valid request unchanged.
+
+### N5. PIX confirmation polls upstream forever; QR + fireworks subscriptions leak — OPEN (Low-Medium)
+- `frontend/natiart-app/src/app/product/components/customer/checkout/pix-payment-confirmation/pix-payment-confirmation.component.ts`:
+  `startPolling` (`:50-89`) runs `interval(5000)` with no backoff, jitter, or
+  max duration while status stays `PENDING` — every tick hits
+  `GET /api/payment/{id}/status`, which per N3 costs one upstream Asaas call,
+  so one abandoned tab costs ~12 Asaas egress calls/min indefinitely.
+  `loadQrCode` (`:43-48`) subscribes without unsubscribe, and `triggerFireworks`
+  (`:116-127`) arms a `setInterval` that `ngOnDestroy` (`:130-132`) never
+  clears (it only stops polling) — destroy mid-fireworks leaks the interval.
+- Repro: open `/pix-payment/<id>`, watch `status` fire every 5s without end;
+  navigate away mid-fireworks → confetti interval keeps firing.
+- Fix: cap polling (max attempts/duration + backoff), unsubscribe QR lookup on
+  destroy, clear the fireworks interval in `ngOnDestroy`. Spec: polling stops
+  after the cap; no timers survive destroy. (Lens 11 resource-hygiene instance
+  with availability/cost impact via N3.)
