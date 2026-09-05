@@ -2,9 +2,11 @@ package com.portcelana.natiart.storage;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -173,6 +175,68 @@ class StorageFileSystemTest {
                 storageWithRoots(List.of(tempDir.resolve("product-images").toString()));
 
         assertThrows(ResourceNotFoundException.class, () -> storage.downloadDirectory(URI.create("file:///etc")));
+    }
+
+    @Test
+    void uploadFileWritesInsideAllowedRoot() throws IOException {
+        Path root = tempDir.resolve("product-images");
+        StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+
+        final URI uri = storage.uploadFile(root.resolve("p1").toString(), "img.webp", testInput("image-bytes"));
+
+        assertTrue(Path.of(uri).startsWith(root));
+        try (var in = storage.openFile(uri)) {
+            assertEquals("image-bytes", new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        }
+    }
+
+    @Test
+    void uploadFileDefaultsToFirstAllowedRoot() throws IOException {
+        Path root = tempDir.resolve("product-images");
+        StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+
+        final URI uri = storage.uploadFile("default.webp", testInput("default-bytes"));
+
+        assertTrue(Path.of(uri).startsWith(root));
+        try (var in = storage.openFile(uri)) {
+            assertEquals("default-bytes", new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        }
+    }
+
+    @Test
+    void uploadFileRejectsTraversalKey() {
+        Path root = tempDir.resolve("product-images");
+        StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> storage.uploadFile(root.toString(), "../evil.webp", testInput("evil")));
+    }
+
+    @Test
+    void uploadFileRejectsAbsoluteKey() {
+        Path root = tempDir.resolve("product-images");
+        StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> storage.uploadFile(
+                        root.toString(), tempDir.resolve("evil.webp").toString(), testInput("evil")));
+    }
+
+    @Test
+    void uploadFileRejectsLocationOutsideAllowedRoots() {
+        Path root = tempDir.resolve("product-images");
+        StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> storage.uploadFile(tempDir.resolve("elsewhere").toString(), "img.webp", testInput("x")));
+    }
+
+    private InputFile testInput(String content) {
+        final byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+        return new InputFile(new ByteArrayInputStream(bytes), "image/webp", "img.webp", bytes.length);
     }
 
     private void cleanupRecursively(Path path) {
