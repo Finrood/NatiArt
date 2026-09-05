@@ -365,7 +365,7 @@ CI on JDK 25 Corretto is source of truth).
 - Fix: accept capped `page`/`size` (same 100-item cap as B7), sort in the query.
   Tests: oversized `size` clamped; default page serves sorted labels.
 
-### H3. `deletePackage` loads the full `products` collection for an emptiness check — OPEN (Low-Medium)
+### H3. `deletePackage` loads the full `products` collection for an emptiness check — FIXED (PR #84)
 - `backend/product-service/.../service/PackageManagerImpl.java:67` calls
   `pack.getProducts().isEmpty()` on a LAZY `@OneToMany`
   (`model/Package.java:18-19`), loading every product of the package just to
