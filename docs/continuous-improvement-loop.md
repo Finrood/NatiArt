@@ -134,7 +134,9 @@ workflow has reported:
 | `frontend/**` | Frontend CI |
 | instruction files (`AGENTS.md`, mirrors, `agents/**`, module guides) | Guidelines |
 | `docs/**` (findings, lenses, loop docs) | Guidelines |
-| `.github/workflows/<name>.yml` | that workflow |
+| `scripts/**` | Guidelines |
+| `backend/**`, `frontend/**` | Guidelines (convention bans) + respective CI |
+| `.github/workflows/<name>.yml` | that workflow + Guidelines |
 | anything else | all three |
 
 No branch protection is configured, so scoping never blocks a merge — the
@@ -157,9 +159,11 @@ table above is agent discipline, enforced by the cycle prompt.
   one command: `gh auth refresh -s workflow` (interactive).
 - Auto-merge stays OFF repository-wide by policy: every merge is explicit.
 - AI-review gate: each PR gets an independent fresh-context reviewer run
-  (`scripts/agent-review-prompt.md`, ~6 min, concurrent with CI). Merge
-  requires green relevant CI AND an APPROVE verdict with zero unresolved
-  blockers; one address-and-re-review round, then the PR stays open.
+  (`scripts/agent-review-prompt.md`, ~6 min, concurrent with CI). The reviewer
+  proves tests non-vacuous (new tests must FAIL with production files stashed)
+  and threat-models security-touching diffs. Merge requires green relevant CI
+  AND an APPROVE verdict with zero unresolved blockers; one
+  address-and-re-review round, then the PR stays open.
 - Remote hygiene: every cycle retries deletion of merged loop-prefix branches
   (`fix|perf|chore|docs|feature/*`) — the `--delete-branch` flag occasionally
   races GitHub auto-delete. Never touches unmerged work, `master`, or

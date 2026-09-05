@@ -81,7 +81,6 @@ export class CartComponent implements OnInit, OnDestroy {
     // Clean up ALL previously created object URLs
     this.objectUrlsCreated.forEach(url => URL.revokeObjectURL(url));
     this.objectUrlsCreated = []; // Clear the tracking array
-    console.log("CartComponent destroyed, Object URLs revoked.");
   }
 
   updateQuantity(item: CartItem, change: number): void {

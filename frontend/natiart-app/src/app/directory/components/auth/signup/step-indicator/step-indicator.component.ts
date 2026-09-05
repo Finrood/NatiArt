@@ -13,6 +13,5 @@ export class StepIndicatorComponent implements OnInit {
   @Input() currentStep!: number;
 
   ngOnInit() {
-    console.log(this.currentStep);
   }
 }

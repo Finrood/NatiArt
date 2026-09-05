@@ -239,7 +239,6 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   private getProducts(): void {
     this.productService.getProducts().subscribe({
       next: (response: Product[]) => {
-        console.log(response)
         this._products$.next(response);
         this.updateAllProductImages(response);
       },

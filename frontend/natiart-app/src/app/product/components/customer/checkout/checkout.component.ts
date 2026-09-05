@@ -199,10 +199,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       )
       .subscribe();
 
-    this.checkoutForm.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {
-      console.log('Form validity:', this.checkoutForm.valid);
-    });
-
     this.updatePaymentValidators();
     this.checkoutForm.get('paymentInfo.paymentMethod')?.valueChanges
       .pipe(takeUntil(this.destroy$))
