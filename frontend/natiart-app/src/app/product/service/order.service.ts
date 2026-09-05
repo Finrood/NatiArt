@@ -17,20 +17,8 @@ export class OrderService {
 
   createOrder(order: OrderDto): Observable<OrderDto> {
     this.orderProcessingSubject.next(true);
-    return this._http.post<OrderDto>(this.apiUrl, order).pipe(
+    return this._http.post<OrderDto>(`${this.apiUrl}/create`, order).pipe(
       finalize(() => this.orderProcessingSubject.next(false)),
     );
-  }
-
-  getOrderById(id: number): Observable<OrderDto> {
-    return this._http.get<OrderDto>(`${this.apiUrl}/${id}`);
-  }
-
-  getAllOrders(): Observable<OrderDto[]> {
-    return this._http.get<OrderDto[]>(this.apiUrl);
-  }
-
-  updateOrderStatus(id: number, status: string): Observable<OrderDto> {
-    return this._http.put<OrderDto>(`${this.apiUrl}/${id}/status`, {status});
   }
 }

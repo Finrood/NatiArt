@@ -13,7 +13,7 @@ import {
   takeUntil,
   tap
 } from 'rxjs/operators';
-import {ShippingEstimate, ShippingService} from '../../../service/shipping.service';
+import {ShippingEstimate, ShippingEstimateRequest, ShippingService} from '../../../service/shipping.service';
 import {CepFormatDirective} from "../../../../directory/directive/cep-format-directive.directive";
 import {LoadingSpinnerComponent} from "../../../../shared/components/shared/loading-spinner/loading-spinner.component";
 
@@ -93,12 +93,12 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
   }
 
   private calculateShippingEstimate(cep: string): Observable<ShippingEstimate[]> {
-    const request = {
+    const request: ShippingEstimateRequest = {
       to: cep.replace('-', ''),
-      height: '2',
-      width: '12.7',
-      length: '17',
-      weight: '2',
+      height: 2,
+      width: 12.7,
+      length: 17,
+      weight: 2,
       quantity: 1
     };
     return this.shippingService.calculateShipping(request);

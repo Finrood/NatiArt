@@ -9,6 +9,15 @@ export interface ShippingEstimate {
   estimatedDeliveryDays: number;
 }
 
+export interface ShippingEstimateRequest {
+  to: string;
+  weight: number;
+  length: number;
+  width: number;
+  height: number;
+  quantity: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -18,7 +27,7 @@ export class ShippingService {
   constructor(private http: HttpClient) {
   }
 
-  calculateShipping(request: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/estimate`, request);
+  calculateShipping(request: ShippingEstimateRequest): Observable<ShippingEstimate[]> {
+    return this.http.post<ShippingEstimate[]>(`${this.apiUrl}/estimate`, request);
   }
 }

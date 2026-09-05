@@ -45,6 +45,7 @@ describe('OrderService', () => {
     service.createOrder(makeOrder()).subscribe();
     expect(latest).toBeTrue();
     const req: TestRequest = httpMock.expectOne((request) => request.method === 'POST');
+    expect(req.request.url.endsWith('/orders/create')).toBeTrue();
     req.flush(makeOrder());
 
     expect(latest).toBeFalse();

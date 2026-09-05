@@ -13,23 +13,23 @@ export class CategoryService {
   constructor(private http: HttpClient) {
   }
 
-  getCategories(): Observable<any> {
-    return this.http.get<any>(this.apiUrl);
+  getCategories(): Observable<Category[]> {
+    return this.http.get<Category[]>(this.apiUrl);
   }
 
-  addCategory(newCategory: Partial<Category>): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/create`, newCategory);
+  addCategory(newCategory: Partial<Category>): Observable<Category> {
+    return this.http.post<Category>(`${this.apiUrl}/create`, newCategory);
   }
 
-  updateCategory(id: string, editCategoryData: Category): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/${id}`, editCategoryData);
+  updateCategory(id: string, editCategoryData: Category): Observable<Category> {
+    return this.http.put<Category>(`${this.apiUrl}/${id}`, editCategoryData);
   }
 
-  deleteCategory(id: string): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}/${id}`);
+  deleteCategory(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 
-  inverseCategoryVisibility(id: string): Observable<any> {
-    return this.http.patch<any>(`${this.apiUrl}/${id}/visibility/inverse`, null);
+  inverseCategoryVisibility(id: string): Observable<Category> {
+    return this.http.patch<Category>(`${this.apiUrl}/${id}/visibility/inverse`, null);
   }
 }
