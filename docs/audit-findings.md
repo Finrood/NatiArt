@@ -172,7 +172,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix: use `item.cartItemId`; key `imageUrls` by `cartItemId` (as
   `cart.component.ts` does). Spec: two lines, same product, update/remove right one.
 
-### C2. Guest PIX checkout resolves the guest user twice; destroy races `EmptyError` — IN REVIEW (fix/frontend-checkout-identity)
+### C2. Guest PIX checkout resolves the guest user twice; destroy races `EmptyError` — FIXED (PR #94)
 - `checkout.component.ts:291-319,321-356`: `onSubmit` awaits
   `createUserIfGuestCheckout()` and then `onProcessPixPayment()` re-subscribes
   to it instead of receiving the resolved user. Re-verified 2026-09-05: the
@@ -225,7 +225,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix: validate on enter (resolver/`canActivate`) or cache + timeout, return
   `true` on error. Spec: navigation away never blocked by backend failure.
 
-### C10. Untyped `any` services + unchecked `paymentId` + untested path — IN REVIEW (fix/frontend-checkout-identity)
+### C10. Untyped `any` services + unchecked `paymentId` + untested path — FIXED (PR #94)
 - `product.service.ts:17-36`, `payment.service.ts:16-46`: `Observable<any>`;
   `checkout.component.ts:308-312` navigates to `/pix-payment/undefined` when
   `paymentId` missing; no `payment.service.spec.ts` (only service without one).
