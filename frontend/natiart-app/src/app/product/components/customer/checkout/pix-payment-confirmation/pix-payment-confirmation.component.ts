@@ -35,6 +35,8 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
     if (this.paymentId) {
       this.loadQrCode(this.paymentId);
       this.startPolling(this.paymentId);
+    } else {
+      this.paymentStatus = 'ERROR';
     }
   }
 

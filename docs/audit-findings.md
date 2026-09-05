@@ -604,7 +604,7 @@ CI on JDK 25 Corretto is source of truth).
 - Fix: reject null/blank ids before HTTP (`throwError`), surface an error state
   in the detail view. Spec: `getProduct(null)` emits an error without HTTP.
 
-### M4. Missing `paymentId` route param leaves PIX confirmation stuck on PENDING — OPEN (Low)
+### M4. Missing `paymentId` route param leaves PIX confirmation stuck on PENDING — IN REVIEW (fix/pix-confirmation-missing-id)
 - `frontend/natiart-app/src/app/product/components/customer/checkout/pix-payment-confirmation/pix-payment-confirmation.component.ts:32-39`:
   a null `paymentId` param silently skips both `loadQrCode` and `startPolling`
   with no error state, so `/pix-payment` (no id) renders a stuck PENDING view.
