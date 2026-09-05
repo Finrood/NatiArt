@@ -5,64 +5,59 @@ the repo root. Obey `AGENTS.md` (including the Pre-flight Protocol: read every
 file in every applicable tier before touching code), `agents/git-workflow.md`,
 and `docs/continuous-improvement-loop.md` guardrails.
 
-## Procedure
+## Procedure — phased, work until the timebox is full
 
-Timebox budget (25-min kill): reads ≤3 min, implement ≤12 min, push, CI watch
-with the remainder. At kill-minus-5-min stop everything: push the branch, leave
-the PR open, report the PR number for the next cycle. An unmerged green PR is a
-good outcome; a killed dirty tree is the only bad one — so commit early and
-push the branch BEFORE starting the CI watch.
+Record `CYCLE_START=$(date +%s)` first. The 25-minute kill is hard: phases below
+are ordered, and you keep pulling work until kill-minus-5-min, then push
+everything, leave PRs open, and report PR numbers for the next cycle. A cycle
+that ends with merged PRs plus open green-track PRs is a great outcome; a
+killed dirty tree is the only bad one — commit early, push each branch before
+moving to the next phase. Record every PR number you open.
 
+Phase 0 — sync and pickup (~2 min):
 1. `git checkout master && git pull --ff-only`, verify `git status` is clean.
    If dirty (no open PR owns the dirt) or the pull fails, stop and report.
-2. Pickup: if a previous cycle left exactly one open non-dependabot PR that is
-   fully green, merge it now (`gh pr merge --merge --delete-branch`), delete
-   the local branch, flip its findings status, then continue below with new
-   work. If that PR is still pending, leave it and continue; if failing, stop
-   and report (one `gh run rerun --failed` allowed for suspected flakes). If
-   time remains after the batch, you may also merge green, safe dependabot PRs
-   (Lens-16 routine: check semver scope, require green CI, never push to their
-   branches, skip majors/red ones, report scope-blocked ones to the human).
-3. Read `docs/audit-findings.md`. Assemble a theme batch: 2-4 related `OPEN`
-   items sharing a service, flow, or file area (High severity first, in A→B→C
-   order; skip anything marked strategic/deferred). A single large item alone
-   is a valid batch. Re-verify each finding against current `master` before
-   fixing; mark anything already fixed `INVALID` in the findings doc instead of
-   fixing it. If no `OPEN` item qualifies, run the anti-starvation protocol
-   below instead of stopping.
-4. Check `gh pr list --state open`: if 2+ loop PRs are already open, or any loop
-   PR has failing CI, stop and report (do not pile up).
-5. Branch from `master` per `agents/git-workflow.md` naming
-   (`fix/…`, `perf/…`, `chore/…`, `docs/…`, `feature/…`). Never touch
-   dependabot branches.
-6. Implement the batch plus thorough tests (Mockito unit tests for backend per
-   `agents/java-testing.md`, Karma specs for frontend logic). One commit per
-   finding (`[Type]` each) so every item stays revertible independently —
-   commit each item as you finish it, but push once at the end (intermediate
-   pushes only burn CI, since superseded runs cancel). Timebox: stop adding
-   items after ~15 min of implementation. Run `!check` (compile + full impacted
-   suites until green) and `!review` (docs, JavaDoc where required, no unused
-   imports, no debug artifacts, Spotless clean).
-7. `gh pr create` against `master` referencing the findings-doc items (no
-   `Co-Authored-By:`).
-8. Re-check the PR: `gh pr checks --watch` within the remaining timebox.
-   Zero reported checks means CI has not registered yet — wait, never treat it
-   as green. The expected checks are Backend CI, Frontend CI, and Guidelines;
-   merge ONLY when all present ones are green. Fetch and fix review findings
-   (one `gh run rerun --failed` allowed for suspected flakes; still red →
-   stop, report, leave open). If the merge API refuses with a scope error
-   (e.g. `workflow` scope on workflow-touching PRs), stop and report to the
-   human — never route around it. On merge use
-   `gh pr merge --merge --delete-branch`, then delete the local branch and
-   update the items' statuses in `docs/audit-findings.md` (`OPEN` → `FIXED`
-   with the PR number) on a follow-up `docs/` commit directly via its own tiny
-   PR, or batched with the next cycle — never push to `master`.
-9. HARD RULES: max one theme batch (2-4 related items) per cycle, plus at most
-   one prior-cycle pickup merge (step 2 never counts as the batch). Never
-   force-push. Never push to `master` or to dependabot branches. Never merge on
-   red/yellow CI. Never migrate auth, rate-limit infrastructure, or schema
-   management without a human decision (strategic items in the findings doc).
-   Report a one-paragraph summary.
+2. Merge ALL green open non-dependabot loop PRs left by prior cycles
+   (`gh pr merge --merge --delete-branch`), delete local branches, flip their
+   findings statuses. Pending ones stay open; failing ones stop the cycle
+   after one `gh run rerun --failed` for suspected flakes. You may also merge
+   green, safe dependabot PRs (Lens-16 routine: check semver scope, require
+   green CI, never push to their branches, skip majors/red ones, report
+   scope-blocked ones to the human).
+3. If 2+ non-dependabot PRs are still open and none could be merged, stop and
+   report (do not pile up).
+
+Phase 1 — hunt, always (5 min, timer-bounded):
+4. Hunt with the cycle lens (`docs/loop-lenses.md`) and append runner-up
+   findings as new `OPEN` items (file:line evidence + severity) via the
+   `docs/` path (commit on the first fix branch, or its own tiny branch if no
+   fix batch materializes). Searching happens every cycle, fix or no fix.
+
+Phase 2 — fix loop, until kill-minus-8-min (max 3 fix PRs):
+5. While time remains: assemble a theme batch of 2-4 related `OPEN` items
+   sharing a service, flow, or file area (High first, A→B→C; skip
+   strategic/deferred; prefer areas related to earlier batches to share
+   pre-flight context). A single large item is a valid batch. Re-verify each
+   finding against current `master`; mark fixed ones `INVALID`.
+6. Branch per `agents/git-workflow.md` (never dependabot branches), implement
+   with thorough tests (Mockito per `agents/java-testing.md`, Karma specs for
+   frontend logic), one commit per finding (`[Type]` each). Run `!check`
+   (compile + full impacted suites green) and `!review` (docs, JavaDoc, no
+   unused imports, no debug artifacts, Spotless clean). Push the branch, open
+   the PR, record its number, repeat while the timebox allows.
+
+Phase 3 — merge everything green:
+7. Watch all cycle PRs (`gh pr checks` per PR). Zero reported checks means CI
+   has not registered yet — wait, never treat it as green. Expected: Backend
+   CI, Frontend CI, Guidelines, all present and green. Merge each green PR
+   (`--merge --delete-branch`); flip statuses (batch all flips into one
+   `docs/` PR if several). Still red after one flake rerun → leave open and
+   report. Scope-error refusals go to the human, never routed around. Never
+   push to `master`.
+8. HARD RULES: max 3 fix PRs + docs per cycle. Never force-push. Never push to
+   `master` or dependabot branches. Never merge on red/yellow CI. Never
+   migrate auth, rate-limit infrastructure, or schema management without a
+   human decision. Report a one-paragraph summary listing every PR and status.
 
 ## Guideline compliance (prove it, don't claim it)
 
