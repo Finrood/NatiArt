@@ -10,13 +10,16 @@ import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.PackageDto;
 import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.repository.PackageRepository;
+import com.portcelana.natiart.repository.ProductRepository;
 
 @Service
 public class PackageManagerImpl implements PackageManager {
     private final PackageRepository packageRepository;
+    private final ProductRepository productRepository;
 
-    public PackageManagerImpl(PackageRepository packageRepository) {
+    public PackageManagerImpl(PackageRepository packageRepository, ProductRepository productRepository) {
         this.packageRepository = packageRepository;
+        this.productRepository = productRepository;
     }
 
     @Override
@@ -64,7 +67,7 @@ public class PackageManagerImpl implements PackageManager {
     @Transactional
     public void deletePackage(String packageId) {
         final Package pack = getPackageOrDie(packageId);
-        if (!pack.getProducts().isEmpty()) {
+        if (productRepository.existsByPackaging(pack)) {
             throw new IllegalArgumentException("Package with label [" + pack.getLabel() + "] contains products.");
         }
         packageRepository.delete(pack);

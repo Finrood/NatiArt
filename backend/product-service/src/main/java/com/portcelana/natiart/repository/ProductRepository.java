@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.portcelana.natiart.model.Category;
+import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.model.Product;
 
 @Repository
@@ -42,4 +43,6 @@ public interface ProductRepository extends JpaRepository<Product, String> {
     List<Product> findAllWithImagesByIds(@Param("ids") List<String> ids);
 
     boolean existsByCategory(Category category);
+
+    boolean existsByPackaging(Package packaging);
 }
