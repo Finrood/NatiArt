@@ -572,7 +572,7 @@ CI on JDK 25 Corretto is source of truth).
 
 ## M. Frontend data identity (Lens 10 hunt, 2026-09-05)
 
-### M1. Product detail goes stale when navigating between related products — IN REVIEW (fix/product-detail-loading-error)
+### M1. Product detail goes stale when navigating between related products — FIXED (PR #99)
 - `frontend/natiart-app/src/app/product/components/customer/product-detail/product-detail.component.ts:67-72`
   reads `route.snapshot.paramMap.get('id')` once in `ngOnInit`; the related-products
   template (`product-detail.component.html:154`) links `['/product', relatedProduct.id]`
@@ -583,7 +583,7 @@ CI on JDK 25 Corretto is source of truth).
   resetting `quantity`/`selectedImageIndex` per id) instead of the one-shot snapshot.
   Spec: param change from `p1` to `p2` loads `p2`.
 
-### M2. Related-products race: slow first response overwrites the current product — IN REVIEW (fix/product-detail-loading-error)
+### M2. Related-products race: slow first response overwrites the current product — FIXED (PR #99)
 - `frontend/natiart-app/src/app/product/components/customer/product-detail/product-detail.component.ts:272-293`
   `loadRelatedProducts` captures `currentProductId` once and subscribes without
   cancellation; two rapid product visits leave overlapping `getProductsByCategory`
