@@ -19,6 +19,10 @@ import com.portcelana.natiart.repository.ProductRepository;
 
 @Service
 public class OrderManagerImpl implements OrderManager {
+    // Anti-absurdity guard on a single order line; available stock remains the
+    // real bound via the atomic decreaseStockIfAvailable check.
+    private static final int MAX_ITEM_QUANTITY = 100;
+
     private final OrderRepository orderRepository;
     private final ProductManager productManager;
     private final ProductRepository productRepository;
@@ -70,6 +74,9 @@ public class OrderManagerImpl implements OrderManager {
         BigDecimal totalItemsAmount = BigDecimal.ZERO;
         for (OrderItemDto item : orderDto.getItems()) {
             final Product product = productManager.getProductOrDie(item.getProductId());
+            if (!product.isActive()) {
+                throw new IllegalArgumentException("Product [" + product.getLabel() + "] is no longer available");
+            }
             final int reserved = productRepository.decreaseStockIfAvailable(product.getId(), item.getQuantity());
             if (reserved == 0) {
                 throw new IllegalArgumentException("Insufficient stock for product [" + product.getLabel() + "]");
@@ -106,6 +113,9 @@ public class OrderManagerImpl implements OrderManager {
             }
             if (item.getQuantity() == null || item.getQuantity() <= 0) {
                 throw new IllegalArgumentException("Item quantities must be positive");
+            }
+            if (item.getQuantity() > MAX_ITEM_QUANTITY) {
+                throw new IllegalArgumentException("Item quantities must not exceed " + MAX_ITEM_QUANTITY);
             }
         }
     }

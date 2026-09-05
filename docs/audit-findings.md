@@ -72,13 +72,14 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix: add `spring-boot-starter-validation`, annotate DTOs
   (`@NotBlank`/`@Email`/`@Valid`), null-guard `createProfile`. Tests: null/blank → 400.
 
-### B4. Order integrity gaps: client-priced shipping, uncapped qty — OPEN (Medium)
-- `OrderManagerImpl.java:51,87` trusts client `deliveryAmount` (send `0` = free
-  shipping); `validateItems` (`:99-111`) allows unbounded qty, no
-  `product.isActive()` check; `CustomerOrder` has no owner column,
-  `OrderController` takes no `@TargetUser`.
-- Fix: compute freight server-side, cap quantity, reject inactive products,
-  persist owner. Tests for each.
+### B4. Order integrity gaps: client-priced shipping, no owner — OPEN (Medium; qty cap + inactive-product check in flight)
+- `OrderManagerImpl.java` trusts client `deliveryAmount` (send `0` = free
+  shipping — only non-negativity is checked); `CustomerOrder` has no owner
+  column, `OrderController` takes no `@TargetUser`. Already fixed on master:
+  server-side unit pricing from `Product`, atomic stock reservation via
+  `decreaseStockIfAvailable` with whole-order rollback. In flight: per-line
+  quantity cap (`MAX_ITEM_QUANTITY`) and `product.isActive()` rejection.
+- Fix remainder: compute freight server-side, persist owner. Tests for each.
 
 ### B5. Cart quantity dropped; JPA entity returned from controller — FIXED (PR #61)
 - `CartManagerImpl.java:25-30` maps to `ProductDto`, discarding
@@ -313,3 +314,35 @@ Each PR: branch from `master`, `[Type]` commit messages, tests per
 + `!review` green, CI green before merge, delete branch after merge.
 Baseline: local JDK is 17, project toolchain is JDK 25 (Gradle auto-provisions;
 CI on JDK 25 Corretto is source of truth).
+
+## G. Data integrity and transactions (Lens 4 hunt, 2026-09-05)
+
+### G1. Payment value is client-priced, never reconciled to an order — OPEN (Medium-High)
+- `backend/product-service/.../dto/payment/PaymentCreationRequest.java:13` takes
+  a client-supplied `Double value`; `AsaasPaymentService.java:54-56` only checks
+  `> 0`; `PaymentController.java:22-29` carries no order reference, so nothing
+  ties a charge to a `CustomerOrder` total. An authenticated user can create a
+  R$0.01 Asaas charge against a R$500 order (underpayment → fulfillment
+  confusion). Found by Lens 4 hunt, 2026-09-05.
+- Fix: link payment creation to an order id, reconcile the value server-side
+  against `totalAmount`, reject mismatches. Tests: under/over-valued payment
+  rejected; exact total accepted.
+
+### G2. Cart accepts inactive products, quantity unbounded — OPEN (Low-Medium)
+- `backend/product-service/.../service/CartManagerImpl.java:33-40`:
+  `createCartItem` checks existence via `getProductOrDie` but never
+  `product.isActive()`, and `increaseQuantity` has no cap, so deactivated
+  products accumulate in carts and surface as order-time rejections instead of
+  cart-time ones. Found by Lens 4 hunt, 2026-09-05.
+- Fix: reject inactive products in `createCartItem` (mirror the order-creation
+  guard); consider a cart-level quantity cap. Tests: inactive product → 400,
+  no `CartItem` persisted.
+
+### G3. Payment due-date uses the server default time zone — OPEN (Low)
+- `backend/product-service/.../dto/payment/PaymentCreationRequest.java:24-30`
+  computes `dueDate` from `LocalDateTime.now()` (system zone), so the same
+  request yields different due dates on hosts in different zones; untestable
+  without a clock. Found by Lens 4 hunt, 2026-09-05.
+- Fix: inject a `Clock` (package-private test constructor precedent:
+  `RateLimitFilter`) or use UTC explicitly. Tests: fixed-clock due-date
+  boundary at 21:00.
