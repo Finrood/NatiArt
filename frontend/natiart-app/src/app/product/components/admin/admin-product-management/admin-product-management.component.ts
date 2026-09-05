@@ -5,6 +5,7 @@ import {ProductService} from '../../../service/product.service';
 import {CategoryService} from '../../../service/category.service';
 import {PackageService} from '../../../service/package.service';
 import {Category} from '../../../models/category.model';
+import {Package} from '../../../models/package.model';
 import {Product} from '../../../models/product.model';
 import {BehaviorSubject, Subscription} from 'rxjs';
 import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
@@ -32,7 +33,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   private _products$ = new BehaviorSubject<Product[]>([]);
   products$ = this._products$.asObservable();
   categories = new BehaviorSubject<Category[]>([]);
-  packages = new BehaviorSubject<Category[]>([]);
+  packages = new BehaviorSubject<Package[]>([]);
 
   // Use plain booleans for modal and editing state
   isEditingProduct: boolean = false;
