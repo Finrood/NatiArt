@@ -11,9 +11,16 @@ which is exactly why you catch what it missed. Work in the repo root. Obey
 
 1. The invocation message names the PR number. Fetch it: `gh pr view $N`
    (title, body, compliance footer — a missing footer is itself a finding),
-   `gh pr diff $N`, and the file list. Read every changed file fully at its
-   PR head (`gh pr checkout $N` into a detached read, or read blobs — never
-   commit, never push, never merge).
+   `gh pr diff $N`, and the file list. Do ALL work in an isolated worktree —
+   never touch the main checkout (the author agent may be working there
+   concurrently): `git worktree remove --force /tmp/review-$N 2>/dev/null;
+   git worktree add --detach /tmp/review-$N $(gh pr view $N --json headRefOid
+   --jq .headRefOid)` with `trap "git worktree remove --force /tmp/review-$N"
+   EXIT`. Read every changed file fully at the PR head inside the worktree.
+   For frontend specs, symlink (never copy/install):
+   `ln -s /home/finrod/Documents/Programming/Java/Personal/NatiArt/frontend/natiart-app/node_modules
+   /tmp/review-$N/frontend/natiart-app/node_modules` — if linking fails, note
+   the limitation and continue without frontend revert-checks.
 2. Review against (blocking first): correctness and security (auth, ownership,
    validation, money math, traversal, secret handling); test adequacy (missing
    edge cases on money/security paths); convention compliance (thin
@@ -23,13 +30,14 @@ which is exactly why you catch what it missed. Work in the repo root. Obey
    each, no `Co-Authored-By:`). If the PR touches auth, payments, uploads, or
    order/stock flows, additionally threat-model the diff (assets, trust
    boundary, attacker-shaped inputs) and probe one abuse case.
-3. Prove the tests are not vacuous: for each new/changed test, stash ONLY the
-   production files (`git stash push -- <prod files>`), run that single test
-   class/spec expecting FAILURE, then `git stash pop`. A test that passes
-   without its fix is a blocker. If the stash round-trip misbehaves, stop and
-   report REQUEST_CHANGES with the state (never leave the tree dirty — pop or
-   `git stash drop` only what you pushed, then verify `git status` clean).
-3. Post exactly one review as a comment (all loop agents share one GitHub
+3. Prove the tests are not vacuous — inside the worktree ONLY: for each
+   new/changed test, stash ONLY the production files (`git stash push --
+   <prod files>`), run that single test class/spec expecting FAILURE, then
+   `git stash pop`. A test that passes without its fix is a blocker. If the
+   stash round-trip misbehaves, stop and report REQUEST_CHANGES with the state
+   (never leave the worktree dirty — pop or `git stash drop` only what you
+   pushed, then verify `git status` clean; the trap removes the worktree).
+4. Post exactly one review as a comment (all loop agents share one GitHub
    identity, and GitHub rejects self-approvals — so the verdict lives in the
    comment body, not the review state): `gh pr review $N --comment -b "<full
    findings with file:line>"`, opening the body with either `VERDICT:

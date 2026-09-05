@@ -26,6 +26,15 @@ ls -t "$LOG_DIR"/loop-*.log 2>/dev/null | tail -n +101 | xargs -r rm -f || true
 log "=== Improvement-loop cycle start (check-only=$CHECK_ONLY) ==="
 cd "$REPO"
 
+# 0. Fast-fail gates: expired token or full disk must abort loudly, not waste
+#    a 25-minute agent run on calls that cannot succeed.
+gh auth status >/dev/null 2>&1 || { log "GitHub auth broken; aborting cycle."; exit 1; }
+DISK_AVAIL_KB=$(df -k "$REPO" | awk 'NR==2 {print $4}')
+if [[ "${DISK_AVAIL_KB:-0}" -lt 2097152 ]]; then
+    log "Disk low (${DISK_AVAIL_KB}KB < 2GB); aborting cycle for human review."
+    exit 1
+fi
+
 # 1. Clean tree guard. Recovery: dirt on a loop branch with an open PR is a
 #    killed cycle's snapshot — commit it as WIP and continue fresh from master.
 #    Anything else (dirty master, no owning PR) needs a human: abort.
@@ -143,7 +152,7 @@ done || true
 
 # 6. Hand one item to the agent (non-interactive, repo permission policy applies;
 #    never --auto). Timeout keeps the 30-minute cadence honest. The lens rotates
-#    deterministically per 30-minute slot (no state files); every 20th slot is a
+#    deterministically per 30-minute slot (no state files); every 480th slot is a
 #    red-team cycle (~every 10 days at full cadence).
 SLOT=$(( $(date +%s) / 1800 ))
 LENS_COUNT=$(grep -c '^## Lens ' docs/loop-lenses.md || true)
@@ -167,7 +176,7 @@ fi
 if [[ -n "$ROT_LINES" ]]; then
     CYCLE_MSG="$CYCLE_MSG $ROT_LINES"
 fi
-if (( SLOT % 20 == 0 )); then
+if (( SLOT % 480 == 0 )); then
     log "Red-team cadence due: adversarial cycle."
     CYCLE_MSG="$CYCLE_MSG
 $(cat scripts/redteam-addendum.md)"
