@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -136,6 +137,27 @@ class PaymentControllerSecurityTest {
             // spoofable customerId in the body ("cus_OTHER").
             verify(paymentService).createPayment(requestCaptor.capture(), eq("cus_MINE"));
             assertEquals("cus_OTHER", requestCaptor.getValue().getCustomerId());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void authenticatedCreatePaymentWithMissingBillingTypeIs400Not500() throws Exception {
+        // The DTO guard IAE is wrapped by Jackson; the advice must map it to
+        // 400 before the request ever reaches the service.
+        final AuthenticationResponseDto.Principal principal = mock(AuthenticationResponseDto.Principal.class);
+        when(principal.getExternalId()).thenReturn("cus_MINE");
+        final UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        try {
+            mockMvc.perform(post("/api/payment/create")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"paymentProcessor\":\"ASAAS\",\"customerId\":\"cus_MINE\",\"value\":10.0}"))
+                    .andExpect(status().isBadRequest());
+            verifyNoInteractions(paymentService);
         } finally {
             SecurityContextHolder.clearContext();
         }
