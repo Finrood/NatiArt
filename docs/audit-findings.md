@@ -935,3 +935,76 @@ not filed.
   and `Authorization: Bearer garbage` → one ERROR line per request.
 - Fix: downgrade to DEBUG/WARN (jti-only, never token text), delete or wire
   the dead extractors. Tests: bogus token → no ERROR-level event.
+
+## S. API and contract consistency (Lens 15 hunt, 2026-09-05)
+
+Hunt method: enumerated every `@XMapping` path in both services and both
+`ControllerAdvice`s, then diffed each frontend service's URLs and generics
+against the backend routes. Re-verified this cycle: B11 (`pixQrCode`
+camelCase, `PaymentController.java:38`) still OPEN on both sides
+(`payment.service.ts:32` unchanged).
+
+### S1. Category/Package frontend services fully `any`-typed — IN REVIEW (Medium)
+- `frontend/natiart-app/src/app/product/service/category.service.ts:16-32`
+  (5 methods) and `.../service/package.service.ts:16-30` (4 methods): every
+  signature is `Observable<any>`. C10 typed `product.service` + `payment.service`
+  but left these two; the `any` hides contract breaks and violates the
+  explicit-types rule in `frontend/natiart-app/AGENTS.md`. Both specs are
+  boilerplate "should create" only.
+- Fix: `Category[]`/`Category`/`void` and `Package[]`/`Package`/`void`
+  generics; extend both specs with `HttpTestingController` URL + method
+  assertions.
+
+### S2. Shipping estimate request untyped, sends strings for numeric fields — IN REVIEW (Medium)
+- `frontend/natiart-app/src/app/product/service/shipping.service.ts:21`:
+  `calculateShipping(request: any): Observable<any>`; the sole caller
+  (`shipping-estimation.component.ts:96-103`) builds
+  `{height: '2', width: '12.7', length: '17', weight: '2', quantity: 1}` with
+  string dimensions while backend `ShippingEstimateRequest.java:7-11` takes
+  `float`/`int`. Works only via Jackson string-to-number coercion — the `any`
+  hides the contract.
+- Fix: `ShippingEstimateRequest` interface with numeric fields, typed
+  `Observable<ShippingEstimate[]>`; component passes numbers. Spec pins the
+  exact payload shape.
+
+### S3. `OrderService.createOrder` posts to a route that does not exist — IN REVIEW (Medium)
+- `frontend/natiart-app/src/app/product/service/order.service.ts:18-23`
+  posts to `${apiUrl}` (`/orders`); backend `OrderController.java:19` only
+  serves `POST /orders/create`, so the call 404s. Siblings
+  `getOrderById`/`getAllOrders`/`updateOrderStatus` (`order.service.ts:25-35`)
+  have no backend route at all (`OrderManager.java` declares them, the
+  controller exposes only create). No component calls any of the four — only
+  `orderProcessing$` is consumed (`checkout.component.ts:118`).
+- Fix: post to `${apiUrl}/create` (matches the `/create` verb-sub-path
+  convention), drop the three phantom methods, pin the exact URL in
+  `order.service.spec.ts`.
+
+### S4. `@GetMapping("images")` missing leading slash — OPEN (Low)
+- `backend/product-service/.../controller/ProductController.java:126` maps
+  `"images"` while every other mapping in both services uses a leading `/`.
+  Spring resolves both identically, so this is consistency-only.
+- Fix: `@GetMapping("/images")`; frontend `product.service.ts:59` already
+  calls `/images`, unchanged.
+
+### S5. `PackageController` method names copy-pasted from Category — OPEN (Low)
+- `backend/product-service/.../controller/PackageController.java:22,27,36,42,50`
+  declare `getCategory`, `getCategories`, `createCategory`, `updateCategory`,
+  `deleteCategory` on package routes. Behavior-neutral, reader-hostile.
+- Fix: rename to the `Package` variants. No route or signature change.
+
+### S6. Payment routes carry an `/api` prefix nothing else uses — OPEN (Low)
+- `backend/product-service/.../controller/PaymentController.java:22,31,38`
+  serve `/api/payment/...` while every sibling controller serves bare
+  `/products`, `/cart`, `/orders`, `/categories`, `/packages`, `/shipping`.
+  `payment.service.ts:18,32,46` mirrors the prefix, so a rename must move both
+  sides in one PR (B11-style).
+- Fix: drop the `/api` prefix on both sides (breaking for deployed clients —
+  coordinate) or document the exception.
+
+### S7. `GET /users/current` returns 200 + null body for anonymous callers — OPEN (Low-Medium)
+- `backend/directory-service/.../controller/UserController.java:28-30`
+  returns `ResponseEntity.ok(null)` when `@TargetUser` resolves empty, while
+  every other per-user endpoint rejects with 401/403 (or 500s per B2). The
+  frontend cannot distinguish "not logged in" from a broken null user.
+- Fix: reject with 401/403 instead of 200-null; align with the B2
+  `@TargetUser` fix. Tests: anonymous hit → 401/403, never 200-null.
