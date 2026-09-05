@@ -471,7 +471,7 @@ CI on JDK 25 Corretto is source of truth).
 
 ## K. Concurrency and statelessness (Lens 8 hunt, 2026-09-05)
 
-### K1. `createCartItem` read-modify-write race: lost increments + duplicate rows — IN REVIEW (Medium)
+### K1. `createCartItem` read-modify-write race: lost increments + duplicate rows — FIXED (PR #90)
 - `backend/product-service/.../service/CartManagerImpl.java:38-42` reads
   (`findCartItemByUsernameAndProduct`), mutates in memory
   (`CartItem::increaseQuantity`), then saves — with no `@Version` and no
@@ -488,7 +488,7 @@ CI on JDK 25 Corretto is source of truth).
   `(username, product_id)` as backstop. Tests: increment-hit path never saves;
   insert path on zero rows; inactive product still rejected before any write.
 
-### K2. `decreaseCartItemQuantity` read-modify-write race — IN REVIEW (Low-Medium)
+### K2. `decreaseCartItemQuantity` read-modify-write race — FIXED (PR #90)
 - `backend/product-service/.../service/CartManagerImpl.java:46-59` loads the
   line, branches on `getQuantity() > 1` in memory, then saves-or-deletes. Two
   concurrent decreases at quantity 2 both write 1 (lost decrement); at
