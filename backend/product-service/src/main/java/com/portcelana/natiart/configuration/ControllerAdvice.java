@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
@@ -33,6 +34,23 @@ public class ControllerAdvice {
         return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    /**
+     * Jackson wraps {@code @JsonCreator} guard failures (e.g. our
+     * {@code IllegalArgumentException}s) in {@code ValueInstantiationException},
+     * surfacing as {@code HttpMessageNotReadableException} -- without this
+     * handler the catch-all below would render those client errors as 500s.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Object> handleNotReadableBody(HttpMessageNotReadableException e) {
+        final IllegalArgumentException guardFailure = findIllegalArgumentCause(e);
+        if (guardFailure != null && guardFailure.getMessage() != null) {
+            LOGGER.debug("Rejected malformed request body: ", e);
+            return new ResponseEntity<>(guardFailure.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+        LOGGER.debug("Rejected unreadable request body: ", e);
+        return new ResponseEntity<>("Malformed request body", HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Object> handleResourceNotFoundException(ResourceNotFoundException e) {
         LOGGER.debug("Exception caught in controller: ", e);
@@ -49,5 +67,16 @@ public class ControllerAdvice {
     public ResponseEntity<Object> handleResourceUserNotAllowedException(UserNotAllowedException e) {
         LOGGER.debug("Exception caught in controller: ", e);
         return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
+    }
+
+    private static IllegalArgumentException findIllegalArgumentCause(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof IllegalArgumentException illegalArgument) {
+                return illegalArgument;
+            }
+            current = current.getCause();
+        }
+        return null;
     }
 }

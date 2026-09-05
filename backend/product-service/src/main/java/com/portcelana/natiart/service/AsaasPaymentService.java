@@ -52,6 +52,8 @@ public class AsaasPaymentService implements PaymentService {
         if (requesterExternalId == null || requesterExternalId.isBlank()) {
             throw new UserNotAllowedException("Authenticated customer is required to create a payment");
         }
+        // Defense in depth: the DTO constructor already rejects these, but the
+        // service must not trust its input shape if that ever changes.
         final Double value = paymentCreationRequest.getValue();
         if (value == null || !Double.isFinite(value) || value <= 0) {
             throw new IllegalArgumentException("Payment value must be a finite number greater than zero");
