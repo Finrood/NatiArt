@@ -189,7 +189,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix: subscribe and redirect on success only (stay + clear on error).
   Spec: invalid token → no navigation.
 
-### C5. JWTs in `localStorage` + token-path logging — OPEN (High, strategic)
+### C5. JWTs in `localStorage` + token-path logging — IN REVIEW (PR #75; short-term half: log removed, storage try/catch; cookie migration still strategic)
 - `token.service.ts:10-32`: any XSS (third-party `heic2any`/Adyen/confetti,
   `bypassSecurityTrust*`) reads both tokens; `console.log("Clearing tokens")`.
 - Fix now: remove log, wrap storage in try/catch. Long-term (needs decision):
@@ -201,7 +201,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
   correct pattern (`debounceTime/distinctUntilChanged/switchMap`).
 - Fix: copy that pattern. Spec: rapid typing → single lookup, stale dropped.
 
-### C7. Hard-coded ViaCEP URL — OPEN (Medium)
+### C7. Hard-coded ViaCEP URL — IN REVIEW (PR #75)
 - `signup.service.ts:28-30` interpolates raw zip into a literal URL; violates
   "never hard-code URLs"; interceptor special-cases the host.
 - Fix: move to `environment.api.viaCep`, validate `/^\d{8}$/`. Spec: URL built
@@ -298,6 +298,15 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
   rejected by Asaas (401), not a startup error.
 - Fix: drop the field `@Value`, make the field `final`, fail fast on blank in
   the constructor. Tests per service: blank/null key → `IllegalStateException`.
+
+### F5. JWT-exclusion list hard-codes the ViaCEP host while the URL is env-driven — OPEN (Low)
+- `frontend/natiart-app/src/app/directory/interceptors/jwt-interceptor.service.ts:8`
+  pins `EXCLUDED_DOMAINS = ['viacep.com.br']`, but the lookup URL now comes from
+  `environment.api.viaCep.url` (C7). Overriding the env URL to another host
+  (mirror, mock) silently re-attaches `Authorization: Bearer` to a third party.
+- Fix: derive the exclusion from the env URL origin (`new URL(environment.api.viaCep.url).hostname`).
+  Spec: overridden env host → no `Authorization` header. Found by Lens 3 hunt,
+  2026-09-05.
 
 Each PR: branch from `master`, `[Type]` commit messages, tests per
 `agents/java-testing.md` (Mockito, no Spring context) and Karma specs, `!check`
