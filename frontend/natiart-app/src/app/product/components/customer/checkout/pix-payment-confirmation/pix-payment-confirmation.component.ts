@@ -22,6 +22,10 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   paymentStatus: string = 'PENDING';
   pollingInterval!: Subscription;
   private paramSubscription: Subscription | null = null;
+  private qrSubscription: Subscription | null = null;
+  private fireworksTimer: ReturnType<typeof setInterval> | null = null;
+  private pollCount: number = 0;
+  private readonly MAX_POLL_ATTEMPTS: number = 60;
 
   constructor(
     private route: ActivatedRoute,
@@ -37,6 +41,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
     this.paramSubscription = this.route.paramMap.subscribe((params: ParamMap): void => {
       const routedId: string | null = params.get('paymentId');
       this.stopPolling();
+      this.stopQrCode();
       if (routedId) {
         this.paymentId = routedId;
         this.paymentStatus = 'PENDING';
@@ -50,14 +55,23 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   }
 
   loadQrCode(paymentId: string) {
-    this.paymentService.getPixQrCode(paymentId).subscribe(
+    this.stopQrCode();
+    this.qrSubscription = this.paymentService.getPixQrCode(paymentId).subscribe(
       (data) => (this.qrCodeData = data),
       (error) => console.error('Error fetching QR code:', error)
     );
   }
 
+  stopQrCode(): void {
+    if (this.qrSubscription) {
+      this.qrSubscription.unsubscribe();
+      this.qrSubscription = null;
+    }
+  }
+
   startPolling(paymentId: string) {
     let consecutiveErrors = 0;
+    this.pollCount = 0;
     this.pollingInterval = interval(5000)
       .pipe(
         switchMap(() =>
@@ -80,13 +94,23 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
           if (!result.ok) {
             // Keep the previous PENDING visual state during transient failures.
             this.paymentStatus = 'PENDING';
-            return;
+          } else {
+            consecutiveErrors = 0;
+            this.paymentStatus = result.status;
+            if (this.paymentStatus === 'COMPLETED') {
+              this.triggerFireworks();
+              this.stopPolling();
+              return;
+            }
           }
-          consecutiveErrors = 0;
-          this.paymentStatus = result.status;
-          if (this.paymentStatus === 'COMPLETED') {
-            this.triggerFireworks();
+          this.pollCount++;
+          if (this.pollCount >= this.MAX_POLL_ATTEMPTS) {
+            // Abandoned tab guard: every tick costs one upstream Asaas call
+            // (N3), so a PENDING payment must not poll forever (~12 egress
+            // calls/min). Stop and surface an error instead of polling
+            // indefinitely; the user can revisit the page to resume.
             this.stopPolling();
+            this.paymentStatus = 'ERROR';
           }
         },
         error: () => {
@@ -114,6 +138,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   }
 
   triggerFireworks() {
+    this.stopFireworks();
     const duration = 5 * 1000; // 5 seconds
     const animationEnd = Date.now() + duration;
     const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
@@ -122,11 +147,12 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
       return Math.random() * (max - min) + min;
     }
 
-    const intervalConfetti = setInterval(() => {
+    this.fireworksTimer = setInterval(() => {
       const timeLeft = animationEnd - Date.now();
 
       if (timeLeft <= 0) {
-        return clearInterval(intervalConfetti);
+        this.stopFireworks();
+        return;
       }
 
       const particleCount = 50 * (timeLeft / duration);
@@ -136,12 +162,21 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
     }, 250);
   }
 
+  stopFireworks(): void {
+    if (this.fireworksTimer) {
+      clearInterval(this.fireworksTimer);
+      this.fireworksTimer = null;
+    }
+  }
+
   ngOnDestroy() {
     if (this.paramSubscription) {
       this.paramSubscription.unsubscribe();
       this.paramSubscription = null;
     }
     this.stopPolling();
+    this.stopQrCode();
+    this.stopFireworks();
   }
 }
 

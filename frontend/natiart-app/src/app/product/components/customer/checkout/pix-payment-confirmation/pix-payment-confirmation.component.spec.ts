@@ -1,6 +1,6 @@
 import {TestBed, fakeAsync, tick} from '@angular/core/testing';
 import {provideHttpClient} from '@angular/common/http';
-import {HttpTestingController, provideHttpClientTesting} from '@angular/common/http/testing';
+import {HttpTestingController, provideHttpClientTesting, TestRequest} from '@angular/common/http/testing';
 import {provideRouter} from '@angular/router';
 import {ActivatedRoute, convertToParamMap} from '@angular/router';
 import {BehaviorSubject} from 'rxjs';
@@ -118,6 +118,63 @@ describe('PixPaymentConfirmationComponent', () => {
     expect(component.paymentStatus).toBe('PENDING');
 
     component.ngOnDestroy();
+    http.verify();
+  }));
+
+  it('stops polling and surfaces an error after the max poll attempts', fakeAsync(() => {
+    const {component} = createAndFlushQr();
+
+    for (let i = 0; i < 60; i++) {
+      tick(5000);
+      http.expectOne(statusUrl).flush({status: 'PENDING'});
+      tick(0);
+    }
+
+    expect(component.paymentStatus).toBe('ERROR');
+
+    // Polling must be dead: no more requests fire.
+    tick(60000);
+    expect(http.match(statusUrl).length).toBe(0);
+    component.ngOnDestroy();
+    http.verify();
+  }));
+
+  it('cancels the in-flight QR lookup when the routed payment changes', fakeAsync(() => {
+    const fixture = TestBed.createComponent(PixPaymentConfirmationComponent);
+    const component = fixture.componentInstance;
+    const newQrUrl = `${environment.api.product.url}/api/payment/pay_456/pixQrCode`;
+    fixture.detectChanges(); // QR request for pay_123 is in flight
+
+    paramMap$.next(convertToParamMap({paymentId: 'pay_456'}));
+    tick(0);
+
+    // The stale pay_123 QR request was cancelled (cancelled requests stay
+    // listed until verified, so assert the flag, not absence); only the new
+    // lookup remains open.
+    const stale: TestRequest[] = http.match(qrUrl);
+    expect(stale.length).toBe(1);
+    expect(stale[0].cancelled).toBeTrue();
+    http.expectOne(newQrUrl).flush({encodedImage: 'def', payload: 'y', expirationDate: '2030-01-01T00:00:00Z'});
+
+    component.ngOnDestroy();
+    http.verify();
+  }));
+
+  it('clears the fireworks timer on destroy', fakeAsync(() => {
+    const {component} = createAndFlushQr();
+    const internals: { fireworksTimer: ReturnType<typeof setInterval> | null } =
+      component as unknown as { fireworksTimer: ReturnType<typeof setInterval> | null };
+
+    tick(5000);
+    http.expectOne(statusUrl).flush({status: 'COMPLETED'});
+    tick(0);
+
+    expect(component.paymentStatus).toBe('COMPLETED');
+    expect(internals.fireworksTimer).not.toBeNull();
+
+    component.ngOnDestroy();
+
+    expect(internals.fireworksTimer).toBeNull();
     http.verify();
   }));
 });
