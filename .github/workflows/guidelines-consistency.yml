@@ -13,6 +13,8 @@ on:
       - "frontend/natiart-app/AGENTS.md"
       - "docs/**"
       - "scripts/**"
+      - "backend/**"
+      - "frontend/**"
       - ".github/workflows/guidelines-consistency.yml"
   pull_request:
     branches: [ "master" ]
@@ -26,6 +28,8 @@ on:
       - "frontend/natiart-app/AGENTS.md"
       - "docs/**"
       - "scripts/**"
+      - "backend/**"
+      - "frontend/**"
       - ".github/workflows/guidelines-consistency.yml"
 
 # Least privilege: the check only reads the repo.
@@ -60,4 +64,20 @@ jobs:
             head -1 "$f" | grep -q '^---$' || { echo "$f: missing YAML frontmatter"; fail=1; }
             head -5 "$f" | grep -q '^meta:' || { echo "$f: missing meta attribute"; fail=1; }
           done
+          exit $fail
+
+      - name: Convention bans (zero-tolerance, see agents/*.md)
+        run: |
+          fail=0
+          report() { # $1 = rule, $2 = matches (empty means clean)
+            if [ -n "$2" ]; then echo "BANNED ($1):"; echo "$2" | head -5; fail=1; fi
+          }
+          report "Lombok (java-general.md)" "$(grep -rln 'lombok' backend/*/src 2>/dev/null || true)"
+          report "MapStruct (java-general.md)" "$(grep -rln 'mapstruct' backend/*/src 2>/dev/null || true)"
+          report "legacy *ngIf/*ngFor (frontend AGENTS.md)" "$(grep -rn '\*ngIf\|\*ngFor' frontend/natiart-app/src --include='*.html' 2>/dev/null | grep -v '<!--' || true)"
+          report "legacy *ngIf/*ngFor in TS (frontend AGENTS.md)" "$(grep -rn '\*ngIf\|\*ngFor' frontend/natiart-app/src --include='*.ts' 2>/dev/null | grep -v '//' || true)"
+          report "lodash (frontend AGENTS.md)" "$(grep -rln "from ['\"]lodash['\"]" frontend/natiart-app/src 2>/dev/null || true)"
+          report "console.log in prod code (review hygiene)" "$(grep -rn 'console\.log' frontend/natiart-app/src --include='*.ts' 2>/dev/null | grep -v '\.spec\.ts' || true)"
+          report "@ResponseStatus on exceptions (backend AGENTS.md)" "$(grep -rn '@ResponseStatus' backend/*/src/main 2>/dev/null || true)"
+          [ "$fail" -eq 0 ] && echo "All convention bans clean."
           exit $fail
