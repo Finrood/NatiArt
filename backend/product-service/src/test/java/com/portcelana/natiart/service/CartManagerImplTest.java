@@ -60,8 +60,7 @@ class CartManagerImplTest {
     void createCartItem_createsNewLineWithQuantityOne() {
         final Product product = product("Plate");
         when(productManager.getProductOrDie("p1")).thenReturn(product);
-        when(cartItemRepository.findCartItemByUsernameAndProduct("jane", product))
-                .thenReturn(Optional.empty());
+        when(cartItemRepository.incrementQuantity("jane", "p1")).thenReturn(0);
         when(cartItemRepository.save(any(CartItem.class))).thenAnswer(inv -> inv.getArgument(0));
 
         final CartItemDto result = cartManager.createCartItem("jane", "p1");
@@ -72,17 +71,19 @@ class CartManagerImplTest {
     }
 
     @Test
-    void createCartItem_incrementsQuantityOfExistingLine() {
+    void createCartItem_incrementsAtomicallyWhenLineExists() {
         final Product product = product("Plate");
         final CartItem existing = new CartItem("jane", product);
+        existing.increaseQuantity();
         when(productManager.getProductOrDie("p1")).thenReturn(product);
+        when(cartItemRepository.incrementQuantity("jane", "p1")).thenReturn(1);
         when(cartItemRepository.findCartItemByUsernameAndProduct("jane", product))
                 .thenReturn(Optional.of(existing));
-        when(cartItemRepository.save(any(CartItem.class))).thenAnswer(inv -> inv.getArgument(0));
 
         final CartItemDto result = cartManager.createCartItem("jane", "p1");
 
         assertEquals(2, result.getQuantity());
+        verify(cartItemRepository, never()).save(any(CartItem.class));
     }
 
     @Test
@@ -91,6 +92,38 @@ class CartManagerImplTest {
         when(productManager.getProductOrDie("p9")).thenReturn(retired);
 
         assertThrows(IllegalArgumentException.class, () -> cartManager.createCartItem("jane", "p9"));
+        verify(cartItemRepository, never()).incrementQuantity(any(), any());
         verify(cartItemRepository, never()).save(any(CartItem.class));
+    }
+
+    @Test
+    void decreaseCartItemQuantity_decrementsAtomicallyAboveOne() {
+        final Product product = product("Plate");
+        when(productManager.getProduct("p1")).thenReturn(Optional.of(product));
+        when(cartItemRepository.decrementQuantityIfGreaterThanOne("jane", "p1")).thenReturn(1);
+
+        cartManager.decreaseCartItemQuantity("jane", "p1");
+
+        verify(cartItemRepository, never()).deleteByUsernameAndProduct(any(), any());
+    }
+
+    @Test
+    void decreaseCartItemQuantity_deletesLastRemainingUnit() {
+        final Product product = product("Plate");
+        when(productManager.getProduct("p1")).thenReturn(Optional.of(product));
+        when(cartItemRepository.decrementQuantityIfGreaterThanOne("jane", "p1")).thenReturn(0);
+
+        cartManager.decreaseCartItemQuantity("jane", "p1");
+
+        verify(cartItemRepository).deleteByUsernameAndProduct("jane", product);
+    }
+
+    @Test
+    void decreaseCartItemQuantity_unknownProductIsNoOp() {
+        when(productManager.getProduct("missing")).thenReturn(Optional.empty());
+
+        cartManager.decreaseCartItemQuantity("jane", "missing");
+
+        verifyNoInteractions(cartItemRepository);
     }
 }
