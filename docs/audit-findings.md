@@ -418,7 +418,7 @@ CI on JDK 25 Corretto is source of truth).
 
 ## J. File and storage safety (Lens 7 hunt, 2026-09-05)
 
-### J1. Image decode/dimension rejections surface as 500, not 400 — IN REVIEW (Medium)
+### J1. Image decode/dimension rejections surface as 500, not 400 — FIXED (PR #88; Medium)
 - `backend/product-service/.../service/ImageConversionService.java:29` wraps
   every `IOException` (including the dimension-limit rejection `:85-88` and the
   null-decode `:40-42` for non-image bytes) into `RuntimeException`, which
@@ -430,7 +430,7 @@ CI on JDK 25 Corretto is source of truth).
   for validation rejections; keep `RuntimeException` for genuine IO failures.
   Tests: non-image bytes and oversized dimensions → `IllegalArgumentException`.
 
-### J2. `StorageServiceImpl.downloadFiles` empty-set `NoSuchElementException` → 500 — IN REVIEW (Low)
+### J2. `StorageServiceImpl.downloadFiles` empty-set `NoSuchElementException` → 500 — FIXED (PR #88; Low)
 - `backend/product-service/.../storage/StorageServiceImpl.java:48-51` calls
   `uriSet.iterator().next()` with no null/empty guard; an empty set throws
   `NoSuchElementException` (null set NPEs) → generic 500 instead of 400.
@@ -438,7 +438,7 @@ CI on JDK 25 Corretto is source of truth).
 - Fix: fail-fast `IllegalArgumentException` on null/empty set. Tests: empty
   and null sets → `IllegalArgumentException`.
 
-### J3. `downloadDirectory` zip recursion follows symlinks, bypassing read confinement — IN REVIEW (Medium)
+### J3. `downloadDirectory` zip recursion follows symlinks, bypassing read confinement — FIXED (PR #88; Medium)
 - `backend/product-service/.../storage/StorageFileSystem.java:150` confines the
   top-level directory via `resolveAllowedFile` (canonicalize + `allowedRoots`),
   but `zipFileRecursively` (`:166-184`) walks `listFiles()` and streams each
