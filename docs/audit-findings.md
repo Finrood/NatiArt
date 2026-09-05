@@ -562,7 +562,7 @@ null-tolerant `principal != null ? ... : null` (fail-closed — null/blank
   authenticated-only per L3). Tests: anonymous burst → 429, not upstream egress
   per probe.
 
-### W2. `OrderController` uses `isAuthenticated()` while cart/payment use `isFullyAuthenticated()` — OPEN (Low)
+### W2. `OrderController` uses `isAuthenticated()` while cart/payment use `isFullyAuthenticated()` — IN REVIEW (Low, PR #129)
 - `backend/product-service/.../controller/OrderController.java:20`
   (`@PreAuthorize("isAuthenticated()")`) vs `CartController.java:25,33,41,48`
   and `PaymentController.java:23,32,39` (`isFullyAuthenticated()`). With the
@@ -573,7 +573,7 @@ null-tolerant `principal != null ? ... : null` (fail-closed — null/blank
 - Fix: `isAuthenticated()` → `isFullyAuthenticated()`. Tests: annotation pinned;
   anonymous still 401/403.
 
-### W3. `GET /products` takes an unused `@TargetUser` on a public endpoint — OPEN (Low)
+### W3. `GET /products` takes an unused `@TargetUser` on a public endpoint — IN REVIEW (Low, PR #129)
 - `backend/product-service/.../controller/ProductController.java:50-54`
   resolves `@TargetUser String username` (null for anonymous via
   `TargetUserArgumentResolver.java:40-43`) and then ignores it — dead auth
