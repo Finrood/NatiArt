@@ -21,7 +21,6 @@ import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 
 @Component
 public class StorageFileSystem implements Storage {
-    private static final String DEFAULT_LOCATION = "/tmp";
     private static final List<String> DEFAULT_ALLOWED_ROOTS = List.of(
             System.getProperty("java.io.tmpdir") + "/product-images",
             System.getProperty("user.dir") + "/product-images");
@@ -84,12 +83,12 @@ public class StorageFileSystem implements Storage {
 
     @Override
     public URI uploadFile(String key, InputFile inputFile) {
-        return uploadFile(DEFAULT_LOCATION, key, inputFile);
+        return uploadFile(allowedRoots.get(0).toString(), key, inputFile);
     }
 
     @Override
     public URI uploadFile(String location, String key, InputFile inputFile) {
-        final File file = new File(location, key);
+        final File file = resolveAllowedWriteFile(location, key);
         try {
             Files.createDirectories(file.toPath().getParent());
             try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
@@ -100,6 +99,32 @@ public class StorageFileSystem implements Storage {
             throw new IllegalStateException(
                     String.format("An error has occurred while storing file [%s] in [%s]", file.getName(), key));
         }
+    }
+
+    /**
+     * Resolves a write target under one of the allowed roots, mirroring the read-path
+     * confinement in {@link #resolveAllowedFile(URI)} so uploads cannot escape via
+     * {@code ..} segments or absolute paths.
+     */
+    private File resolveAllowedWriteFile(String location, String key) {
+        if (location == null || location.isBlank() || key == null || key.isBlank()) {
+            throw new IllegalArgumentException("Storage write requires a non-blank location and key");
+        }
+        if (Path.of(key).isAbsolute() || key.contains("..")) {
+            throw new IllegalArgumentException("Storage write key escapes the allowed storage roots: " + key);
+        }
+        final Path normalizedCandidate;
+        try {
+            normalizedCandidate = new File(location, key).getCanonicalFile().toPath();
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Unable to resolve storage write path: " + key);
+        }
+        for (Path root : allowedRoots) {
+            if (normalizedCandidate.startsWith(root)) {
+                return normalizedCandidate.toFile();
+            }
+        }
+        throw new IllegalArgumentException("Storage write path is outside of the allowed storage roots: " + key);
     }
 
     @Override
