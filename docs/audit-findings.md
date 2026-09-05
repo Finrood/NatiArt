@@ -613,6 +613,42 @@ CI on JDK 25 Corretto is source of truth).
 - Fix: set an error status (e.g. `paymentStatus = 'ERROR'`) when the param is
   missing. Spec: null param → error state, no HTTP.
 
+### M5. PIX confirmation goes stale when navigating between payment ids — IN REVIEW (fix/frontend-data-identity-m5-m7; Medium)
+- `frontend/natiart-app/src/app/product/components/customer/checkout/pix-payment-confirmation/pix-payment-confirmation.component.ts:33`
+  reads `route.snapshot.paramMap.get('paymentId')` once in `ngOnInit`; Angular
+  reuses the component when navigating `/pix-payment/A` → `/pix-payment/B`, so
+  the QR and the 5s status poll keep tracking payment A while the URL shows B
+  (same one-shot-snapshot class as M1, which was fixed for product detail but
+  not here). Found by Lens 10 hunt, 2026-09-05.
+- Fix: subscribe to `route.paramMap`; on each emission stop the old poll,
+  reset QR/status state, and start QR + polling for the current id. Spec:
+  param change A → B issues QR/status HTTP for B and no further status
+  requests for A.
+
+### M6. Product-detail main images race across rapid product visits — IN REVIEW (fix/frontend-data-identity-m5-m7; Low-Medium)
+- `frontend/natiart-app/src/app/product/components/customer/product-detail/product-detail.component.ts:279-299`:
+  `fetchImage(index, ...)` subscriptions are never cancelled on route-param
+  reset (`ngOnInit:77-86` clears `imageUrls` but leaves in-flight `getImage`
+  calls alive); entries are keyed by numeric `index`, not product identity, so
+  a slow image for product P1 resolves after navigation to P2 and overwrites
+  `imageUrls[0]` with P1's bytes. Related-product images are keyed by product
+  id and unaffected. Found by Lens 10 hunt, 2026-09-05.
+- Fix: generation token bumped on each param reset; stale `fetchImage`
+  resolutions (success and error) are dropped when the token moved on. Spec:
+  P1 image resolving after P2 navigation never populates the image map.
+
+### M7. Cart modal re-fetches every product image on each cart emission — IN REVIEW (fix/frontend-data-identity-m5-m7; Low)
+- `frontend/natiart-app/src/app/product/components/customer/cart-modal/cart-modal.component.ts:64-73`:
+  `loadProductImages` re-subscribes over `cartItems$` and calls `fetchImage`
+  for every line on every emission with no already-loaded guard (sibling
+  `cart.component.ts:180` and `order-summary.component.ts:61` both guard on
+  `imageUrls[cartItemId]`). Each quantity update re-issues `GET image` for all
+  lines; responses write `imageUrls[cartItemId]` unconditionally, including
+  for lines removed while the fetch was in flight. Found by Lens 10 hunt,
+  2026-09-05.
+- Fix: skip lines whose `imageUrls[cartItemId]` entry already exists. Spec:
+  re-emitting the same cart issues no additional image HTTP.
+
 ## N. Red-team: guest-checkout → order → PIX payment (adversarial cycle, 2026-09-05)
 
 Threat model (one flow, read-only probing, no exploit code merged).
