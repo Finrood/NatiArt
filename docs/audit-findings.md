@@ -944,7 +944,7 @@ against the backend routes. Re-verified this cycle: B11 (`pixQrCode`
 camelCase, `PaymentController.java:38`) still OPEN on both sides
 (`payment.service.ts:32` unchanged).
 
-### S1. Category/Package frontend services fully `any`-typed — IN REVIEW (Medium)
+### S1. Category/Package frontend services fully `any`-typed — FIXED (PR #112)
 - `frontend/natiart-app/src/app/product/service/category.service.ts:16-32`
   (5 methods) and `.../service/package.service.ts:16-30` (4 methods): every
   signature is `Observable<any>`. C10 typed `product.service` + `payment.service`
@@ -955,7 +955,7 @@ camelCase, `PaymentController.java:38`) still OPEN on both sides
   generics; extend both specs with `HttpTestingController` URL + method
   assertions.
 
-### S2. Shipping estimate request untyped, sends strings for numeric fields — IN REVIEW (Medium)
+### S2. Shipping estimate request untyped, sends strings for numeric fields — FIXED (PR #112)
 - `frontend/natiart-app/src/app/product/service/shipping.service.ts:21`:
   `calculateShipping(request: any): Observable<any>`; the sole caller
   (`shipping-estimation.component.ts:96-103`) builds
@@ -967,7 +967,7 @@ camelCase, `PaymentController.java:38`) still OPEN on both sides
   `Observable<ShippingEstimate[]>`; component passes numbers. Spec pins the
   exact payload shape.
 
-### S3. `OrderService.createOrder` posts to a route that does not exist — IN REVIEW (Medium)
+### S3. `OrderService.createOrder` posts to a route that does not exist — FIXED (PR #112)
 - `frontend/natiart-app/src/app/product/service/order.service.ts:18-23`
   posts to `${apiUrl}` (`/orders`); backend `OrderController.java:19` only
   serves `POST /orders/create`, so the call 404s. Siblings
@@ -979,14 +979,14 @@ camelCase, `PaymentController.java:38`) still OPEN on both sides
   convention), drop the three phantom methods, pin the exact URL in
   `order.service.spec.ts`.
 
-### S4. `@GetMapping("images")` missing leading slash — OPEN (Low)
+### S4. `@GetMapping("images")` missing leading slash — IN REVIEW (PR #113)
 - `backend/product-service/.../controller/ProductController.java:126` maps
   `"images"` while every other mapping in both services uses a leading `/`.
   Spring resolves both identically, so this is consistency-only.
 - Fix: `@GetMapping("/images")`; frontend `product.service.ts:59` already
   calls `/images`, unchanged.
 
-### S5. `PackageController` method names copy-pasted from Category — OPEN (Low)
+### S5. `PackageController` method names copy-pasted from Category — IN REVIEW (PR #113)
 - `backend/product-service/.../controller/PackageController.java:22,27,36,42,50`
   declare `getCategory`, `getCategories`, `createCategory`, `updateCategory`,
   `deleteCategory` on package routes. Behavior-neutral, reader-hostile.
