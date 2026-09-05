@@ -336,11 +336,9 @@ CI on JDK 25 Corretto is source of truth).
   rejecting inactive products in `createCartItem` (mirrors the order-creation
   guard); test asserts throw + never save. Found by Lens 4 hunt, 2026-09-05.
 
-### G3. Payment due-date uses the server default time zone — OPEN (Low)
+### G3. Payment due-date uses the server default time zone — FIXED (PR #80)
 - `backend/product-service/.../dto/payment/PaymentCreationRequest.java:24-30`
-  computes `dueDate` from `LocalDateTime.now()` (system zone), so the same
-  request yields different due dates on hosts in different zones; untestable
-  without a clock. Found by Lens 4 hunt, 2026-09-05.
-- Fix: inject a `Clock` (package-private test constructor precedent:
-  `RateLimitFilter`) or use UTC explicitly. Tests: fixed-clock due-date
-  boundary at 21:00.
+  computed `dueDate` from `LocalDateTime.now()` (system zone). Fixed with a
+  package-private `Clock` overload (public constructor unchanged, explicit
+  `@JsonCreator` so the Jackson contract is intact); fixed-clock tests cover
+  the 21:00 cutoff boundary. Found by Lens 4 hunt, 2026-09-05.
