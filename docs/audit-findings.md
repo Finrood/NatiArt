@@ -667,7 +667,7 @@ branch has zero test references; payment tests cover only
 `requireOwnedPayment` equality, never fetch ordering, null shapes, or
 non-finite values).
 
-### N1. Ghost-account hijack: re-registering a GHOST email mints fresh JWTs — OPEN (High)
+### N1. Ghost-account hijack: re-registering a GHOST email mints fresh JWTs — IN REVIEW (fix/ghost-reregistration-hijack; High)
 - `backend/directory-service/.../service/UserManager.java:90-101`:
   `registerGhostUser` returns the existing user unchanged when the email already
   maps to a `GHOST` account (no password, no proof of ownership), and

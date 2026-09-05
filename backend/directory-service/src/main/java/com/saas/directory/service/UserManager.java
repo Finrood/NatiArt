@@ -86,18 +86,20 @@ public class UserManager {
         return savedUser;
     }
 
+    /**
+     * Registers a guest checkout account. Any pre-existing account for the email —
+     * ghost or regular — is rejected without issuing tokens: re-registration must
+     * never authenticate as somebody else's account (ghost passwords are unseen
+     * random UUIDs, so a token here would be a de-facto login without proof of
+     * ownership). Callers receive {@code 409} via the controller advice.
+     */
     @Transactional
     public User registerGhostUser(UserRegistrationDto userRegistrationDto) throws Exception {
         final Optional<User> optionalUser = userRepository.findUserByUsernameIgnoreCase(userRegistrationDto.username());
 
         if (optionalUser.isPresent()) {
-            final User user = optionalUser.get();
-            if (user.getUserType() == UserType.GHOST) {
-                return user;
-            } else {
-                throw new ResourceAlreadyExistsException(
-                        String.format("User [%s] already exist", userRegistrationDto.username()));
-            }
+            throw new ResourceAlreadyExistsException(
+                    String.format("User [%s] already exist", userRegistrationDto.username()));
         }
 
         final Role role = roleRepository
