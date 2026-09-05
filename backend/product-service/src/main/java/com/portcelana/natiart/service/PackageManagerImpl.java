@@ -47,16 +47,30 @@ public class PackageManagerImpl implements PackageManager {
     @Override
     @Transactional
     public Package createPackage(PackageDto packageDto) {
-        final Package pack = new Package(
-                packageDto.getLabel(), packageDto.getHeight(), packageDto.getWidth(), packageDto.getDepth());
+        final String label = requireNonBlankLabel(packageDto.getLabel());
+        requirePositiveDimension(packageDto.getHeight(), "height");
+        requirePositiveDimension(packageDto.getWidth(), "width");
+        requirePositiveDimension(packageDto.getDepth(), "depth");
+        if (packageRepository.findPackageByLabel(label).isPresent()) {
+            throw new IllegalArgumentException("Package with label [" + label + "] already exists");
+        }
+        final Package pack = new Package(label, packageDto.getHeight(), packageDto.getWidth(), packageDto.getDepth());
         return packageRepository.save(pack);
     }
 
     @Override
     @Transactional
     public Package updatePackage(PackageDto packageDto) {
+        final String label = requireNonBlankLabel(packageDto.getLabel());
+        requirePositiveDimension(packageDto.getHeight(), "height");
+        requirePositiveDimension(packageDto.getWidth(), "width");
+        requirePositiveDimension(packageDto.getDepth(), "depth");
         final Package pack = getPackageOrDie(packageDto.getId());
-        pack.setLabel(packageDto.getLabel())
+        final Optional<Package> clash = packageRepository.findPackageByLabel(label);
+        if (clash.isPresent() && !clash.get().getId().equals(pack.getId())) {
+            throw new IllegalArgumentException("Package with label [" + label + "] already exists");
+        }
+        pack.setLabel(label)
                 .setHeight(packageDto.getHeight())
                 .setWidth(packageDto.getWidth())
                 .setDepth(packageDto.getDepth());
@@ -71,5 +85,18 @@ public class PackageManagerImpl implements PackageManager {
             throw new IllegalArgumentException("Package with label [" + pack.getLabel() + "] contains products.");
         }
         packageRepository.delete(pack);
+    }
+
+    private static String requireNonBlankLabel(String label) {
+        if (label == null || label.isBlank()) {
+            throw new IllegalArgumentException("Package label must not be blank");
+        }
+        return label.trim();
+    }
+
+    private static void requirePositiveDimension(float dimension, String field) {
+        if (!(dimension > 0)) {
+            throw new IllegalArgumentException("Package " + field + " must be a positive value");
+        }
     }
 }

@@ -503,3 +503,29 @@ Instruction-file fixes go in a human-review PR per the self-modification ban
   neither direction.
 - Fix: recount and reword (e.g. "14 files remaining"). Human-review PR
   (touches the module guide).
+
+## V. Injection and validation, catalog follow-ups (Lens 1 hunt, 2026-09-05)
+
+Hunt method: enumerated every `.trim()`/unboxing/`valueOf`/derived-query site
+in `backend/` per Lens 1. Re-verified this cycle: B3 still OPEN (zero
+`jakarta.validation` usage repo-wide; `ProfileManager.java:22-30` and
+`UserManager.java:79,110` unguarded `.trim()` calls unchanged). The
+`AsaasPaymentService` `valueOf` parsers (`:172,221,234`) are fail-closed
+(try/catch on upstream input, never raw user input) — not filed.
+`OrderManagerImpl.validateItems` (`:106-121`) already rejects null/blank
+product ids and non-positive quantities — not filed. V1/V2 below were fixed
+in flight on the same branch rather than tracked separately.
+
+### V3. `createProduct`/`updateProduct` accept null label/price, NPE on null images — OPEN (Medium)
+- `backend/product-service/.../service/ProductManagerImpl.java:127-149`
+  (`createProduct`) and `:151-170` (`updateProduct`) pass
+  `productDto.getLabel()`/`getOriginalPrice()` straight into
+  `new Product(...)` (`model/Product.java:83`) with no null/blank guard — a
+  null label fails late at the DB constraint (500) instead of 400; and
+  `processImages` (`:195-204`) dereferences `newImages.size()`/`.parallelStream()`
+  with no null check, so a body without images NPEs → 500. Found by Lens 1
+  hunt, 2026-09-05.
+- Fix: reject blank labels and null prices with `IllegalArgumentException`
+  (→ 400 via `ControllerAdvice`), null-tolerate both image lists. Tests:
+  null label/price → 400-path exception; null image lists → product persists
+  with empty images.
