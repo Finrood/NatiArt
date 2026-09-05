@@ -342,3 +342,44 @@ CI on JDK 25 Corretto is source of truth).
   package-private `Clock` overload (public constructor unchanged, explicit
   `@JsonCreator` so the Jackson contract is intact); fixed-clock tests cover
   the 21:00 cutoff boundary. Found by Lens 4 hunt, 2026-09-05.
+
+## H. N+1 queries and pagination (Lens 5 hunt, 2026-09-05)
+
+### H1. Paged product listings N+1 on LAZY `category`/`packaging` via `ProductDto.from` — OPEN (Medium)
+- `backend/product-service/.../dto/ProductDto.java:43-44` touches
+  `product.getCategory()` and `product.getPackaging()`, both `FetchType.LAZY`
+  (`model/Product.java:40-46`). The paged fetch
+  (`repository/ProductRepository.java:39-40`) only `LEFT JOIN FETCH`s `images`,
+  and `findByIdWithImages` (`:19-20`) likewise omits them — every product in a
+  page (or single-product view) emits up to 2 extra SELECTs during DTO mapping.
+- Fix: extend both fetch queries to also fetch-join the single-valued
+  `category`/`packaging` associations; assert `Hibernate.isInitialized` in
+  `ProductRepositoryPaginationTest`. Tests: paged + single fetch leave no lazy
+  category/packaging uninitialized.
+
+### H2. `GET /packages` unbounded `findAll` with in-memory sort — OPEN (Medium)
+- `backend/product-service/.../controller/PackageController.java:26-32` returns
+  the whole table (`service/PackageManagerImpl.java:40-42`
+  `packageRepository.findAll()`) and sorts in memory. No pagination at all —
+  same lens as B7, separate endpoint.
+- Fix: accept capped `page`/`size` (same 100-item cap as B7), sort in the query.
+  Tests: oversized `size` clamped; default page serves sorted labels.
+
+### H3. `deletePackage` loads the full `products` collection for an emptiness check — OPEN (Low-Medium)
+- `backend/product-service/.../service/PackageManagerImpl.java:67` calls
+  `pack.getProducts().isEmpty()` on a LAZY `@OneToMany`
+  (`model/Package.java:18-19`), loading every product of the package just to
+  test non-emptiness. Sibling `CategoryManagerImpl.deleteCategory` already uses
+  an `existsByCategory` query instead.
+- Fix: add `existsByPackaging` to `ProductRepository` and use it in
+  `deletePackage`. Tests: delete with/without products; verify no collection load.
+
+### H4. Cart listing has no entity graph for `product`/`personalization` — OPEN (Low-Medium)
+- `backend/product-service/.../repository/CartItemRepository.java:14`
+  `findCartItemsByUsername` is a bare derived query; `CartItem.product` is
+  `EAGER` (`model/CartItem.java:18-20`) so each cart line re-fetches its
+  product, and `CartItemDto.from` (`dto/CartItemDto.java:10-15`) additionally
+  touches the `personalization` `@OneToOne` (`:22-23`). Per-user carts are
+  small, hence Low-Medium, not High.
+- Fix: `@EntityGraph`/`JOIN FETCH` on `findCartItemsByUsername` for
+  `product` + `personalization`. Tests: N lines load with a bounded query count.
