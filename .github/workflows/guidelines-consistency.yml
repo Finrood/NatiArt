@@ -3,8 +3,26 @@ name: Guidelines Consistency
 on:
   push:
     branches: [ "master" ]
+    paths:
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "GEMINI.md"
+      - ".cursorrules"
+      - "agents/**"
+      - "backend/AGENTS.md"
+      - "frontend/natiart-app/AGENTS.md"
+      - ".github/workflows/guidelines-consistency.yml"
   pull_request:
     branches: [ "master" ]
+    paths:
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "GEMINI.md"
+      - ".cursorrules"
+      - "agents/**"
+      - "backend/AGENTS.md"
+      - "frontend/natiart-app/AGENTS.md"
+      - ".github/workflows/guidelines-consistency.yml"
 
 # Least privilege: the check only reads the repo.
 permissions:

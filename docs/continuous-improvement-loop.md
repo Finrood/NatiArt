@@ -121,6 +121,24 @@ The instruction set is 13 files: root `AGENTS.md` (+ identical mirrors
   the cycle, so no cycle is ever hunt-only (zero merged value) or fix-only
   (backlog drain).
 
+## CI: fast and scoped (do not wait on irrelevant checks)
+
+Backend CI runs directory-service and product-service as parallel jobs (~half
+the wall time) with per-service failure reports. All workflows are
+path-scoped; merge when every reported check is green AND every relevant
+workflow has reported:
+
+| Changed paths | Must report |
+|---|---|
+| `backend/**` | Backend CI (both service jobs) |
+| `frontend/**` | Frontend CI |
+| instruction files (`AGENTS.md`, mirrors, `agents/**`, module guides) | Guidelines |
+| `.github/workflows/<name>.yml` | that workflow |
+| anything else | all three |
+
+No branch protection is configured, so scoping never blocks a merge — the
+table above is agent discipline, enforced by the cycle prompt.
+
 ## Reliability rules
 
 - Timebox budget per cycle: pickup ~2 min, hunt 5 min, fix loop until

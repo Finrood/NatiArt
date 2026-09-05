@@ -48,8 +48,11 @@ Phase 2 — fix loop, until kill-minus-8-min (max 3 fix PRs):
 
 Phase 3 — merge everything green:
 7. Watch all cycle PRs (`gh pr checks` per PR). Zero reported checks means CI
-   has not registered yet — wait, never treat it as green. Expected: Backend
-   CI, Frontend CI, Guidelines, all present and green. Merge each green PR
+   has not registered yet — wait, never treat it as green. Workflows are
+   path-scoped (table in the runbook): merge ONLY when every reported check is
+   green AND every workflow relevant to the PR's changed paths has reported.
+   A docs-only PR legitimately shows Guidelines alone; a backend PR must show
+   both Backend CI service jobs. Merge each green PR
    (`--merge --delete-branch`); flip statuses (batch all flips into one
    `docs/` PR if several). Still red after one flake rerun → leave open and
    report. Scope-error refusals go to the human, never routed around. Never
