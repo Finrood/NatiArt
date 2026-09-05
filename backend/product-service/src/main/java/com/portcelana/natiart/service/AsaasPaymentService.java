@@ -65,8 +65,8 @@ public class AsaasPaymentService implements PaymentService {
                             responseBody.getId(),
                             responseBody.getDateCreated().atStartOfDay(),
                             responseBody.getCustomer(),
-                            PaymentMethod.valueOf(responseBody.getBillingType()),
-                            PaymentStatus.valueOf(responseBody.getStatus()),
+                            parsePaymentMethod(responseBody.getBillingType()),
+                            parsePaymentStatus(responseBody.getStatus()),
                             responseBody.getDueDate().atStartOfDay(),
                             responseBody.getInvoiceUrl(),
                             responseBody.getInvoiceNumber()))
@@ -149,6 +149,32 @@ public class AsaasPaymentService implements PaymentService {
             return AsaasPaymentStatus.valueOf(status);
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new IllegalArgumentException("Unexpected Asaas status: " + status);
+        }
+    }
+
+    /**
+     * Maps the upstream Asaas billing-type string onto our {@link PaymentMethod}.
+     * Unknown or null values fail closed with a static message -- the raw upstream
+     * text is never echoed into the response body.
+     */
+    static PaymentMethod parsePaymentMethod(String billingType) {
+        try {
+            return PaymentMethod.valueOf(billingType);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new IllegalArgumentException("Unexpected Asaas billing type");
+        }
+    }
+
+    /**
+     * Maps the upstream Asaas status string onto our {@link PaymentStatus}.
+     * Unknown or null values fail closed with a static message -- the raw upstream
+     * text is never echoed into the response body.
+     */
+    static PaymentStatus parsePaymentStatus(String status) {
+        try {
+            return PaymentStatus.valueOf(status);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new IllegalArgumentException("Unexpected Asaas payment status");
         }
     }
 

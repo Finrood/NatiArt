@@ -15,6 +15,7 @@ import com.portcelana.natiart.dto.payment.PaymentCreationRequest;
 import com.portcelana.natiart.dto.payment.asaas.AsaasPaymentCreationRequest;
 import com.portcelana.natiart.dto.payment.helper.PaymentMethod;
 import com.portcelana.natiart.dto.payment.helper.PaymentProcessor;
+import com.portcelana.natiart.dto.payment.helper.PaymentStatus;
 
 @ExtendWith(MockitoExtension.class)
 class AsaasPaymentServiceTest {
@@ -79,5 +80,31 @@ class AsaasPaymentServiceTest {
         final AsaasPaymentCreationRequest mapped = AsaasPaymentCreationRequest.from(request, "cus_MINE");
         assertEquals("cus_MINE", mapped.getCustomer());
         assertEquals(10.0, mapped.getValue());
+    }
+
+    @Test
+    void parsePaymentMethod_mapsKnownBillingTypes() {
+        assertEquals(PaymentMethod.PIX, AsaasPaymentService.parsePaymentMethod("PIX"));
+        assertEquals(PaymentMethod.CREDIT_CARD, AsaasPaymentService.parsePaymentMethod("CREDIT_CARD"));
+    }
+
+    @Test
+    void parsePaymentMethod_rejectsUnknownOrNullBillingType() {
+        assertThrows(IllegalArgumentException.class, () -> AsaasPaymentService.parsePaymentMethod("BOLETO"));
+        assertThrows(IllegalArgumentException.class, () -> AsaasPaymentService.parsePaymentMethod(null));
+        assertThrows(IllegalArgumentException.class, () -> AsaasPaymentService.parsePaymentMethod(""));
+    }
+
+    @Test
+    void parsePaymentStatus_mapsKnownStatuses() {
+        assertEquals(PaymentStatus.PENDING, AsaasPaymentService.parsePaymentStatus("PENDING"));
+        assertEquals(PaymentStatus.COMPLETED, AsaasPaymentService.parsePaymentStatus("COMPLETED"));
+    }
+
+    @Test
+    void parsePaymentStatus_rejectsUnknownOrNullStatus() {
+        assertThrows(IllegalArgumentException.class, () -> AsaasPaymentService.parsePaymentStatus("OVERDUE"));
+        assertThrows(IllegalArgumentException.class, () -> AsaasPaymentService.parsePaymentStatus(null));
+        assertThrows(IllegalArgumentException.class, () -> AsaasPaymentService.parsePaymentStatus(""));
     }
 }

@@ -9,6 +9,15 @@ public class ShippingEstimateRequest {
     private final int quantity;
 
     public ShippingEstimateRequest(String to, float weight, float length, float width, float height, int quantity) {
+        if (to == null || to.isBlank()) {
+            throw new IllegalArgumentException("Destination postal code cannot be empty");
+        }
+        if (weight <= 0 || length <= 0 || width <= 0 || height <= 0) {
+            throw new IllegalArgumentException("Shipping weight and dimensions must be greater than zero");
+        }
+        if (quantity < 1) {
+            throw new IllegalArgumentException("Shipping quantity must be at least one");
+        }
         this.to = to;
         this.weight = weight;
         this.length = length;
