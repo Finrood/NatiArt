@@ -572,7 +572,7 @@ CI on JDK 25 Corretto is source of truth).
 
 ## M. Frontend data identity (Lens 10 hunt, 2026-09-05)
 
-### M1. Product detail goes stale when navigating between related products — OPEN (Medium)
+### M1. Product detail goes stale when navigating between related products — IN REVIEW (fix/product-detail-loading-error)
 - `frontend/natiart-app/src/app/product/components/customer/product-detail/product-detail.component.ts:67-72`
   reads `route.snapshot.paramMap.get('id')` once in `ngOnInit`; the related-products
   template (`product-detail.component.html:154`) links `['/product', relatedProduct.id]`
@@ -583,7 +583,7 @@ CI on JDK 25 Corretto is source of truth).
   resetting `quantity`/`selectedImageIndex` per id) instead of the one-shot snapshot.
   Spec: param change from `p1` to `p2` loads `p2`.
 
-### M2. Related-products race: slow first response overwrites the current product — OPEN (Low-Medium)
+### M2. Related-products race: slow first response overwrites the current product — IN REVIEW (fix/product-detail-loading-error)
 - `frontend/natiart-app/src/app/product/components/customer/product-detail/product-detail.component.ts:272-293`
   `loadRelatedProducts` captures `currentProductId` once and subscribes without
   cancellation; two rapid product visits leave overlapping `getProductsByCategory`
@@ -594,7 +594,7 @@ CI on JDK 25 Corretto is source of truth).
   token and drop stale responses). Spec: stale category response never replaces
   the current related list.
 
-### M3. `getProduct(null)` requests `/products/null` instead of failing fast — OPEN (Low)
+### M3. `getProduct(null)` requests `/products/null` instead of failing fast — IN REVIEW (fix/product-detail-loading-error; service half already on master, view half in this batch)
 - `frontend/natiart-app/src/app/product/service/product.service.ts:34-36`
   `getProduct(productId: string | null)` interpolates the id unchecked
   (`` `${this.apiUrl}/${productId}` ``), so a `null` id issues `GET .../null`;
@@ -712,3 +712,40 @@ non-finite values).
   destroy, clear the fireworks interval in `ngOnDestroy`. Spec: polling stops
   after the cap; no timers survive destroy. (Lens 11 resource-hygiene instance
   with availability/cost impact via N3.)
+
+## O. Loading and error UX (Lens 12 hunt, 2026-09-05)
+
+### O1. PIX confirmation QR failure is swallowed: no error state, PENDING forever — OPEN (Low-Medium)
+- `frontend/natiart-app/src/app/product/components/customer/checkout/pix-payment-confirmation/pix-payment-confirmation.component.ts:43-48`:
+  `loadQrCode` handles failure with `console.error` only. When the QR fetch
+  fails, the view keeps the PENDING visual state with a missing QR and no
+  message, so the user cannot pay and is never told why. The sibling polling
+  error path (`:83-87`) already surfaces `paymentStatus = 'ERROR'` — the QR
+  path does not. Found by Lens 12 hunt, 2026-09-05.
+- Fix: set `paymentStatus = 'ERROR'` (or a dedicated `qrError` flag with a
+  retry affordance) on QR failure. Spec: QR error → error state, no silent
+  PENDING.
+
+### O2. Admin product-management image/list loads swallow errors — OPEN (Low)
+- `frontend/natiart-app/src/app/product/components/admin/admin-product-management/admin-product-management.component.ts:289-296`
+  (`fetchImage`) and `:304-317` (`fetchImagePreview`) subscribe with a
+  next-only handler, so image-fetch failures are unhandled; `getProducts` /
+  `getCategories` / `getPackages` (`:235-258`) and `toggleProductVisibility`
+  (`:192-199`) log to `console.error` with no user-visible feedback (contrast
+  `deleteProduct`/`addProduct`/`updateProduct`, which use `showAlert`).
+  A failed product list renders an empty table indistinguishable from "no
+  products". Found by Lens 12 hunt, 2026-09-05.
+- Fix: route list/toggle failures through `showAlert(..., 'error')`, add error
+  callbacks to the image subscriptions (placeholder + alert). Spec: failed
+  `getProducts` → error alert shown.
+
+### O3. Checkout error banner auto-dismisses after 7s, info/error share one string — OPEN (Low)
+- `frontend/natiart-app/src/app/product/components/customer/checkout/checkout.component.ts:377-398`:
+  `setErrorMessage` arms `setTimeout(() => clearErrorMessage(), 7000)`, so a
+  checkout error vanishes even if the user has not read or acted on it; info
+  and error states share the single `errorMessage` string with an `INFO:` text
+  prefix that screen readers announce as an error. Found by Lens 12 hunt,
+  2026-09-05.
+- Fix: separate `infoMessage`/`errorMessage` fields with `role="alert"` on the
+  error, and dismiss errors on user action (or a manual close) rather than a
+  fixed timer. Tracked, not silently fixed.
