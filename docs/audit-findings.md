@@ -469,7 +469,7 @@ gaps. Not filed: Spring Boot `3.5.6` → `4.1.1` (PR #55) and Angular `20` →
 `22` (PR #59) majors — both red CI, left on their dependabot branches for a
 human decision per the Lens-16 routine, never touched here.
 
-### T1. Angular 20.3.1 ships 8 high `npm audit` advisories, patch fix available in 20.3.x — OPEN (High)
+### T1. Angular 20.3.1 ships 8 high `npm audit` advisories, patch fix available in 20.3.x — IN REVIEW (High)
 - `frontend/natiart-app/package.json:14-27` pins `^20.3.1`; installed
   `20.3.1` (`npm ls @angular/core`) is inside every advisory range:
   XSRF token leakage via protocol-relative URLs (`@angular/common`
@@ -482,7 +482,7 @@ human decision per the Lens-16 routine, never touched here.
   `20.3.x`, lockfile churn in the same commit; keep the `22.x` major on the
   dependabot branch. Tests: `npm run build` + Karma suite green.
 
-### T2. `@angular/cdk ^19.0.1` major-skewed against Angular 20 core — OPEN (Medium)
+### T2. `@angular/cdk ^19.0.1` major-skewed against Angular 20 core — IN REVIEW (Medium)
 - `frontend/natiart-app/package.json:15` pins CDK `^19.0.1` (installed
   `19.2.19`) while every sibling Angular package is `^20.3.1` (installed
   `20.3.1`). Mixed majors across the Angular family risk subtle CDK/overlay
