@@ -588,3 +588,18 @@ non-finite values).
 - Aligned CDK `^19.0.1` (installed `19.2.19`) → `^20.2.14`, whose peers accept
   core `^20`. Same verification as T1 (build + 123 specs green, audit 0).
 
+### N4. Payment creation request shape gaps: null-enum NPE → 500, non-finite `Double` money — FIXED (PR #125)
+- `PaymentCreationRequest` constructor rejects null processor/billingType and
+  null/non-finite/non-positive value; `createPayment` backstops with the same
+  finite check; new advice handler unwraps Jackson-wrapped guard IAEs
+  (`HttpMessageNotReadableException` cause chain) → 400 with the guard message
+  instead of the catch-all 500. Money stays `Double` (wire + Asaas contract
+  unchanged); exact-total reconciliation remains tracked in G1.
+- Verified: MockMvc missing-`billingType` POST → 400 with zero service calls
+  (500 before the handler); full product-service suite green; Spotless clean.
+
+### Q2. `PaymentCreationRequestTest` covers only the due-date boundary — FIXED (PR #125)
+- Spec extended: valid passthrough + null-enum + null/NaN/±Inf/0/negative
+  rejections; service-boundary NaN/-Inf via Mockito stubs (real DTOs throw
+  first). Stash-verified non-vacuous. G1 reconciliation surface still open.
+
