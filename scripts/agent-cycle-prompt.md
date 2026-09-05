@@ -34,6 +34,10 @@ Phase 1 — hunt, always (5 min, timer-bounded):
    findings as new `OPEN` items (file:line evidence + severity) via the
    `docs/` path (commit on the first fix branch, or its own tiny branch if no
    fix batch materializes). Searching happens every cycle, fix or no fix.
+   Severity labels are exactly `High`/`Medium`/`Low`. New findings append to
+   `docs/audit-findings.md`; flipping an item to `FIXED` means moving its whole
+   `###` section to `docs/audit-findings-archive.md` (the working file holds
+   only actionable items).
 
 Phase 2 — fix loop, until kill-minus-8-min (max 3 fix PRs):
 5. While time remains: assemble a theme batch of 2-4 related `OPEN` items
@@ -43,7 +47,9 @@ Phase 2 — fix loop, until kill-minus-8-min (max 3 fix PRs):
    finding against current `master`; mark fixed ones `INVALID`.
 6. Branch per `agents/git-workflow.md` (never dependabot branches), implement
    with thorough tests (Mockito per `agents/java-testing.md`, Karma specs for
-   frontend logic), one commit per finding (`[Type]` each). Run `!check`
+   frontend logic — run frontend commands from `frontend/natiart-app` via npm
+   scripts, e.g. `npm test -- --watch=false --browsers=ChromeHeadless`, never
+   bare `ng`), one commit per finding (`[Type]` each). Run `!check`
    (compile + full impacted suites green) and `!review` (docs, JavaDoc, no
    unused imports, no debug artifacts, Spotless clean). Push the branch, open
    the PR, record its number, repeat while the timebox allows.
