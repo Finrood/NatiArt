@@ -253,7 +253,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
   404 with zero upstream calls (mock `RestTemplate` unverified); owned id
   still resolves.
 
-### N4. Payment creation request shape gaps: null-enum NPE → 500, non-finite `Double` money — OPEN (Medium)
+### N4. Payment creation request shape gaps: null-enum NPE → 500, non-finite `Double` money — IN REVIEW (Medium)
 - `backend/product-service/.../dto/payment/PaymentCreationRequest.java:22-29`
   takes `paymentProcessor`/`customerId`/`value`/`billingType` with no guards;
   `service/AsaasPaymentService.java:55-57` checks only `value != null && > 0`;
@@ -349,7 +349,7 @@ flight (N1, PR #108) rather than tracked separately.
   (e.g. null-password `IllegalArgumentException`). Tests: suite still green,
   single creation-path test.
 
-### Q2. `PaymentCreationRequestTest` covers only the due-date boundary — OPEN (Low-Medium)
+### Q2. `PaymentCreationRequestTest` covers only the due-date boundary — IN REVIEW (Low-Medium)
 - `backend/product-service/.../dto/payment/PaymentCreationRequestTest.java:26-31`:
   2 tests, both asserting `getDueDate()`; the N4 money-shape gaps (null
   `billingType`/`paymentProcessor`, `NaN`/`Infinity` `value`) have no specs,

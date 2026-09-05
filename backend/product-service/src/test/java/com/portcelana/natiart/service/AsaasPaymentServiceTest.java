@@ -81,6 +81,22 @@ class AsaasPaymentServiceTest {
     }
 
     @Test
+    void createPayment_rejectsNonFiniteValue() {
+        final AsaasPaymentService service = newService();
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.createPayment(
+                        new PaymentCreationRequest(PaymentProcessor.ASAAS, "cus_MINE", Double.NaN, PaymentMethod.PIX),
+                        "cus_MINE"));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.createPayment(
+                        new PaymentCreationRequest(
+                                PaymentProcessor.ASAAS, "cus_MINE", Double.POSITIVE_INFINITY, PaymentMethod.PIX),
+                        "cus_MINE"));
+    }
+
+    @Test
     void asaasMappingBindsCustomerToRequesterNotRequestBody() {
         final PaymentCreationRequest request =
                 new PaymentCreationRequest(PaymentProcessor.ASAAS, "cus_SPOOFED", 10.0, PaymentMethod.PIX);
