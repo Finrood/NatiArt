@@ -19,12 +19,12 @@ public class PackageController {
     }
 
     @GetMapping("/packages/{packageId}")
-    public PackageDto getCategory(@PathVariable String packageId) {
+    public PackageDto getPackage(@PathVariable String packageId) {
         return PackageDto.from(packageManager.getPackageOrDie(packageId));
     }
 
     @GetMapping("/packages")
-    public List<PackageDto> getCategories() {
+    public List<PackageDto> getPackages() {
         return packageManager.getPackages().stream()
                 .map(PackageDto::from)
                 .sorted(Comparator.comparing(PackageDto::getLabel))
@@ -33,13 +33,13 @@ public class PackageController {
 
     @PostMapping("/packages/create")
     @PreAuthorize("hasRole('ADMIN')")
-    public PackageDto createCategory(@RequestBody PackageDto packageDto) {
+    public PackageDto createPackage(@RequestBody PackageDto packageDto) {
         return PackageDto.from(packageManager.createPackage(packageDto));
     }
 
     @PutMapping("/packages/{packageId}")
     @PreAuthorize("hasRole('ADMIN')")
-    public PackageDto updateCategory(@PathVariable String packageId, @RequestBody PackageDto packageDto) {
+    public PackageDto updatePackage(@PathVariable String packageId, @RequestBody PackageDto packageDto) {
         Assert.isTrue(packageId.equals(packageDto.getId()), "package ids are not equals !");
 
         return PackageDto.from(packageManager.updatePackage(packageDto));
@@ -47,7 +47,7 @@ public class PackageController {
 
     @DeleteMapping("/packages/{packageId}")
     @PreAuthorize("hasRole('ADMIN')")
-    public void deleteCategory(@PathVariable String packageId) {
+    public void deletePackage(@PathVariable String packageId) {
         packageManager.deletePackage(packageId);
     }
 }
