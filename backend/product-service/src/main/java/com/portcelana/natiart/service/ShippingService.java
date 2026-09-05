@@ -28,6 +28,10 @@ public class ShippingService {
 
     public ShippingService(
             @Value("${melhorenvio.api.url}") String apiUrl, @Value("${melhorenvio.api.token}") String apiToken) {
+        if (apiToken == null || apiToken.isBlank()) {
+            throw new IllegalStateException(
+                    "melhorenvio.api.token is blank: set the MELHORENVIO_API_TOKEN environment variable");
+        }
         final SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(5));
         factory.setReadTimeout(Duration.ofSeconds(15));

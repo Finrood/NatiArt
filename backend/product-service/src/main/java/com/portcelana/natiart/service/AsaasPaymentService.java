@@ -28,13 +28,16 @@ public class AsaasPaymentService implements PaymentService {
     private final String asaasPaymentUrl;
     private final RestTemplate restTemplate;
 
-    @Value("${natiart.payment.asaas.apikey}")
-    private String asaasApiKey;
+    private final String asaasApiKey;
 
     public AsaasPaymentService(
             @Value("${natiart.payment.asaas.apikey}") String asaasApiKey,
             @Value("${natiart.payment.asaas.payments-url:https://sandbox.asaas.com/api/v3/payments}")
                     String asaasPaymentUrl) {
+        if (asaasApiKey == null || asaasApiKey.isBlank()) {
+            throw new IllegalStateException(
+                    "natiart.payment.asaas.apikey is blank: set the NATIART_PAYMENT_ASAAS_APIKEY environment variable");
+        }
         this.asaasApiKey = asaasApiKey;
         this.asaasPaymentUrl = asaasPaymentUrl;
         final SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();

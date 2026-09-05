@@ -258,6 +258,47 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Strategic/deferred (needs maintainer decision, NOT in this batch): B8 (shared
   rate-limit store), C5 long-term (cookie auth + CSP).
 
+## F. Secrets and configuration (Lens 3 hunt, 2026-09-05)
+
+### F1. Hard-coded `directory.service.url`, no env override — OPEN (Medium)
+- `backend/product-service/src/main/resources/application.properties:22` sets the
+  literal `directory.service.url=http://localhost:8081`, consumed by
+  `configuration/JwtAuthFilter.java:30` and `configuration/SecurityConfig.java:26`
+  via `@Value("${directory.service.url}")` with no default. No profile overrides
+  it, so every non-local deployment validates tokens against loopback (auth
+  outage). Per `agents/java-spring.md`, integration URLs come from properties
+  with env overrides — never hard-code.
+- Fix: `directory.service.url=${DIRECTORY_SERVICE_URL:http://localhost:8081}`,
+  keeping the localhost default for dev.
+
+### F2. Dead `nati.proxy.directory.baseUrl` localhost in every profile — OPEN (Low-Medium)
+- `backend/product-service/src/main/resources/application-{production,dev,local-h2}.properties:24`
+  all set `nati.proxy.directory.baseUrl=http://localhost:8081`, including
+  production. Zero Java consumers (the live key is `directory.service.url`),
+  so this is dead config that misleads prod review into thinking the directory
+  peer is configured.
+- Fix: delete the dead key from all three profiles.
+
+### F3. Blank Melhor Envio token fails open — OPEN (Medium)
+- `backend/product-service/src/main/resources/application.properties:16` defaults
+  `melhorenvio.api.token` to empty; `service/ShippingService.java:29-43` then
+  sends `Authorization: Bearer ` blank and fails downstream at the Melhor Envio
+  API instead of at startup (contrast the fail-fast JWT secret precedent in
+  directory `configuration/UserAuthenticationProvider.java:68-73`, required by
+  `backend/AGENTS.md`).
+- Fix: constructor throws `IllegalStateException` on blank token. Tests:
+  blank/null token → throws; valid token → constructs.
+
+### F4. Blank Asaas API key fails open on both services + duplicate `@Value` — OPEN (Medium)
+- Product `service/AsaasPaymentService.java:31-39` and directory
+  `service/AsaasUserManager.java:26-34`: a field-level
+  `@Value("${natiart.payment.asaas.apikey}")` duplicates the constructor
+  `@Value` (constructor wins; the field annotation is dead and confusing), and
+  a blank key is accepted — the first failure is an empty `access_token` header
+  rejected by Asaas (401), not a startup error.
+- Fix: drop the field `@Value`, make the field `final`, fail fast on blank in
+  the constructor. Tests per service: blank/null key → `IllegalStateException`.
+
 Each PR: branch from `master`, `[Type]` commit messages, tests per
 `agents/java-testing.md` (Mockito, no Spring context) and Karma specs, `!check`
 + `!review` green, CI green before merge, delete branch after merge.
