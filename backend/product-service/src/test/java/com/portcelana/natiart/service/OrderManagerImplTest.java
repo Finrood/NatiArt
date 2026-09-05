@@ -118,6 +118,15 @@ class OrderManagerImplTest {
     }
 
     @Test
+    void createOrderRejectsQuantityAboveCap() {
+        OrderDto dto = new OrderDto().setDeliveryAmount(BigDecimal.ONE).setItems(List.of(item("p1", 101)));
+
+        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto));
+        verify(productRepository, never()).decreaseStockIfAvailable(any(), anyInt());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
     void createOrderRejectsInactiveProduct() {
         Product retired = product("p4", "Retired plate", new BigDecimal("15.00"), null, 100).setActive(false);
         when(productManager.getProductOrDie("p4")).thenReturn(retired);
