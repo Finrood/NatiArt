@@ -415,3 +415,56 @@ CI on JDK 25 Corretto is source of truth).
 - B9 product half still OPEN: `JwtAuthFilter.java:41-49` still `build()`s a
   `WebClient` per request (5s timeout since added; downstream outage → 503
   fail-closed). Per-request build churn remains as a Low perf nit.
+
+## J. File and storage safety (Lens 7 hunt, 2026-09-05)
+
+### J1. Image decode/dimension rejections surface as 500, not 400 — IN REVIEW (Medium)
+- `backend/product-service/.../service/ImageConversionService.java:29` wraps
+  every `IOException` (including the dimension-limit rejection `:85-88` and the
+  null-decode `:40-42` for non-image bytes) into `RuntimeException`, which
+  `configuration/ControllerAdvice.java:24-28` maps to generic 500. A garbage
+  upload (text renamed `.png`) or an oversized image yields 500 instead of 400;
+  image decode is the only content gate (no MIME allowlist) and its failure is
+  misclassified. Found by Lens 7 hunt, 2026-09-05.
+- Fix: throw `IllegalArgumentException` (mapped to 400 by the product advice)
+  for validation rejections; keep `RuntimeException` for genuine IO failures.
+  Tests: non-image bytes and oversized dimensions → `IllegalArgumentException`.
+
+### J2. `StorageServiceImpl.downloadFiles` empty-set `NoSuchElementException` → 500 — IN REVIEW (Low)
+- `backend/product-service/.../storage/StorageServiceImpl.java:48-51` calls
+  `uriSet.iterator().next()` with no null/empty guard; an empty set throws
+  `NoSuchElementException` (null set NPEs) → generic 500 instead of 400.
+  Found by Lens 7 hunt, 2026-09-05.
+- Fix: fail-fast `IllegalArgumentException` on null/empty set. Tests: empty
+  and null sets → `IllegalArgumentException`.
+
+### J3. `downloadDirectory` zip recursion follows symlinks, bypassing read confinement — IN REVIEW (Medium)
+- `backend/product-service/.../storage/StorageFileSystem.java:150` confines the
+  top-level directory via `resolveAllowedFile` (canonicalize + `allowedRoots`),
+  but `zipFileRecursively` (`:166-184`) walks `listFiles()` and streams each
+  child via a bare `FileInputStream` (`:186-199`) without re-canonicalizing.
+  A symlink planted inside an allowed root (e.g. `gallery/link ->
+  /etc/passwd`) is followed and its target's bytes are exfiltrated into the
+  zip. Single-file `openFile` is protected (canonicalize check, proven by
+  `StorageFileSystemTest.java:101-115`); only the directory recursion is
+  exposed. Found by Lens 7 hunt, 2026-09-05.
+- Fix: skip symbolic links during recursion (fail closed — never zip bytes
+  from outside the confined tree). Tests: gallery with real file + escape
+  symlink → zip contains the real file only.
+
+### J4. `GET images` malformed `path` → `URISyntaxException` → 500 — OPEN (Low)
+- `backend/product-service/.../controller/ProductController.java:127` takes a
+  raw `path` request param; `service/ProductManagerImpl.java:181-184` passes it
+  to `new URI(path)`. Garbage (`::bad::`) throws `URISyntaxException`, which no
+  advice handler maps → generic 500 instead of 400. In-root and out-of-root
+  URIs already map correctly (400/404). Found by Lens 7 hunt, 2026-09-05.
+- Fix: catch `URISyntaxException` → `IllegalArgumentException`. Tests:
+  malformed path → 400.
+
+### J5. `downloadFiles` duplicate basenames collide inside the zip — OPEN (Low)
+- `backend/product-service/.../storage/StorageFileSystem.java:135-139` names
+  each zip entry from `Paths.get(path).getFileName()`, so `p1/a.webp` and
+  `p2/a.webp` produce two `a.webp` entries; extraction silently keeps one
+  (data loss). Found by Lens 7 hunt, 2026-09-05.
+- Fix: disambiguate entry names (prefix with parent or index). Tests: same
+  basename twice → two distinct entries.
