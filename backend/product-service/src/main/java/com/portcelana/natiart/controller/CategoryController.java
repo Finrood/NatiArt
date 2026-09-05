@@ -17,6 +17,7 @@ import com.portcelana.natiart.service.CategoryManager;
 @RestController
 public class CategoryController {
     public static Logger LOGGER = LoggerFactory.getLogger(CategoryController.class);
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final CategoryManager categoryManager;
 
@@ -36,10 +37,16 @@ public class CategoryController {
             @RequestParam(required = false, defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "20") int size) {
         LOGGER.info("Getting all categories");
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "label"));
+        Pageable pageable = toPageable(page, size);
         return categoryManager.getCategories(pageable).stream()
                 .map(CategoryDto::from)
                 .toList();
+    }
+
+    private static Pageable toPageable(int page, int size) {
+        final int safePage = Math.max(0, page);
+        final int safeSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
+        return PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "label"));
     }
 
     @PostMapping("/categories/create")
