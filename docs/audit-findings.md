@@ -201,7 +201,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix now: remove log, wrap storage in try/catch. Long-term (needs decision):
   `httpOnly`/`SameSite` cookies + CSP. Do NOT attempt cookie migration in this batch.
 
-### C6. CEP auto-lookup per keystroke, no debounce/cancellation — OPEN (Medium)
+### C6. CEP auto-lookup per keystroke, no debounce/cancellation — IN REVIEW (fix/frontend-cep-lookup-race; Medium)
 - `address-form.component.ts:42-44,69-77`: every edit patches/clears address,
   overlapping viacep requests race. `shipping-estimation` already shows the
   correct pattern (`debounceTime/distinctUntilChanged/switchMap`).
