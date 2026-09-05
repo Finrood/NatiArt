@@ -51,8 +51,7 @@ public class PackageManagerImpl implements PackageManager {
         requirePositiveDimension(packageDto.getHeight(), "height");
         requirePositiveDimension(packageDto.getWidth(), "width");
         requirePositiveDimension(packageDto.getDepth(), "depth");
-        final Package pack = new Package(
-                label, packageDto.getHeight(), packageDto.getWidth(), packageDto.getDepth());
+        final Package pack = new Package(label, packageDto.getHeight(), packageDto.getWidth(), packageDto.getDepth());
         return packageRepository.save(pack);
     }
 

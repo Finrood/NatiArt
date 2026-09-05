@@ -65,8 +65,7 @@ class CategoryManagerImplTest {
     @Test
     void createCategory_freshLabel_persistsTrimmedLabel() {
         when(categoryRepository.findCategoryByLabel("Box")).thenReturn(Optional.empty());
-        when(categoryRepository.save(any(Category.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         final Category created = categoryManager.createCategory(new CategoryDto("  Box  "));
 
@@ -92,8 +91,7 @@ class CategoryManagerImplTest {
         final Category current = new Category("Box");
         when(categoryRepository.findById(current.getId())).thenReturn(Optional.of(current));
         when(categoryRepository.findCategoryByLabel("Box")).thenReturn(Optional.of(current));
-        when(categoryRepository.save(any(Category.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         final Category updated = categoryManager.updateCategory(new CategoryDto("Box").setId(current.getId()));
 

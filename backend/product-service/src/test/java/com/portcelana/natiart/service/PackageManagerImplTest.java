@@ -55,7 +55,8 @@ class PackageManagerImplTest {
 
     @Test
     void createPackage_blankLabel_throwsWithoutSaving() {
-        final PackageDto dto = new PackageDto().setLabel("  ").setHeight(1.0f).setWidth(1.0f).setDepth(1.0f);
+        final PackageDto dto =
+                new PackageDto().setLabel("  ").setHeight(1.0f).setWidth(1.0f).setDepth(1.0f);
 
         assertThrows(IllegalArgumentException.class, () -> packageManager.createPackage(dto));
 
@@ -64,7 +65,8 @@ class PackageManagerImplTest {
 
     @Test
     void createPackage_zeroDimension_throwsWithoutSaving() {
-        final PackageDto dto = new PackageDto().setLabel("box").setHeight(0.0f).setWidth(1.0f).setDepth(1.0f);
+        final PackageDto dto =
+                new PackageDto().setLabel("box").setHeight(0.0f).setWidth(1.0f).setDepth(1.0f);
 
         assertThrows(IllegalArgumentException.class, () -> packageManager.createPackage(dto));
 
@@ -73,7 +75,8 @@ class PackageManagerImplTest {
 
     @Test
     void createPackage_negativeDimension_throwsWithoutSaving() {
-        final PackageDto dto = new PackageDto().setLabel("box").setHeight(1.0f).setWidth(-2.0f).setDepth(1.0f);
+        final PackageDto dto =
+                new PackageDto().setLabel("box").setHeight(1.0f).setWidth(-2.0f).setDepth(1.0f);
 
         assertThrows(IllegalArgumentException.class, () -> packageManager.createPackage(dto));
 
