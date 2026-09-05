@@ -594,7 +594,7 @@ CI on JDK 25 Corretto is source of truth).
   token and drop stale responses). Spec: stale category response never replaces
   the current related list.
 
-### M3. `getProduct(null)` requests `/products/null` instead of failing fast — IN REVIEW (fix/product-detail-loading-error; service half already on master, view half in this batch)
+### M3. `getProduct(null)` requests `/products/null` instead of failing fast — FIXED (PR #99)
 - `frontend/natiart-app/src/app/product/service/product.service.ts:34-36`
   `getProduct(productId: string | null)` interpolates the id unchecked
   (`` `${this.apiUrl}/${productId}` ``), so a `null` id issues `GET .../null`;
