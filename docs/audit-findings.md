@@ -1008,3 +1008,74 @@ camelCase, `PaymentController.java:38`) still OPEN on both sides
   frontend cannot distinguish "not logged in" from a broken null user.
 - Fix: reject with 401/403 instead of 200-null; align with the B2
   `@TargetUser` fix. Tests: anonymous hit → 401/403, never 200-null.
+
+## T. Dependency and supply chain (Lens 16 hunt, 2026-09-05)
+
+Hunt method: `npm audit --omit=dev` on the storefront, diffed `package.json`
+ranges against installed versions; diffed the grouped dependabot PRs (#55
+backend, #59 frontend) bump-by-bump for semver scope vs CI signal; read both
+service `build.gradle.kts` files and both CI workflows for scope/reproducibility
+gaps. Not filed: Spring Boot `3.5.6` → `4.1.1` (PR #55) and Angular `20` →
+`22` (PR #59) majors — both red CI, left on their dependabot branches for a
+human decision per the Lens-16 routine, never touched here.
+
+### T1. Angular 20.3.1 ships 8 high `npm audit` advisories, patch fix available in 20.3.x — OPEN (High)
+- `frontend/natiart-app/package.json:14-27` pins `^20.3.1`; installed
+  `20.3.1` (`npm ls @angular/core`) is inside every advisory range:
+  XSRF token leakage via protocol-relative URLs (`@angular/common`
+  `>=20.0.0-next.0 <20.3.14`, GHSA-58c5-g7wp-6w37), XSS in i18n attribute
+  bindings (`@angular/compiler`, GHSA-g93w-mfhg-p222, CVSS 9.0+), i18n XSS
+  (`@angular/core`, GHSA-prjf-86w9-mfqv). `npm audit` reports
+  `fixAvailable: True` with patched ranges up to `20.3.26` — a patch/minor
+  bump inside the `^20` train, not the red `22.x` major in PR #59.
+- Fix (own `chore/` branch only): `npm update @angular/*` to the latest
+  `20.3.x`, lockfile churn in the same commit; keep the `22.x` major on the
+  dependabot branch. Tests: `npm run build` + Karma suite green.
+
+### T2. `@angular/cdk ^19.0.1` major-skewed against Angular 20 core — OPEN (Medium)
+- `frontend/natiart-app/package.json:15` pins CDK `^19.0.1` (installed
+  `19.2.19`) while every sibling Angular package is `^20.3.1` (installed
+  `20.3.1`). Mixed majors across the Angular family risk subtle CDK/overlay
+  breakage; PR #59 lumps the CDK `19` → `22` jump with the red Angular major.
+- Fix (own `chore/` branch only): align CDK to `^20.x` matching the current
+  core train; leave the `22.x` jump on the dependabot branch. Tests:
+  `npm run build` + Karma suite green.
+
+### T3. Backend safe patch/minor bumps blocked behind the Spring Boot 4.x major in grouped PR #55 — OPEN (Medium)
+- `backend/product-service/build.gradle.kts:19-24` and
+  `backend/directory-service/build.gradle.kts:20-21` pin
+  `com.auth0:java-jwt:4.5.0` (→ `4.6.0` minor),
+  `org.postgresql:postgresql:42.7.8` (→ `42.7.13` patch),
+  `org.apache.commons:commons-lang3:3.18.0` (→ `3.20.0`),
+  `commons-io:commons-io:2.20.0` (→ `2.22.0`),
+  `org.apache.poi:poi:5.4.1` (→ `5.5.1`). PR #55 groups all five with
+  `org.springframework.boot 3.5.6` → `4.1.1` (major, red CI), so the safe
+  bumps cannot land via that branch.
+- Fix (own `chore/` branch only, in flight this cycle): bump the five
+  libraries, leave Boot/`versions`-plugin/gradle-wrapper majors untouched.
+  Tests: `./gradlew :directory-service:build :product-service:build` green.
+
+### T4. `spring-boot-devtools` as `implementation` ships dev tooling to production — OPEN (Low-Medium)
+- `backend/product-service/build.gradle.kts:16` and
+  `backend/directory-service/build.gradle.kts:17` declare
+  `implementation("org.springframework.boot:spring-boot-devtools")`, so the
+  restart/classpath agent ships inside the production artifact instead of the
+  dev-only classpath (`developmentOnly`, provided by the Spring Boot Gradle
+  plugin). Supply-chain bloat + widened prod attack surface, no behavior
+  dependency (nothing imports devtools APIs).
+- Fix (in flight this cycle): `implementation` → `developmentOnly` in both
+  service files. Tests: both `:build` green; artifact no longer contains
+  devtools.
+
+### T5. No Gradle dependency locking / checksum verification; no audit gate in CI — OPEN (Low)
+- Repo has no `backend/gradle.lockfile` (or any `*.lockfile`) and no
+  `gradle/verification-metadata.xml`, so backend builds float on transitive
+  ranges and cannot reproduce bit-identical graphs or fail on tampered
+  artifacts. CI (`.github/workflows/backend_workflow.yml`,
+  `frontend_workflow.yml`) runs build+test only — advisories surface solely
+  via monthly grouped dependabot PRs, which then bundle safe patches behind
+  red majors (T1/T3).
+- Fix: enable Gradle dependency locking (`dependencyLocking { lockAllConfigurationsForLockMode = LockMode.STRICT }`
+  + committed lockfiles) and checksum verification; add a non-blocking
+  `npm audit --omit=dev` / dependency-check report step to CI. Tracked, not
+  silently fixed (needs maintainer decision on lockfile churn vs benefit).
