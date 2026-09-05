@@ -95,4 +95,35 @@ class CartManagerImplTest {
         verify(cartItemRepository, never()).incrementQuantity(any(), any());
         verify(cartItemRepository, never()).save(any(CartItem.class));
     }
+
+    @Test
+    void decreaseCartItemQuantity_decrementsAtomicallyAboveOne() {
+        final Product product = product("Plate");
+        when(productManager.getProduct("p1")).thenReturn(Optional.of(product));
+        when(cartItemRepository.decrementQuantityIfGreaterThanOne("jane", "p1")).thenReturn(1);
+
+        cartManager.decreaseCartItemQuantity("jane", "p1");
+
+        verify(cartItemRepository, never()).deleteByUsernameAndProduct(any(), any());
+    }
+
+    @Test
+    void decreaseCartItemQuantity_deletesLastRemainingUnit() {
+        final Product product = product("Plate");
+        when(productManager.getProduct("p1")).thenReturn(Optional.of(product));
+        when(cartItemRepository.decrementQuantityIfGreaterThanOne("jane", "p1")).thenReturn(0);
+
+        cartManager.decreaseCartItemQuantity("jane", "p1");
+
+        verify(cartItemRepository).deleteByUsernameAndProduct("jane", product);
+    }
+
+    @Test
+    void decreaseCartItemQuantity_unknownProductIsNoOp() {
+        when(productManager.getProduct("missing")).thenReturn(Optional.empty());
+
+        cartManager.decreaseCartItemQuantity("jane", "missing");
+
+        verifyNoInteractions(cartItemRepository);
+    }
 }

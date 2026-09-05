@@ -27,4 +27,16 @@ public interface CartItemRepository extends JpaRepository<CartItem, String> {
     @Query(
             "UPDATE CartItem c SET c.quantity = c.quantity + 1 WHERE c.username = :username AND c.product.id = :productId")
     int incrementQuantity(@Param("username") String username, @Param("productId") String productId);
+
+    /**
+     * Atomically decrements the line quantity, but only while more than one unit
+     * remains. Returns the number of rows affected (0 when no line exists or the
+     * last unit remains — the caller then deletes the line).
+     */
+    @Modifying
+    @Query(
+            "UPDATE CartItem c SET c.quantity = c.quantity - 1 WHERE c.username = :username AND c.product.id = :productId AND c.quantity > 1")
+    int decrementQuantityIfGreaterThanOne(@Param("username") String username, @Param("productId") String productId);
+
+    long deleteByUsernameAndProduct(String username, Product product);
 }

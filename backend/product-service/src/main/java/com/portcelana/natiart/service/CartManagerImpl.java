@@ -51,17 +51,15 @@ public class CartManagerImpl implements CartManager {
     @Override
     @Transactional
     public void decreaseCartItemQuantity(String username, String productId) {
-        productManager
-                .getProduct(productId)
-                .flatMap(product -> cartItemRepository.findCartItemByUsernameAndProduct(username, product))
-                .ifPresent(cartItem -> {
-                    if (cartItem.getQuantity() > 1) {
-                        cartItem.decreaseQuantity();
-                        cartItemRepository.save(cartItem);
-                    } else {
-                        cartItemRepository.delete(cartItem);
-                    }
-                });
+        final Optional<Product> product = productManager.getProduct(productId);
+        if (product.isEmpty()) {
+            return;
+        }
+        // Atomic guarded decrement: only the last remaining unit falls through to
+        // the idempotent delete, so concurrent decreases cannot lose updates.
+        if (cartItemRepository.decrementQuantityIfGreaterThanOne(username, productId) == 0) {
+            cartItemRepository.deleteByUsernameAndProduct(username, product.get());
+        }
     }
 
     @Override
