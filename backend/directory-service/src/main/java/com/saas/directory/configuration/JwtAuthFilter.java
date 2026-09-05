@@ -30,7 +30,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             final String jwtToken = header.substring(7);
             final TokenType requiredTokenType;
 
-            if (request.getRequestURI().contains("/refresh-token")
+            // Exact path match: contains() also matched lookalikes such as /refresh-token-evil,
+            // which would validate an access token as a refresh token (or vice versa).
+            if ("/refresh-token".equals(request.getRequestURI())
                     && request.getMethod().equalsIgnoreCase(HttpMethod.POST.name())) {
                 requiredTokenType = TokenType.AUTH_REFRESH;
             } else {
@@ -44,6 +46,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             } catch (IllegalAccessException e) {
                 SecurityContextHolder.clearContext();
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                return;
             } catch (RuntimeException e) {
                 SecurityContextHolder.clearContext();
                 throw e;
