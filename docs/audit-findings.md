@@ -468,3 +468,56 @@ CI on JDK 25 Corretto is source of truth).
   (data loss). Found by Lens 7 hunt, 2026-09-05.
 - Fix: disambiguate entry names (prefix with parent or index). Tests: same
   basename twice → two distinct entries.
+
+## K. Concurrency and statelessness (Lens 8 hunt, 2026-09-05)
+
+### K1. `createCartItem` read-modify-write race: lost increments + duplicate rows — IN REVIEW (Medium)
+- `backend/product-service/.../service/CartManagerImpl.java:38-42` reads
+  (`findCartItemByUsernameAndProduct`), mutates in memory
+  (`CartItem::increaseQuantity`), then saves — with no `@Version` and no
+  unique constraint on `(username, product)` (`model/CartItem.java:11-26`).
+  Two concurrent adds for the same user+product both read quantity N and both
+  write N+1 (lost increment), or both read empty and both insert — the duplicate
+  rows then break every later read (`Optional`-returning derived query throws
+  `IncorrectResultSizeDataAccessException` → persistent 500s). The order flow
+  already uses an atomic `decreaseStockIfAvailable` update
+  (`repository/ProductRepository.java:24-27`); the cart flow does not.
+  Found by Lens 8 hunt, 2026-09-05.
+- Fix: atomic `UPDATE ... SET quantity = quantity + 1` increment-first query,
+  insert only on zero rows affected, unique constraint on
+  `(username, product_id)` as backstop. Tests: increment-hit path never saves;
+  insert path on zero rows; inactive product still rejected before any write.
+
+### K2. `decreaseCartItemQuantity` read-modify-write race — IN REVIEW (Low-Medium)
+- `backend/product-service/.../service/CartManagerImpl.java:46-59` loads the
+  line, branches on `getQuantity() > 1` in memory, then saves-or-deletes. Two
+  concurrent decreases at quantity 2 both write 1 (lost decrement); at
+  quantity 1 both delete (second delete of a concurrently removed row).
+  Found by Lens 8 hunt, 2026-09-05.
+- Fix: atomic `UPDATE ... SET quantity = quantity - 1 ... WHERE quantity > 1`
+  returning the affected count; zero rows → idempotent derived delete.
+  Tests: decrement-hit never deletes; zero rows deletes; unknown product is a
+  no-op.
+
+### K3. Visibility/status toggles fail loud under concurrent admin writes — OPEN (Low-Medium)
+- `service/ProductManagerImpl.java:189-193` (`inverseVisibility`),
+  `service/CategoryManagerImpl.java:66-70` (`inverseVisibility`) and
+  `service/OrderManagerImpl.java:100-104` (`updateOrderStatus`) all read an
+  entity, mutate in memory, and save. `Product`, `Category` and `CustomerOrder`
+  carry `@Version` (optimistic locking), so concurrent toggles do not silently
+  lose updates — but the loser gets `OptimisticLockException` → generic 500
+  instead of a serialized flip. Found by Lens 8 hunt, 2026-09-05.
+- Fix: atomic `UPDATE ... SET active = NOT active WHERE id = :id` queries (and
+  a direct status update by id) that serialize in the database. Tests: two
+  overlapping toggles both apply; no 500.
+
+### K4. `createCategory` label check-then-insert races to a 500 — OPEN (Low)
+- `service/CategoryManagerImpl.java:48-53` pre-checks
+  `findCategoryByLabel` and throws `IllegalArgumentException` (→ 400) on a
+  duplicate, but `Category.label` is `unique = true` (`model/Category.java:27`)
+  with no graceful handling: two concurrent creates with the same label both
+  pass the check and the loser surfaces `DataIntegrityViolationException` →
+  generic 500 instead of 400. Found by Lens 8 hunt, 2026-09-05.
+- Fix: catch `DataIntegrityViolationException` around the save and rethrow
+  `IllegalArgumentException` with the same duplicate-label message. Tests:
+  `save` throwing the violation → 400-path exception.
