@@ -42,7 +42,13 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 
 ## B. Backend — Robustness / Correctness
 
-### B1. Dead RestTemplate error branches (Asaas + shipping) — IN REVIEW (PR #70, Asaas half; ShippingService half remains OPEN)
+### B1. Dead RestTemplate error branches (Asaas + shipping) — OPEN (Medium-High, Asaas half FIXED in PR #70; ShippingService half remains)
+- `AsaasPaymentService.java:50-72,80-107,117-130`: branches on 401/404 statuses
+  that default `RestTemplate` never returns (throws `HttpStatusCodeException`).
+  401/404 from Asaas surfaces as 500 with raw message. (Asaas half FIXED in
+  PR #70: all three call sites catch `HttpStatusCodeException` via
+  `mapAsaasError`.) Same flaw remains in
+  `ShippingService.java:45-52` (no catch at all).
 - `AsaasPaymentService.java:50-72,80-107,117-130`: branches on 401/404 statuses
   that default `RestTemplate` never returns (throws `HttpStatusCodeException`).
   401/404 from Asaas surfaces as 500 with raw message. Same in
