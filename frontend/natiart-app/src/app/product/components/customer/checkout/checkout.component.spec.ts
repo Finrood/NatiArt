@@ -67,7 +67,6 @@ describe('CheckoutComponent', () => {
   beforeEach(async () => {
     isLoggedInSubject = new BehaviorSubject<boolean>(true);
     currentUserSubject = new BehaviorSubject<User | null>(loggedInUser);
-    routerNavigateSpy = jasmine.createSpy('navigate');
     createPixPaymentSpy = jasmine.createSpy('createPixPayment');
     registerGhostUserSpy = jasmine.createSpy('registerGhostUser');
 
@@ -78,7 +77,6 @@ describe('CheckoutComponent', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         provideAnimations(),
-        { provide: Router, useValue: { navigate: routerNavigateSpy } },
         {
           provide: CartService,
           useValue: {
@@ -111,6 +109,8 @@ describe('CheckoutComponent', () => {
       ],
     }).compileComponents();
 
+    const router: Router = TestBed.inject(Router);
+    routerNavigateSpy = spyOn(router, 'navigate').and.resolveTo(true);
     fixture = TestBed.createComponent(CheckoutComponent);
     component = fixture.componentInstance;
     createPixPaymentSpy.and.returnValue(of(paymentResponseWith('pay_123')));
@@ -158,6 +158,7 @@ describe('CheckoutComponent', () => {
       complement: '',
     });
     component.checkoutForm.get('paymentInfo.paymentMethod')?.setValue('PIX');
+    component.checkoutForm.get('billingInfo')?.patchValue({ zipCode: '01001-000' });
     expect(component.checkoutForm.invalid).toBeFalse();
 
     await component.onSubmit();
