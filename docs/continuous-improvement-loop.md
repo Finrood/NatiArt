@@ -158,5 +158,8 @@ table above is agent discipline, enforced by the cycle prompt.
 
 ## Backlog
 
-`docs/audit-findings.md` is the queue: statuses `OPEN` → `IN REVIEW` → `FIXED`.
-PRs reference their item; the merging cycle flips the status.
+`docs/audit-findings.md` is the working queue (`OPEN` → `IN REVIEW` →
+`INVALID` only — flipped `FIXED` sections move to
+`docs/audit-findings-archive.md`, keeping per-cycle read context lean as
+history grows). PRs reference their item; the merging cycle moves the section.
+Severity labels are exactly `High`/`Medium`/`Low`.
