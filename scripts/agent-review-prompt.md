@@ -22,10 +22,13 @@ which is exactly why you catch what it missed. Work in the repo root. Obey
    JavaDoc where required, Spotless-clean, no unused imports, no debug
    artifacts); commit hygiene (`[Type]` messages, one logical change each, no
    `Co-Authored-By:`).
-3. Post exactly one review: `gh pr review $N --approve -b "<verdict>"` when
-   zero blockers (nits welcome inline in the body), or `gh pr review $N
-   --request-changes -b "<blocking findings with file:line>"` otherwise. Pure
-   nits without blockers go as `--comment`, never as request-changes.
+3. Post exactly one review as a comment (all loop agents share one GitHub
+   identity, and GitHub rejects self-approvals — so the verdict lives in the
+   comment body, not the review state): `gh pr review $N --comment -b "<full
+   findings with file:line>"`, opening the body with either `VERDICT:
+   APPROVE` (zero blockers; nits welcome after it) or `VERDICT:
+   REQUEST_CHANGES` (blocking findings first). Pure nits without blockers
+   still open with `VERDICT: APPROVE`.
 4. Print a final line: `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES`.
 
 HARD RULES: review only. No code changes, no pushes, no merges, no re-runs of

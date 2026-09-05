@@ -62,8 +62,10 @@ Phase 3 — review, then merge everything green:
    zero reported checks means CI has not registered yet — wait, never treat
    it as green. Workflows are path-scoped (table in the runbook): merge ONLY
    when every reported check is green AND every workflow relevant to the PR's
-   changed paths has reported AND the latest reviewer verdict is APPROVE with
-   zero unresolved blockers. Docs-only PRs (`docs/**`) report Guidelines —
+   changed paths has reported AND the latest reviewer comment opens with
+   `VERDICT: APPROVE` (verdicts travel by comment body — GitHub blocks
+   self-approvals and all loop agents share one identity; re-check with
+   `gh pr view --json reviews` — a newer `VERDICT: REQUEST_CHANGES` vetoes). Docs-only PRs (`docs/**`) report Guidelines —
    green Guidelines is a mergeable signal for them. A backend PR must show
    both Backend CI service jobs. On REQUEST_CHANGES: address blockers, push,
    re-run the reviewer once; still blocked or still red after one flake
