@@ -57,8 +57,8 @@ Phase 2 — fix loop, until kill-minus-8-min (max 3 fix PRs):
 
 Phase 3 — review, then merge everything green:
 7. At PR open, launch one independent reviewer per PR, all in parallel in the
-   background (`timeout 360 opencode run "$(cat scripts/agent-review-prompt.md)
-   Review PR <N>." --dir /home/finrod/Documents/Programming/Java/Personal/NatiArt --title "review-pr-<N>" &`),
+   background (`timeout 360 scripts/run-agent.sh --role review --budget 360 --title
+   "review-pr-<N>" "$(cat scripts/agent-review-prompt.md) Review PR <N>." &`),
    then keep working and `wait` before merging. Review and CI run concurrently —
    never serialize reviews. If a reviewer subprocess dies (sandbox/permissions),
    perform the identical review inline yourself with the same checklist and post

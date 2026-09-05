@@ -182,7 +182,12 @@ if (( SLOT % 480 == 0 )); then
 $(cat scripts/redteam-addendum.md)"
 fi
 log "Invoking agent for one cycle item."
-timeout 1500 opencode run "$CYCLE_MSG" --dir "$REPO" --title "improvement-loop $(date +%Y%m%d-%H%M)"
+# Model failover: run-agent.sh walks the priority list from
+# scripts/agent-models.conf (opencode Muse free -> cline DeepSeek -> cline GLM),
+# falls through on quota/stall blocks and keeps retrying until the budget is up —
+# the loop must never be blocked by one model's quota. See
+# docs/continuous-improvement-loop.md (Model failover).
+timeout 1500 scripts/run-agent.sh --role cycle --budget 1500 --title "improvement-loop $(date +%Y%m%d-%H%M)" "$CYCLE_MSG"
 STATUS=$?
 if [[ "$STATUS" -eq 124 ]]; then
     log "Agent cycle hit the 25-minute timeout; leaving state for next cycle."
