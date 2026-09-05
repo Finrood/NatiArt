@@ -41,6 +41,10 @@
           <p>Expires in: <strong class="font-semibold">{{ qrCodeData.expirationDate | date: 'mediumTime' }}</strong></p>
         </div>
       </div>
+    } @else if (paymentStatus === 'ERROR') {
+      <div class="flex items-center justify-center">
+        <p class="ml-4 text-gray-600" role="alert">Could not load the payment details. Please go back and try again.</p>
+      </div>
     } @else {
       <div class="flex items-center justify-center">
         <!-- Simple spinner -->

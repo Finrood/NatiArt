@@ -213,7 +213,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix: move to `environment.api.viaCep`, validate `/^\d{8}$/`. Spec: URL built
   from env; invalid zip rejected before HTTP.
 
-### C8. Blob `ObjectURL` leaks — OPEN (Medium)
+### C8. Blob `ObjectURL` leaks — IN REVIEW (fix/frontend-resource-hygiene; Medium)
 - `cart-modal.component.ts:42-44,75-81`,
   `admin-product-management.component.ts:103-105,289-296`: `createObjectURL`
   without revoke (cart/product-list components do it correctly).
@@ -733,7 +733,7 @@ non-finite values).
   `billingType`/`paymentProcessor` → 400-path `IllegalArgumentException`;
   `NaN`/`Infinity` rejected; valid request unchanged.
 
-### N5. PIX confirmation polls upstream forever; QR + fireworks subscriptions leak — OPEN (Low-Medium)
+### N5. PIX confirmation polls upstream forever; QR + fireworks subscriptions leak — IN REVIEW (fix/frontend-resource-hygiene; Low-Medium)
 - `frontend/natiart-app/src/app/product/components/customer/checkout/pix-payment-confirmation/pix-payment-confirmation.component.ts`:
   `startPolling` (`:50-89`) runs `interval(5000)` with no backoff, jitter, or
   max duration while status stays `PENDING` — every tick hits
@@ -751,7 +751,7 @@ non-finite values).
 
 ## O. Loading and error UX (Lens 12 hunt, 2026-09-05)
 
-### O1. PIX confirmation QR failure is swallowed: no error state, PENDING forever — OPEN (Low-Medium)
+### O1. PIX confirmation QR failure is swallowed: no error state, PENDING forever — IN REVIEW (fix/frontend-resource-hygiene; Low-Medium)
 - `frontend/natiart-app/src/app/product/components/customer/checkout/pix-payment-confirmation/pix-payment-confirmation.component.ts:43-48`:
   `loadQrCode` handles failure with `console.error` only. When the QR fetch
   fails, the view keeps the PENDING visual state with a missing QR and no
@@ -785,3 +785,29 @@ non-finite values).
 - Fix: separate `infoMessage`/`errorMessage` fields with `role="alert"` on the
   error, and dismiss errors on user action (or a manual close) rather than a
   fixed timer. Tracked, not silently fixed.
+
+## P. Frontend resource hygiene (Lens 11 hunt, 2026-09-05)
+
+### P1. Admin `valueChanges` subscription never tracked, leaks until destroy — OPEN (Low-Medium)
+- `frontend/natiart-app/src/app/product/components/admin/admin-product-management/admin-product-management.component.ts:92-100`:
+  `hasFixedGoldenBorder` `valueChanges.subscribe(...)` is never pushed into
+  `this.subscriptions`, so `ngOnDestroy` (`:103-105`) does not unsubscribe it.
+  The form control outlives emissions for the whole admin-page lifetime; every
+  visit adds one more permanent listener. Sibling `fetchImage`/`fetchImagePreview`
+  subscriptions in the same file are tracked correctly. Found by Lens 11 hunt,
+  2026-09-05.
+- Fix: push the subscription into `this.subscriptions` (or `takeUntil` a
+  destroy subject). Spec: destroy unsubscribes the `valueChanges` listener.
+
+### P2. Fire-and-forget error-dismiss timers fire after destroy — OPEN (Low)
+- `frontend/natiart-app/src/app/product/components/customer/checkout/checkout.component.ts:389-393`
+  (`setTimeout(() => this.clearErrorMessage(), 7000)`),
+  `frontend/natiart-app/src/app/product/components/customer/cart/cart.component.ts:216-221`
+  (`setTimeout(() => this.error$.next(null), 5000)`) and
+  `frontend/natiart-app/src/app/product/components/customer/top-menu/top-menu.component.ts:59-66`
+  (200ms hover-close `setTimeout`) store no timer handle and never clear it in
+  `ngOnDestroy`. Destroy mid-window touches torn-down state (`cdr.detectChanges()`
+  on a destroyed view, `next` on a completed stream). Found by Lens 11 hunt,
+  2026-09-05.
+- Fix: keep the handle (`ReturnType<typeof setTimeout>`) and `clearTimeout` it
+  in `ngOnDestroy`. Spec: destroy cancels the pending dismissal.

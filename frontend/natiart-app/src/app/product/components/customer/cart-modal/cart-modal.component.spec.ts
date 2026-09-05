@@ -88,4 +88,49 @@ describe('CartModalComponent', () => {
     items$.next([withImage(makeItem('line-1'))]);
     expect(getImageSpy).toHaveBeenCalledTimes(1);
   });
+
+  it('revokes created object URLs when the component is destroyed', () => {
+    const withImage = (item: CartItem): CartItem => ({
+      ...item,
+      product: {...item.product, images: ['img-1']},
+    });
+    const items$ = new BehaviorSubject<CartItem[]>([withImage(makeItem('line-1'))]);
+    TestBed.overrideProvider(CartService, {
+      useValue: {getCartItems: (): BehaviorSubject<CartItem[]> => items$, getCartTotal: () => of(0)},
+    });
+    const productService: ProductService = TestBed.inject(ProductService);
+    spyOn(productService, 'getImage').and.returnValue(of(new Blob(['x'])));
+    const revokeSpy = spyOn(URL, 'revokeObjectURL');
+
+    const fixture = TestBed.createComponent(CartModalComponent);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.imageUrls['line-1']).toBeTruthy();
+
+    fixture.destroy();
+
+    expect(revokeSpy).toHaveBeenCalled();
+  });
+
+  it('revokes the object URL of a line removed from the cart', () => {
+    const withImage = (item: CartItem): CartItem => ({
+      ...item,
+      product: {...item.product, images: ['img-1']},
+    });
+    const items$ = new BehaviorSubject<CartItem[]>([withImage(makeItem('line-1'))]);
+    TestBed.overrideProvider(CartService, {
+      useValue: {getCartItems: (): BehaviorSubject<CartItem[]> => items$, getCartTotal: () => of(0)},
+    });
+    const productService: ProductService = TestBed.inject(ProductService);
+    spyOn(productService, 'getImage').and.returnValue(of(new Blob(['x'])));
+    const revokeSpy = spyOn(URL, 'revokeObjectURL');
+
+    const fixture = TestBed.createComponent(CartModalComponent);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.imageUrls['line-1']).toBeTruthy();
+
+    items$.next([]);
+
+    expect(revokeSpy).toHaveBeenCalled();
+    expect(fixture.componentInstance.imageUrls['line-1']).toBeUndefined();
+  });
 });
