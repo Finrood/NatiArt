@@ -55,5 +55,5 @@ building blocks go in `shared/`. Keep `app.component` a thin shell.
 ```bash
 npm start                      # dev server
 npm run build                  # production build
-ng test --watch=false --browsers=ChromeHeadless   # CI-style tests
+npm test -- --watch=false --browsers=ChromeHeadless   # CI-style tests (npm form, never bare ng)
 ```

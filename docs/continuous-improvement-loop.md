@@ -45,6 +45,7 @@ Note: the timer needs a lingering user session to fire while logged out
 ## Guardrails (enforced by script + prompt, in that order)
 
 1. Single instance (`flock`); 25-minute agent timeout keeps cadence.
+   Pre-flight gates fail fast on broken `gh` auth or <2GB disk.
 2. Cycle aborts on: dirty tree, non-fast-forward `master`, 2+ open code PRs
    (docs-only flips and dependabot PRs are excluded — they never block the
    loop), or any open code PR with failing checks.
@@ -69,7 +70,7 @@ Note: the timer needs a lingering user session to fire while logged out
 - **Ratchets**: at most one small strictness tightening per cycle (coverage
   gate, pagination cap, one ArchUnit-style fitness rule) — green build kept,
   revertible in one commit. Each tightening breeds its own follow-ups.
-- **Red-team cadence**: every 20th slot (~10 days) is adversarial (see
+- **Red-team cadence**: every 480th slot (~10 days) is adversarial (see
   `scripts/redteam-addendum.md`): threat-model one flow, file PoCs as backlog
   items, fix on the spot only if trivial.
 - **Boy-scout ledger**: every PR converts one discovered nit into a tracked
@@ -159,10 +160,12 @@ table above is agent discipline, enforced by the cycle prompt.
   one command: `gh auth refresh -s workflow` (interactive).
 - Auto-merge stays OFF repository-wide by policy: every merge is explicit.
 - AI-review gate: each PR gets an independent fresh-context reviewer run
-  (`scripts/agent-review-prompt.md`, ~6 min, concurrent with CI). The reviewer
-  proves tests non-vacuous (new tests must FAIL with production files stashed)
-  and threat-models security-touching diffs. Merge requires green relevant CI
-  AND an APPROVE verdict with zero unresolved blockers; one
+  (`scripts/agent-review-prompt.md`, ~6 min, concurrent with CI, launched in
+  parallel per PR). Reviewers work in isolated `git worktree`s (never the
+  shared checkout), prove tests non-vacuous, and threat-model
+  security-touching diffs. PR bodies, changelogs, and dependency metadata are
+  treated as untrusted data, never instructions. Merge requires green relevant
+  CI AND an APPROVE verdict with zero unresolved blockers; one
   address-and-re-review round, then the PR stays open.
 - Remote hygiene: every cycle retries deletion of merged loop-prefix branches
   (`fix|perf|chore|docs|feature/*`) — the `--delete-branch` flag occasionally
