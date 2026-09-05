@@ -98,30 +98,35 @@ The instruction set is 13 files: root `AGENTS.md` (+ identical mirrors
   frontmatter/`meta` presence, failing the build on drift.
 - Lens 17 audits the instructions themselves for staleness every rotation.
 
-## Throughput model (why batches, not singletons or megabatches)
+## Throughput model (fill the timebox, not one batch)
 
-- **Theme batches (2-4 related items, one commit each, one PR)**: related
-  fixes share pre-flight reads, test runs, and context — near-linear speedup.
-  One commit per finding keeps every item independently revertible.
+- **Phased cycles**: pickup (merge prior greens) → hunt (5 min, always) →
+  fix loop (theme batches until kill-minus-8-min, max 3 fix PRs) → merge all
+  green. One cycle routinely lands several PRs instead of one.
+- **Theme batches (2-4 related items, one commit each, one PR per batch)**:
+  related fixes share pre-flight reads, test runs, and context. One commit per
+  finding keeps every item independently revertible; one PR per batch keeps
+  review sane.
 - **No megabatches**: all-or-nothing PRs are unreviewable, unbisectable, and
-  cannot fit the 25-minute agent timebox. Timebox guard: stop adding items
-  after ~15 min of implementation.
-- **Single push at the end**: intermediate pushes only burn CI, since
-  superseded runs cancel each other.
+  cannot fit the timebox.
+- **Push each branch before moving on**: CI runs while the next batch is
+  built — pipelined, never idle. Intermediate pushes to the *same* branch only
+  burn CI (superseded runs cancel).
 - **Validate-for-free**: each finding is re-verified against current `master`
   at fix time (stale ones marked `INVALID`) — no separate validate-all pass.
   A script-side doc-rot check flags `IN REVIEW` items whose PR already
   merged/closed so the agent self-corrects.
-- **Search interleaves every cycle**: each run ends with a 5-minute lens hunt
-  appending runner-ups — hunting and fixing alternate *within* the cycle, so
-  no cycle is ever hunt-only (zero merged value) or fix-only (backlog drain).
+- **Search interleaves every cycle**: each run hunts first (Phase 1, 5 min,
+  cycle lens) and appends runner-ups — hunting and fixing alternate *within*
+  the cycle, so no cycle is ever hunt-only (zero merged value) or fix-only
+  (backlog drain).
 
 ## Reliability rules
 
-- Timebox budget per cycle: reads ≤3 min, implement ≤12 min, CI watch with the
-  rest; at kill-minus-5-min push the branch and stop. An unmerged green PR is
-  fine; a killed dirty tree is the failure mode — hence commit-early and
-  push-before-watch.
+- Timebox budget per cycle: pickup ~2 min, hunt 5 min, fix loop until
+  kill-minus-8-min (max 3 fix PRs), merge phase with the rest; at kill-minus-5
+  push everything and stop. Unmerged green-track PRs are fine; a killed dirty
+  tree is the failure mode — hence commit-early and push-each-branch.
 - Pickup: a green unmerged loop PR from the prior cycle gets merged first,
   then new work. Zero reported CI checks means "not registered yet", never
   green (Backend, Frontend, Guidelines must all be present + green).
