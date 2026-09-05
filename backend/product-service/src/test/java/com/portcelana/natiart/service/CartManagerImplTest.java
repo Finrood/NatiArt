@@ -60,7 +60,9 @@ class CartManagerImplTest {
     void createCartItem_createsNewLineWithQuantityOne() {
         final Product product = product("Plate");
         when(productManager.getProductOrDie("p1")).thenReturn(product);
-        when(cartItemRepository.incrementQuantity("jane", "p1")).thenReturn(0);
+        when(cartItemRepository.incrementQuantityIfBelowCap("jane", "p1", 100)).thenReturn(0);
+        when(cartItemRepository.findCartItemByUsernameAndProduct("jane", product))
+                .thenReturn(Optional.empty());
         when(cartItemRepository.save(any(CartItem.class))).thenAnswer(inv -> inv.getArgument(0));
 
         final CartItemDto result = cartManager.createCartItem("jane", "p1");
@@ -76,7 +78,7 @@ class CartManagerImplTest {
         final CartItem existing = new CartItem("jane", product);
         existing.increaseQuantity();
         when(productManager.getProductOrDie("p1")).thenReturn(product);
-        when(cartItemRepository.incrementQuantity("jane", "p1")).thenReturn(1);
+        when(cartItemRepository.incrementQuantityIfBelowCap("jane", "p1", 100)).thenReturn(1);
         when(cartItemRepository.findCartItemByUsernameAndProduct("jane", product))
                 .thenReturn(Optional.of(existing));
 
@@ -87,12 +89,28 @@ class CartManagerImplTest {
     }
 
     @Test
+    void createCartItem_rejectsAddAtQuantityCap() {
+        final Product product = product("Plate");
+        final CartItem capped = new CartItem("jane", product);
+        for (int i = 1; i < 100; i++) {
+            capped.increaseQuantity();
+        }
+        when(productManager.getProductOrDie("p1")).thenReturn(product);
+        when(cartItemRepository.incrementQuantityIfBelowCap("jane", "p1", 100)).thenReturn(0);
+        when(cartItemRepository.findCartItemByUsernameAndProduct("jane", product))
+                .thenReturn(Optional.of(capped));
+
+        assertThrows(IllegalArgumentException.class, () -> cartManager.createCartItem("jane", "p1"));
+        verify(cartItemRepository, never()).save(any(CartItem.class));
+    }
+
+    @Test
     void createCartItem_rejectsInactiveProduct() {
         final Product retired = product("Retired plate").setActive(false);
         when(productManager.getProductOrDie("p9")).thenReturn(retired);
 
         assertThrows(IllegalArgumentException.class, () -> cartManager.createCartItem("jane", "p9"));
-        verify(cartItemRepository, never()).incrementQuantity(any(), any());
+        verify(cartItemRepository, never()).incrementQuantityIfBelowCap(any(), any(), anyInt());
         verify(cartItemRepository, never()).save(any(CartItem.class));
     }
 

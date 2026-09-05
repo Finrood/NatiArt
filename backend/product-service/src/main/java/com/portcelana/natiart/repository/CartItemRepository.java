@@ -21,12 +21,16 @@ public interface CartItemRepository extends JpaRepository<CartItem, String> {
     /**
      * Atomically increments the line quantity without a read-modify-write round
      * trip, so concurrent adds for the same user and product cannot lose
-     * increments. Returns the number of rows affected (0 when no line exists).
+     * increments — but only while the line stays below the caller's cap, so a
+     * tight add-loop cannot grow one row without limit. Returns the number of
+     * rows affected (0 when no line exists or the line already reached the cap;
+     * the caller distinguishes the two with a follow-up lookup).
      */
     @Modifying
     @Query(
-            "UPDATE CartItem c SET c.quantity = c.quantity + 1 WHERE c.username = :username AND c.product.id = :productId")
-    int incrementQuantity(@Param("username") String username, @Param("productId") String productId);
+            "UPDATE CartItem c SET c.quantity = c.quantity + 1 WHERE c.username = :username AND c.product.id = :productId AND c.quantity < :cap")
+    int incrementQuantityIfBelowCap(
+            @Param("username") String username, @Param("productId") String productId, @Param("cap") int cap);
 
     /**
      * Atomically decrements the line quantity, but only while more than one unit
