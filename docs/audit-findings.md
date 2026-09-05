@@ -979,14 +979,14 @@ camelCase, `PaymentController.java:38`) still OPEN on both sides
   convention), drop the three phantom methods, pin the exact URL in
   `order.service.spec.ts`.
 
-### S4. `@GetMapping("images")` missing leading slash — IN REVIEW (PR #113)
+### S4. `@GetMapping("images")` missing leading slash — FIXED (PR #113)
 - `backend/product-service/.../controller/ProductController.java:126` maps
   `"images"` while every other mapping in both services uses a leading `/`.
   Spring resolves both identically, so this is consistency-only.
 - Fix: `@GetMapping("/images")`; frontend `product.service.ts:59` already
   calls `/images`, unchanged.
 
-### S5. `PackageController` method names copy-pasted from Category — IN REVIEW (PR #113)
+### S5. `PackageController` method names copy-pasted from Category — FIXED (PR #113)
 - `backend/product-service/.../controller/PackageController.java:22,27,36,42,50`
   declare `getCategory`, `getCategories`, `createCategory`, `updateCategory`,
   `deleteCategory` on package routes. Behavior-neutral, reader-hostile.
