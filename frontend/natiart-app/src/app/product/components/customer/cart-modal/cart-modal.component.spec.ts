@@ -3,10 +3,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
-import { of } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 
 import { CartModalComponent } from './cart-modal.component';
 import { CartService } from '../../../service/cart.service';
+import { ProductService } from '../../../service/product.service';
 import { CartItem } from '../../../models/CartItem.model';
 import { Product } from '../../../models/product.model';
 
@@ -65,5 +66,26 @@ describe('CartModalComponent', () => {
 
     expect(removeSpy).toHaveBeenCalledWith('line-2');
     expect(removeSpy).not.toHaveBeenCalledWith('line-1');
+  });
+
+  it('fetches each cart line image once across re-emissions of the same cart', () => {
+    const withImage = (item: CartItem): CartItem => ({
+      ...item,
+      product: {...item.product, images: ['img-1']},
+    });
+    const items$ = new BehaviorSubject<CartItem[]>([withImage(makeItem('line-1'))]);
+    TestBed.overrideProvider(CartService, {
+      useValue: {getCartItems: (): BehaviorSubject<CartItem[]> => items$, getCartTotal: () => of(0)},
+    });
+    const productService: ProductService = TestBed.inject(ProductService);
+    const getImageSpy = spyOn(productService, 'getImage').and.returnValue(of(new Blob()));
+
+    const fixture = TestBed.createComponent(CartModalComponent);
+    fixture.detectChanges(); // ngOnInit subscribes and fetches once
+    expect(getImageSpy).toHaveBeenCalledTimes(1);
+
+    // Same cart re-emits (e.g. after a quantity update): no refetch.
+    items$.next([withImage(makeItem('line-1'))]);
+    expect(getImageSpy).toHaveBeenCalledTimes(1);
   });
 });

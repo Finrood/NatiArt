@@ -48,6 +48,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   @ViewChild('mainImage') mainImage!: ElementRef<HTMLImageElement>;
   private subscriptions: Subscription[] = [];
   private relatedSubscription: Subscription | null = null;
+  private imageRequestToken: number = 0;
   isLoading: boolean = true;
   loadError: string | null = null;
 
@@ -83,6 +84,10 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
         this.imageUrls = {};
         this.relatedProducts$.next([]);
         this.relatedImageUrls = {};
+        // Invalidate in-flight main-image fetches for the previous product:
+        // image slots are index-keyed, so a stale resolution must not write
+        // into the newly reset map (see fetchImage).
+        this.imageRequestToken++;
       }),
       switchMap((params: ParamMap) => {
         const productId: string | null = params.get('id');
@@ -283,14 +288,23 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       if (oldUrl) URL.revokeObjectURL(oldUrl);
     }
 
+    // Drop resolutions that arrive after a route-param reset: they belong to
+    // the previously viewed product, and slots are index-keyed (not identity-keyed).
+    const token: number = this.imageRequestToken;
     const subscription = this.productService.getImage(imagePath).subscribe({
       next: blob => {
+        if (token !== this.imageRequestToken) {
+          return;
+        }
         const objectUrl = URL.createObjectURL(blob);
         this.imageUrls[index] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
         // Trigger change detection if necessary, though BehaviorSubject should handle it
         // this.product$.next(this.product$.value);
       },
       error: err => {
+        if (token !== this.imageRequestToken) {
+          return;
+        }
         console.error(`Failed to load image at index ${index}:`, err);
         this.imageUrls[index] = 'assets/img/placeholder.png'; // Fallback image URL
       }

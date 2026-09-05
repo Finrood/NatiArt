@@ -3,7 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
-import { BehaviorSubject, of, throwError } from 'rxjs';
+import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 
 import { ProductDetailComponent } from './product-detail.component';
 import { ProductService } from '../../../service/product.service';
@@ -95,5 +95,63 @@ describe('ProductDetailComponent', () => {
     expect(component.product$.value).toBeNull();
     expect(component.loadError).toBe('Could not load this product. Please try again.');
     expect(component.isLoading).toBe(false);
+  });
+});
+
+describe('ProductDetailComponent stale main images', () => {
+  let paramMap$: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
+  let imageSubjects: Map<string, Subject<Blob>>;
+
+  function makeImagedProduct(id: string): Product {
+    return {...makeProduct(id), images: [`img-${id}`]};
+  }
+
+  beforeEach(async () => {
+    paramMap$ = new BehaviorSubject(convertToParamMap({id: 'p1'}));
+    imageSubjects = new Map<string, Subject<Blob>>();
+
+    await TestBed.configureTestingModule({
+      imports: [ProductDetailComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideAnimations(),
+        {provide: ActivatedRoute, useValue: {paramMap: paramMap$.asObservable()}},
+        {
+          provide: ProductService,
+          useValue: {
+            getProduct: (id: string) => of(makeImagedProduct(id)),
+            getProductsByCategory: () => of([]),
+            getImage: (path: string) => {
+              if (!imageSubjects.has(path)) {
+                imageSubjects.set(path, new Subject<Blob>());
+              }
+              return imageSubjects.get(path)!.asObservable();
+            },
+          },
+        },
+        {provide: CartService, useValue: {addToCart: () => undefined, getCartCount: () => of(0)}},
+      ],
+    }).compileComponents();
+  });
+
+  it('drops a previous product image that resolves after navigating away', () => {
+    const fixture = TestBed.createComponent(ProductDetailComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    expect(component.product$.value?.id).toBe('p1');
+
+    // Navigate to p2 before p1's image resolves; the p1 fetch stays in flight.
+    paramMap$.next(convertToParamMap({id: 'p2'}));
+    expect(component.product$.value?.id).toBe('p2');
+
+    // Late p1 resolution must not populate the reset index-keyed map.
+    imageSubjects.get('img-p1')!.next(new Blob(['p1-bytes']));
+    expect(component.imageUrls[0]).toBeUndefined();
+
+    // The current product image still loads normally.
+    imageSubjects.get('img-p2')!.next(new Blob(['p2-bytes']));
+    expect(component.imageUrls[0]).toBeTruthy();
+    component.ngOnDestroy();
   });
 });

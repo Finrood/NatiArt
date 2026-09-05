@@ -2,7 +2,7 @@ import {Component, OnDestroy, OnInit} from '@angular/core';
 import {map, switchMap} from "rxjs/operators";
 import {catchError, interval, of, Subscription, throwError} from "rxjs";
 import {PaymentService} from "../../../../service/payment.service";
-import {ActivatedRoute, Router} from "@angular/router";
+import {ActivatedRoute, ParamMap, Router} from "@angular/router";
 import { DatePipe, NgClass } from "@angular/common";
 import * as confetti from 'canvas-confetti';
 import {ButtonComponent} from "../../../../../shared/components/button.component";
@@ -21,6 +21,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   qrCodeData!: { encodedImage: string; payload: string; expirationDate: Date };
   paymentStatus: string = 'PENDING';
   pollingInterval!: Subscription;
+  private paramSubscription: Subscription | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -30,14 +31,22 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.paymentId = this.route.snapshot.paramMap.get('paymentId');
-
-    if (this.paymentId) {
-      this.loadQrCode(this.paymentId);
-      this.startPolling(this.paymentId);
-    } else {
-      this.paymentStatus = 'ERROR';
-    }
+    // Subscribe to param changes (not a one-shot snapshot): Angular reuses
+    // this component when navigating between payment ids, and the QR lookup
+    // plus status polling must follow the currently routed payment.
+    this.paramSubscription = this.route.paramMap.subscribe((params: ParamMap): void => {
+      const routedId: string | null = params.get('paymentId');
+      this.stopPolling();
+      if (routedId) {
+        this.paymentId = routedId;
+        this.paymentStatus = 'PENDING';
+        this.loadQrCode(routedId);
+        this.startPolling(routedId);
+      } else {
+        this.paymentId = null;
+        this.paymentStatus = 'ERROR';
+      }
+    });
   }
 
   loadQrCode(paymentId: string) {
@@ -128,6 +137,10 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    if (this.paramSubscription) {
+      this.paramSubscription.unsubscribe();
+      this.paramSubscription = null;
+    }
     this.stopPolling();
   }
 }
