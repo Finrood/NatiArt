@@ -70,6 +70,9 @@ public class OrderManagerImpl implements OrderManager {
         BigDecimal totalItemsAmount = BigDecimal.ZERO;
         for (OrderItemDto item : orderDto.getItems()) {
             final Product product = productManager.getProductOrDie(item.getProductId());
+            if (!product.isActive()) {
+                throw new IllegalArgumentException("Product [" + product.getLabel() + "] is no longer available");
+            }
             final int reserved = productRepository.decreaseStockIfAvailable(product.getId(), item.getQuantity());
             if (reserved == 0) {
                 throw new IllegalArgumentException("Insufficient stock for product [" + product.getLabel() + "]");
