@@ -178,6 +178,35 @@ class StorageFileSystemTest {
     }
 
     @Test
+    void downloadDirectorySkipsSymlinkThatEscapesAllowedRoot() throws IOException {
+        Path root = tempDir.resolve("product-images");
+        writeInside(root, "gallery/real.webp", "real-bytes");
+        Path secret = tempDir.resolve("secret.txt");
+        Files.writeString(secret, "classified");
+        try {
+            Files.createSymbolicLink(root.resolve("gallery/escape-link"), secret);
+        } catch (IOException | UnsupportedOperationException e) {
+            return; // filesystem without symlink support
+        }
+        StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+
+        try (var in = storage.downloadDirectory(root.resolve("gallery").toUri());
+                var zipIn = new ZipInputStream(in)) {
+            List<String> names = new ArrayList<>();
+            ZipEntry entry;
+            while ((entry = zipIn.getNextEntry()) != null) {
+                names.add(entry.getName());
+                assertNotEquals(
+                        "classified",
+                        new String(zipIn.readAllBytes(), StandardCharsets.UTF_8),
+                        "zip must never contain bytes from outside the allowed roots");
+            }
+            assertTrue(names.contains("gallery/real.webp"));
+            assertFalse(names.stream().anyMatch(name -> name.contains("escape-link")));
+        }
+    }
+
+    @Test
     void uploadFileWritesInsideAllowedRoot() throws IOException {
         Path root = tempDir.resolve("product-images");
         StorageFileSystem storage = storageWithRoots(List.of(root.toString()));

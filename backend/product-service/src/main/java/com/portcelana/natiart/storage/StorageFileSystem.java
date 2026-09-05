@@ -164,6 +164,11 @@ public class StorageFileSystem implements Storage {
     }
 
     private void zipFileRecursively(File fileToZip, String fileName, ZipOutputStream zipOut) throws IOException {
+        if (Files.isSymbolicLink(fileToZip.toPath())) {
+            // Never follow links out of the confined tree: a symlink planted inside an
+            // allowed root must not exfiltrate its target's bytes into the zip.
+            return;
+        }
         if (fileToZip.isDirectory()) {
             if (fileName.endsWith("/")) {
                 zipOut.putNextEntry(new ZipEntry(fileName));

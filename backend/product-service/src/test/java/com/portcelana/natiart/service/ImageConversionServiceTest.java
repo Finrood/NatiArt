@@ -47,4 +47,19 @@ class ImageConversionServiceTest {
 
         assertThrows(RuntimeException.class, () -> service.convertToWebP(java.util.List.of(dense)));
     }
+
+    @Test
+    void convertToWebP_rejectsNonImageBytesWithBadRequest() {
+        final MultipartFile fakeImage =
+                new MockMultipartFile("newImages", "evil.txt", "image/png", "not an image".getBytes());
+
+        assertThrows(IllegalArgumentException.class, () -> service.convertToWebP(java.util.List.of(fakeImage)));
+    }
+
+    @Test
+    void convertToWebP_rejectsOversizedImageWithBadRequest() throws IOException {
+        final MultipartFile huge = pngOf(7000, 10);
+
+        assertThrows(IllegalArgumentException.class, () -> service.convertToWebP(java.util.List.of(huge)));
+    }
 }

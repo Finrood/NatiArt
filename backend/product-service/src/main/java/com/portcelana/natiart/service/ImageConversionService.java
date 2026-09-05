@@ -38,7 +38,9 @@ public class ImageConversionService {
         final BufferedImage bufferedImage = ImageIO.read(image.getInputStream());
 
         if (bufferedImage == null) {
-            throw new IOException("Failed to read image: " + image.getOriginalFilename());
+            // Undecodable bytes are a client error: fail closed with 400 via IllegalArgumentException
+            // (the product ControllerAdvice maps it to BAD_REQUEST; IOException would surface as 500).
+            throw new IllegalArgumentException("Unsupported or corrupt image file");
         }
 
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -83,7 +85,7 @@ public class ImageConversionService {
                 final int width = reader.getWidth(0);
                 final int height = reader.getHeight(0);
                 if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION || (long) width * height > MAX_PIXELS) {
-                    throw new IOException(String.format(
+                    throw new IllegalArgumentException(String.format(
                             "Image dimensions %dx%d exceed the allowed limit of %dx%d pixels",
                             width, height, MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION));
                 }
