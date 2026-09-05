@@ -127,6 +127,19 @@ class OrderManagerImplTest {
     }
 
     @Test
+    void createOrderRejectsTooManyLines() {
+        final List<OrderItemDto> items = new java.util.ArrayList<>();
+        for (int i = 0; i < 51; i++) {
+            items.add(item("p" + i, 1));
+        }
+        OrderDto dto = new OrderDto().setDeliveryAmount(BigDecimal.ONE).setItems(items);
+
+        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto));
+        verify(productRepository, never()).decreaseStockIfAvailable(anyString(), anyInt());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
     void createOrderRejectsInactiveProduct() {
         Product retired = product("p4", "Retired plate", new BigDecimal("15.00"), null, 100)
                 .setActive(false);

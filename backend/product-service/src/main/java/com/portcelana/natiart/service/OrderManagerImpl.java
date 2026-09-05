@@ -22,6 +22,10 @@ public class OrderManagerImpl implements OrderManager {
     // Anti-absurdity guard on a single order line; available stock remains the
     // real bound via the atomic decreaseStockIfAvailable check.
     private static final int MAX_ITEM_QUANTITY = 100;
+    // Bounds the whole request: every line costs a stock decrement plus an
+    // insert inside one transaction, so an unbounded line list can time the
+    // transaction out or blow up the database from a single POST.
+    private static final int MAX_ORDER_LINES = 50;
 
     private final OrderRepository orderRepository;
     private final ProductManager productManager;
@@ -106,6 +110,9 @@ public class OrderManagerImpl implements OrderManager {
     private void validateItems(List<OrderItemDto> items) {
         if (items == null || items.isEmpty()) {
             throw new IllegalArgumentException("An order must contain at least one item");
+        }
+        if (items.size() > MAX_ORDER_LINES) {
+            throw new IllegalArgumentException("An order must not contain more than " + MAX_ORDER_LINES + " items");
         }
         for (OrderItemDto item : items) {
             if (item.getProductId() == null || item.getProductId().isBlank()) {
