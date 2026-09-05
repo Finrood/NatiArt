@@ -33,7 +33,7 @@ export class ProductService {
   }
 
   getProduct(productId: string | null): Observable<Product> {
-    if (!productId) {
+    if (!productId || productId.trim().length === 0) {
       return throwError(() => new Error('Missing product id'));
     }
     return this.http.get<Product>(`${this.apiUrl}/${productId}`);
