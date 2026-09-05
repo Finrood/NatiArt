@@ -155,6 +155,13 @@ table above is agent discipline, enforced by the cycle prompt.
 - Merge-scope errors (e.g. missing `workflow` scope) are reported to the
   human, never routed around. Token scopes are documented here so the fix is
   one command: `gh auth refresh -s workflow` (interactive).
+- Auto-merge is enabled on the repo: agents set `--auto --delete-branch` at PR
+  open and keep working instead of watching CI. Pickup + doc-rot cover the
+  async bookkeeping.
+- Remote hygiene: every cycle retries deletion of merged loop-prefix branches
+  (`fix|perf|chore|docs|feature/*`) — the `--delete-branch` flag occasionally
+  races GitHub auto-delete. Never touches unmerged work, `master`, or
+  dependabot branches. Logs keep the last 100 cycles.
 
 ## Backlog
 

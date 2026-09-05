@@ -55,17 +55,22 @@ Phase 2 — fix loop, until kill-minus-8-min (max 3 fix PRs):
    the PR, record its number, repeat while the timebox allows.
 
 Phase 3 — merge everything green:
-7. Watch all cycle PRs (`gh pr checks` per PR). Zero reported checks means CI
-   has not registered yet — wait, never treat it as green. Workflows are
-   path-scoped (table in the runbook): merge ONLY when every reported check is
-   green AND every workflow relevant to the PR's changed paths has reported.
-   Docs-only PRs (`docs/**`) report Guidelines — green Guidelines is a
-   mergeable signal for them. A backend PR must show
-   both Backend CI service jobs. Merge each green PR
-   (`--merge --delete-branch`); flip statuses (batch all flips into one
-   `docs/` PR if several). Still red after one flake rerun → leave open and
-   report. Scope-error refusals go to the human, never routed around. Never
-   push to `master`.
+7. At PR open, set auto-merge (`gh pr merge --auto --merge --delete-branch`)
+   and keep working instead of watching — GitHub merges the moment all checks
+   pass. Verify it engaged (`gh pr view --json autoMergeRequest`). If --auto
+   is refused for a PR, fall back to watching (`gh pr checks` per PR) within
+   the remaining timebox. Poll checks between batches regardless: zero
+   reported checks means CI has not registered yet — wait, never treat it as
+   green. Workflows are path-scoped (table in the runbook): merge ONLY when
+   every reported check is green AND every workflow relevant to the PR's
+   changed paths has reported. Docs-only PRs (`docs/**`) report Guidelines —
+   green Guidelines is a mergeable signal for them. A backend PR must show
+   both Backend CI service jobs. A red check needs your eyes: fix findings
+   (one `gh run rerun --failed` allowed for suspected flakes; still red →
+   disable auto-merge with `gh pr merge --disable-auto`, leave open, report).
+   Scope-error refusals go to the human, never routed around. Never push to
+   `master`. Flip statuses for merged PRs (batch all flips into one `docs/`
+   PR if several).
 8. HARD RULES: max 3 fix PRs + docs per cycle. Never force-push. Never push to
    `master` or dependabot branches. Never merge on red/yellow CI. Never
    migrate auth, rate-limit infrastructure, or schema management without a
