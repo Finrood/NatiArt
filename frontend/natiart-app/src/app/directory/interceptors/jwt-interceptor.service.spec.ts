@@ -1,7 +1,7 @@
 import {TestBed} from '@angular/core/testing';
 import {HttpClient} from '@angular/common/http';
 import {provideHttpClient, withInterceptors} from '@angular/common/http';
-import {HttpTestingController, provideHttpClientTesting} from '@angular/common/http/testing';
+import {HttpTestingController, provideHttpClientTesting, TestRequest} from '@angular/common/http/testing';
 import {Router} from '@angular/router';
 import {fakeAsync, flush, tick} from '@angular/core/testing';
 
@@ -67,6 +67,48 @@ describe('jwtInterceptor', () => {
     login.flush({});
     register.flush({});
     refresh.flush({});
+    httpTesting.verify();
+  }));
+
+  it('keeps the bearer on lookalike URLs that merely contain an endpoint name', fakeAsync(() => {
+    const {http, httpTesting, tokenService} = setup();
+    tokenService.accessToken = 'abc';
+
+    http.get('/api/search?q=login').subscribe(() => {
+    });
+    http.get(`${environment.api.directory.url}/api/search?q=refresh-token`).subscribe(() => {
+    });
+
+    const relative: TestRequest = httpTesting.expectOne('/api/search?q=login');
+    const absolute: TestRequest = httpTesting.expectOne(`${environment.api.directory.url}/api/search?q=refresh-token`);
+    expect(relative.request.headers.get('Authorization')).toBe('Bearer abc');
+    expect(absolute.request.headers.get('Authorization')).toBe('Bearer abc');
+    relative.flush({});
+    absolute.flush({});
+    httpTesting.verify();
+  }));
+
+  it('does not exempt foreign origins that reuse an endpoint path', fakeAsync(() => {
+    const {http, httpTesting, tokenService} = setup();
+    tokenService.accessToken = 'abc';
+
+    http.get('https://other.test/login').subscribe(() => {
+    });
+    const req: TestRequest = httpTesting.expectOne('https://other.test/login');
+    expect(req.request.headers.get('Authorization')).toBe('Bearer abc');
+    req.flush({});
+    httpTesting.verify();
+  }));
+
+  it('still exempts genuine endpoints with query strings', fakeAsync(() => {
+    const {http, httpTesting, tokenService} = setup();
+    tokenService.accessToken = 'abc';
+
+    http.post(`${environment.api.directory.url}/login?next=/dashboard`, {}).subscribe(() => {
+    });
+    const req: TestRequest = httpTesting.expectOne(`${environment.api.directory.url}/login?next=/dashboard`);
+    expect(req.request.headers.has('Authorization')).toBeFalse();
+    req.flush({});
     httpTesting.verify();
   }));
 

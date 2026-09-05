@@ -7,6 +7,8 @@ export const environment = {
         login: '/login',
         logout: '/signout',
         refreshToken: '/refresh-token',
+        registerUser: '/register-user',
+        registerGhostUser: '/register-ghost-user',
         current: '/current',
         user: '/users',
       }

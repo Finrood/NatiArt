@@ -53,24 +53,26 @@ describe('authenticationService', () => {
 
   it('refreshes an expired session through the env-configured endpoint', fakeAsync(() => {
     const past: number = Math.floor(Date.now() / 1000) - 60;
-    const future: number = Math.floor(Date.now() / 1000) + 3600;
+    // Beyond both refresh buffers (5 min access, 1 day refresh) so the
+    // token monitor stays quiet after the refresh completes.
+    const future: number = Math.floor(Date.now() / 1000) + 8 * 24 * 3600;
     localStorage.setItem('accessToken', unsignedToken(past));
     localStorage.setItem('refreshToken', unsignedToken(future));
 
-    // Constructor init picks up the stored tokens and refreshes.
+    // Constructor init picks up the stored tokens and refreshes synchronously.
     const service: AuthenticationService = TestBed.inject(AuthenticationService);
-    tick();
 
     const refreshReq: TestRequest = TestBed.inject(HttpTestingController).expectOne(REFRESH_URL);
     expect(refreshReq.request.headers.get('Authorization')).toBe(`Bearer ${unsignedToken(future)}`);
 
     const newAccess: string = unsignedToken(future);
     refreshReq.flush({accessToken: newAccess, refreshToken: unsignedToken(future)});
-    tick();
 
     const userReq: TestRequest = TestBed.inject(HttpTestingController).expectOne(CURRENT_USER_URL);
     expect(userReq.request.headers.get('Authorization')).toBe(`Bearer ${newAccess}`);
     userReq.flush(mockUser);
+
+    // Let the token monitor run once: with fresh tokens it must stay quiet.
     tick();
 
     const tokenService: TokenService = TestBed.inject(TokenService);
