@@ -1,10 +1,12 @@
 package com.portcelana.natiart.service;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.CartItemDto;
 import com.portcelana.natiart.model.CartItem;
 import com.portcelana.natiart.model.Product;
@@ -35,11 +37,15 @@ public class CartManagerImpl implements CartManager {
         if (!product.isActive()) {
             throw new IllegalArgumentException("Product [" + product.getLabel() + "] is no longer available");
         }
-        final CartItem cartItem = cartItemRepository
-                .findCartItemByUsernameAndProduct(username, product)
-                .map(CartItem::increaseQuantity)
-                .orElseGet(() -> new CartItem(username, product));
-        return CartItemDto.from(cartItemRepository.save(cartItem));
+        // Atomic increment first: concurrent adds serialize in the database instead
+        // of losing increments in a read-modify-write round trip. The unique
+        // constraint on (username, product) keeps a lost insert race fail-loud
+        // instead of persisting duplicate lines.
+        if (cartItemRepository.incrementQuantity(username, productId) > 0) {
+            return CartItemDto.from(getCartLineOrDie(username, product));
+        }
+        final CartItem cartItem = cartItemRepository.save(new CartItem(username, product));
+        return CartItemDto.from(cartItem);
     }
 
     @Override
@@ -71,5 +77,12 @@ public class CartManagerImpl implements CartManager {
     @Transactional
     public void clearCart(String username) {
         cartItemRepository.deleteAll(cartItemRepository.findCartItemsByUsername(username));
+    }
+
+    private CartItem getCartLineOrDie(String username, Product product) {
+        return cartItemRepository
+                .findCartItemByUsernameAndProduct(username, product)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Cart item for user [" + username + "] and product [" + product.getId() + "] not found"));
     }
 }

@@ -8,6 +8,11 @@ import jakarta.persistence.*;
  * This cart only applies to logged-in customers. Customers that are not logged-in will have their cart saved in their browser's cookie
  */
 @Entity
+@Table(
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_cart_item_user_product",
+                        columnNames = {"username", "product_id"}))
 public class CartItem {
     @Id
     private final String id;
