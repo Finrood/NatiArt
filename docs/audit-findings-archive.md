@@ -2,6 +2,15 @@
 
 Full history of fixed findings, moved out of `docs/audit-findings.md` to keep the working backlog lean. Statuses here are final.
 
+### V3. `createProduct`/`updateProduct` accept null label/price, NPE on null images — FIXED (PR #128)
+- `backend/product-service/.../service/ProductManagerImpl.java` (`createProduct`/`updateProduct`) passed
+  `productDto.getLabel()`/`getOriginalPrice()` straight into `new Product(...)` with no null/blank guard — a
+  null label failed late at the DB constraint (500) instead of 400; and `processImages` dereferenced
+  `newImages.size()`/`.parallelStream()` with no null check, so a body without images NPEd → 500.
+- Fix: trim + reject blank labels and null prices with `IllegalArgumentException` (→ 400 via `ControllerAdvice`),
+  null-tolerate both image lists (null → empty, no storage egress). Tests: null label/price → 400-path
+  + never save; null image lists → persists with empty images + zero storage uploads.
+
 ### A1. `POST /api/payment/create` allows anonymous payment creation — FIXED (PR #45)
 - `backend/product-service/.../controller/PaymentController.java:22-25` has no
   `@PreAuthorize`; sibling `status`/`pixQrCode` endpoints require
