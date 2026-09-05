@@ -23,11 +23,42 @@ const isExcludedDomain = (url: string): boolean => {
   }
 };
 
+const isEndpoint = (url: string, endpoints: string[]): boolean => {
+  const base: string = environment.api.directory.url;
+  for (const endpoint of endpoints) {
+    if (url === endpoint || url === `${base}${endpoint}`) {
+      return true;
+    }
+    try {
+      if (/^https?:\/\//i.test(url)) {
+        const parsed: URL = new URL(url);
+        const baseParsed: URL = new URL(base);
+        if (parsed.origin === baseParsed.origin && parsed.pathname === endpoint) {
+          return true;
+        }
+      } else {
+        const parsed: URL = new URL(url, 'http://placeholder.local');
+        if (parsed.pathname === endpoint) {
+          return true;
+        }
+      }
+    } catch {
+      // Unparseable URL: fail closed, it is not an exempt endpoint.
+    }
+  }
+  return false;
+};
+
+const directoryAuthEndpoints = (): string[] => {
+  const endpoints = environment.api.directory.endpoints;
+  return [endpoints.login, endpoints.registerUser, endpoints.registerGhostUser];
+};
+
 const isAuthRequest = (url: string): boolean =>
-  url.includes('/register-user') || url.includes('/login') || url.includes("/register-ghost-user");
+  isEndpoint(url, directoryAuthEndpoints());
 
 const isRefreshTokenRequest = (url: string): boolean =>
-  url.includes('/refresh-token');
+  isEndpoint(url, [environment.api.directory.endpoints.refreshToken]);
 
 const RETRY_HEADER = 'X-Auth-Retried';
 
@@ -46,7 +77,7 @@ const performRefresh = (http: HttpClient, tokenService: TokenService): BehaviorS
     }
 
     http.post<{ accessToken: string; refreshToken: string }>(
-      `${environment.api.directory.url}/refresh-token`,
+      `${environment.api.directory.url}${environment.api.directory.endpoints.refreshToken}`,
       null,
       {headers: {Authorization: `Bearer ${refreshTokenValue}`}}
     ).subscribe({

@@ -18,11 +18,11 @@ export class SignupService {
   }
 
   registerUser(userRegistration: UserRegistration): Observable<User> {
-    return this.http.post<User>(`${this.apiUrl}/register-user`, userRegistration);
+    return this.http.post<User>(`${this.apiUrl}${environment.api.directory.endpoints.registerUser}`, userRegistration);
   }
 
   registerGhostUser(userRegistration: UserRegistration): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(`${this.apiUrl}/register-ghost-user`, userRegistration);
+    return this.http.post<LoginResponse>(`${this.apiUrl}${environment.api.directory.endpoints.registerGhostUser}`, userRegistration);
   }
 
   getAddressFromZipCode(zipCode: string): Observable<ViaCEPResponse> {
