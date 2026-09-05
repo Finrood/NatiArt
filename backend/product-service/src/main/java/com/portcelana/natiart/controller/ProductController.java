@@ -123,7 +123,7 @@ public class ProductController {
         productManager.deleteProduct(productId);
     }
 
-    @GetMapping("images")
+    @GetMapping("/images")
     public ResponseEntity<Resource> getProductImage(@RequestParam String path) throws URISyntaxException, IOException {
         LOGGER.info("Getting image with path [{}]", path);
 
