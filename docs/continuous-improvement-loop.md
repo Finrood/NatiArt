@@ -45,9 +45,9 @@ Note: the timer needs a lingering user session to fire while logged out
 ## Guardrails (enforced by script + prompt, in that order)
 
 1. Single instance (`flock`); 25-minute agent timeout keeps cadence.
-2. Cycle aborts on: dirty tree, non-fast-forward `master`, 2+ open
-   non-dependabot PRs, or any open non-dependabot PR with failing checks
-   (dependabot PRs are triaged separately and never block the loop).
+2. Cycle aborts on: dirty tree, non-fast-forward `master`, 2+ open code PRs
+   (docs-only flips and dependabot PRs are excluded — they never block the
+   loop), or any open code PR with failing checks.
 3. The agent merges ONLY on fully green CI (`gh pr checks --watch`), with
    `gh pr merge --merge --delete-branch`. Never force-push, never push to
    `master`, never touch dependabot branches.
@@ -133,6 +133,7 @@ workflow has reported:
 | `backend/**` | Backend CI (both service jobs) |
 | `frontend/**` | Frontend CI |
 | instruction files (`AGENTS.md`, mirrors, `agents/**`, module guides) | Guidelines |
+| `docs/**` (findings, lenses, loop docs) | Guidelines |
 | `.github/workflows/<name>.yml` | that workflow |
 | anything else | all three |
 
