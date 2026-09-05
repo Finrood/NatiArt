@@ -130,7 +130,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
   404s (or 301s), new path serves the QR payload. Found by Lens 15 hunt,
   2026-09-04.
 
-### B12. Unsafe `valueOf` on upstream Asaas enum strings — IN REVIEW (PR #67)
+### B12. Unsafe `valueOf` on upstream Asaas enum strings — FIXED (PR #67)
 - `backend/product-service/.../service/AsaasPaymentService.java:68-69`:
   `createPayment` maps the Asaas response with
   `PaymentMethod.valueOf(responseBody.getBillingType())` and
@@ -144,7 +144,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
   static message (never echo raw upstream text). Tests: unknown/null
   billing type and status → `IllegalArgumentException`; known values map.
 
-### B13. `ShippingEstimateRequest` has zero validation — IN REVIEW (PR #67)
+### B13. `ShippingEstimateRequest` has zero validation — FIXED (PR #67)
 - `backend/product-service/.../dto/shipping/ShippingEstimateRequest.java:3-18`:
   `to` accepts null/blank, weight/dimensions accept zero/negatives,
   `quantity` accepts zero/negatives — all flow unchecked into
