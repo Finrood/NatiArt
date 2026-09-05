@@ -65,8 +65,7 @@ class ProductManagerImplTest {
         final Category category = new Category("Tableware");
         when(categoryManager.getCategoryOrDie("cat-1")).thenReturn(category);
         when(packageManager.getPackage(null)).thenReturn(Optional.empty());
-        when(productRepository.save(any(Product.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
         final ProductDto dto =
                 new ProductDto("  Mug  ", BigDecimal.TEN).setCategoryId("cat-1").setImages(null);
 
@@ -74,7 +73,6 @@ class ProductManagerImplTest {
 
         assertEquals("Mug", created.getLabel());
         assertTrue(created.getImages().isEmpty());
-        verify(storageService, never())
-                .uploadFile(any(String.class), any(InputFile.class), any(String.class));
+        verify(storageService, never()).uploadFile(any(String.class), any(InputFile.class), any(String.class));
     }
 }
