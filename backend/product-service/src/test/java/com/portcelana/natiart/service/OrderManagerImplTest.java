@@ -128,7 +128,8 @@ class OrderManagerImplTest {
 
     @Test
     void createOrderRejectsInactiveProduct() {
-        Product retired = product("p4", "Retired plate", new BigDecimal("15.00"), null, 100).setActive(false);
+        Product retired = product("p4", "Retired plate", new BigDecimal("15.00"), null, 100)
+                .setActive(false);
         when(productManager.getProductOrDie("p4")).thenReturn(retired);
 
         OrderDto dto = new OrderDto().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p4", 1)));
