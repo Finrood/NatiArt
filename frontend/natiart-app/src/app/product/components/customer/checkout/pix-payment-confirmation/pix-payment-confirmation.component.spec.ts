@@ -96,3 +96,34 @@ describe('PixPaymentConfirmationComponent', () => {
     http.verify();
   }));
 });
+
+describe('PixPaymentConfirmationComponent without paymentId', () => {
+  let http: HttpTestingController;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [PixPaymentConfirmationComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: {snapshot: {paramMap: {get: (_key: string) => null}}},
+        },
+      ],
+    }).compileComponents();
+
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  it('surfaces an error state without issuing HTTP requests', () => {
+    const fixture = TestBed.createComponent(PixPaymentConfirmationComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    expect(component.paymentId).toBeNull();
+    expect(component.paymentStatus).toBe('ERROR');
+    http.verify();
+  });
+});
