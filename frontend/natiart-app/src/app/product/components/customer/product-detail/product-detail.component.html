@@ -174,11 +174,18 @@
             }
           </div>
         }
-        <!-- Show loading or not found message -->
-        @if (!(product$ | async)) {
-          <div class="text-center py-16">
-            <!-- Add a loading spinner or 'Product not found' message here -->
+        <!-- Show loading, error, or not-found states -->
+        @if (isLoading) {
+          <div class="text-center py-16" role="status" aria-live="polite">
             <p>Loading product details...</p>
+          </div>
+        } @else if (loadError) {
+          <div class="text-center py-16" role="alert">
+            <p class="text-red-600 font-medium">{{ loadError }}</p>
+          </div>
+        } @else if (!(product$ | async)) {
+          <div class="text-center py-16" role="alert">
+            <p>Product not found.</p>
           </div>
         }
       </main>
