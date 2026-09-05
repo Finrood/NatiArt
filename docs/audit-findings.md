@@ -172,19 +172,24 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix: use `item.cartItemId`; key `imageUrls` by `cartItemId` (as
   `cart.component.ts` does). Spec: two lines, same product, update/remove right one.
 
-### C2. Guest PIX checkout can double-register a ghost user — OPEN (High)
-- `checkout.component.ts:291-312,321-338`: `onSubmit` registers, then
-  `onProcessPixPayment` re-evaluates login state and may register again;
-  `firstValueFrom(...pipe(takeUntil))` can throw `EmptyError` on destroy.
-- Fix: resolve user once, pass into `onProcessPixPayment(user)`; handle
-  `EmptyError`. Spec: single registration call for guest PIX flow.
+### C2. Guest PIX checkout resolves the guest user twice; destroy races `EmptyError` — OPEN (Low-Medium, re-scoped 2026-09-05)
+- `checkout.component.ts:291-319,321-356`: `onSubmit` awaits
+  `createUserIfGuestCheckout()` and then `onProcessPixPayment()` re-subscribes
+  to it instead of receiving the resolved user. Re-verified 2026-09-05: the
+  original double-registration claim is stale — the awaits are sequential and
+  `isLoggedIn$` replays via `BehaviorSubject`, so the second call takes the
+  logged-in branch. Remainder: redundant re-resolution, and
+  `firstValueFrom(...pipe(takeUntil(destroy$)))` (`:330`) throws `EmptyError`
+  if the component is destroyed mid-flight.
+- Fix: resolve user once, pass into `onProcessPixPayment(user)`; catch
+  `EmptyError` on destroy. Spec: single registration call for guest PIX flow.
 
 ### C3. Order spinner never clears on failure — FIXED (PR #68)
 - `order.service.ts:19-24`: `tap(...)` resets `orderProcessing$` on success
   only; spinner stuck forever on HTTP error.
 - Fix: `finalize(...)`. Spec: flag resets on error.
 
-### C4. Login `ngOnInit` never validates token + premature redirect — IN REVIEW (High)
+### C4. Login `ngOnInit` never validates token + premature redirect — FIXED (PR #92)
 - `login.component.ts:79-84`: `fetchCurrentUser()` without subscribe = cold,
   no HTTP; unconditional redirect to `/dashboard` on any stored token.
 - Fix: subscribe and redirect on success only (stay + clear on error).
@@ -524,7 +529,7 @@ CI on JDK 25 Corretto is source of truth).
 
 ## L. Frontend auth flow (Lens 9 hunt, 2026-09-05)
 
-### L1. Hard-coded `/refresh-token` path in two frontend consumers, no env entry — IN REVIEW (Medium)
+### L1. Hard-coded `/refresh-token` path in two frontend consumers, no env entry — FIXED (PR #92)
 - `frontend/natiart-app/src/app/directory/service/authentication.service.ts:148`
   and `.../interceptors/jwt-interceptor.service.ts:49` interpolate the literal
   `/refresh-token`, while every sibling directory endpoint (`login`, `logout`,
@@ -535,7 +540,7 @@ CI on JDK 25 Corretto is source of truth).
 - Fix: add `refreshToken: '/refresh-token'` to all env files, consume it in
   both call sites. Spec: refresh POST targets the env-built URL.
 
-### L2. Interceptor auth/refresh exemption uses substring matching — IN REVIEW (Medium)
+### L2. Interceptor auth/refresh exemption uses substring matching — FIXED (PR #92)
 - `frontend/natiart-app/src/app/directory/interceptors/jwt-interceptor.service.ts:26-30`:
   `url.includes('/login')` (and `/register-user`, `/register-ghost-user`,
   `/refresh-token`) exempts ANY URL containing the substring (e.g.
