@@ -260,7 +260,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 
 ## F. Secrets and configuration (Lens 3 hunt, 2026-09-05)
 
-### F1. Hard-coded `directory.service.url`, no env override — OPEN (Medium)
+### F1. Hard-coded `directory.service.url`, no env override — FIXED (PR #74)
 - `backend/product-service/src/main/resources/application.properties:22` sets the
   literal `directory.service.url=http://localhost:8081`, consumed by
   `configuration/JwtAuthFilter.java:30` and `configuration/SecurityConfig.java:26`
@@ -271,7 +271,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix: `directory.service.url=${DIRECTORY_SERVICE_URL:http://localhost:8081}`,
   keeping the localhost default for dev.
 
-### F2. Dead `nati.proxy.directory.baseUrl` localhost in every profile — OPEN (Low-Medium)
+### F2. Dead `nati.proxy.directory.baseUrl` localhost in every profile — FIXED (PR #74)
 - `backend/product-service/src/main/resources/application-{production,dev,local-h2}.properties:24`
   all set `nati.proxy.directory.baseUrl=http://localhost:8081`, including
   production. Zero Java consumers (the live key is `directory.service.url`),
@@ -279,7 +279,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
   peer is configured.
 - Fix: delete the dead key from all three profiles.
 
-### F3. Blank Melhor Envio token fails open — OPEN (Medium)
+### F3. Blank Melhor Envio token fails open — FIXED (PR #74)
 - `backend/product-service/src/main/resources/application.properties:16` defaults
   `melhorenvio.api.token` to empty; `service/ShippingService.java:29-43` then
   sends `Authorization: Bearer ` blank and fails downstream at the Melhor Envio
@@ -289,7 +289,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix: constructor throws `IllegalStateException` on blank token. Tests:
   blank/null token → throws; valid token → constructs.
 
-### F4. Blank Asaas API key fails open on both services + duplicate `@Value` — OPEN (Medium)
+### F4. Blank Asaas API key fails open on both services + duplicate `@Value` — FIXED (PR #74)
 - Product `service/AsaasPaymentService.java:31-39` and directory
   `service/AsaasUserManager.java:26-34`: a field-level
   `@Value("${natiart.payment.asaas.apikey}")` duplicates the constructor
