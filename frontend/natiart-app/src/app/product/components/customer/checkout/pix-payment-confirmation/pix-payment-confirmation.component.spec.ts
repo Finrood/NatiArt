@@ -2,17 +2,20 @@ import {TestBed, fakeAsync, tick} from '@angular/core/testing';
 import {provideHttpClient} from '@angular/common/http';
 import {HttpTestingController, provideHttpClientTesting} from '@angular/common/http/testing';
 import {provideRouter} from '@angular/router';
-import {ActivatedRoute} from '@angular/router';
+import {ActivatedRoute, convertToParamMap} from '@angular/router';
+import {BehaviorSubject} from 'rxjs';
 
 import {PixPaymentConfirmationComponent} from './pix-payment-confirmation.component';
 import {environment} from '../../../../../../environments/environment';
 
 describe('PixPaymentConfirmationComponent', () => {
   let http: HttpTestingController;
+  let paramMap$: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
   const statusUrl = `${environment.api.product.url}/api/payment/pay_123/status`;
   const qrUrl = `${environment.api.product.url}/api/payment/pay_123/pixQrCode`;
 
   beforeEach(async () => {
+    paramMap$ = new BehaviorSubject(convertToParamMap({paymentId: 'pay_123'}));
     await TestBed.configureTestingModule({
       imports: [PixPaymentConfirmationComponent],
       providers: [
@@ -21,7 +24,7 @@ describe('PixPaymentConfirmationComponent', () => {
         provideRouter([]),
         {
           provide: ActivatedRoute,
-          useValue: {snapshot: {paramMap: {get: (key: string) => (key === 'paymentId' ? 'pay_123' : null)}}},
+          useValue: {paramMap: paramMap$.asObservable()},
         },
       ],
     }).compileComponents();
@@ -95,12 +98,36 @@ describe('PixPaymentConfirmationComponent', () => {
     component.ngOnDestroy();
     http.verify();
   }));
+
+  it('follows the routed payment id: param change restarts QR and polling for the new id', fakeAsync(() => {
+    const {component} = createAndFlushQr();
+    const newQrUrl = `${environment.api.product.url}/api/payment/pay_456/pixQrCode`;
+    const newStatusUrl = `${environment.api.product.url}/api/payment/pay_456/status`;
+
+    paramMap$.next(convertToParamMap({paymentId: 'pay_456'}));
+    tick(0);
+
+    expect(component.paymentId).toBe('pay_456');
+    http.expectOne(newQrUrl).flush({encodedImage: 'def', payload: 'y', expirationDate: '2030-01-01T00:00:00Z'});
+
+    // Old payment is no longer polled; the new one is.
+    tick(5000);
+    expect(http.match(statusUrl).length).toBe(0);
+    http.expectOne(newStatusUrl).flush({status: 'PENDING'});
+    tick(0);
+    expect(component.paymentStatus).toBe('PENDING');
+
+    component.ngOnDestroy();
+    http.verify();
+  }));
 });
 
 describe('PixPaymentConfirmationComponent without paymentId', () => {
   let http: HttpTestingController;
+  let paramMap$: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
 
   beforeEach(async () => {
+    paramMap$ = new BehaviorSubject(convertToParamMap({}));
     await TestBed.configureTestingModule({
       imports: [PixPaymentConfirmationComponent],
       providers: [
@@ -109,7 +136,7 @@ describe('PixPaymentConfirmationComponent without paymentId', () => {
         provideRouter([]),
         {
           provide: ActivatedRoute,
-          useValue: {snapshot: {paramMap: {get: (_key: string) => null}}},
+          useValue: {paramMap: paramMap$.asObservable()},
         },
       ],
     }).compileComponents();
