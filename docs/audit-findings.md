@@ -95,7 +95,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
   paths/Asaas bodies); rethrows `AccessDeniedException`.
 - Fix: add missing handlers; generic 500 returns static message + logs detail.
 
-### B7. Unbounded pagination + `getAllOrders()` full-table scan — OPEN (Low-Medium)
+### B7. Unbounded pagination + `getAllOrders()` full-table scan — OPEN (Low-Medium, paged-listing half FIXED in PR #82; `getAllOrders()` full-table scan remains)
 - `ProductController.java:50-59,62-81`, `CategoryController.java:35-43` accept
   raw `page`/`size` (`size=Integer.MAX_VALUE` dumps table; negative page → 500).
 - Fix: cap size (`@Max(100)`), `@Min(0)` page. Tests: oversized/negative clamped.
@@ -345,7 +345,7 @@ CI on JDK 25 Corretto is source of truth).
 
 ## H. N+1 queries and pagination (Lens 5 hunt, 2026-09-05)
 
-### H1. Paged product listings N+1 on LAZY `category`/`packaging` via `ProductDto.from` — OPEN (Medium)
+### H1. Paged product listings N+1 on LAZY `category`/`packaging` via `ProductDto.from` — FIXED (PR #82)
 - `backend/product-service/.../dto/ProductDto.java:43-44` touches
   `product.getCategory()` and `product.getPackaging()`, both `FetchType.LAZY`
   (`model/Product.java:40-46`). The paged fetch
