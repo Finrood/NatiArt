@@ -1041,7 +1041,7 @@ human decision per the Lens-16 routine, never touched here.
   core train; leave the `22.x` jump on the dependabot branch. Tests:
   `npm run build` + Karma suite green.
 
-### T3. Backend safe patch/minor bumps blocked behind the Spring Boot 4.x major in grouped PR #55 — OPEN (Medium)
+### T3. Backend safe patch/minor bumps blocked behind the Spring Boot 4.x major in grouped PR #55 — FIXED (PR #116)
 - `backend/product-service/build.gradle.kts:19-24` and
   `backend/directory-service/build.gradle.kts:20-21` pin
   `com.auth0:java-jwt:4.5.0` (→ `4.6.0` minor),
@@ -1055,7 +1055,7 @@ human decision per the Lens-16 routine, never touched here.
   libraries, leave Boot/`versions`-plugin/gradle-wrapper majors untouched.
   Tests: `./gradlew :directory-service:build :product-service:build` green.
 
-### T4. `spring-boot-devtools` as `implementation` ships dev tooling to production — OPEN (Low-Medium)
+### T4. `spring-boot-devtools` as `implementation` ships dev tooling to production — FIXED (PR #116)
 - `backend/product-service/build.gradle.kts:16` and
   `backend/directory-service/build.gradle.kts:17` declare
   `implementation("org.springframework.boot:spring-boot-devtools")`, so the
