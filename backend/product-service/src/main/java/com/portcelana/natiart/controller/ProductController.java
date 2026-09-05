@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.portcelana.natiart.dto.ProductDto;
-import com.portcelana.natiart.helper.TargetUser;
 import com.portcelana.natiart.service.ImageConversionService;
 import com.portcelana.natiart.service.ProductManager;
 import com.portcelana.natiart.storage.InputFile;
@@ -49,7 +48,6 @@ public class ProductController {
 
     @GetMapping("/products")
     public List<ProductDto> getProducts(
-            @TargetUser String username,
             @RequestParam(required = false, defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "20") int size) {
         LOGGER.info("Getting all products");

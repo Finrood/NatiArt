@@ -6,6 +6,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -118,6 +123,18 @@ class ControllerSecurityTest {
                         + " resolved=" + result.getResolvedException());
             }
         });
+    }
+
+    @Test
+    @WithAnonymousUser
+    void anonymousProductListingServesCatalogWithoutUserResolution() throws Exception {
+        // The listing is intentionally public and takes no user parameter:
+        // an empty catalog must render 200 with no security rejection.
+        when(productManager.getProducts(any())).thenReturn(List.of());
+
+        mockMvc.perform(get("/products")).andExpect(status().isOk());
+
+        verify(productManager).getProducts(any());
     }
 
     @Test
