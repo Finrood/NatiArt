@@ -504,6 +504,55 @@ Instruction-file fixes go in a human-review PR per the self-modification ban
 - Fix: recount and reword (e.g. "14 files remaining"). Human-review PR
   (touches the module guide).
 
+## W. Data integrity and transactions (Lens 4 hunt, 2026-09-05)
+
+Hunt method: re-verified B4 (client-priced `deliveryAmount`, no owner column —
+still OPEN), G1 (client-priced payment value, no order link — still OPEN) and
+N3 (upstream fetch before local authorization — still OPEN) against current
+`master`; traced `createOrder`/`createCartItem`/`createPayment` write paths for
+atomicity, money typing, quantity bounds and rollback tests. The whole-order
+rollback contract is covered (`OrderManagerImplTest:143`), cart increments are
+atomic (`CartManagerImpl:44`), and order item prices are server-computed
+(`OrderManagerImpl.java:84`) — not filed.
+
+### X1. Payment value is `Double` floating-point money — OPEN (Medium)
+- `backend/product-service/.../dto/payment/PaymentCreationRequest.java:18,44`
+  stores the charge amount as `Double`; `AsaasPaymentService.java:57-60`
+  validates it as a double. Binary floating point cannot represent most BRL
+  cent values exactly — a value like `19.99` arrives as `19.989999...` and any
+  future server-side reconciliation against `CustomerOrder.totalAmount`
+  (`BigDecimal`, G1) compares across types with hidden rounding.
+- Fix: migrate the field to `BigDecimal` (fail on more than 2 fraction digits),
+  convert at the Asaas boundary only. Tests: `19.99` survives exactly;
+  3-decimal input rejected.
+
+### X2. Order line count uncapped, single request can stuff one transaction — OPEN (Medium)
+- `service/OrderManagerImpl.java:106-121` (`validateItems`) caps per-line
+  quantity (`MAX_ITEM_QUANTITY = 100`) but not the number of lines: one
+  `POST /orders/create` can carry thousands of items, each doing a stock
+  decrement plus an insert inside a single `@Transactional` (TX timeout / DB
+  blowup; duplicate `productId` lines are also accepted and double-decrement).
+- Fix: `MAX_ORDER_LINES` cap rejected with `IllegalArgumentException` before
+  any write. Tests: oversized line list → 400-path, zero repository writes.
+
+### X3. Cart line quantity uncapped, order cap unreachable from cart flow — OPEN (Medium)
+- `service/CartManagerImpl.java:35-49` (`createCartItem`) increments with no
+  bound, while order creation rejects quantities above 100 — a cart line grown
+  past 100 can never be ordered, and a tight add-loop grows one row without
+  limit.
+- Fix: guarded atomic increment (`quantity < cap`, same pattern as
+  `decrementQuantityIfGreaterThanOne`), aligned to the order cap. Tests:
+  at-cap add rejected; below-cap add increments.
+
+### X4. `updateOrderStatus` accepts any transition, fulfillment path unwired — OPEN (Low)
+- `service/OrderManagerImpl.java:100-104` moves any status to any status
+  (`DELIVERED` → `PENDING`, `CANCELLED` → `PAID`) with no transition guard,
+  and neither it nor `getAllOrders`/`getById` has a controller endpoint
+  (`controller/OrderController.java:19-23` exposes only `POST /orders/create`)
+  — admin fulfillment is unreachable, so the missing guard is latent.
+- Fix: forward-only transition table when the admin endpoint is wired; until
+  then tracked, not silently fixed.
+
 ## V. Injection and validation, catalog follow-ups (Lens 1 hunt, 2026-09-05)
 
 Hunt method: enumerated every `.trim()`/unboxing/`valueOf`/derived-query site
