@@ -189,7 +189,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix: subscribe and redirect on success only (stay + clear on error).
   Spec: invalid token → no navigation.
 
-### C5. JWTs in `localStorage` + token-path logging — IN REVIEW (PR #75; short-term half: log removed, storage try/catch; cookie migration still strategic)
+### C5. JWTs in `localStorage` + token-path logging — FIXED short-term in PR #75 (log removed, storage try/catch); cookie migration still strategic OPEN
 - `token.service.ts:10-32`: any XSS (third-party `heic2any`/Adyen/confetti,
   `bypassSecurityTrust*`) reads both tokens; `console.log("Clearing tokens")`.
 - Fix now: remove log, wrap storage in try/catch. Long-term (needs decision):
@@ -201,7 +201,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
   correct pattern (`debounceTime/distinctUntilChanged/switchMap`).
 - Fix: copy that pattern. Spec: rapid typing → single lookup, stale dropped.
 
-### C7. Hard-coded ViaCEP URL — IN REVIEW (PR #75)
+### C7. Hard-coded ViaCEP URL — FIXED (PR #75)
 - `signup.service.ts:28-30` interpolates raw zip into a literal URL; violates
   "never hard-code URLs"; interceptor special-cases the host.
 - Fix: move to `environment.api.viaCep`, validate `/^\d{8}$/`. Spec: URL built
@@ -299,7 +299,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix: drop the field `@Value`, make the field `final`, fail fast on blank in
   the constructor. Tests per service: blank/null key → `IllegalStateException`.
 
-### F5. JWT-exclusion list hard-codes the ViaCEP host while the URL is env-driven — IN REVIEW (PR #75)
+### F5. JWT-exclusion list hard-codes the ViaCEP host while the URL is env-driven — FIXED (PR #75)
 - `frontend/natiart-app/src/app/directory/interceptors/jwt-interceptor.service.ts:8`
   pins `EXCLUDED_DOMAINS = ['viacep.com.br']`, but the lookup URL now comes from
   `environment.api.viaCep.url` (C7). Overriding the env URL to another host
