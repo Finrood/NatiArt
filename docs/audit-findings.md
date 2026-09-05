@@ -184,7 +184,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
   only; spinner stuck forever on HTTP error.
 - Fix: `finalize(...)`. Spec: flag resets on error.
 
-### C4. Login `ngOnInit` never validates token + premature redirect — OPEN (High)
+### C4. Login `ngOnInit` never validates token + premature redirect — IN REVIEW (High)
 - `login.component.ts:79-84`: `fetchCurrentUser()` without subscribe = cold,
   no HTTP; unconditional redirect to `/dashboard` on any stored token.
 - Fix: subscribe and redirect on success only (stay + clear on error).
@@ -521,3 +521,46 @@ CI on JDK 25 Corretto is source of truth).
 - Fix: catch `DataIntegrityViolationException` around the save and rethrow
   `IllegalArgumentException` with the same duplicate-label message. Tests:
   `save` throwing the violation → 400-path exception.
+
+## L. Frontend auth flow (Lens 9 hunt, 2026-09-05)
+
+### L1. Hard-coded `/refresh-token` path in two frontend consumers, no env entry — IN REVIEW (Medium)
+- `frontend/natiart-app/src/app/directory/service/authentication.service.ts:148`
+  and `.../interceptors/jwt-interceptor.service.ts:49` interpolate the literal
+  `/refresh-token`, while every sibling directory endpoint (`login`, `logout`,
+  `current`, `user`) is env-driven via `environment.api.directory.endpoints`
+  (no refresh entry in any of the 3 env files). A backend path rename breaks
+  token refresh silently (401 loops → forced logouts). Found by Lens 9 hunt,
+  2026-09-05.
+- Fix: add `refreshToken: '/refresh-token'` to all env files, consume it in
+  both call sites. Spec: refresh POST targets the env-built URL.
+
+### L2. Interceptor auth/refresh exemption uses substring matching — IN REVIEW (Medium)
+- `frontend/natiart-app/src/app/directory/interceptors/jwt-interceptor.service.ts:26-30`:
+  `url.includes('/login')` (and `/register-user`, `/register-ghost-user`,
+  `/refresh-token`) exempts ANY URL containing the substring (e.g.
+  `/api/search?q=login`) from the `Authorization` header AND from 401-refresh
+  handling — the request goes out unauthenticated and its 401 is never retried.
+  Same flaw class as backend B9 (fixed there with exact path matching in
+  `JwtAuthFilter`). Found by Lens 9 hunt, 2026-09-05.
+- Fix: exact endpoint matching (relative pathname or same-origin absolute URL
+  only). Spec: lookalike URL keeps the bearer; real endpoints stay exempt.
+
+### L3. `/checkout` requires auth but implements a guest ghost-user flow — OPEN (Medium)
+- `frontend/natiart-app/src/app/app.routes.ts:37` guards `/checkout` with
+  `authGuard`, so anonymous users bounce to `/login` before
+  `createUserIfGuestCheckout` (`checkout.component.ts:237-289`) can ever take
+  its guest branch; yet `resetAuthStateAndRedirect`
+  (`authentication.service.ts:253`) explicitly exempts `/checkout` from login
+  redirects, implying guest access is intended. Either the guard kills guest
+  checkout or the ghost flow is dead code. Found by Lens 9 hunt, 2026-09-05.
+- Fix needs a product decision (public checkout vs authenticated-only):
+  leave OPEN for the maintainer, do not change the guard unprompted.
+
+### L4. Inactivity timer never wired to user activity — OPEN (Low)
+- `frontend/natiart-app/src/app/directory/service/authentication.service.ts:51-69`:
+  `resetInactivityTimer` runs once from the constructor; no mouse/keyboard
+  listeners ever reset it, so it is a one-shot 15-minute refresh, not an
+  inactivity logout. Found by Lens 9 hunt, 2026-09-05.
+- Fix: wire activity events (`HostListener`/renderer listeners) or rename to
+  reflect the one-shot refresh. Tracked, not silently fixed.
