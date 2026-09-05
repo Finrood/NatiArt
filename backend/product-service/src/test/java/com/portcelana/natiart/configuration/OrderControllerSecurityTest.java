@@ -63,8 +63,7 @@ class OrderControllerSecurityTest {
     @Test
     @WithMockUser(username = "jane")
     void authenticatedUserCanCreateOrder() throws Exception {
-        when(orderManager.createOrder(any(OrderDto.class)))
-                .thenReturn(new CustomerOrder().setItems(List.of()));
+        when(orderManager.createOrder(any(OrderDto.class))).thenReturn(new CustomerOrder().setItems(List.of()));
 
         mockMvc.perform(post("/orders/create")
                         .contentType(MediaType.APPLICATION_JSON)
