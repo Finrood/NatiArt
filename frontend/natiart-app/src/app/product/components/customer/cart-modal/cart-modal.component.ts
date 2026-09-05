@@ -25,6 +25,7 @@ export class CartModalComponent implements OnInit, OnDestroy {
   cartTotal$: Observable<number>;
   imageUrls: { [cartItemId: string]: SafeUrl | null } = {};
   private subscriptions: Subscription[] = [];
+  private rawObjectUrlsByLine: Map<string, string> = new Map();
 
   private readonly _cartService: CartService = inject(CartService);
   private readonly _productService: ProductService = inject(ProductService);
@@ -41,6 +42,7 @@ export class CartModalComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subscriptions.forEach(subscription => subscription.unsubscribe());
+    this.revokeAllObjectUrls();
   }
 
   updateQuantity(item: CartItem, newQuantity: number): void {
@@ -58,11 +60,32 @@ export class CartModalComponent implements OnInit, OnDestroy {
   }
 
   onImageError(cartItemId: string): void {
+    this.revokeObjectUrl(cartItemId);
     this.imageUrls[cartItemId] = null;
+  }
+
+  private revokeObjectUrl(cartItemId: string): void {
+    const rawUrl: string | undefined = this.rawObjectUrlsByLine.get(cartItemId);
+    if (rawUrl) {
+      URL.revokeObjectURL(rawUrl);
+      this.rawObjectUrlsByLine.delete(cartItemId);
+    }
+  }
+
+  private revokeAllObjectUrls(): void {
+    this.rawObjectUrlsByLine.forEach((rawUrl: string) => URL.revokeObjectURL(rawUrl));
+    this.rawObjectUrlsByLine.clear();
   }
 
   private loadProductImages(): void {
     const subscription: Subscription = this.cartItems$.subscribe(items => {
+      const liveIds: Set<string> = new Set(items.map(item => item.cartItemId));
+      Array.from(this.rawObjectUrlsByLine.keys()).forEach((cartItemId: string) => {
+        if (!liveIds.has(cartItemId)) {
+          this.revokeObjectUrl(cartItemId);
+          delete this.imageUrls[cartItemId];
+        }
+      });
       items.forEach(item => {
         // Skip lines already loading/loaded: without this guard every cart
         // emission re-issues GET image for all lines (siblings cart/order-summary
@@ -80,7 +103,9 @@ export class CartModalComponent implements OnInit, OnDestroy {
 
   private fetchImage(cartItemId: string, imagePath: string): void {
     const subscription: Subscription = this._productService.getImage(imagePath).subscribe(blob => {
+      this.revokeObjectUrl(cartItemId);
       const objectUrl: string = URL.createObjectURL(blob);
+      this.rawObjectUrlsByLine.set(cartItemId, objectUrl);
       this.imageUrls[cartItemId] = this._sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
     });
     this.subscriptions.push(subscription);

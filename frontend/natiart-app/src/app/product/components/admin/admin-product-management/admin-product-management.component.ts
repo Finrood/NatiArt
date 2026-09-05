@@ -56,6 +56,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   private imageService = inject(ImageService);
   private subscriptions: Subscription[] = [];
+  private objectUrlsCreated: string[] = [];
 
   availablePersonalizationOptions = Object.values(PersonalizationOption);
 
@@ -102,6 +103,8 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subscriptions.forEach(subscription => subscription.unsubscribe());
+    this.objectUrlsCreated.forEach((url: string) => URL.revokeObjectURL(url));
+    this.objectUrlsCreated = [];
   }
 
   openModal(product?: Product): void {
@@ -289,6 +292,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   private fetchImage(productId: string, imagePath: string): void {
     const subscription = this.productService.getImage(imagePath).subscribe(blob => {
       const objectUrl = URL.createObjectURL(blob);
+      this.objectUrlsCreated.push(objectUrl);
       this.imageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
       this._products$.next([...this._products$.value]);
     });
