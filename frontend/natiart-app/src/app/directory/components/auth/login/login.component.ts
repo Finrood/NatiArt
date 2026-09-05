@@ -78,8 +78,11 @@ export class LoginComponent implements OnInit {
 
   ngOnInit(): void {
     if (this.tokenService.accessToken) {
-      this.authenticationService.fetchCurrentUser();
-      this.redirectToSavedUrlOrDashboard();
+      this.authenticationService.fetchCurrentUser()
+        .subscribe({
+          next: () => this.redirectToSavedUrlOrDashboard(),
+          error: () => this.tokenService.clearTokens(),
+        });
     }
   }
 
