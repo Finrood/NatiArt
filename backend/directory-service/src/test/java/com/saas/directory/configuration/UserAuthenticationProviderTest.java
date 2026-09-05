@@ -82,8 +82,7 @@ class UserAuthenticationProviderTest {
                 .thenReturn(Optional.empty());
 
         final IllegalAccessException exception = assertThrows(
-                IllegalAccessException.class,
-                () -> provider.authenticateWithToken(token, TokenType.AUTH_ACCESS));
+                IllegalAccessException.class, () -> provider.authenticateWithToken(token, TokenType.AUTH_ACCESS));
 
         assertEquals("Authentication token is not valid", exception.getMessage());
         assertFalse(exception.getMessage().contains(token));
@@ -102,8 +101,7 @@ class UserAuthenticationProviderTest {
                 .thenReturn(Optional.of(dbToken));
 
         final IllegalAccessException exception = assertThrows(
-                IllegalAccessException.class,
-                () -> provider.authenticateWithToken(token, TokenType.AUTH_ACCESS));
+                IllegalAccessException.class, () -> provider.authenticateWithToken(token, TokenType.AUTH_ACCESS));
 
         assertEquals("Authentication token issuer mismatch", exception.getMessage());
         assertFalse(exception.getMessage().contains(token));
