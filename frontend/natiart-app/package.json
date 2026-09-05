@@ -12,7 +12,7 @@
   "dependencies": {
     "@adyen/adyen-web": "^6.5.1",
     "@angular/animations": "^20.3.30",
-    "@angular/cdk": "^19.0.1",
+    "@angular/cdk": "^20.2.14",
     "@angular/common": "^20.3.30",
     "@angular/compiler": "^20.3.30",
     "@angular/core": "^20.3.30",
