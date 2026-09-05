@@ -84,4 +84,13 @@ class CartManagerImplTest {
 
         assertEquals(2, result.getQuantity());
     }
+
+    @Test
+    void createCartItem_rejectsInactiveProduct() {
+        final Product retired = product("Retired plate").setActive(false);
+        when(productManager.getProductOrDie("p9")).thenReturn(retired);
+
+        assertThrows(IllegalArgumentException.class, () -> cartManager.createCartItem("jane", "p9"));
+        verify(cartItemRepository, never()).save(any(CartItem.class));
+    }
 }

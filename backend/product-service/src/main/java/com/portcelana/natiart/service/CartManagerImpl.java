@@ -32,6 +32,9 @@ public class CartManagerImpl implements CartManager {
     @Transactional
     public CartItemDto createCartItem(String username, String productId) {
         final Product product = productManager.getProductOrDie(productId);
+        if (!product.isActive()) {
+            throw new IllegalArgumentException("Product [" + product.getLabel() + "] is no longer available");
+        }
         final CartItem cartItem = cartItemRepository
                 .findCartItemByUsernameAndProduct(username, product)
                 .map(CartItem::increaseQuantity)
