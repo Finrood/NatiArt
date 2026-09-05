@@ -172,7 +172,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix: use `item.cartItemId`; key `imageUrls` by `cartItemId` (as
   `cart.component.ts` does). Spec: two lines, same product, update/remove right one.
 
-### C2. Guest PIX checkout resolves the guest user twice; destroy races `EmptyError` — OPEN (Low-Medium, re-scoped 2026-09-05)
+### C2. Guest PIX checkout resolves the guest user twice; destroy races `EmptyError` — IN REVIEW (fix/frontend-checkout-identity)
 - `checkout.component.ts:291-319,321-356`: `onSubmit` awaits
   `createUserIfGuestCheckout()` and then `onProcessPixPayment()` re-subscribes
   to it instead of receiving the resolved user. Re-verified 2026-09-05: the
@@ -225,7 +225,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix: validate on enter (resolver/`canActivate`) or cache + timeout, return
   `true` on error. Spec: navigation away never blocked by backend failure.
 
-### C10. Untyped `any` services + unchecked `paymentId` + untested path — OPEN (Medium)
+### C10. Untyped `any` services + unchecked `paymentId` + untested path — IN REVIEW (fix/frontend-checkout-identity)
 - `product.service.ts:17-36`, `payment.service.ts:16-46`: `Observable<any>`;
   `checkout.component.ts:308-312` navigates to `/pix-payment/undefined` when
   `paymentId` missing; no `payment.service.spec.ts` (only service without one).
@@ -569,3 +569,46 @@ CI on JDK 25 Corretto is source of truth).
   inactivity logout. Found by Lens 9 hunt, 2026-09-05.
 - Fix: wire activity events (`HostListener`/renderer listeners) or rename to
   reflect the one-shot refresh. Tracked, not silently fixed.
+
+## M. Frontend data identity (Lens 10 hunt, 2026-09-05)
+
+### M1. Product detail goes stale when navigating between related products — OPEN (Medium)
+- `frontend/natiart-app/src/app/product/components/customer/product-detail/product-detail.component.ts:67-72`
+  reads `route.snapshot.paramMap.get('id')` once in `ngOnInit`; the related-products
+  template (`product-detail.component.html:154`) links `['/product', relatedProduct.id]`
+  to the same component, which Angular reuses without re-running `ngOnInit`.
+  Clicking a related product keeps showing the previous product (stale closure over
+  the product list). Found by Lens 10 hunt, 2026-09-05.
+- Fix: subscribe to `route.paramMap` (with `switchMap` + `takeUntil(destroy$)`,
+  resetting `quantity`/`selectedImageIndex` per id) instead of the one-shot snapshot.
+  Spec: param change from `p1` to `p2` loads `p2`.
+
+### M2. Related-products race: slow first response overwrites the current product — OPEN (Low-Medium)
+- `frontend/natiart-app/src/app/product/components/customer/product-detail/product-detail.component.ts:272-293`
+  `loadRelatedProducts` captures `currentProductId` once and subscribes without
+  cancellation; two rapid product visits leave overlapping `getProductsByCategory`
+  requests and the slower first response overwrites `relatedProducts$` (and its
+  image map) while viewing the second product. Same shape as the C6 lookup race
+  in another flow. Found by Lens 10 hunt, 2026-09-05.
+- Fix: `switchMap` the category lookup off the routed product (or track a request
+  token and drop stale responses). Spec: stale category response never replaces
+  the current related list.
+
+### M3. `getProduct(null)` requests `/products/null` instead of failing fast — OPEN (Low)
+- `frontend/natiart-app/src/app/product/service/product.service.ts:34-36`
+  `getProduct(productId: string | null)` interpolates the id unchecked
+  (`` `${this.apiUrl}/${productId}` ``), so a `null` id issues `GET .../null`;
+  the only caller (`product-detail.component.ts:68-71`) guards the snapshot id but
+  silently renders nothing on a missing id (no error state). Found by Lens 10
+  hunt, 2026-09-05.
+- Fix: reject null/blank ids before HTTP (`throwError`), surface an error state
+  in the detail view. Spec: `getProduct(null)` emits an error without HTTP.
+
+### M4. Missing `paymentId` route param leaves PIX confirmation stuck on PENDING — OPEN (Low)
+- `frontend/natiart-app/src/app/product/components/customer/checkout/pix-payment-confirmation/pix-payment-confirmation.component.ts:32-39`:
+  a null `paymentId` param silently skips both `loadQrCode` and `startPolling`
+  with no error state, so `/pix-payment` (no id) renders a stuck PENDING view.
+  The checkout-side half (`/pix-payment/undefined` navigation) is tracked as C10;
+  this is the confirmation-side half. Found by Lens 10 hunt, 2026-09-05.
+- Fix: set an error status (e.g. `paymentStatus = 'ERROR'`) when the param is
+  missing. Spec: null param → error state, no HTTP.
