@@ -155,6 +155,15 @@ table above is agent discipline, enforced by the cycle prompt.
 - Merge-scope errors (e.g. missing `workflow` scope) are reported to the
   human, never routed around. Token scopes are documented here so the fix is
   one command: `gh auth refresh -s workflow` (interactive).
+- Auto-merge stays OFF repository-wide by policy: every merge is explicit.
+- AI-review gate: each PR gets an independent fresh-context reviewer run
+  (`scripts/agent-review-prompt.md`, ~6 min, concurrent with CI). Merge
+  requires green relevant CI AND an APPROVE verdict with zero unresolved
+  blockers; one address-and-re-review round, then the PR stays open.
+- Remote hygiene: every cycle retries deletion of merged loop-prefix branches
+  (`fix|perf|chore|docs|feature/*`) — the `--delete-branch` flag occasionally
+  races GitHub auto-delete. Never touches unmerged work, `master`, or
+  dependabot branches. Logs keep the last 100 cycles.
 
 ## Backlog
 

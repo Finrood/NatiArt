@@ -20,6 +20,8 @@ fi
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/loop-$(date +%Y%m%d-%H%M%S).log"
 exec > >(tee -a "$LOG_FILE") 2>&1
+# Log retention: keep the last 100 cycle logs.
+ls -t "$LOG_DIR"/loop-*.log 2>/dev/null | tail -n +101 | xargs -r rm -f || true
 
 log "=== Improvement-loop cycle start (check-only=$CHECK_ONLY) ==="
 cd "$REPO"
@@ -128,15 +130,34 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
     exit 0
 fi
 
+# Remote hygiene: retry deletion of merged loop branches (the --delete-branch
+# flag occasionally races GitHub auto-delete and leaves them behind). Only
+# branches fully merged into master, only loop prefixes — never master,
+# dependabot/*, or unmerged work.
+git branch -r --merged origin/master 2>/dev/null | sed 's#^ *origin/##' | grep -E '^(fix|perf|chore|docs|feature)/' | sort -u | while read -r b; do
+    if git ls-remote --heads origin "$b" 2>/dev/null | grep -q .; then
+        log "Deleting merged remote branch $b."
+        git push -q origin --delete "$b" 2>/dev/null || log "Could not delete $b (likely already gone)."
+    fi
+done || true
+
 # 6. Hand one item to the agent (non-interactive, repo permission policy applies;
 #    never --auto). Timeout keeps the 30-minute cadence honest. The lens rotates
 #    deterministically per 30-minute slot (no state files); every 20th slot is a
 #    red-team cycle (~every 10 days at full cadence).
 SLOT=$(( $(date +%s) / 1800 ))
-LENS_COUNT=$(grep -c '^## Lens ' docs/loop-lenses.md)
+LENS_COUNT=$(grep -c '^## Lens ' docs/loop-lenses.md || true)
+if [[ "$LENS_COUNT" -eq 0 ]]; then
+    log "No lenses parsed from docs/loop-lenses.md; aborting cycle."
+    exit 1
+fi
 LENS_INDEX=$(( SLOT % LENS_COUNT ))
 LENS_NAME=$(sed -n 's/^## Lens [0-9]*: //p' docs/loop-lenses.md | sed -n "$(( LENS_INDEX + 1 ))p")
-log "Lens of the cycle: #$LENS_INDEX $LENS_NAME (slot $SLOT)."
+if [[ -z "$LENS_NAME" ]]; then
+    log "Lens extraction failed; aborting cycle."
+    exit 1
+fi
+log "Lens of the cycle: #$(( LENS_INDEX + 1 )) $LENS_NAME (slot $SLOT)."
 CYCLE_MSG="$(cat scripts/agent-cycle-prompt.md)
 ---
 Cycle parameters: lens of the cycle: $LENS_NAME. Backlog: $OPEN_COUNT OPEN (floor $FLOOR)."

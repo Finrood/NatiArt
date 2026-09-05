@@ -54,18 +54,25 @@ Phase 2 — fix loop, until kill-minus-8-min (max 3 fix PRs):
    unused imports, no debug artifacts, Spotless clean). Push the branch, open
    the PR, record its number, repeat while the timebox allows.
 
-Phase 3 — merge everything green:
-7. Watch all cycle PRs (`gh pr checks` per PR). Zero reported checks means CI
-   has not registered yet — wait, never treat it as green. Workflows are
-   path-scoped (table in the runbook): merge ONLY when every reported check is
-   green AND every workflow relevant to the PR's changed paths has reported.
-   Docs-only PRs (`docs/**`) report Guidelines — green Guidelines is a
-   mergeable signal for them. A backend PR must show
-   both Backend CI service jobs. Merge each green PR
-   (`--merge --delete-branch`); flip statuses (batch all flips into one
-   `docs/` PR if several). Still red after one flake rerun → leave open and
-   report. Scope-error refusals go to the human, never routed around. Never
-   push to `master`.
+Phase 3 — review, then merge everything green:
+7. At PR open, launch the independent reviewer in parallel with CI:
+   `timeout 360 opencode run "$(cat scripts/agent-review-prompt.md)
+   Review PR <N>." --dir "$REPO" --title "review-pr-<N>"`. Review and CI run
+   concurrently — no idle watching. Poll checks between batches regardless:
+   zero reported checks means CI has not registered yet — wait, never treat
+   it as green. Workflows are path-scoped (table in the runbook): merge ONLY
+   when every reported check is green AND every workflow relevant to the PR's
+   changed paths has reported AND the latest reviewer comment opens with
+   `VERDICT: APPROVE` (verdicts travel by comment body — GitHub blocks
+   self-approvals and all loop agents share one identity; re-check with
+   `gh pr view --json reviews` — a newer `VERDICT: REQUEST_CHANGES` vetoes). Docs-only PRs (`docs/**`) report Guidelines —
+   green Guidelines is a mergeable signal for them. A backend PR must show
+   both Backend CI service jobs. On REQUEST_CHANGES: address blockers, push,
+   re-run the reviewer once; still blocked or still red after one flake
+   rerun → leave open and report. Auto-merge stays OFF repository-wide by
+   policy — every merge is an explicit, reviewed act. Scope-error refusals go
+   to the human, never routed around. Never push to `master`. Flip statuses
+   for merged PRs (batch all flips into one `docs/` PR if several).
 8. HARD RULES: max 3 fix PRs + docs per cycle. Never force-push. Never push to
    `master` or dependabot branches. Never merge on red/yellow CI. Never
    migrate auth, rate-limit infrastructure, or schema management without a
