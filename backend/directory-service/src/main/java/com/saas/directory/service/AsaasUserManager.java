@@ -4,6 +4,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -17,6 +19,8 @@ import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
 
 @Service
 public class AsaasUserManager {
+    private static final Logger LOGGER = LoggerFactory.getLogger(AsaasUserManager.class);
+
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(15);
 
@@ -54,12 +58,22 @@ public class AsaasUserManager {
             return Optional.ofNullable(response)
                     .orElseThrow(() -> new RuntimeException("Received a null response body from " + asaasCustomerUrl));
         } catch (HttpClientErrorException e) {
-            throw new AsaasApiException(
-                    String.format("Error from Asaas API: %s", e.getResponseBodyAsString()),
-                    (HttpStatus) e.getStatusCode());
+            throw mapAsaasError(e);
         } catch (Exception e) {
             throw new Exception("Unexpected error during asaas user registration: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Maps an upstream Asaas customer-API error onto a service exception. The raw
+     * upstream body is logged server-side only -- it is never embedded in the
+     * exception message because the directory advice reflects that message to
+     * the caller.
+     */
+    static AsaasApiException mapAsaasError(HttpClientErrorException e) {
+        LOGGER.warn("Asaas customer API error: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
+        return new AsaasApiException(
+                "Customer registration failed at the payment provider", (HttpStatus) e.getStatusCode());
     }
 
     private HttpHeaders getRequestHeaders() {
