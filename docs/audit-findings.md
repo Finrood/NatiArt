@@ -299,7 +299,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `FIXED` = merged to maste
 - Fix: drop the field `@Value`, make the field `final`, fail fast on blank in
   the constructor. Tests per service: blank/null key → `IllegalStateException`.
 
-### F5. JWT-exclusion list hard-codes the ViaCEP host while the URL is env-driven — OPEN (Low)
+### F5. JWT-exclusion list hard-codes the ViaCEP host while the URL is env-driven — IN REVIEW (PR #75)
 - `frontend/natiart-app/src/app/directory/interceptors/jwt-interceptor.service.ts:8`
   pins `EXCLUDED_DOMAINS = ['viacep.com.br']`, but the lookup URL now comes from
   `environment.api.viaCep.url` (C7). Overriding the env URL to another host
