@@ -3,7 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
-import { BehaviorSubject, of, throwError } from 'rxjs';
+import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 
 import { ProductDetailComponent } from './product-detail.component';
 import { ProductService } from '../../../service/product.service';
@@ -100,7 +100,7 @@ describe('ProductDetailComponent', () => {
 
 describe('ProductDetailComponent stale main images', () => {
   let paramMap$: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
-  let imageSubjects: Map<string, BehaviorSubject<Blob>>;
+  let imageSubjects: Map<string, Subject<Blob>>;
 
   function makeImagedProduct(id: string): Product {
     return {...makeProduct(id), images: [`img-${id}`]};
@@ -108,7 +108,7 @@ describe('ProductDetailComponent stale main images', () => {
 
   beforeEach(async () => {
     paramMap$ = new BehaviorSubject(convertToParamMap({id: 'p1'}));
-    imageSubjects = new Map<string, BehaviorSubject<Blob>>();
+    imageSubjects = new Map<string, Subject<Blob>>();
 
     await TestBed.configureTestingModule({
       imports: [ProductDetailComponent],
@@ -124,7 +124,7 @@ describe('ProductDetailComponent stale main images', () => {
             getProductsByCategory: () => of([]),
             getImage: (path: string) => {
               if (!imageSubjects.has(path)) {
-                imageSubjects.set(path, new BehaviorSubject<Blob>(new Blob()));
+                imageSubjects.set(path, new Subject<Blob>());
               }
               return imageSubjects.get(path)!.asObservable();
             },
