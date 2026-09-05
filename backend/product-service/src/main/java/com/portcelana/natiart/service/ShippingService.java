@@ -11,8 +11,11 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
+import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
+import com.portcelana.natiart.controller.helper.UserNotAllowedException;
 import com.portcelana.natiart.dto.shipping.ShippingEstimate;
 import com.portcelana.natiart.dto.shipping.ShippingEstimateRequest;
 import com.portcelana.natiart.service.support.MelhorenvioShippingCalculationRequest;
@@ -46,11 +49,16 @@ public class ShippingService {
         headers.set("Accept", "application/json");
         headers.set("Authorization", "Bearer " + apiToken);
 
-        final ResponseEntity<List<MelhorenvioShippingCalculationResponse>> response = restTemplate.exchange(
-                apiUrl,
-                HttpMethod.POST,
-                new HttpEntity<>(createMelhorEnvioRequest(shippingEstimateRequest), headers),
-                new ParameterizedTypeReference<>() {});
+        final ResponseEntity<List<MelhorenvioShippingCalculationResponse>> response;
+        try {
+            response = restTemplate.exchange(
+                    apiUrl,
+                    HttpMethod.POST,
+                    new HttpEntity<>(createMelhorEnvioRequest(shippingEstimateRequest), headers),
+                    new ParameterizedTypeReference<>() {});
+        } catch (HttpStatusCodeException e) {
+            throw mapShippingError(e);
+        }
 
         return parseAndFilterResponse(response.getBody());
     }
@@ -84,5 +92,22 @@ public class ShippingService {
                         .add(BigDecimal.valueOf(
                                 5))) // We add 5 to compensate for differences between API prices and post office prices
                 .setEstimatedDeliveryDays(response.getDelivery_time());
+    }
+
+    /**
+     * Maps an upstream Melhor Envio HTTP error onto a service exception. The default
+     * RestTemplate throws {@link HttpStatusCodeException} instead of returning
+     * 4xx/5xx responses, so without this mapping every upstream error would
+     * surface as a 500.
+     */
+    static RuntimeException mapShippingError(HttpStatusCodeException e) {
+        final HttpStatusCode statusCode = e.getStatusCode();
+        if (statusCode == HttpStatus.UNAUTHORIZED || statusCode == HttpStatus.FORBIDDEN) {
+            return new UserNotAllowedException("Unauthorized api call to the shipping provider");
+        }
+        if (statusCode == HttpStatus.NOT_FOUND) {
+            return new ResourceNotFoundException("Shipping estimate not found in the shipping provider");
+        }
+        return e;
     }
 }

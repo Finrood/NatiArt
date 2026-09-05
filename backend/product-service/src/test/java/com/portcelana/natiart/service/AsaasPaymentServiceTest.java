@@ -6,13 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
-import org.springframework.web.client.RestTemplate;
 
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.controller.helper.UserNotAllowedException;
@@ -22,11 +18,7 @@ import com.portcelana.natiart.dto.payment.helper.PaymentMethod;
 import com.portcelana.natiart.dto.payment.helper.PaymentProcessor;
 import com.portcelana.natiart.dto.payment.helper.PaymentStatus;
 
-@ExtendWith(MockitoExtension.class)
 class AsaasPaymentServiceTest {
-
-    @Mock
-    private RestTemplate restTemplate;
 
     private AsaasPaymentService newService() {
         return new AsaasPaymentService("test-api-key", "https://sandbox.asaas.com/api/v3/payments");
@@ -148,5 +140,33 @@ class AsaasPaymentServiceTest {
         final HttpServerErrorException upstream =
                 HttpServerErrorException.create(HttpStatus.INTERNAL_SERVER_ERROR, "Bad Gateway", null, null, null);
         assertSame(upstream, AsaasPaymentService.mapAsaasError(upstream));
+    }
+
+    @Test
+    void paymentResourceUrl_buildsEncodedUpstreamUrl() {
+        assertEquals(
+                "https://sandbox.asaas.com/api/v3/payments/pay_123",
+                AsaasPaymentService.paymentResourceUrl("https://sandbox.asaas.com/api/v3/payments", "pay_123"));
+        assertEquals(
+                "https://sandbox.asaas.com/api/v3/payments/pay_123/pixQrCode",
+                AsaasPaymentService.paymentResourceUrl(
+                        "https://sandbox.asaas.com/api/v3/payments", "pay_123", "pixQrCode"));
+    }
+
+    @Test
+    void paymentResourceUrl_rejectsPathManipulatingOrBlankIds() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> AsaasPaymentService.paymentResourceUrl(
+                        "https://sandbox.asaas.com/api/v3/payments", "pay_123/secret"));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> AsaasPaymentService.paymentResourceUrl("https://sandbox.asaas.com/api/v3/payments", ".."));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> AsaasPaymentService.paymentResourceUrl("https://sandbox.asaas.com/api/v3/payments", "  "));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> AsaasPaymentService.paymentResourceUrl("https://sandbox.asaas.com/api/v3/payments", null));
     }
 }

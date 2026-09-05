@@ -12,6 +12,7 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.controller.helper.UserNotAllowedException;
@@ -96,7 +97,7 @@ public class AsaasPaymentService implements PaymentService {
         final ResponseEntity<AsaasPaymentPixQrCodeResponse> response;
         try {
             response = restTemplate.exchange(
-                    String.format("%s/%s/pixQrCode", asaasPaymentUrl, paymentId),
+                    paymentResourceUrl(asaasPaymentUrl, paymentId, "pixQrCode"),
                     HttpMethod.GET,
                     entity,
                     AsaasPaymentPixQrCodeResponse.class);
@@ -139,7 +140,7 @@ public class AsaasPaymentService implements PaymentService {
         final ResponseEntity<AsaasPaymentCreationResponse> response;
         try {
             response = restTemplate.exchange(
-                    String.format("%s/%s", asaasPaymentUrl, paymentId),
+                    paymentResourceUrl(asaasPaymentUrl, paymentId),
                     HttpMethod.GET,
                     new HttpEntity<>(getRequestHeaders()),
                     AsaasPaymentCreationResponse.class);
@@ -186,6 +187,25 @@ public class AsaasPaymentService implements PaymentService {
             return new ResourceNotFoundException("Payment not found in the payment provider");
         }
         return e;
+    }
+
+    /**
+     * Builds an upstream Asaas payment URL from a caller-supplied id. The id is
+     * allow-listed to a single path segment and encoded -- never interpolated
+     * raw, or slashes/{@code ..} would rewrite the upstream path while the
+     * {@code access_token} header is attached.
+     */
+    static String paymentResourceUrl(String baseUrl, String paymentId, String... extraPathSegments) {
+        if (paymentId == null || !paymentId.matches("[A-Za-z0-9_-]+")) {
+            throw new IllegalArgumentException("Invalid payment id");
+        }
+        final String[] segments = new String[extraPathSegments.length + 1];
+        segments[0] = paymentId;
+        System.arraycopy(extraPathSegments, 0, segments, 1, extraPathSegments.length);
+        return UriComponentsBuilder.fromHttpUrl(baseUrl)
+                .pathSegment(segments)
+                .encode()
+                .toUriString();
     }
 
     /**
