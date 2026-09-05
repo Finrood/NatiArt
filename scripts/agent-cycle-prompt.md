@@ -18,8 +18,10 @@ Phase 0 — sync and pickup (~2 min):
 1. `git checkout master && git pull --ff-only`, verify `git status` is clean.
    If dirty (no open PR owns the dirt) or the pull fails, stop and report.
 2. Merge ALL green open non-dependabot loop PRs left by prior cycles
-   (`gh pr merge --merge --delete-branch`), delete local branches, flip their
-   findings statuses. Pending ones stay open; failing ones stop the cycle
+   (`gh pr merge --merge --delete-branch`), delete local branches. Batch every
+   status flip from merged PRs into ONE `docs/` flip PR (`OPEN` → `FIXED` with
+   PR numbers). Flip your own batch to `IN REVIEW` inside the fix PR itself —
+   never spawn one flip PR per item. Pending ones stay open; failing ones stop the cycle
    after one `gh run rerun --failed` for suspected flakes. You may also merge
    green, safe dependabot PRs (Lens-16 routine: check semver scope, require
    green CI, never push to their branches, skip majors/red ones, report
@@ -51,7 +53,8 @@ Phase 3 — merge everything green:
    has not registered yet — wait, never treat it as green. Workflows are
    path-scoped (table in the runbook): merge ONLY when every reported check is
    green AND every workflow relevant to the PR's changed paths has reported.
-   A docs-only PR legitimately shows Guidelines alone; a backend PR must show
+   Docs-only PRs (`docs/**`) report Guidelines — green Guidelines is a
+   mergeable signal for them. A backend PR must show
    both Backend CI service jobs. Merge each green PR
    (`--merge --delete-branch`); flip statuses (batch all flips into one
    `docs/` PR if several). Still red after one flake rerun → leave open and

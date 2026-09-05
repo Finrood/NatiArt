@@ -11,6 +11,8 @@ on:
       - "agents/**"
       - "backend/AGENTS.md"
       - "frontend/natiart-app/AGENTS.md"
+      - "docs/**"
+      - "scripts/**"
       - ".github/workflows/guidelines-consistency.yml"
   pull_request:
     branches: [ "master" ]
@@ -22,6 +24,8 @@ on:
       - "agents/**"
       - "backend/AGENTS.md"
       - "frontend/natiart-app/AGENTS.md"
+      - "docs/**"
+      - "scripts/**"
       - ".github/workflows/guidelines-consistency.yml"
 
 # Least privilege: the check only reads the repo.

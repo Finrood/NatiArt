@@ -89,20 +89,32 @@ if [[ -n "$ROT_LINES" ]]; then
     log "$ROT_LINES"
 fi
 
-# 4. Pile-up guard: max 1 open loop branch/PR, none failing. Dependabot PRs are
-#    triaged separately (Lens 16) and never block the loop.
-OPEN_PRS=$(gh pr list --state open --json headRefName --jq '[.[] | select(.headRefName | startswith("dependabot/") | not)] | length')
-log "Open non-dependabot PRs: $OPEN_PRS"
+# 4. Pile-up guard: docs-only flips and dependabot PRs never block the loop;
+#    only code PRs count (a pile of zero-risk flips must not livelock cycles).
+is_docs_only() { # $1 = PR number; true iff every changed file is under docs/
+    local files
+    files=$(gh pr view "$1" --json files --jq '.files[].path' 2>/dev/null) || return 1
+    [[ -n "$files" ]] && ! grep -qvE '^docs/' <<<"$files"
+}
+CODE_PRS=""
+while read -r n; do
+    if ! is_docs_only "$n"; then
+        CODE_PRS="$CODE_PRS $n"
+    fi
+done < <(gh pr list --state open --json number,headRefName --jq '.[] | select(.headRefName | startswith("dependabot/") | not) | .number')
+OPEN_PRS=$(echo "$CODE_PRS" | wc -w)
+log "Open code PRs: $OPEN_PRS"
 if [[ "$OPEN_PRS" -ge 2 ]]; then
     log "Too many open PRs; letting review catch up. Exiting."
     exit 0
 fi
 if [[ "$OPEN_PRS" -ge 1 ]]; then
-    FAILING=$(gh pr list --state open --json number,headRefName --jq '.[] | select(.headRefName | startswith("dependabot/") | not) | .number' | while read -r n; do
-        if gh pr checks "$n" 2>/dev/null | grep -Eq 'fail|cancel'; then echo "$n"; fi
-    done)
+    FAILING=""
+    for n in $CODE_PRS; do
+        if gh pr checks "$n" 2>/dev/null | grep -Eq 'fail|cancel'; then FAILING="$FAILING $n"; fi
+    done
     if [[ -n "$FAILING" ]]; then
-        log "Open PR(s) with failing checks: $FAILING; not starting new work."
+        log "Open PR(s) with failing checks:$FAILING; not starting new work."
         exit 0
     fi
 fi
