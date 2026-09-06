@@ -638,7 +638,7 @@ method's own 401-reset, so no state corruption, only console noise).
   it in `ngOnDestroy`. Spec: destroy cancels the pending navigation; success
   path still navigates after 2s.
 
-### L7. Logout on an expired access token mints fresh tokens before quitting — OPEN (Low)
+### L7. Logout on an expired access token mints fresh tokens before quitting — IN REVIEW (Low, fix in flight on this branch)
 - `frontend/natiart-app/src/app/directory/interceptors/jwt-interceptor.service.ts:106-140`:
   `/signout` is not an exempt endpoint, so a `401` from logout triggers the
   single-flight refresh and retries the logout with rotated tokens. An

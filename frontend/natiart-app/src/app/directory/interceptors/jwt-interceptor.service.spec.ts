@@ -11,6 +11,7 @@ import {environment} from '../../../environments/environment';
 
 describe('jwtInterceptor', () => {
   const REFRESH_URL = `${environment.api.directory.url}${environment.api.directory.endpoints.refreshToken}`;
+  const LOGOUT_URL = `${environment.api.directory.url}${environment.api.directory.endpoints.logout}`;
 
   function setup() {
     TestBed.configureTestingModule({
@@ -241,5 +242,40 @@ describe('jwtInterceptor', () => {
     httpTesting.expectNone(REFRESH_URL);
     httpTesting.verify();
     expect(error).toBeTruthy();
+  }));
+
+  it('still sends the bearer on logout so the server can end the session', fakeAsync(() => {
+    const {http, httpTesting, tokenService} = setup();
+    tokenService.accessToken = 'abc';
+
+    http.post(LOGOUT_URL, {}).subscribe(() => {
+    });
+    const req: TestRequest = httpTesting.expectOne(LOGOUT_URL);
+    expect(req.request.headers.get('Authorization')).toBe('Bearer abc');
+    req.flush({});
+    httpTesting.verify();
+  }));
+
+  it('does not refresh on logout 401: it clears tokens and goes to login', fakeAsync(() => {
+    const {http, httpTesting, tokenService} = setup();
+    tokenService.accessToken = 'old-access';
+    tokenService.refreshToken = 'old-refresh';
+    const router: Router = TestBed.inject(Router);
+
+    let error: unknown;
+    http.post(LOGOUT_URL, {}).subscribe({error: (e: unknown) => (error = e)});
+
+    const req: TestRequest = httpTesting.expectOne(LOGOUT_URL);
+    expect(req.request.headers.get('Authorization')).toBe('Bearer old-access');
+    req.flush('', {status: 401, statusText: 'Unauthorized'});
+    tick();
+
+    // No refresh attempt: explicit logout never extends the session.
+    httpTesting.expectNone(REFRESH_URL);
+    expect(tokenService.accessToken).toBeNull();
+    expect(tokenService.refreshToken).toBeNull();
+    expect(router.navigate).toHaveBeenCalledWith(['/login']);
+    expect(error).toBeTruthy();
+    httpTesting.verify();
   }));
 });
