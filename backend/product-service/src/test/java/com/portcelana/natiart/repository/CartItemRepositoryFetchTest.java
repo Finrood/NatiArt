@@ -65,6 +65,8 @@ class CartItemRepositoryFetchTest {
     void cartListingLoadsPlainLinesInASingleQuery() {
         cartItemRepository.save(new CartItem("jane", newProductWithImage("plain-a")));
         cartItemRepository.save(new CartItem("jane", newProductWithImage("plain-b")));
+        // Flush first: clear() alone would discard the still-unflushed inserts.
+        entityManager.flush();
         entityManager.clear();
 
         final Statistics statistics = statistics();
@@ -87,6 +89,8 @@ class CartItemRepositoryFetchTest {
         personalization.setPersonalizationOptions(Map.of(PersonalizationOption.GOLDEN_BORDER, "yes"));
         personalized.setPersonalization(personalization);
         cartItemRepository.save(personalized);
+        // Flush first: clear() alone would discard the still-unflushed inserts.
+        entityManager.flush();
         entityManager.clear();
 
         final Statistics statistics = statistics();
