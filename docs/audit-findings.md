@@ -618,37 +618,6 @@ reader, `LoginComponent`, so no loss); `doRefreshToken` inner
 (`authentication.service.ts:155` — failures already route through that
 method's own 401-reset, so no state corruption, only console noise).
 
-### L5. `LoginComponent` wipes stored tokens on any validation failure — IN REVIEW (Low-Medium, fix in flight on this branch)
-- `frontend/natiart-app/src/app/directory/components/auth/login/login.component.ts:80-86`:
-  `ngOnInit` clears tokens on ANY `fetchCurrentUser` error. `401` is already
-  handled by the service (`resetAuthStateAndRedirect` clears + stays on
-  `/login`), so the component-level wipe only adds behaviour on transient
-  failures: a `500` or network blip while visiting `/login` logs a healthy
-  session out.
-- Fix: drop the blanket wipe (service owns 401-clearing); keep tokens on
-  non-401 failures. Spec: `500` → tokens preserved, no dashboard navigation.
-
-### L6. `LogoutComponent` redirect timer fires after destroy — IN REVIEW (Low, fix in flight on this branch)
-- `frontend/natiart-app/src/app/directory/components/auth/logout/logout.component.ts:24-26`:
-  the 2s `setTimeout` stores no handle and `ngOnDestroy` never clears it, so
-  destroying mid-window navigates from a torn-down component — and a user who
-  navigates elsewhere within the 2s is yanked back to `/login`. Same timer
-  class as P2 (which covers checkout/cart/top-menu, not logout).
-- Fix: keep the handle (`ReturnType<typeof setTimeout>`) and `clearTimeout`
-  it in `ngOnDestroy`. Spec: destroy cancels the pending navigation; success
-  path still navigates after 2s.
-
-### L7. Logout on an expired access token mints fresh tokens before quitting — IN REVIEW (Low, fix in flight on this branch)
-- `frontend/natiart-app/src/app/directory/interceptors/jwt-interceptor.service.ts:106-140`:
-  `/signout` is not an exempt endpoint, so a `401` from logout triggers the
-  single-flight refresh and retries the logout with rotated tokens. An
-  explicit logout should never extend the session it is ending (extra refresh
-  rotation, wasted egress, refresh-failure path navigates without server-side
-  invalidation either way).
-- Fix: attach the bearer to logout (server needs it) but skip the 401-refresh
-  for logout — clear tokens and navigate to `/login` instead. Spec: logout
-  `401` → zero refresh requests, tokens cleared.
-
 ## Z. Instruction drift, re-verification (Lens 17 hunt, 2026-09-06)
 
 Hunt method: re-ran the U-section checks against current master — four root
@@ -669,3 +638,12 @@ Cleared as non-findings: mirror drift (none), missing frontmatter (none),
 Gradle coordinate staleness (none), workflow filename drift (none).
 Instruction-file fixes stay OPEN for human review per the
 self-modification ban — tracked, not silently fixed.
+
+Re-verified 2026-09-06 (Lens 17 cycle hunt): four root mirrors still
+byte-identical (`md5sum`), all `agents/*.md` carry `meta` frontmatter, 17
+`## Lens` headers parse, spec count 56 ("~55" holds), versions hold
+(Spring Boot `3.5.6`, Angular `^20.3.30`, Adyen present). U1 still OPEN
+(loop doc `:98` "16 audit lenses" vs 17 headers), U2 still OPEN
+(`frontend/natiart-app/AGENTS.md:46` bare `` `ng test`` vs npm form in CI),
+U4 still OPEN ("7 files done" vs 9 non-spec `= inject(` users). No new
+drift found this cycle — no new items appended.

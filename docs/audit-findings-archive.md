@@ -711,3 +711,21 @@ non-finite values).
   rejections; service-boundary NaN/-Inf via Mockito stubs (real DTOs throw
   first). Stash-verified non-vacuous. G1 reconciliation surface still open.
 
+
+### L5. `LoginComponent` wiped stored tokens on any validation failure — FIXED (PR #142)
+- `login.component.ts` `ngOnInit` cleared tokens on ANY `fetchCurrentUser`
+  error; a `500`/network blip while visiting `/login` logged a healthy
+  session out (401 already handled by the service).
+- Fix: dropped the blanket wipe (service owns 401-clearing); tokens kept on
+  non-401 failures. Spec: `500` → tokens preserved, no dashboard navigation.
+
+### L6. `LogoutComponent` redirect timer fired after destroy — FIXED (PR #142)
+- The 2s `setTimeout` stored no handle and `ngOnDestroy` never cleared it.
+- Fix: handle kept (`ReturnType<typeof setTimeout>`) and cleared in
+  `ngOnDestroy`. Spec: destroy cancels the pending navigation.
+
+### L7. Logout on an expired access token minted fresh tokens before quitting — FIXED (PR #142)
+- `/signout` was not refresh-exempt, so a logout 401 triggered the
+  single-flight refresh and retried logout with rotated tokens.
+- Fix: bearer attached to logout but 401-refresh skipped — tokens cleared,
+  navigate to `/login`. Spec: logout `401` → zero refresh requests.
