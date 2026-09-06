@@ -476,24 +476,22 @@ Instruction-file fixes go in a human-review PR per the self-modification ban
 - Fix: "16 audit lenses" → "17 audit lenses". Human-review PR (touches loop
   machinery docs).
 
-### U2. `agents/commands.md` + frontend guide prescribe bare `ng test`, CI uses npm scripts — OPEN (Low)
-- `agents/commands.md:40` (`cd frontend/natiart-app && ng test ...`) and
-  `frontend/natiart-app/AGENTS.md:46,58` (bare `ng test`) vs reality:
+### U2. Frontend guide still prescribes bare `ng test`, CI uses npm scripts — OPEN (Low)
+- `frontend/natiart-app/AGENTS.md:46` (bare `ng test`) vs reality:
   `.github/workflows/frontend_workflow.yml:53` runs
   `npm test -- --watch=false --browsers=ChromeHeadless`, and the cycle prompt
   mandates npm scripts ("never bare `ng`"). Bare `ng` also assumes a global
   install the repo never declares (`package.json` scripts expose `ng`
-  locally only).
-- Fix: rewrite both lines as `npm test -- --watch=false
-  --browsers=ChromeHeadless`. Human-review PR (touches `agents/**`).
+  locally only). (`agents/commands.md:40` already fixed to the npm form;
+  `frontend/natiart-app/AGENTS.md:58` already npm form — only :46 remains.
+  Re-verified 2026-09-06.)
+- Fix: rewrite as `npm test -- --watch=false
+  --browsers=ChromeHeadless`. Human-review PR (touches the module guide).
 
-### U3. Red-team cadence "~10 days" is 24x off — OPEN (Low)
-- `docs/continuous-improvement-loop.md:72` says "every 20th slot (~10 days)"
-  but slots are 30 minutes (`scripts/loop-cycle.sh:148,170`: `SLOT = epoch /
-  1800`, red-team when `SLOT % 20 == 0`) → every 20 × 30 min = ~10 hours,
-  not ~10 days. A ~10-day cadence would need `SLOT % 480`.
-- Fix: decide intent (10h adversarial cadence as coded, or rework the modulo
-  to 480) and align the doc. Human-review PR (touches loop machinery docs).
+### U3. Red-team cadence "~10 days" is 24x off — INVALID (fixed on master as PR #131; re-verified 2026-09-06)
+- `docs/continuous-improvement-loop.md:103` now says "every 480th slot
+  (~10 days)" and `scripts/loop-cycle.sh:196` implements `SLOT % 480` →
+  480 × 30 min = ~10 days. Doc and code agree; no drift remains.
 
 ### U4. Frontend guide "7 files done" DI-migration count is stale — OPEN (Low)
 - `frontend/natiart-app/AGENTS.md:27` claims the `inject()` migration is
@@ -525,24 +523,6 @@ atomic (`CartManagerImpl:44`), and order item prices are server-computed
 - Fix: migrate the field to `BigDecimal` (fail on more than 2 fraction digits),
   convert at the Asaas boundary only. Tests: `19.99` survives exactly;
   3-decimal input rejected.
-
-### X2. Order line count uncapped, single request can stuff one transaction — OPEN (Medium)
-- `service/OrderManagerImpl.java:106-121` (`validateItems`) caps per-line
-  quantity (`MAX_ITEM_QUANTITY = 100`) but not the number of lines: one
-  `POST /orders/create` can carry thousands of items, each doing a stock
-  decrement plus an insert inside a single `@Transactional` (TX timeout / DB
-  blowup; duplicate `productId` lines are also accepted and double-decrement).
-- Fix: `MAX_ORDER_LINES` cap rejected with `IllegalArgumentException` before
-  any write. Tests: oversized line list → 400-path, zero repository writes.
-
-### X3. Cart line quantity uncapped, order cap unreachable from cart flow — OPEN (Medium)
-- `service/CartManagerImpl.java:35-49` (`createCartItem`) increments with no
-  bound, while order creation rejects quantities above 100 — a cart line grown
-  past 100 can never be ordered, and a tight add-loop grows one row without
-  limit.
-- Fix: guarded atomic increment (`quantity < cap`, same pattern as
-  `decrementQuantityIfGreaterThanOne`), aligned to the order cap. Tests:
-  at-cap add rejected; below-cap add increments.
 
 ### X4. `updateOrderStatus` accepts any transition, fulfillment path unwired — OPEN (Low)
 - `service/OrderManagerImpl.java:100-104` moves any status to any status
@@ -598,26 +578,6 @@ null-tolerant `principal != null ? ... : null` (fail-closed — null/blank
   authenticated-only per L3). Tests: anonymous burst → 429, not upstream egress
   per probe.
 
-### W2. `OrderController` uses `isAuthenticated()` while cart/payment use `isFullyAuthenticated()` — IN REVIEW (Low, PR #129)
-- `backend/product-service/.../controller/OrderController.java:20`
-  (`@PreAuthorize("isAuthenticated()")`) vs `CartController.java:25,33,41,48`
-  and `PaymentController.java:23,32,39` (`isFullyAuthenticated()`). With the
-  JWT-only setup the two predicates coincide today (no remember-me tokens are
-  ever issued), so this is consistency, not an open hole — but a future
-  remember-me login would silently widen order creation. Found by Lens 2 hunt,
-  2026-09-05.
-- Fix: `isAuthenticated()` → `isFullyAuthenticated()`. Tests: annotation pinned;
-  anonymous still 401/403.
-
-### W3. `GET /products` takes an unused `@TargetUser` on a public endpoint — IN REVIEW (Low, PR #129)
-- `backend/product-service/.../controller/ProductController.java:50-54`
-  resolves `@TargetUser String username` (null for anonymous via
-  `TargetUserArgumentResolver.java:40-43`) and then ignores it — dead auth
-  parameter on an intentionally public listing. It suggests per-user scoping
-  that does not exist and invites a future reader to trust the value.
-  Found by Lens 2 hunt, 2026-09-05.
-- Fix: drop the parameter (and import). Tests: anonymous listing still 200.
-
 ## Y. Secrets and configuration, follow-ups (Lens 3 hunt, 2026-09-05)
 
 Hunt method: grepped `backend/` for token/password/secret log arguments,
@@ -632,29 +592,9 @@ only in the `local-h2` profile, which is required for local boot);
 Asaas API keys have no property default so boot fails closed when unset;
 sandbox URLs as `@Value` defaults fail safe (misconfiguration charges
 sandbox, never real money); zero token/password-bearing log or console
-statements repo-wide. Y2/Y3 below are fixed in flight on the same branch
-rather than tracked separately. (Renamed X→Y on rebase: the X1–X4 labels
+statements repo-wide. Y2/Y3 flipped FIXED below (PR #134); Y1/Y4 stay OPEN
+as runner-ups. (Renamed X→Y on rebase: the X1–X4 labels
 were taken by the Lens 4 batch, PR #132.)
-
-### Y2. `environment.production.ts` endpoint shape drift (dead alias keys) — OPEN (Low)
-- `frontend/natiart-app/src/environments/environment.production.ts:20-24`
-  carries alias keys (`directory`, `packages`, `products`) absent from
-  `environment.ts` and `environment.development.ts`; the only consumers
-  (`package.service.ts:11`, `product.service.ts:11`, `category.service.ts:11`)
-  use the singular keys. File-replacement builds mean no type check across
-  envs, so the shapes can drift silently.
-- Fix: delete the three dead aliases so all env files share one shape.
-  Verification: storefront build + existing Karma specs green.
-
-### Y3. H2 console open to the network in both `local-h2` profiles — OPEN (Low)
-- `backend/product-service/.../application-local-h2.properties:12-13` and
-  `backend/directory-service/.../application-local-h2.properties:14-15` set
-  `spring.h2.console.enabled=true` with
-  `spring.h2.console.settings.web-allow-others=true`, so the console (backed
-  by the `admin`/`admin` datasource in the same file) accepts remote
-  connections whenever a dev port is exposed.
-- Fix: drop `web-allow-others` (default `false`; console stays localhost-only).
-  Verification: backend suites green (no test binds the remote console).
 
 ### Y1. CORS allowed origins hard-coded in both services — OPEN (Low)
 - `backend/product-service/.../configuration/WebConfig.java:20` and
@@ -674,3 +614,24 @@ were taken by the Lens 4 batch, PR #132.)
   (fail-closed 503 via `JwtAuthFilter`, but silent).
 - Fix needs a deploy-topology decision (explicit prod URLs vs
   fail-fast-on-sandbox-URL guard): leave OPEN for the maintainer.
+
+## Z. Instruction drift, re-verification (Lens 17 hunt, 2026-09-06)
+
+Hunt method: re-ran the U-section checks against current master — four root
+mirrors byte-identical (`md5sum`), all `agents/*.md` carry `meta`
+frontmatter, 17 `## Lens` headers parse, version claims re-checked (Java 25
+toolchain `backend/build.gradle.kts:24-25`, Spring Boot `3.5.6`
+`backend/build.gradle.kts:15`, Angular `^20.3.30`
+`frontend/natiart-app/package.json:18`, Tailwind 4 / Adyen present),
+workflows re-checked (JDK 25 + `npm test -- --watch=false
+--browsers=ChromeHeadless` in CI), cart-route examples in `backend/AGENTS.md`
+match `CartController.java:40,47`, spec count "~55" holds (56 files).
+Re-verified this cycle: U1 still OPEN (loop doc `:93` still "16 audit
+lenses" vs 17 headers), U4 still OPEN ("7 files done" vs 9 non-spec
+`= inject(` users), U2 narrowed (only `frontend/natiart-app/AGENTS.md:46`
+remains — `agents/commands.md:40` already npm form), U3 flipped INVALID
+(doc `:103` + `scripts/loop-cycle.sh:196` both 480th since PR #131).
+Cleared as non-findings: mirror drift (none), missing frontmatter (none),
+Gradle coordinate staleness (none), workflow filename drift (none).
+Instruction-file fixes stay OPEN for human review per the
+self-modification ban — tracked, not silently fixed.
