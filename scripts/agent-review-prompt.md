@@ -56,11 +56,14 @@ which is exactly why you catch what it missed. Work in the repo root. Obey
 4. Post exactly one review as a comment (all loop agents share one GitHub
    identity, and GitHub rejects self-approvals — so the verdict lives in the
    comment body, not the review state): `gh pr review $N --comment -b "<full
-   findings with file:line>"`, opening the body with either `VERDICT:
-   APPROVE` (zero blockers; nits welcome after it) or `VERDICT:
-   REQUEST_CHANGES` (blocking findings first). Pure nits without blockers
-   still open with `VERDICT: APPROVE`.
-4. Print a final line: `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES`.
+   findings with file:line>"`, opening the body with `VERDICT: APPROVE` or
+   `VERDICT: REQUEST_CHANGES`, then the reviewer model on the SECOND line:
+   `Model: <value of $NATIART_MODEL>` (read it with `echo "$NATIART_MODEL"`;
+   e.g. body starts `VERDICT: APPROVE` newline `Model: cline:zai/glm-5.3-flash/medium`).
+   The loop machinery reads only the first line for the verdict, so the Model
+   line never interferes. Pure nits without blockers still open with
+   `VERDICT: APPROVE`.
+5. Print a final line: `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES`.
 
 HARD RULES: review only. No code changes, no pushes, no merges, no re-runs of
 your own review. One round per invocation — the author decides what happens

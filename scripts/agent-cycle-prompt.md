@@ -107,7 +107,10 @@ human review — never auto-merge changes to your own brain, even on green CI.
 
 Every PR body ends with a compliance footer naming: tiers read, guideline
 files consulted, hard rules affirmed (Java 25, Gradle, single-tenant, no
-Lombok/MapStruct), `!check` and `!review` outcomes.
+Lombok/MapStruct), `!check` and `!review` outcomes, and the producing
+model: a final line `Model: <value of $NATIART_MODEL>` (environment
+variable set by the loop; run `echo "$NATIART_MODEL"` to read it and put
+the literal value in the footer).
 
 ## Anti-starvation protocol (starvation is a bug — "no work" is invalid)
 
