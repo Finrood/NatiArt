@@ -23,17 +23,22 @@ import com.portcelana.natiart.service.support.MelhorenvioShippingCalculationResp
 
 @Service
 public class ShippingService {
-    public static final String FROM_POSTAL_CODE = "88085201";
-
     private final RestTemplate restTemplate;
     private final String apiUrl;
     private final String apiToken;
+    private final String fromPostalCode;
 
     public ShippingService(
-            @Value("${melhorenvio.api.url}") String apiUrl, @Value("${melhorenvio.api.token}") String apiToken) {
+            @Value("${melhorenvio.api.url}") String apiUrl,
+            @Value("${melhorenvio.api.token}") String apiToken,
+            @Value("${melhorenvio.api.from-postal-code:88085201}") String fromPostalCode) {
         if (apiToken == null || apiToken.isBlank()) {
             throw new IllegalStateException(
                     "melhorenvio.api.token is blank: set the MELHORENVIO_API_TOKEN environment variable");
+        }
+        if (fromPostalCode == null || fromPostalCode.isBlank()) {
+            throw new IllegalStateException(
+                    "melhorenvio.api.from-postal-code is blank: set the MELHORENVIO_FROM_POSTAL_CODE environment variable");
         }
         final SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(5));
@@ -41,6 +46,7 @@ public class ShippingService {
         this.restTemplate = new RestTemplate(factory);
         this.apiUrl = apiUrl;
         this.apiToken = apiToken;
+        this.fromPostalCode = fromPostalCode;
     }
 
     public List<ShippingEstimate> getShippingEstimates(ShippingEstimateRequest shippingEstimateRequest) {
@@ -65,7 +71,7 @@ public class ShippingService {
 
     private MelhorenvioShippingCalculationRequest createMelhorEnvioRequest(
             ShippingEstimateRequest shippingEstimateRequest) {
-        return MelhorenvioShippingCalculationRequest.from(shippingEstimateRequest);
+        return MelhorenvioShippingCalculationRequest.from(shippingEstimateRequest, fromPostalCode);
     }
 
     private List<ShippingEstimate> parseAndFilterResponse(List<MelhorenvioShippingCalculationResponse> responses) {

@@ -16,17 +16,35 @@ class ShippingServiceTest {
 
     @Test
     void constructor_rejectsBlankApiToken() {
-        assertThrows(IllegalStateException.class, () -> new ShippingService("https://api.example.com/calculate", "  "));
+        assertThrows(
+                IllegalStateException.class,
+                () -> new ShippingService("https://api.example.com/calculate", "  ", "88085201"));
     }
 
     @Test
     void constructor_rejectsNullApiToken() {
-        assertThrows(IllegalStateException.class, () -> new ShippingService("https://api.example.com/calculate", null));
+        assertThrows(
+                IllegalStateException.class,
+                () -> new ShippingService("https://api.example.com/calculate", null, "88085201"));
+    }
+
+    @Test
+    void constructor_rejectsBlankFromPostalCode() {
+        assertThrows(
+                IllegalStateException.class,
+                () -> new ShippingService("https://api.example.com/calculate", "test-token", "  "));
+    }
+
+    @Test
+    void constructor_rejectsNullFromPostalCode() {
+        assertThrows(
+                IllegalStateException.class,
+                () -> new ShippingService("https://api.example.com/calculate", "test-token", null));
     }
 
     @Test
     void constructor_acceptsConfiguredApiToken() {
-        assertDoesNotThrow(() -> new ShippingService("https://api.example.com/calculate", "test-token"));
+        assertDoesNotThrow(() -> new ShippingService("https://api.example.com/calculate", "test-token", "88085201"));
     }
 
     @Test
