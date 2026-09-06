@@ -149,6 +149,9 @@ kill_agent() { # $1 = pid; TERM first, escalate to KILL (opencode can ignore TER
 
 launch_attempt() { # $1=cli $2=model_id $3=think; spawns child bg, sets $PID
     local cli="$1" model_id="$2" think="$3"
+    # Tell the agent which model it is running as (PR footers / review verdicts
+    # name it; agents read it via `echo "$NATIART_MODEL"` in their bash tool).
+    export NATIART_MODEL="$cli:$model_id${think:+/$think}"
     case "$cli" in
         opencode)
             (cd "$REPO" && exec opencode run "$PROMPT" --dir "$REPO" --title "$TITLE" -m "$model_id") \
