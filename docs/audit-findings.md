@@ -682,3 +682,38 @@ separately.
   404 via `OrDie`, plus a null guard in `deleteProduct`. Tests: null category
   id → 404 with zero repository interaction, never 500.
   Found by Lens 1 hunt, 2026-09-06.
+
+## AC. AuthN and AuthZ boundaries (Lens 2 hunt, 2026-09-06)
+
+Hunt method: enumerated every `@PreAuthorize`/`permitAll` site in both
+services, every `@TargetUser`/`@AuthenticationPrincipal` parameter, both
+`SecurityConfig` filter chains (including session policy), and all controller
+mappings for anonymous-reachable mutators. Re-verified this cycle: B2 still
+OPEN (directory `helper/TargetUser.java:10-11` SpEL unchanged), S7 still OPEN
+(`UserController.java:28-30` 200-null unchanged), B4 still OPEN
+(`OrderController.java:19-23` takes no `@TargetUser`, `CustomerOrder.java`
+carries shipping PII but no owner/username column), W1 still OPEN
+(`ShippingController.java:22-25` no `@PreAuthorize`, service chain still
+`anyRequest().permitAll()`), N2 still OPEN but narrowed
+(`UserManager.java:88-100`: any pre-existing email — ghost or regular — now
+gets 409 without tokens, so the ghost-vs-user distinction is gone; the
+fresh-vs-registered oracle, 200+tokens vs 409, remains). N3/W2/W3 already
+FIXED (archive). Cleared as non-findings: public catalog reads (intentionally
+public), directory `permitAll` on login/register/validate-token (anonymous-entry
+design), `PaymentController` null-tolerant principal (fail-closed via
+`UserNotAllowedException`), `GET /images` public read (traversal fixed in
+PR #140). AC1 below is fixed in flight on this branch rather than tracked
+separately.
+
+### AC1. Product-service filter chain never goes stateless — IN REVIEW (Low, fix PR: authn-stateless-session)
+- `backend/product-service/.../configuration/SecurityConfig.java:30-40` builds
+  the chain with no `sessionManagement` configuration, while the directory twin
+  sets `SessionCreationPolicy.STATELESS`
+  (`directory/.../configuration/SecurityConfig.java:29`). The servlet default
+  (`IF_REQUIRED`) lets the container mint and persist `JSESSIONID` sessions on
+  authenticated traffic despite the JWT-per-request design — cross-request
+  server-side state plus session-fixation surface, contradicting the
+  statelessness rule in `backend/AGENTS.md`.
+- Fix: set `SessionCreationPolicy.STATELESS` on the product chain (mirroring
+  directory-service). Tests: authenticated request leaves no session.
+  Found by Lens 2 hunt, 2026-09-06.
