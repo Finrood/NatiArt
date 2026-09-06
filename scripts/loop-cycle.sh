@@ -89,6 +89,30 @@ if ! git pull -q --ff-only origin master; then
     exit 1
 fi
 log "master at $(git rev-parse --short HEAD), tree clean."
+# 2b. Stray-commits guard: a cycle agent that exits 0 without delivering can
+#     leave finished work committed locally on master but never pushed (seen
+#     2026-09-06 18:30). Salvage to a pushed branch + PR, then reset to
+#     origin/master. If the salvage push fails, abort WITHOUT resetting —
+#     local-only work must never be destroyed.
+LOCAL_AHEAD=$(git rev-list --count origin/master..master 2>/dev/null || echo 0)
+if [[ "$LOCAL_AHEAD" -gt 0 ]]; then
+    B="salvage/stray-$(date +%Y%m%d-%H%M%S)"
+    if git branch "$B" && git push -q origin "$B"; then
+        PR_URL=$(gh pr create --base master --head "$B" \
+            --title "[Salvage] $LOCAL_AHEAD unpushed master commit(s) recovered from interrupted cycle" \
+            --body "Loop guard found local master ahead of origin (work never pushed by the cycle that made it). Recovered to a reviewable PR; master reset to origin. Created by the loop; review like any cycle output." \
+            2>/dev/null || true)
+        git checkout -q master
+        git reset -q --hard origin/master
+        log "Salvaged $LOCAL_AHEAD unpushed master commit(s) to origin/$B${PR_URL:+; PR: $PR_URL}."
+    else
+        git branch -D "$B" 2>/dev/null || true
+        log "master has $LOCAL_AHEAD unpushed commit(s) and salvage push failed; aborting cycle (work kept local for retry)."
+        exit 1
+    fi
+fi
+
+# 3. Backlog guard: is there OPEN work? Starvation is a bug, so a low (not
 
 # 3. Backlog guard: is there OPEN work? Starvation is a bug, so a low (not
 #    just empty) backlog switches the cycle to generator duty instead of idling.

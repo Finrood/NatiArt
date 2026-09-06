@@ -49,6 +49,8 @@ Note: the timer needs a lingering user session to fire while logged out
    Pre-flight gates fail fast on broken `gh` auth or <2GB disk.
 2. Cycle self-heals on: dirty tree (WIP salvaged to a dated `salvage/*`
    branch, master hard-reset to origin, newest 5 salvage branches retained),
+   stray unpushed master commits (same salvage path, plus an automatic
+   `[Salvage]` PR so the work is reviewable instead of orphaned),
    non-fast-forward `master`, 2+ open code PRs
    (docs-only flips and dependabot PRs are excluded — they never block the
    loop), or any open code PR with failing checks.
