@@ -1,6 +1,18 @@
 # Audit Findings Archive (FIXED items)
 
 Full history of fixed findings, moved out of `docs/audit-findings.md` to keep the working backlog lean. Statuses here are final.
+### AC1. Product-service filter chain never goes stateless — FIXED (PR #153)
+- `backend/product-service/.../configuration/SecurityConfig.java` built the
+  chain with no `sessionManagement` configuration while the directory twin set
+  `SessionCreationPolicy.STATELESS` — the servlet default (`IF_REQUIRED`) let
+  the container mint persistent `JSESSIONID` sessions despite the
+  JWT-per-request design (cross-request server-side state + session-fixation
+  surface, contradicting the statelessness rule in `backend/AGENTS.md`).
+- Fix: `.sessionManagement(s -> s.sessionCreationPolicy(
+  SessionCreationPolicy.STATELESS))` on the product chain, mirroring
+  directory-service. Found by Lens 2 hunt, 2026-09-06.
+
+### J4. `GET images` malformed `path` → `URISyntaxException` → 500 — FIXED (PR #140)
 
 ### J4. `GET images` malformed `path` → `URISyntaxException` → 500 — FIXED (PR #140)
 - `controller/ProductController.java` took a raw `path` request param;
@@ -711,3 +723,46 @@ non-finite values).
   rejections; service-boundary NaN/-Inf via Mockito stubs (real DTOs throw
   first). Stash-verified non-vacuous. G1 reconciliation surface still open.
 
+
+### L5. `LoginComponent` wiped stored tokens on any validation failure — FIXED (PR #142)
+- `login.component.ts` `ngOnInit` cleared tokens on ANY `fetchCurrentUser`
+  error; a `500`/network blip while visiting `/login` logged a healthy
+  session out (401 already handled by the service).
+- Fix: dropped the blanket wipe (service owns 401-clearing); tokens kept on
+  non-401 failures. Spec: `500` → tokens preserved, no dashboard navigation.
+
+### L6. `LogoutComponent` redirect timer fired after destroy — FIXED (PR #142)
+- The 2s `setTimeout` stored no handle and `ngOnDestroy` never cleared it.
+- Fix: handle kept (`ReturnType<typeof setTimeout>`) and cleared in
+  `ngOnDestroy`. Spec: destroy cancels the pending navigation.
+
+### L7. Logout on an expired access token minted fresh tokens before quitting — FIXED (PR #142)
+- `/signout` was not refresh-exempt, so a logout 401 triggered the
+  single-flight refresh and retried logout with rotated tokens.
+- Fix: bearer attached to logout but 401-refresh skipped — tokens cleared,
+  navigate to `/login`. Spec: logout `401` → zero refresh requests.
+
+### N3. Payment status/QR endpoints fetched upstream before authorizing — FIXED (PR #148)
+- `AsaasPaymentService` called `fetchPaymentOrDie` (server-key Asaas GET)
+  before `requireOwnedPayment`: probing arbitrary ids gave an ID-existence
+  oracle (200/403/404) and burned one upstream call per probe.
+- Fix: new additive `Payment` entity + `PaymentRepository` persist the
+  payment→owner mapping at creation; status/QR paths authorize via
+  `getPaymentOrDie` first (unknown → 404, foreign → 403, zero egress —
+  403 kept for foreign instead of the uniform 404 the finding suggested, to
+  preserve the API contract). Tests assert zero `RestTemplate` interaction
+  for unknown/foreign ids; full product-service suite green, Spotless clean.
+
+### AB1. Product create/update persist negative money and stock — FIXED (PR #150)
+- `backend/product-service/.../service/ProductManagerImpl.java` (`createProduct`/
+  `updateProduct`): null-only price check let negative `originalPrice`/
+  `markedPrice` and negative stock persist (flowing server-side into order totals).
+- Fix: reject negative prices/stock with `IllegalArgumentException` (400 via the
+  advice) in both manager methods; negative-price/stock tests assert 400, not persisted.
+
+### AB2. Null category/product ids → 500 instead of 404 — FIXED (PR #150)
+- Null ids reached `findById(null)` → unmapped `InvalidDataAccessApiUsageException`
+  → catch-all 500 (same shape in `CategoryManagerImpl`, `updateCategory`/
+  `deleteCategory`, `deleteProduct(null)`).
+- Fix: null ids resolve to `Optional.empty()` (mirroring `PackageManager.getPackage`)
+  so null → 404 via `OrDie`, plus a null guard in `deleteProduct`.

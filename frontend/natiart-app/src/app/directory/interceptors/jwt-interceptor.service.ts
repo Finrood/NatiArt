@@ -60,6 +60,9 @@ const isAuthRequest = (url: string): boolean =>
 const isRefreshTokenRequest = (url: string): boolean =>
   isEndpoint(url, [environment.api.directory.endpoints.refreshToken]);
 
+const isLogoutRequest = (url: string): boolean =>
+  isEndpoint(url, [environment.api.directory.endpoints.logout]);
+
 const RETRY_HEADER = 'X-Auth-Retried';
 
 let refreshInProgress$: BehaviorSubject<string | null> | null = null;
@@ -122,6 +125,13 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   return next(cloned).pipe(
     catchError(error => {
       if (error.status === 401 && !isAuthRequest(req.url) && !isRefreshTokenRequest(req.url) && !alreadyRetried) {
+        if (isLogoutRequest(req.url)) {
+          // Explicit logout must never mint fresh tokens: end the local
+          // session instead of refreshing-then-retrying the signout.
+          tokenService.clearTokens();
+          router.navigate(['/login']);
+          return throwError(() => error);
+        }
         if (!tokenService.refreshToken) {
           router.navigate(['/login']);
           return throwError(() => error);

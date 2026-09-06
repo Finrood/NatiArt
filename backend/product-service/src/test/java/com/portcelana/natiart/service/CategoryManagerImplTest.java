@@ -149,4 +149,11 @@ class CategoryManagerImplTest {
 
         verify(categoryRepository, never()).save(any(Category.class));
     }
+
+    @Test
+    void getCategoryOrDie_nullId_throwsNotFoundWithoutQuerying() {
+        assertThrows(ResourceNotFoundException.class, () -> categoryManager.getCategoryOrDie(null));
+
+        verify(categoryRepository, never()).findById(any());
+    }
 }

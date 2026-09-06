@@ -47,7 +47,11 @@ Note: the timer needs a lingering user session to fire while logged out
 
 1. Single instance (`flock`); 25-minute agent timeout keeps cadence.
    Pre-flight gates fail fast on broken `gh` auth or <2GB disk.
-2. Cycle aborts on: dirty tree, non-fast-forward `master`, 2+ open code PRs
+2. Cycle self-heals on: dirty tree (WIP salvaged to a dated `salvage/*`
+   branch, master hard-reset to origin, newest 5 salvage branches retained),
+   stray unpushed master commits (same salvage path, plus an automatic
+   `[Salvage]` PR so the work is reviewable instead of orphaned),
+   non-fast-forward `master`, 2+ open code PRs
    (docs-only flips and dependabot PRs are excluded — they never block the
    loop), or any open code PR with failing checks.
 3. The agent merges ONLY on fully green CI (`gh pr checks --watch`), with
@@ -64,6 +68,13 @@ Note: the timer needs a lingering user session to fire while logged out
 The loop must never be blocked because one model hit its quota. `scripts/run-agent.sh`
 is the single entry point for every agent invocation (cycle + in-cycle reviewers);
 it walks the priority list in `scripts/agent-models.conf`:
+
+**Model attribution.** The wrapper exports `NATIART_MODEL` (e.g.
+`opencode:opencode/muse-spark-1.3-contributor-free` or
+`cline:zai/glm-5.3-flash/medium`) to every agent invocation. Agents name it
+in PR compliance footers (`Model: …`) and review verdicts (second line of
+the verdict comment), so every change and review on GitHub is attributable
+to the exact model that produced it — even after failover mid-cycle.
 
 1. `opencode` + Muse Spark 1.3 free — `opencode/muse-spark-1.3-contributor-free`
 2. `cline` + DeepSeek V4 Flash (xhigh) — `deepseek/deepseek-v4-flash` via the cline gateway

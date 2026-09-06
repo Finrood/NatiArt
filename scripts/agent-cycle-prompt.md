@@ -99,6 +99,12 @@ named above:
 Before editing any instruction or loop-machinery file, read
 `agents/agents-writing-guide.md` first (it says so in its own header).
 
+DELIVERY CONTRACT: the cycle's deliverable lives on GitHub, not on this
+machine. Every fix commit goes on your fix branch and is pushed
+(`git push -u origin <branch>`) before Phase 3 ends; never commit cycle work
+to master. Exiting 0 without a pushed branch is a FAILED cycle, not a
+finished one.
+
 SELF-MODIFICATION BAN: PRs touching `agents/**`, `AGENTS.md`, `CLAUDE.md`,
 `GEMINI.md`, `.cursorrules`, `scripts/agent-cycle-prompt.md`,
 `scripts/loop-cycle.sh`, `scripts/redteam-addendum.md`, `scripts/systemd/**`,
@@ -107,7 +113,10 @@ human review — never auto-merge changes to your own brain, even on green CI.
 
 Every PR body ends with a compliance footer naming: tiers read, guideline
 files consulted, hard rules affirmed (Java 25, Gradle, single-tenant, no
-Lombok/MapStruct), `!check` and `!review` outcomes.
+Lombok/MapStruct), `!check` and `!review` outcomes, and the producing
+model: a final line `Model: <value of $NATIART_MODEL>` (environment
+variable set by the loop; run `echo "$NATIART_MODEL"` to read it and put
+the literal value in the footer).
 
 ## Anti-starvation protocol (starvation is a bug — "no work" is invalid)
 

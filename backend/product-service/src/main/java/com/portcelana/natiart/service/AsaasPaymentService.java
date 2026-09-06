@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -23,18 +24,23 @@ import com.portcelana.natiart.dto.payment.PaymentStatusResponse;
 import com.portcelana.natiart.dto.payment.asaas.*;
 import com.portcelana.natiart.dto.payment.helper.PaymentMethod;
 import com.portcelana.natiart.dto.payment.helper.PaymentStatus;
+import com.portcelana.natiart.model.Payment;
+import com.portcelana.natiart.repository.PaymentRepository;
 
 @Service
 public class AsaasPaymentService implements PaymentService {
     private final String asaasPaymentUrl;
     private final RestTemplate restTemplate;
+    private final PaymentRepository paymentRepository;
 
     private final String asaasApiKey;
 
+    @Autowired
     public AsaasPaymentService(
             @Value("${natiart.payment.asaas.apikey}") String asaasApiKey,
             @Value("${natiart.payment.asaas.payments-url:https://sandbox.asaas.com/api/v3/payments}")
-                    String asaasPaymentUrl) {
+                    String asaasPaymentUrl,
+            PaymentRepository paymentRepository) {
         if (asaasApiKey == null || asaasApiKey.isBlank()) {
             throw new IllegalStateException(
                     "natiart.payment.asaas.apikey is blank: set the NATIART_PAYMENT_ASAAS_APIKEY environment variable");
@@ -45,6 +51,18 @@ public class AsaasPaymentService implements PaymentService {
         factory.setConnectTimeout(Duration.ofSeconds(5));
         factory.setReadTimeout(Duration.ofSeconds(15));
         this.restTemplate = new RestTemplate(factory);
+        this.paymentRepository = paymentRepository;
+    }
+
+    AsaasPaymentService(
+            String asaasApiKey,
+            String asaasPaymentUrl,
+            RestTemplate restTemplate,
+            PaymentRepository paymentRepository) {
+        this.asaasApiKey = asaasApiKey;
+        this.asaasPaymentUrl = asaasPaymentUrl;
+        this.restTemplate = restTemplate;
+        this.paymentRepository = paymentRepository;
     }
 
     public PaymentCreationResponse createPayment(
@@ -74,15 +92,18 @@ public class AsaasPaymentService implements PaymentService {
             final Optional<AsaasPaymentCreationResponse> asaasPaymentCreationResponse =
                     Optional.ofNullable(response.getBody());
             return asaasPaymentCreationResponse
-                    .map(responseBody -> new PaymentCreationResponse(
-                            responseBody.getId(),
-                            responseBody.getDateCreated().atStartOfDay(),
-                            responseBody.getCustomer(),
-                            parsePaymentMethod(responseBody.getBillingType()),
-                            parsePaymentStatus(responseBody.getStatus()),
-                            responseBody.getDueDate().atStartOfDay(),
-                            responseBody.getInvoiceUrl(),
-                            responseBody.getInvoiceNumber()))
+                    .map(responseBody -> {
+                        paymentRepository.save(new Payment(responseBody.getId(), requesterExternalId));
+                        return new PaymentCreationResponse(
+                                responseBody.getId(),
+                                responseBody.getDateCreated().atStartOfDay(),
+                                responseBody.getCustomer(),
+                                parsePaymentMethod(responseBody.getBillingType()),
+                                parsePaymentStatus(responseBody.getStatus()),
+                                responseBody.getDueDate().atStartOfDay(),
+                                responseBody.getInvoiceUrl(),
+                                responseBody.getInvoiceNumber());
+                    })
                     .orElseThrow(() ->
                             new IllegalArgumentException("Received a null response body from " + asaasPaymentUrl));
         } else if (response.getStatusCode() == HttpStatus.UNAUTHORIZED) {
@@ -93,6 +114,7 @@ public class AsaasPaymentService implements PaymentService {
     }
 
     public PaymentPixQrCodeResponse getPixQrCode(String paymentId, String requesterExternalId) {
+        getPaymentOrDie(paymentId, requesterExternalId);
         requireOwnedPayment(fetchPaymentOrDie(paymentId).getCustomer(), requesterExternalId);
 
         final HttpEntity<String> entity = new HttpEntity<>(getRequestHeaders());
@@ -132,6 +154,7 @@ public class AsaasPaymentService implements PaymentService {
     }
 
     public PaymentStatusResponse getPaymentStatus(String paymentId, String requesterExternalId) {
+        getPaymentOrDie(paymentId, requesterExternalId);
         final AsaasPaymentCreationResponse payment = fetchPaymentOrDie(paymentId);
         requireOwnedPayment(payment.getCustomer(), requesterExternalId);
 
@@ -157,6 +180,21 @@ public class AsaasPaymentService implements PaymentService {
             throw new IllegalArgumentException("Received an invalid response from " + asaasPaymentUrl);
         }
         return response.getBody();
+    }
+
+    /**
+     * Authorizes a payment read against the locally persisted owner before any
+     * upstream egress. Unknown ids fail with 404 and foreign ids with 403
+     * without spending an Asaas call on the server key, so probing arbitrary
+     * ids reveals nothing about the upstream account and costs nothing.
+     */
+    Payment getPaymentOrDie(String paymentId, String requesterExternalId) {
+        final Payment payment = paymentRepository
+                .findById(paymentId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(String.format("Payment with id [%s] not found", paymentId)));
+        requireOwnedPayment(payment.getOwnerExternalId(), requesterExternalId);
+        return payment;
     }
 
     void requireOwnedPayment(String paymentOwnerCustomerId, String requesterExternalId) {

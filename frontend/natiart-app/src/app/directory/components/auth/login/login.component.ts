@@ -81,7 +81,12 @@ export class LoginComponent implements OnInit {
       this.authenticationService.fetchCurrentUser()
         .subscribe({
           next: () => this.redirectToSavedUrlOrDashboard(),
-          error: () => this.tokenService.clearTokens(),
+          error: () => {
+            // 401/403 clearing is owned by AuthenticationService
+            // (resetAuthStateAndRedirect clears and stays on /login); any
+            // other failure (network blip, 5xx) must not wipe stored
+            // credentials — the session stays intact for a retry.
+          },
         });
     }
   }

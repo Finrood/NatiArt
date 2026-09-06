@@ -198,13 +198,12 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
 - Fix needs a product decision (public checkout vs authenticated-only):
   leave OPEN for the maintainer, do not change the guard unprompted.
 
-### L4. Inactivity timer never wired to user activity — OPEN (Low)
-- `frontend/natiart-app/src/app/directory/service/authentication.service.ts:51-69`:
-  `resetInactivityTimer` runs once from the constructor; no mouse/keyboard
-  listeners ever reset it, so it is a one-shot 15-minute refresh, not an
-  inactivity logout. Found by Lens 9 hunt, 2026-09-05.
-- Fix: wire activity events (`HostListener`/renderer listeners) or rename to
-  reflect the one-shot refresh. Tracked, not silently fixed.
+### L4. Inactivity timer never wired to user activity — INVALID (re-verified 2026-09-06: wired in `AppComponent`)
+- `frontend/natiart-app/src/app/app.component.ts:19-24` already wires
+  `document:mousemove/keydown/touchstart` via `@HostListener` to
+  `authenticationService.resetInactivityTimer()`, which re-arms the one-shot
+  15-minute timer on every activity event. The Lens 9 claim ("no listeners
+  ever reset it") predates or missed that wiring. No change needed.
 
 ## M. Frontend data identity (Lens 10 hunt, 2026-09-05)
 
@@ -220,22 +219,6 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
 - Fix: uniform response for existing emails (no tokens, same status), plus
   rate-limit/count KPIs when B8 lands. Tests: all three email classes return
   the identical unauthenticated response shape.
-
-### N3. Payment status/QR endpoints fetch upstream before authorizing — OPEN (Medium-High)
-- `backend/product-service/.../service/AsaasPaymentService.java:92-93`
-  (`getPixQrCode`) and `:131-133` (`getPaymentStatus`) call
-  `fetchPaymentOrDie(paymentId)` (upstream Asaas GET with the server key) and
-  only then `requireOwnedPayment(...)`. An authenticated attacker probing
-  arbitrary `paymentId`s learns: owned → 200, existent-but-foreign → 403
-  (`UserNotAllowedException`), nonexistent → 404 — an ID-existence oracle —
-  and each probe burns one upstream Asaas call on the server's key (cost +
-  third-party rate-limit amplification).
-- Repro: as user A, `GET /api/payment/<B's paymentId>/status` → 403 vs
-  `GET /api/payment/<random>/status` → 404; watch one Asaas egress per probe.
-- Fix: persist payment→owner at creation, authorize locally before any upstream
-  fetch, return uniform 404 for foreign-or-missing ids. Tests: foreign id →
-  404 with zero upstream calls (mock `RestTemplate` unverified); owned id
-  still resolves.
 
 ### O2. Admin product-management image/list loads swallow errors — OPEN (Low)
 - `frontend/natiart-app/src/app/product/components/admin/admin-product-management/admin-product-management.component.ts:289-296`
@@ -599,6 +582,26 @@ were taken by the Lens 4 batch, PR #132.)
 - Fix needs a deploy-topology decision (explicit prod URLs vs
   fail-fast-on-sandbox-URL guard): leave OPEN for the maintainer.
 
+## AA. Frontend auth lifecycle re-hunt (Lens 9, 2026-09-06)
+
+Hunt method: re-read every file in the auth flow (`authentication.service.ts`,
+`token.service.ts`, `jwt-interceptor.service.ts`, `auth.guard.ts`,
+`admin.guard.ts`, `login/`, `logout/`, `signup.component.ts`,
+`redirect.service.ts`, `app.routes.ts`, `app.config.ts`) plus all six
+neighbouring specs, checking guard stalls, token-lifecycle edges,
+cold-observable no-ops, premature redirects and post-registration races.
+Re-verified: L3 still OPEN (guarded `/checkout` vs ghost branch unchanged),
+C11 still OPEN (`app.config.ts:20` still returns a `Subscription`), L4 flipped
+INVALID above (`app.component.ts:19-24` already wires activity listeners).
+Cleared as non-findings: post-registration auto-login (register → `/login`
+is an intentional explicit-login choice, not a race); `adminGuard`
+`isAdmin` snapshot (reads the same `stateSubject` the guard just consumed —
+equivalent to the emitted user); `RedirectService` consume-on-read (single
+reader, `LoginComponent`, so no loss); `doRefreshToken` inner
+`fetchCurrentUser().subscribe()` without an error callback
+(`authentication.service.ts:155` — failures already route through that
+method's own 401-reset, so no state corruption, only console noise).
+
 ## Z. Instruction drift, re-verification (Lens 17 hunt, 2026-09-06)
 
 Hunt method: re-ran the U-section checks against current master — four root
@@ -693,3 +696,53 @@ admin `product.id!` call sites (admin-only, ids server-assigned).
   2026-09-06.
 - Fix: capture and compare the token (or unsubscribe per-line fetches on reset).
   Spec: stale related resolution writes nothing. Tracked, not fixed in this batch.
+Re-verified 2026-09-06 (Lens 17 cycle hunt): four root mirrors still
+byte-identical (`md5sum`), all `agents/*.md` carry `meta` frontmatter, 17
+`## Lens` headers parse, spec count 56 ("~55" holds), versions hold
+(Spring Boot `3.5.6`, Angular `^20.3.30`, Adyen present). U1 still OPEN
+(loop doc `:98` "16 audit lenses" vs 17 headers), U2 still OPEN
+(`frontend/natiart-app/AGENTS.md:46` bare `` `ng test`` vs npm form in CI),
+U4 still OPEN ("7 files done" vs 9 non-spec `= inject(` users). No new
+drift found this cycle — no new items appended.
+
+## AB. Injection and validation re-hunt (Lens 1, 2026-09-06)
+
+Hunt method: enumerated every `.trim()`/unboxing/`valueOf`/derived-query site
+in `backend/` per Lens 1; grepped `Number(`/`parseInt` and `.trim()` in the
+storefront. Re-verified: B3 still OPEN (zero `jakarta.validation` usage
+repo-wide; `ProfileManager.java:22-36` and `UserManager.java:79,110`
+unguarded `.trim()` calls unchanged); catalog label trims now guarded
+(`ProductManagerImpl.java:234`, `CategoryManagerImpl.java:106`,
+`PackageManagerImpl.java:91` null/blank-check before `.trim()`); Asaas
+`valueOf` parsers fail closed (try/catch, upstream input only);
+`OrderManagerImpl.validateItems` rejects null/blank ids and non-positive
+quantities; `ShippingEstimateRequest` guards blanks/non-positives in its
+constructor. Cleared as non-findings: `getProductImage` null path (controller
+`@RequestParam String path` is required, so null never reaches
+`new URI(path)` over HTTP); frontend `parseInt` in `CustomCpfValidators`
+(operates on digit-stripped substrings) and guarded `.trim()` in
+`product.service.ts:36`; `InvalidDataAccessApiUsageException` risk on the
+directory side (`findByUsername(null)` yields empty → 404, not a throw).
+ (Sections AB1-AB2 moved to `docs/audit-findings-archive.md` as FIXED in PR #150.)
+
+## AC. AuthN and AuthZ boundaries (Lens 2 hunt, 2026-09-06)
+
+Hunt method: enumerated every `@PreAuthorize`/`permitAll` site in both
+services, every `@TargetUser`/`@AuthenticationPrincipal` parameter, both
+`SecurityConfig` filter chains (including session policy), and all controller
+mappings for anonymous-reachable mutators. Re-verified this cycle: B2 still
+OPEN (directory `helper/TargetUser.java:10-11` SpEL unchanged), S7 still OPEN
+(`UserController.java:28-30` 200-null unchanged), B4 still OPEN
+(`OrderController.java:19-23` takes no `@TargetUser`, `CustomerOrder.java`
+carries shipping PII but no owner/username column), W1 still OPEN
+(`ShippingController.java:22-25` no `@PreAuthorize`, service chain still
+`anyRequest().permitAll()`), N2 still OPEN but narrowed
+(`UserManager.java:88-100`: any pre-existing email — ghost or regular — now
+gets 409 without tokens, so the ghost-vs-user distinction is gone; the
+fresh-vs-registered oracle, 200+tokens vs 409, remains). N3/W2/W3 already
+FIXED (archive). Cleared as non-findings: public catalog reads (intentionally
+public), directory `permitAll` on login/register/validate-token (anonymous-entry
+design), `PaymentController` null-tolerant principal (fail-closed via
+`UserNotAllowedException`), `GET /images` public read (traversal fixed in
+PR #140). AC1 below is fixed in flight on this branch rather than tracked
+separately.

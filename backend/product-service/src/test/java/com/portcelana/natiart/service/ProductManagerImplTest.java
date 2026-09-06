@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -63,6 +64,50 @@ class ProductManagerImplTest {
     }
 
     @Test
+    void createProduct_negativeOriginalPrice_throwsWithoutSaving() {
+        final ProductDto dto = new ProductDto("Mug", new BigDecimal("-0.01")).setCategoryId("cat-1");
+
+        assertThrows(IllegalArgumentException.class, () -> productManager.createProduct(dto, null));
+
+        verify(productRepository, never()).save(any(Product.class));
+    }
+
+    @Test
+    void createProduct_negativeMarkedPrice_throwsWithoutSaving() {
+        final ProductDto dto =
+                new ProductDto("Mug", BigDecimal.TEN).setCategoryId("cat-1").setMarkedPrice(new BigDecimal("-5.00"));
+
+        assertThrows(IllegalArgumentException.class, () -> productManager.createProduct(dto, null));
+
+        verify(productRepository, never()).save(any(Product.class));
+    }
+
+    @Test
+    void createProduct_negativeStock_throwsWithoutSaving() {
+        final ProductDto dto =
+                new ProductDto("Mug", BigDecimal.TEN).setCategoryId("cat-1").setStockQuantity(-1);
+
+        assertThrows(IllegalArgumentException.class, () -> productManager.createProduct(dto, null));
+
+        verify(productRepository, never()).save(any(Product.class));
+    }
+
+    @Test
+    void createProduct_zeroPriceAndStock_persists() {
+        final Category category = new Category("Tableware");
+        when(categoryManager.getCategoryOrDie("cat-1")).thenReturn(category);
+        when(packageManager.getPackage(null)).thenReturn(Optional.empty());
+        when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        final ProductDto dto =
+                new ProductDto("Mug", BigDecimal.ZERO).setCategoryId("cat-1").setStockQuantity(0);
+
+        final Product created = productManager.createProduct(dto, null);
+
+        assertEquals(BigDecimal.ZERO, created.getOriginalPrice());
+        verify(productRepository, atLeastOnce()).save(any(Product.class));
+    }
+
+    @Test
     void createProduct_nullImageLists_persistsWithEmptyImages() {
         final Category category = new Category("Tableware");
         when(categoryManager.getCategoryOrDie("cat-1")).thenReturn(category);
@@ -98,6 +143,27 @@ class ProductManagerImplTest {
         assertThrows(ResourceNotFoundException.class, () -> productManager.inverseVisibility("missing"));
 
         verify(productRepository, never()).save(any(Product.class));
+    }
+
+    @Test
+    void getProductOrDie_nullId_throwsNotFoundWithoutQuerying() {
+        assertThrows(ResourceNotFoundException.class, () -> productManager.getProductOrDie(null));
+
+        verify(productRepository, never()).findById(any());
+    }
+
+    @Test
+    void getProductWithImages_nullId_returnsEmptyWithoutQuerying() {
+        assertTrue(productManager.getProductWithImages(null).isEmpty());
+
+        verify(productRepository, never()).findByIdWithImages(any());
+    }
+
+    @Test
+    void deleteProduct_nullId_throwsNotFoundWithoutDeleting() {
+        assertThrows(ResourceNotFoundException.class, () -> productManager.deleteProduct(null));
+
+        verify(productRepository, never()).deleteById(any());
     }
 
     @Test
