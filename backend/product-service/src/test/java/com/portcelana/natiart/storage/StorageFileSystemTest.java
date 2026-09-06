@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.zip.ZipEntry;
@@ -139,6 +140,25 @@ class StorageFileSystemTest {
 
         assertThrows(
                 ResourceNotFoundException.class, () -> storage.downloadFiles(Set.of(URI.create("file:///etc/passwd"))));
+    }
+
+    @Test
+    void downloadFilesDisambiguatesDuplicateBasenames() throws IOException {
+        Path root = tempDir.resolve("product-images");
+        URI first = writeInside(root, "p1/a.webp", "aaa");
+        URI second = writeInside(root, "p2/a.webp", "bbb");
+        StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+
+        try (var in = storage.downloadFiles(Set.of(first, second));
+                var zipIn = new ZipInputStream(in)) {
+            java.util.Map<String, String> contents = new HashMap<>();
+            ZipEntry entry;
+            while ((entry = zipIn.getNextEntry()) != null) {
+                contents.put(entry.getName(), new String(zipIn.readAllBytes(), StandardCharsets.UTF_8));
+            }
+            assertEquals(Set.of("a.webp", "p2-a.webp"), contents.keySet());
+            assertEquals(Set.of("aaa", "bbb"), Set.copyOf(contents.values()));
+        }
     }
 
     @Test
