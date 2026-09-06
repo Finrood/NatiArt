@@ -740,3 +740,17 @@ non-finite values).
   403 kept for foreign instead of the uniform 404 the finding suggested, to
   preserve the API contract). Tests assert zero `RestTemplate` interaction
   for unknown/foreign ids; full product-service suite green, Spotless clean.
+
+### AB1. Product create/update persist negative money and stock — FIXED (PR #150)
+- `backend/product-service/.../service/ProductManagerImpl.java` (`createProduct`/
+  `updateProduct`): null-only price check let negative `originalPrice`/
+  `markedPrice` and negative stock persist (flowing server-side into order totals).
+- Fix: reject negative prices/stock with `IllegalArgumentException` (400 via the
+  advice) in both manager methods; negative-price/stock tests assert 400, not persisted.
+
+### AB2. Null category/product ids → 500 instead of 404 — FIXED (PR #150)
+- Null ids reached `findById(null)` → unmapped `InvalidDataAccessApiUsageException`
+  → catch-all 500 (same shape in `CategoryManagerImpl`, `updateCategory`/
+  `deleteCategory`, `deleteProduct(null)`).
+- Fix: null ids resolve to `Optional.empty()` (mirroring `PackageManager.getPackage`)
+  so null → 404 via `OrDie`, plus a null guard in `deleteProduct`.

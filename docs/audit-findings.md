@@ -650,35 +650,7 @@ constructor. Cleared as non-findings: `getProductImage` null path (controller
 (operates on digit-stripped substrings) and guarded `.trim()` in
 `product.service.ts:36`; `InvalidDataAccessApiUsageException` risk on the
 directory side (`findByUsername(null)` yields empty → 404, not a throw).
-AB1/AB2 below are fixed in flight on this branch rather than tracked
-separately.
+ AB1/AB2 below were fixed on master as PR #150 (moved to
+ `docs/audit-findings-archive.md`); the remainder of the section stands.
 
-### AB1. Product create/update persist negative money and stock — IN REVIEW (Medium, fix PR: product-validation-guards)
-- `backend/product-service/.../service/ProductManagerImpl.java:128,154`
-  (`createProduct`/`updateProduct`): `requireNonNullPrice` checks null only —
-  a negative `originalPrice` or `markedPrice` passes straight through, and
-  `setStockQuantity` has no lower bound, so an admin caller can persist
-  negative prices (which then flow server-side into order totals via
-  `OrderManagerImpl.java:89`) or negative stock (which defeats the
-  `decreaseStockIfAvailable` guard). Entity setters
-  (`model/Product.java:116-136`) are unguarded too.
-- Fix: reject negative prices and negative stock with
-  `IllegalArgumentException` (400 via the advice) in both manager methods.
-  Tests: negative original/marked price and negative stock → 400, not persisted.
-  Found by Lens 1 hunt, 2026-09-06.
-
-### AB2. Null category/product ids → 500 instead of 404 — IN REVIEW (Low, fix PR: product-validation-guards)
-- Same file: `createProduct`/`updateProduct` pass
-  `productDto.getCategoryId()`/`getId()` straight into `getCategoryOrDie` /
-  `getProductOrDie` → `findById(null)` throws
-  `InvalidDataAccessApiUsageException`, which no `ControllerAdvice` handler
-  maps (`configuration/ControllerAdvice.java` handles `IllegalArgumentException`
-  → 400 but not Spring's data-access exception) → catch-all 500. Same shape in
-  `CategoryManagerImpl.getCategory` (no null guard, unlike the null-tolerant
-  `PackageManagerImpl.getPackage`), `updateCategory`/`deleteCategory` with a
-  null id, and `deleteProduct(null)` → `deleteById`.
-- Fix: return `Optional.empty()` on null ids in the Optional-returning lookups
-  (mirroring the `PackageManager.getPackage` precedent) so null resolves to
-  404 via `OrDie`, plus a null guard in `deleteProduct`. Tests: null category
-  id → 404 with zero repository interaction, never 500.
-  Found by Lens 1 hunt, 2026-09-06.
+ (Sections AB1-AB2 moved to `docs/audit-findings-archive.md` as FIXED in PR #150.)
