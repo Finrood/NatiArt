@@ -14,7 +14,15 @@ import com.portcelana.natiart.model.Product;
 
 @Repository
 public interface CartItemRepository extends JpaRepository<CartItem, String> {
-    List<CartItem> findCartItemsByUsername(String username);
+    /**
+     * Loads a user's cart lines with the associations the listing DTO touches
+     * (`product` with its `images`, plus `personalization`) in a single query.
+     * Without the fetch joins every line re-fetches its product and collection
+     * (N+1 inside one `@Transactional` reader, `open-in-view=false`).
+     */
+    @Query(
+            "SELECT DISTINCT c FROM CartItem c LEFT JOIN FETCH c.product p LEFT JOIN FETCH p.images LEFT JOIN FETCH c.personalization WHERE c.username = :username")
+    List<CartItem> findCartItemsByUsername(@Param("username") String username);
 
     Optional<CartItem> findCartItemByUsernameAndProduct(String username, Product product);
 
