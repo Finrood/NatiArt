@@ -128,6 +128,9 @@ public class ProductManagerImpl implements ProductManager {
     public Product createProduct(ProductDto productDto, List<InputFile> imagesInput) {
         final String label = requireNonBlankLabel(productDto.getLabel());
         requireNonNullPrice(productDto.getOriginalPrice());
+        requireNonNegativePrice(productDto.getOriginalPrice(), "original");
+        requireNonNegativePrice(productDto.getMarkedPrice(), "marked");
+        requireNonNegativeStock(productDto.getStockQuantity());
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
         final Optional<Package> pack = packageManager.getPackage(productDto.getPackageId());
         final Product product = productRepository
@@ -154,6 +157,9 @@ public class ProductManagerImpl implements ProductManager {
     public Product updateProduct(ProductDto productDto, List<InputFile> imagesInput) {
         final String label = requireNonBlankLabel(productDto.getLabel());
         requireNonNullPrice(productDto.getOriginalPrice());
+        requireNonNegativePrice(productDto.getOriginalPrice(), "original");
+        requireNonNegativePrice(productDto.getMarkedPrice(), "marked");
+        requireNonNegativeStock(productDto.getStockQuantity());
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
         final Optional<Package> pack = packageManager.getPackage(productDto.getPackageId());
         final Product product = getProductOrDie(productDto.getId())
@@ -241,6 +247,18 @@ public class ProductManagerImpl implements ProductManager {
     private static void requireNonNullPrice(BigDecimal price) {
         if (price == null) {
             throw new IllegalArgumentException("Product price must not be null");
+        }
+    }
+
+    private static void requireNonNegativePrice(BigDecimal price, String field) {
+        if (price != null && price.signum() < 0) {
+            throw new IllegalArgumentException("Product " + field + " price must not be negative");
+        }
+    }
+
+    private static void requireNonNegativeStock(int stockQuantity) {
+        if (stockQuantity < 0) {
+            throw new IllegalArgumentException("Product stock quantity must not be negative");
         }
     }
 }
