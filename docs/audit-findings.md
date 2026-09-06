@@ -159,23 +159,6 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
 
 ## J. File and storage safety (Lens 7 hunt, 2026-09-05)
 
-### J4. `GET images` malformed `path` → `URISyntaxException` → 500 — OPEN (Low)
-- `backend/product-service/.../controller/ProductController.java:127` takes a
-  raw `path` request param; `service/ProductManagerImpl.java:181-184` passes it
-  to `new URI(path)`. Garbage (`::bad::`) throws `URISyntaxException`, which no
-  advice handler maps → generic 500 instead of 400. In-root and out-of-root
-  URIs already map correctly (400/404). Found by Lens 7 hunt, 2026-09-05.
-- Fix: catch `URISyntaxException` → `IllegalArgumentException`. Tests:
-  malformed path → 400.
-
-### J5. `downloadFiles` duplicate basenames collide inside the zip — OPEN (Low)
-- `backend/product-service/.../storage/StorageFileSystem.java:135-139` names
-  each zip entry from `Paths.get(path).getFileName()`, so `p1/a.webp` and
-  `p2/a.webp` produce two `a.webp` entries; extraction silently keeps one
-  (data loss). Found by Lens 7 hunt, 2026-09-05.
-- Fix: disambiguate entry names (prefix with parent or index). Tests: same
-  basename twice → two distinct entries.
-
 ## K. Concurrency and statelessness (Lens 8 hunt, 2026-09-05)
 
 ### K5. `TokenCleanupService` scheduler runs on every pod with no distributed lock — OPEN (Low)
