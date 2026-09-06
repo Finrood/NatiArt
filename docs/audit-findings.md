@@ -686,3 +686,51 @@ separately.
 - Fix: set `SessionCreationPolicy.STATELESS` on the product chain (mirroring
   directory-service). Tests: authenticated request leaves no session.
   Found by Lens 2 hunt, 2026-09-06.
+
+## AD. N+1 queries and pagination (Lens 5 hunt, 2026-09-06)
+
+Hunt method: enumerated every repository query and every `findAll`/derived-query
+call site in `backend/`, checked each listing endpoint for page/size caps, and
+traced every DTO `from()` touch against association fetch types
+(`open-in-view=false`, so each lazy touch inside a `@Transactional` reader is a
+query). Re-verified this cycle: B7 product/category half still FIXED
+(`ProductController.java:134-138` and `CategoryController.java:46-50` clamp to
+`MAX_PAGE_SIZE = 100`; the two-query id-then-`findAllWithImagesByIds` pattern in
+`ProductManagerImpl.java:114-127` keeps product listings at 2 queries); H2
+still OPEN (`PackageController.java:26-32` unbounded `findAll` + in-memory
+sort); H4 still OPEN (`CartItemRepository.java:17` bare derived query, EAGER
+`product` plus `personalization` `@OneToOne` re-fetched per line). H2/H4 are
+fixed in flight on this branch rather than tracked separately. Cleared as
+non-findings: `findAllIds*` id-page queries (indexed id-only selects, no
+collection fetch); `existsByCategory`/`existsByPackaging` (single `SELECT 1`
+guards); public catalog reads staying public (intentional); directory
+`findByUser`/`findByJti*` single-row lookups (no fan-out). AD1-AD3 below are
+runner-ups.
+
+### AD1. `createOrder` loads one product per order line with no batching — OPEN (Medium)
+- `service/OrderManagerImpl.java:79-96` calls
+  `productManager.getProductOrDie(item.getProductId())` (one `findById` select)
+  plus `productRepository.decreaseStockIfAvailable` (one update) per line, up to
+  `MAX_ORDER_LINES = 50` lines per request — a 50-line checkout costs 100+
+  round trips inside one transaction. The per-line stock decrement is
+  intentionally row-atomic and stays; only the product reads can batch.
+- Fix: single `findAllById` for the distinct line product ids, then map by id;
+  keep the per-line active/stock checks. Tests: 3-line order issues 1 product
+  select (Hibernate statistics), unknown id still 404s.
+
+### AD2. `clearCart` loads every line entity to delete them one by one — OPEN (Low)
+- `service/CartManagerImpl.java:88-90` runs `findCartItemsByUsername` (1 select
+  + per-line association fetches) then `deleteAll` (N deletes) to empty a cart
+  whose rows are never read — pure overhead on the checkout path.
+- Fix: bulk delete query (`deleteByUsername`, one statement) in
+  `CartItemRepository`. Tests: clearing a 3-line cart issues 1 delete, lines gone.
+
+### AD3. `getAllOrders` unbounded `findAll` will N+1 on items when wired — OPEN (Low)
+- `service/OrderManagerImpl.java:51-53` returns `orderRepository.findAll()`
+  with no pagination; `CustomerOrder.items` is LAZY (`model/CustomerOrder.java:50-51`)
+  and `OrderDto.from` (`dto/OrderDto.java:47-49`) streams the items, so each
+  order costs one extra select the moment an admin list endpoint calls it
+  (latent today: `controller/OrderController.java:19-23` exposes only
+  `POST /orders/create`, same reason X4 stays tracked).
+- Fix: capped `Pageable` admin listing with `@EntityGraph`/fetch join on
+  `items` when the endpoint is wired (X4); until then tracked, not silently fixed.
