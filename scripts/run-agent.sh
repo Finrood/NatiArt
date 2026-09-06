@@ -21,7 +21,8 @@ TMP_ROOT="${TMPDIR:-/tmp}"   # override with TMPDIR for tests; attempt logs are 
 ROLE="cycle"          # cycle (1500s budget) | review (360s budget)
 BUDGET=""             # empty = role default (set after parsing)
 TITLE="improvement-loop"
-STALL_SEC=120          # no-output stall detection per attempt
+STALL_SEC=120          # no-output stall detection per attempt (role default applied later)
+STALL_EXPLICIT=""      # set when --stall is passed; skips role defaults
 SIMULATE_QUOTA_AT=0    # test harness: fail the first N attempts as synthetic quota
 CHECK_ONLY=0
 ALLOWED_ARGS=()        # extra permission args passed to cline (e.g. --auto-approve true)
@@ -55,7 +56,7 @@ while [[ $# -gt 0 ]]; do
         --role) ROLE="$2"; shift 2 ;;
         --budget) BUDGET="$2"; shift 2 ;;
         --title) TITLE="$2"; shift 2 ;;
-        --stall) STALL_SEC="$2"; shift 2 ;;
+        --stall) STALL_SEC="$2"; STALL_EXPLICIT=1; shift 2 ;;
         --simulate-quota-at) SIMULATE_QUOTA_AT="$2"; shift 2 ;;
         --allowed) ALLOWED_ARGS=("$2"); shift 2 ;;
         --check-only) CHECK_ONLY=1; shift ;;
@@ -79,6 +80,16 @@ fi
 if [[ ! "$BUDGET" =~ ^[0-9]+$ ]] || [[ "$BUDGET" -eq 0 ]]; then
     log_err "Invalid --budget '$BUDGET'."
     exit 2
+fi
+# Role stall defaults: a review (360s total) must fail over from a silent
+# quota-dead model in seconds, while a cycle (1500s) may legitimately go quiet
+# for minutes inside Gradle/npm runs — killing a healthy attempt there would
+# misclassify it as quota and duplicate the work on the next model.
+if [[ -z "$STALL_EXPLICIT" ]]; then
+    case "$ROLE" in
+        review) STALL_SEC=45 ;;
+        cycle)  STALL_SEC=180 ;;
+    esac
 fi
 if [[ "${#PROMPT_ARGS[@]}" -eq 0 ]]; then
     log_err "No prompt provided."
@@ -146,7 +157,7 @@ launch_attempt() { # $1=cli $2=model_id $3=think; spawns child bg, sets $PID
         cline)
             local think_arg=()
             [[ -n "$think" ]] && think_arg=(--thinking "$think")
-            (cd "$REPO" && exec cline --cwd "$REPO" -m "$model_id" "${think_arg[@]}" "${ALLOWED_ARG[@]:+${ALLOWED_ARG[@]}}" --json "$PROMPT") \
+            (cd "$REPO" && exec cline --cwd "$REPO" -m "$model_id" "${think_arg[@]}" "${ALLOWED_ARGS[@]:+${ALLOWED_ARGS[@]}}" --json "$PROMPT") \
                 >"$ATT_LOG" 2>&1 &
             ;;
         *)
@@ -226,6 +237,17 @@ while true; do
 
         if [[ "$reason" == "stall" ]] || quota_blocked "$rc" "$ATT_LOG"; then
             log "Attempt $attempt/${label} quota-blocked (rc=$rc, reason=$reason); trying next model."
+            print_tail "$ATT_LOG"
+            rm -f "$ATT_LOG"
+            continue
+        fi
+
+        if [[ "$rc" -eq 126 || "$rc" -eq 127 ]]; then
+            # Missing/unrunnable CLI binary is infrastructure failure, not a
+            # model error: for days-long autonomy it must fall through like
+            # quota (a typo'd model id still aborts loudly — config bugs need
+            # a human, a vanished binary does not).
+            log "Attempt $attempt/${label}: CLI missing or unrunnable (rc=$rc); trying next model."
             print_tail "$ATT_LOG"
             rm -f "$ATT_LOG"
             continue
