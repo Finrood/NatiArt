@@ -17,10 +17,7 @@ export const environment = {
       url: 'https://natiart.samuelpetre.com/server/product',
       endpoints: {
         category: '/categories',
-        directory: '/categories',
-        packages: '/packages',
         package: '/packages',
-        products: '/products',
         product: '/products',
         order: '/orders',
       }
