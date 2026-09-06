@@ -2,6 +2,32 @@
 
 Full history of fixed findings, moved out of `docs/audit-findings.md` to keep the working backlog lean. Statuses here are final.
 
+### K3. Visibility/status toggles fail loud under concurrent admin writes — FIXED (PR #137)
+- `service/ProductManagerImpl.java` (`inverseVisibility`),
+  `service/CategoryManagerImpl.java` (`inverseVisibility`) and
+  `service/OrderManagerImpl.java` (`updateOrderStatus`) read an entity,
+  mutated in memory, and saved. `Product`, `Category` and `CustomerOrder`
+  carry `@Version` (optimistic locking), so concurrent toggles did not
+  silently lose updates — but the loser got `OptimisticLockException` →
+  generic 500 instead of a serialized flip.
+- Fix: single in-database `UPDATE`s (`toggleActiveById` on both repos,
+  `updateStatusById` on orders) that serialize in the database; zero-row
+  updates throw `ResourceNotFoundException` (404 preserved). Tests: atomic
+  path asserted via `verify(toggle...)` + `verify(save, never())`
+  (`ProductManagerImplTest`, `CategoryManagerImplTest`,
+  `OrderManagerImplTest`).
+
+### K4. `createCategory` label check-then-insert races to a 500 — FIXED (PR #137)
+- `service/CategoryManagerImpl.java` pre-checked `findCategoryByLabel` and
+  threw `IllegalArgumentException` (→ 400) on a duplicate, but
+  `Category.label` is `unique = true` with no graceful handling: two
+  concurrent creates with the same label both passed the check and the loser
+  surfaced `DataIntegrityViolationException` → generic 500 instead of 400.
+- Fix: `DataIntegrityViolationException` caught around the save in both
+  `createCategory` and `updateCategory`, rethrowing the same duplicate-label
+  `IllegalArgumentException`. Tests: `save` throwing the violation →
+  400-path message.
+
 ### Y2. `environment.production.ts` endpoint shape drift (dead alias keys) — FIXED (PR #134)
 - `frontend/natiart-app/src/environments/environment.production.ts` carried
   alias keys (`directory`, `packages`, `products`) absent from
