@@ -653,7 +653,7 @@ directory side (`findByUsername(null)` yields empty → 404, not a throw).
 AB1/AB2 below are fixed in flight on this branch rather than tracked
 separately.
 
-### AB1. Product create/update persist negative money and stock — OPEN (Medium)
+### AB1. Product create/update persist negative money and stock — IN REVIEW (Medium, fix PR: product-validation-guards)
 - `backend/product-service/.../service/ProductManagerImpl.java:128,154`
   (`createProduct`/`updateProduct`): `requireNonNullPrice` checks null only —
   a negative `originalPrice` or `markedPrice` passes straight through, and
@@ -667,7 +667,7 @@ separately.
   Tests: negative original/marked price and negative stock → 400, not persisted.
   Found by Lens 1 hunt, 2026-09-06.
 
-### AB2. Null category/product ids → 500 instead of 404 — OPEN (Low)
+### AB2. Null category/product ids → 500 instead of 404 — IN REVIEW (Low, fix PR: product-validation-guards)
 - Same file: `createProduct`/`updateProduct` pass
   `productDto.getCategoryId()`/`getId()` straight into `getCategoryOrDie` /
   `getProductOrDie` → `findById(null)` throws
