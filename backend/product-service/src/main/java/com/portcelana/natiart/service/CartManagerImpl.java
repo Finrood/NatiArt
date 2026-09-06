@@ -14,6 +14,10 @@ import com.portcelana.natiart.repository.CartItemRepository;
 
 @Service
 public class CartManagerImpl implements CartManager {
+    // Mirrors the order line cap (OrderManagerImpl MAX_ITEM_QUANTITY): a cart
+    // line grown past it could never be ordered, so reject the add instead.
+    private static final int MAX_LINE_QUANTITY = 100;
+
     private final CartItemRepository cartItemRepository;
     private final ProductManager productManager;
 
@@ -37,12 +41,20 @@ public class CartManagerImpl implements CartManager {
         if (!product.isActive()) {
             throw new IllegalArgumentException("Product [" + product.getLabel() + "] is no longer available");
         }
-        // Atomic increment first: concurrent adds serialize in the database instead
-        // of losing increments in a read-modify-write round trip. The unique
-        // constraint on (username, product) keeps a lost insert race fail-loud
-        // instead of persisting duplicate lines.
-        if (cartItemRepository.incrementQuantity(username, productId) > 0) {
+        // Atomic guarded increment first: concurrent adds serialize in the
+        // database instead of losing increments in a read-modify-write round
+        // trip, and the cap predicate keeps a tight add-loop from growing one
+        // row without limit. The unique constraint on (username, product) keeps
+        // a lost insert race fail-loud instead of persisting duplicate lines.
+        if (cartItemRepository.incrementQuantityIfBelowCap(username, productId, MAX_LINE_QUANTITY) > 0) {
             return CartItemDto.from(getCartLineOrDie(username, product));
+        }
+        final CartItem existing = cartItemRepository
+                .findCartItemByUsernameAndProduct(username, product)
+                .orElse(null);
+        if (existing != null) {
+            throw new IllegalArgumentException(
+                    "Cart line for product [" + product.getLabel() + "] must not exceed " + MAX_LINE_QUANTITY);
         }
         final CartItem cartItem = cartItemRepository.save(new CartItem(username, product));
         return CartItemDto.from(cartItem);
