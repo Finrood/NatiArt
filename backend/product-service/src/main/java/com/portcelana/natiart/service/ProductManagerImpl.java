@@ -192,9 +192,13 @@ public class ProductManagerImpl implements ProductManager {
     @Override
     @Transactional
     public Product inverseVisibility(String productId) {
-        final Product product = getProductOrDie(productId);
-        product.setActive(!product.isActive());
-        return productRepository.save(product);
+        // Atomic in-database flip: concurrent toggles serialize in the database
+        // instead of colliding on @Version and surfacing OptimisticLockException
+        // as a generic 500.
+        if (productRepository.toggleActiveById(productId) == 0) {
+            throw new ResourceNotFoundException("Product with id [" + productId + "] not found");
+        }
+        return getProductOrDie(productId);
     }
 
     private List<String> processImages(Product product, List<String> existingImages, List<InputFile> newImages) {

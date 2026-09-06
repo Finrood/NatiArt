@@ -102,9 +102,13 @@ public class OrderManagerImpl implements OrderManager {
     @Override
     @Transactional
     public CustomerOrder updateOrderStatus(String orderId, OrderStatus status) {
-        final CustomerOrder customerOrder = getOrderById(orderId);
-        customerOrder.setStatus(status);
-        return orderRepository.save(customerOrder);
+        // Direct update by id: concurrent status writes serialize in the
+        // database instead of colliding on @Version and surfacing
+        // OptimisticLockException as a generic 500.
+        if (orderRepository.updateStatusById(orderId, status) == 0) {
+            throw new ResourceNotFoundException("CustomerOrder with id " + orderId + " not found");
+        }
+        return getOrderById(orderId);
     }
 
     private void validateItems(List<OrderItemDto> items) {

@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,11 +15,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.OrderDto;
 import com.portcelana.natiart.dto.OrderItemDto;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.CustomerOrderItem;
 import com.portcelana.natiart.model.Product;
+import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.ProductRepository;
 
@@ -172,5 +175,28 @@ class OrderManagerImplTest {
         verify(productRepository, times(2)).decreaseStockIfAvailable(anyString(), anyInt());
         // ...but nothing was persisted: the @Transactional boundary rolls the whole order back.
         verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void updateOrderStatus_existingOrder_updatesDirectlyWithoutReadModifyWrite() {
+        final CustomerOrder order = new CustomerOrder();
+        when(orderRepository.updateStatusById(order.getId(), OrderStatus.PAID)).thenReturn(1);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        final CustomerOrder updated = orderManager.updateOrderStatus(order.getId(), OrderStatus.PAID);
+
+        assertEquals(order.getId(), updated.getId());
+        verify(orderRepository).updateStatusById(order.getId(), OrderStatus.PAID);
+        verify(orderRepository, never()).save(any(CustomerOrder.class));
+    }
+
+    @Test
+    void updateOrderStatus_missingOrder_throwsNotFound() {
+        when(orderRepository.updateStatusById("missing", OrderStatus.PAID)).thenReturn(0);
+
+        assertThrows(
+                ResourceNotFoundException.class, () -> orderManager.updateOrderStatus("missing", OrderStatus.PAID));
+
+        verify(orderRepository, never()).save(any(CustomerOrder.class));
     }
 }

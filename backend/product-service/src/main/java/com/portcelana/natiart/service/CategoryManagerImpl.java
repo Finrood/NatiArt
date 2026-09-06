@@ -3,6 +3,7 @@ package com.portcelana.natiart.service;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,7 +52,13 @@ public class CategoryManagerImpl implements CategoryManager {
         }
 
         final Category category = new Category(label).setDescription(categoryDto.getDescription());
-        return categoryRepository.save(category);
+        try {
+            return categoryRepository.save(category);
+        } catch (DataIntegrityViolationException e) {
+            // Check-then-insert race: a concurrent create with the same label
+            // won the unique constraint. Same 400 as the pre-check, not a 500.
+            throw new IllegalArgumentException("Category with label [" + label + "] already exists");
+        }
     }
 
     @Override
@@ -64,15 +71,25 @@ public class CategoryManagerImpl implements CategoryManager {
             throw new IllegalArgumentException("Category with label [" + label + "] already exists");
         }
         category.setLabel(label).setDescription(categoryDto.getDescription());
-        return categoryRepository.save(category);
+        try {
+            return categoryRepository.save(category);
+        } catch (DataIntegrityViolationException e) {
+            // Check-then-act race: a concurrent rename to the same label won
+            // the unique constraint. Same 400 as the pre-check, not a 500.
+            throw new IllegalArgumentException("Category with label [" + label + "] already exists");
+        }
     }
 
     @Override
     @Transactional
     public Category inverseVisibility(String categoryId) {
-        final Category category = getCategoryOrDie(categoryId);
-        category.setActive(!category.isActive());
-        return categoryRepository.save(category);
+        // Atomic in-database flip: concurrent toggles serialize in the database
+        // instead of colliding on @Version and surfacing OptimisticLockException
+        // as a generic 500.
+        if (categoryRepository.toggleActiveById(categoryId) == 0) {
+            throw new ResourceNotFoundException("Category with id " + categoryId + " not found");
+        }
+        return getCategoryOrDie(categoryId);
     }
 
     @Override
