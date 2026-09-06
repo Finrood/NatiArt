@@ -55,8 +55,10 @@ class CartItemRepositoryFetchTest {
     }
 
     private Statistics statistics() {
-        final Statistics statistics =
-                entityManager.getEntityManagerFactory().unwrap(SessionFactory.class).getStatistics();
+        final Statistics statistics = entityManager
+                .getEntityManagerFactory()
+                .unwrap(SessionFactory.class)
+                .getStatistics();
         statistics.setStatisticsEnabled(true);
         return statistics;
     }
