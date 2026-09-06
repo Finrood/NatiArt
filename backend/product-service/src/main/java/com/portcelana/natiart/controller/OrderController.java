@@ -17,7 +17,7 @@ public class OrderController {
     }
 
     @PostMapping("/orders/create")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isFullyAuthenticated()")
     public OrderDto createOrder(@RequestBody OrderDto orderDto) {
         return OrderDto.from(orderManager.createOrder(orderDto));
     }

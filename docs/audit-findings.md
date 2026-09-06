@@ -514,4 +514,57 @@ in `backend/` per Lens 1. Re-verified this cycle: B3 still OPEN (zero
 (try/catch on upstream input, never raw user input) — not filed.
 `OrderManagerImpl.validateItems` (`:106-121`) already rejects null/blank
 product ids and non-positive quantities — not filed. V1/V2 below were fixed
-in flight on the same branch rather than tracked separately.
+in flight on the same branch rather than tracked separately. (V3 was flipped
+to FIXED on master as PR #128 while this branch was open.)
+
+## W. AuthN and AuthZ boundaries (Lens 2 hunt, 2026-09-05)
+
+Hunt method: enumerated every `@PreAuthorize`/`permitAll` site in both
+services, every `@TargetUser`/`@AuthenticationPrincipal` parameter, and both
+`SecurityConfig` filter chains; diffed sibling endpoints for
+`isAuthenticated()` vs `isFullyAuthenticated()` mismatches. Re-verified this
+cycle: B2 still OPEN (directory `TargetUser.java:10-11` SpEL unchanged),
+S7 still OPEN (`UserController.java:28-30` 200-null unchanged), B4 still OPEN
+(`OrderController` takes no `@TargetUser`, `CustomerOrder` has no owner
+column), N3 still OPEN (upstream fetch before `requireOwnedPayment`,
+`AsaasPaymentService.java:95-96,134-136`), N2 still OPEN (ghost-oracle
+outcomes unchanged). Cleared as non-findings: `PaymentController`
+null-tolerant `principal != null ? ... : null` (fail-closed — null/blank
+`requesterExternalId` throws `UserNotAllowedException` in
+`createPayment`/`requireOwnedPayment`); `GET /products`, `/categories`,
+`/packages` public reads (catalog is intentionally public); directory
+`permitAll` on `/login`/`/register-user`/`/register-ghost-user`/`/validate-token`
+(matches anonymous-entry design).
+
+### W1. `POST /shipping/estimate` is anonymous-reachable and burns server-key upstream egress — OPEN (Medium)
+- `backend/product-service/.../controller/ShippingController.java:22-25`
+  carries no `@PreAuthorize`; product-service `SecurityConfig.java:38` is
+  `anyRequest().permitAll()`, so enforcement is method-security-only and this
+  endpoint is world-open. Each call fans out to Melhor Envio with the server
+  key (`ShippingService.java`), and product-service has no rate limiting (B8)
+  — an anonymous caller can burn upstream quota/cost unthrottled. Guest
+  checkout (L3) implies the estimate must stay public, so the fix is
+  throttling, not auth. Found by Lens 2 hunt, 2026-09-05.
+- Fix: rate-limit/count KPIs when B8 lands (or require auth if checkout goes
+  authenticated-only per L3). Tests: anonymous burst → 429, not upstream egress
+  per probe.
+
+### W2. `OrderController` uses `isAuthenticated()` while cart/payment use `isFullyAuthenticated()` — IN REVIEW (Low, PR #129)
+- `backend/product-service/.../controller/OrderController.java:20`
+  (`@PreAuthorize("isAuthenticated()")`) vs `CartController.java:25,33,41,48`
+  and `PaymentController.java:23,32,39` (`isFullyAuthenticated()`). With the
+  JWT-only setup the two predicates coincide today (no remember-me tokens are
+  ever issued), so this is consistency, not an open hole — but a future
+  remember-me login would silently widen order creation. Found by Lens 2 hunt,
+  2026-09-05.
+- Fix: `isAuthenticated()` → `isFullyAuthenticated()`. Tests: annotation pinned;
+  anonymous still 401/403.
+
+### W3. `GET /products` takes an unused `@TargetUser` on a public endpoint — IN REVIEW (Low, PR #129)
+- `backend/product-service/.../controller/ProductController.java:50-54`
+  resolves `@TargetUser String username` (null for anonymous via
+  `TargetUserArgumentResolver.java:40-43`) and then ignores it — dead auth
+  parameter on an intentionally public listing. It suggests per-user scoping
+  that does not exist and invites a future reader to trust the value.
+  Found by Lens 2 hunt, 2026-09-05.
+- Fix: drop the parameter (and import). Tests: anonymous listing still 200.

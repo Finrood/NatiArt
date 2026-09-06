@@ -37,7 +37,7 @@ class ProductControllerPaginationTest {
         final Product product = new Product("label", new BigDecimal("10.00"));
         when(productManager.getProducts(any(Pageable.class))).thenReturn(List.of(product));
 
-        productController.getProducts("user", 0, Integer.MAX_VALUE);
+        productController.getProducts(0, Integer.MAX_VALUE);
 
         final ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
         verify(productManager).getProducts(captor.capture());
@@ -73,7 +73,7 @@ class ProductControllerPaginationTest {
     void getProducts_passesSanePagingThrough() {
         when(productManager.getProducts(any(Pageable.class))).thenReturn(List.of());
 
-        productController.getProducts("user", 2, 10);
+        productController.getProducts(2, 10);
 
         final ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
         verify(productManager).getProducts(captor.capture());
