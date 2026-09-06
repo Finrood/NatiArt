@@ -27,6 +27,11 @@ public class CategoryManagerImpl implements CategoryManager {
     @Override
     @Transactional(readOnly = true)
     public Optional<Category> getCategory(String categoryId) {
+        if (categoryId == null) {
+            // findById(null) throws InvalidDataAccessApiUsageException (500
+            // via the catch-all advice); an unknown id is a 404 instead.
+            return Optional.empty();
+        }
         return categoryRepository.findById(categoryId);
     }
 

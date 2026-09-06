@@ -55,12 +55,21 @@ public class ProductManagerImpl implements ProductManager {
     @Override
     @Transactional(readOnly = true)
     public Optional<Product> getProduct(String id) {
+        if (id == null) {
+            // findById(null) throws InvalidDataAccessApiUsageException (500
+            // via the catch-all advice); an unknown id is a 404 instead.
+            // Same precedent as PackageManagerImpl.getPackage.
+            return Optional.empty();
+        }
         return productRepository.findById(id);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<Product> getProductWithImages(String id) {
+        if (id == null) {
+            return Optional.empty();
+        }
         return productRepository.findByIdWithImages(id);
     }
 
@@ -185,6 +194,11 @@ public class ProductManagerImpl implements ProductManager {
     @Override
     @Transactional
     public void deleteProduct(String id) {
+        if (id == null) {
+            // deleteById(null) throws InvalidDataAccessApiUsageException
+            // (500 via the catch-all advice); an unknown id is a 404 instead.
+            throw new ResourceNotFoundException("Product with id [null] not found");
+        }
         productRepository.deleteById(id);
     }
 

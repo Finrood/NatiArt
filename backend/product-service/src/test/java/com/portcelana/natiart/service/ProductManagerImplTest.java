@@ -146,6 +146,27 @@ class ProductManagerImplTest {
     }
 
     @Test
+    void getProductOrDie_nullId_throwsNotFoundWithoutQuerying() {
+        assertThrows(ResourceNotFoundException.class, () -> productManager.getProductOrDie(null));
+
+        verify(productRepository, never()).findById(any());
+    }
+
+    @Test
+    void getProductWithImages_nullId_returnsEmptyWithoutQuerying() {
+        assertTrue(productManager.getProductWithImages(null).isEmpty());
+
+        verify(productRepository, never()).findByIdWithImages(any());
+    }
+
+    @Test
+    void deleteProduct_nullId_throwsNotFoundWithoutDeleting() {
+        assertThrows(ResourceNotFoundException.class, () -> productManager.deleteProduct(null));
+
+        verify(productRepository, never()).deleteById(any());
+    }
+
+    @Test
     void getProductImage_malformedPath_throwsBadRequestWithoutTouchingStorage() {
         final IllegalArgumentException thrown =
                 assertThrows(IllegalArgumentException.class, () -> productManager.getProductImage("::bad::"));
