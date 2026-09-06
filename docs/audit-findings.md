@@ -617,3 +617,60 @@ null-tolerant `principal != null ? ... : null` (fail-closed — null/blank
   that does not exist and invites a future reader to trust the value.
   Found by Lens 2 hunt, 2026-09-05.
 - Fix: drop the parameter (and import). Tests: anonymous listing still 200.
+
+## Y. Secrets and configuration, follow-ups (Lens 3 hunt, 2026-09-05)
+
+Hunt method: grepped `backend/` for token/password/secret log arguments,
+hard-coded `http(s)://` in main code, every `@Value` site and its property
+default; diffed all `application*.properties` profiles per service and all
+three `src/environments/environment*.ts` shapes; grepped the storefront for
+token-bearing `console.log`. Cleared as non-findings this cycle: JWT signing
+key fails fast on blank (`UserAuthenticationProvider.java:66-74`
+`@PostConstruct` throws; the `local-development-only-secret` literal lives
+only in the `local-h2` profile, which is required for local boot);
+`ShippingService` rejects blank tokens (`ShippingServiceTest.java:19-24`);
+Asaas API keys have no property default so boot fails closed when unset;
+sandbox URLs as `@Value` defaults fail safe (misconfiguration charges
+sandbox, never real money); zero token/password-bearing log or console
+statements repo-wide. Y2/Y3 below are fixed in flight on the same branch
+rather than tracked separately. (Renamed X→Y on rebase: the X1–X4 labels
+were taken by the Lens 4 batch, PR #132.)
+
+### Y2. `environment.production.ts` endpoint shape drift (dead alias keys) — OPEN (Low)
+- `frontend/natiart-app/src/environments/environment.production.ts:20-24`
+  carries alias keys (`directory`, `packages`, `products`) absent from
+  `environment.ts` and `environment.development.ts`; the only consumers
+  (`package.service.ts:11`, `product.service.ts:11`, `category.service.ts:11`)
+  use the singular keys. File-replacement builds mean no type check across
+  envs, so the shapes can drift silently.
+- Fix: delete the three dead aliases so all env files share one shape.
+  Verification: storefront build + existing Karma specs green.
+
+### Y3. H2 console open to the network in both `local-h2` profiles — OPEN (Low)
+- `backend/product-service/.../application-local-h2.properties:12-13` and
+  `backend/directory-service/.../application-local-h2.properties:14-15` set
+  `spring.h2.console.enabled=true` with
+  `spring.h2.console.settings.web-allow-others=true`, so the console (backed
+  by the `admin`/`admin` datasource in the same file) accepts remote
+  connections whenever a dev port is exposed.
+- Fix: drop `web-allow-others` (default `false`; console stays localhost-only).
+  Verification: backend suites green (no test binds the remote console).
+
+### Y1. CORS allowed origins hard-coded in both services — OPEN (Low)
+- `backend/product-service/.../configuration/WebConfig.java:20` and
+  `backend/directory-service/.../configuration/WebConfig.java:20` bake
+  `List.of("http://localhost:4200", "https://natiart.samuelpetre.com")`
+  into the artifact: the dev origin ships to production, and every origin
+  change needs a rebuild. Same class as the sandbox/localhost defaults below.
+- Fix: drive the list from a property (`@Value` + env override per deploy).
+  Tests: configured origin reflected in the `CorsConfigurationSource` bean.
+
+### Y4. Production profiles pin no payment/shipping/directory endpoints — OPEN (Low)
+- `application-production.properties` (both services) sets only datasource,
+  JPA and storage keys: Asaas URLs, Melhor Envio URL/token and
+  `directory.service.url` all fall through to sandbox/localhost defaults
+  unless the matching env vars exist. One missing env var in prod silently
+  points payments at sandbox or auth validation at `localhost:8081`
+  (fail-closed 503 via `JwtAuthFilter`, but silent).
+- Fix needs a deploy-topology decision (explicit prod URLs vs
+  fail-fast-on-sandbox-URL guard): leave OPEN for the maintainer.
