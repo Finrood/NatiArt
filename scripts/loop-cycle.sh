@@ -200,6 +200,27 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
     exit 0
 fi
 
+# 5a. Mechanical verdict production. A green code PR with no verdict would
+# otherwise stall until the author agent volunteers a review on its own (it can
+# defer indefinitely — PR #142 waited 4 cycles). The loop itself spawns ONE
+# bounded reviewer per cycle; the next cycle's self-heal merge picks up the
+# verdict. PRs with a REQUEST_CHANGES verdict are left to the author agent.
+REVIEW_PID=""
+for n in $CODE_PRS; do
+    checks=$(gh pr checks "$n" 2>/dev/null)
+    echo "$checks" | grep -Eq 'fail|cancel' && continue
+    echo "$checks" | grep -qE 'pass|success' || continue
+    VERDICTS=$(gh pr view "$n" --json comments --jq '[.comments[].body | select(startswith("VERDICT:"))] | length' 2>/dev/null || echo 0)
+    [[ "${VERDICTS:-0}" -ge 1 ]] && continue
+    log "No verdict on green PR #$n; spawning mechanical reviewer (1 per cycle)."
+    timeout 420 scripts/run-agent.sh --role review --budget 360 --title "review-pr-$n" \
+        "$(cat scripts/agent-review-prompt.md)
+---
+Review PR $n. Post your verdict comment (first line exactly 'VERDICT: APPROVE' or 'VERDICT: REQUEST_CHANGES') on the PR before the timebox ends." &
+    REVIEW_PID=$!
+    break
+done
+
 # 5. Worktree hygiene: remove abandoned reviewer/staging worktrees that a killed
 # cycle or reboot left behind (they live next to the repo — never inside it —
 # and would otherwise accumulate). Never touch the main checkout.
@@ -263,7 +284,17 @@ timeout 1500 scripts/run-agent.sh --role cycle --budget 1500 --title "improvemen
 STATUS=$?
 if [[ "$STATUS" -eq 124 ]]; then
     log "Agent cycle hit the 25-minute timeout; leaving state for next cycle."
-    exit 0
+fi
+# The mechanical reviewer (if spawned) runs concurrently with the cycle agent;
+# wait for it before exiting — systemd kills the whole cgroup on service exit
+# and would otherwise orphan-kill a still-working reviewer.
+if [[ -n "${REVIEW_PID:-}" ]]; then
+    log "Waiting for mechanical reviewer before cycle exit."
+    if wait "$REVIEW_PID" 2>/dev/null; then
+        log "Mechanical reviewer finished."
+    else
+        log "Mechanical reviewer finished without APPROVE (next cycle retries)."
+    fi
 fi
 log "Agent cycle finished with status $STATUS."
 exit "$STATUS"
