@@ -1,4 +1,4 @@
-import {Component, OnInit} from '@angular/core';
+import {Component, OnDestroy, OnInit} from '@angular/core';
 import {Router} from "@angular/router";
 import {AuthenticationService} from "../../../service/authentication.service";
 import {CommonModule} from "@angular/common";
@@ -11,8 +11,10 @@ import {LoadingSpinnerComponent} from "../../../../shared/components/shared/load
     styleUrl: './logout.component.css',
     standalone: true
 })
-export class LogoutComponent implements OnInit {
+export class LogoutComponent implements OnInit, OnDestroy {
   loggedOut = false;
+
+  private redirectTimer: ReturnType<typeof setTimeout> | undefined = undefined;
 
   constructor(private router: Router, private authenticationService: AuthenticationService) {
   }
@@ -21,7 +23,7 @@ export class LogoutComponent implements OnInit {
     this.authenticationService.logout().subscribe({
       next: () => {
         this.loggedOut = true;
-        setTimeout(() => {
+        this.redirectTimer = setTimeout(() => {
           this.router.navigate(['/login']);
         }, 2000);
       },
@@ -31,5 +33,12 @@ export class LogoutComponent implements OnInit {
         this.router.navigate(['/login']);
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    if (this.redirectTimer !== undefined) {
+      clearTimeout(this.redirectTimer);
+      this.redirectTimer = undefined;
+    }
   }
 }

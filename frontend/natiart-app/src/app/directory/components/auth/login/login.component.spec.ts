@@ -104,6 +104,25 @@ describe('LoginComponent', () => {
     TestBed.inject(AuthenticationService).ngOnDestroy();
   }));
 
+  it('keeps stored tokens when validation fails transiently (500), staying on login', fakeAsync(() => {
+    const {fixture, httpTesting, tokenService, navigateSpy} = setup();
+    navigateSpy.calls.reset();
+    const stored: string = unsignedToken(Math.floor(Date.now() / 1000) + 3600);
+    tokenService.accessToken = stored;
+
+    fixture.detectChanges();
+    tick();
+
+    const req: TestRequest = httpTesting.expectOne(CURRENT_USER_URL);
+    req.flush('', {status: 500, statusText: 'Server Error'});
+    tick();
+
+    expect(tokenService.accessToken).toBe(stored);
+    expect(navigateSpy).not.toHaveBeenCalled();
+    httpTesting.verify();
+    TestBed.inject(AuthenticationService).ngOnDestroy();
+  }));
+
   it('makes no validation request when no token is stored', fakeAsync(() => {
     const {fixture, httpTesting, navigateSpy} = setup();
     // The service constructor already ran (with no tokens); isolate ngOnInit behavior.
