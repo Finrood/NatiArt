@@ -671,21 +671,8 @@ FIXED (archive). Cleared as non-findings: public catalog reads (intentionally
 public), directory `permitAll` on login/register/validate-token (anonymous-entry
 design), `PaymentController` null-tolerant principal (fail-closed via
 `UserNotAllowedException`), `GET /images` public read (traversal fixed in
-PR #140). AC1 below is fixed in flight on this branch rather than tracked
-separately.
-
-### AC1. Product-service filter chain never goes stateless — IN REVIEW (Low, fix PR: authn-stateless-session)
-- `backend/product-service/.../configuration/SecurityConfig.java:30-40` builds
-  the chain with no `sessionManagement` configuration, while the directory twin
-  sets `SessionCreationPolicy.STATELESS`
-  (`directory/.../configuration/SecurityConfig.java:29`). The servlet default
-  (`IF_REQUIRED`) lets the container mint and persist `JSESSIONID` sessions on
-  authenticated traffic despite the JWT-per-request design — cross-request
-  server-side state plus session-fixation surface, contradicting the
-  statelessness rule in `backend/AGENTS.md`.
-- Fix: set `SessionCreationPolicy.STATELESS` on the product chain (mirroring
-  directory-service). Tests: authenticated request leaves no session.
-  Found by Lens 2 hunt, 2026-09-06.
+PR #140). AC1 (stateless product chain) is FIXED and archived (PR #153); the product
+SecurityConfig now sets `SessionCreationPolicy.STATELESS` mirroring directory-service.
 
 ## AD. Secrets and configuration re-hunt (Lens 3, 2026-09-06)
 
@@ -705,9 +692,8 @@ defaults fail safe (misconfiguration charges sandbox, never real money);
 exception, never the token string; `data.sql` seeds bcrypt hashes only, no
 plaintext credentials; `spring.h2.console.enabled=true` and `admin/admin`
 live only in `application-local-h2.properties`, never in production profiles.
-AD1 below is fixed in flight on this branch rather than tracked separately.
 
-### AD1. Origin postal code hard-coded in `ShippingService` — OPEN (Low, fix PR: config-hardening)
+### AD1. Origin postal code hard-coded in `ShippingService` — IN REVIEW (Low, fix PR: config-hardening / PR #154)
 - `backend/product-service/.../service/ShippingService.java:26`
   `public static final String FROM_POSTAL_CODE = "88085201"`, consumed by
   `service/support/MelhorenvioShippingCalculationRequest.java:19` as the
@@ -716,4 +702,4 @@ AD1 below is fixed in flight on this branch rather than tracked separately.
   rebuild. Found by Lens 3 hunt, 2026-09-06.
 - Fix: drive from a property (`melhorenvio.api.from-postal-code`, env
   override, current value as default). Tests: configured origin reflected in
-  the built calculation request.
+  the built calculation request. Fix provided by PR #154.

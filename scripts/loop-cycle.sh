@@ -11,6 +11,17 @@ CHECK_ONLY=0
 
 log() { echo "[$(date -Is)] $*"; }
 
+# Forensics: with `set -e`, any unguarded command failure kills the cycle
+# silently (seen 2026-09-06 19:05: a transient gh API error exited the cycle
+# 1s after the last log line, with no trace in the log). Trap it: always log
+# where and why before systemd records the exit.
+trap 'log "FATAL: cycle aborted by error at line $LINENO (exit $?)"; exit 1' ERR
+gh_safe() { # gh calls that may fail transiently: log and continue with empty
+    local out
+    out=$("$@" 2>&1) || { log "WARN: '$*' failed transiently; treating as empty."; return 0; }
+    printf '%s\n' "$out"
+}
+
 exec 9>"$LOCK"
 if ! flock -n 9; then
     log "Another cycle is still running; exiting."
@@ -20,15 +31,22 @@ fi
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/loop-$(date +%Y%m%d-%H%M%S).log"
 exec > >(tee -a "$LOG_FILE") 2>&1
-# Log retention: keep the last 100 cycle logs.
-ls -t "$LOG_DIR"/loop-*.log 2>/dev/null | tail -n +101 | xargs -r rm -f || true
+# Log retention: keep the last 300 cycle logs (~6 days at 30-min cadence) so
+# every 10-day red-team window stays fully inspectable.
+ls -t "$LOG_DIR"/loop-*.log 2>/dev/null | tail -n +301 | xargs -r rm -f || true
 
 log "=== Improvement-loop cycle start (check-only=$CHECK_ONLY) ==="
 cd "$REPO"
 
 # 0. Fast-fail gates: expired token or full disk must abort loudly, not waste
 #    a 25-minute agent run on calls that cannot succeed.
-gh auth status >/dev/null 2>&1 || { log "GitHub auth broken; aborting cycle."; exit 1; }
+auth_ok=0
+for i in 1 2 3; do
+    if gh auth status >/dev/null 2>&1; then auth_ok=1; break; fi
+    log "GitHub auth check $i/3 failed; retrying in 20s (single transient API errors are common)."
+    sleep 20
+done
+[[ "$auth_ok" -eq 1 ]] || { log "GitHub auth broken after 3 tries; aborting cycle."; exit 1; }
 DISK_AVAIL_KB=$(df -k "$REPO" | awk 'NR==2 {print $4}')
 if [[ "${DISK_AVAIL_KB:-0}" -lt 2097152 ]]; then
     log "Disk low (${DISK_AVAIL_KB}KB < 2GB); aborting cycle for human review."
@@ -89,6 +107,30 @@ if ! git pull -q --ff-only origin master; then
     exit 1
 fi
 log "master at $(git rev-parse --short HEAD), tree clean."
+# 2b. Stray-commits guard: a cycle agent that exits 0 without delivering can
+#     leave finished work committed locally on master but never pushed (seen
+#     2026-09-06 18:30). Salvage to a pushed branch + PR, then reset to
+#     origin/master. If the salvage push fails, abort WITHOUT resetting —
+#     local-only work must never be destroyed.
+LOCAL_AHEAD=$(git rev-list --count origin/master..master 2>/dev/null || echo 0)
+if [[ "$LOCAL_AHEAD" -gt 0 ]]; then
+    B="salvage/stray-$(date +%Y%m%d-%H%M%S)"
+    if git branch "$B" && git push -q origin "$B"; then
+        PR_URL=$(gh pr create --base master --head "$B" \
+            --title "[Salvage] $LOCAL_AHEAD unpushed master commit(s) recovered from interrupted cycle" \
+            --body "Loop guard found local master ahead of origin (work never pushed by the cycle that made it). Recovered to a reviewable PR; master reset to origin. Created by the loop; review like any cycle output." \
+            2>/dev/null || true)
+        git checkout -q master
+        git reset -q --hard origin/master
+        log "Salvaged $LOCAL_AHEAD unpushed master commit(s) to origin/$B${PR_URL:+; PR: $PR_URL}."
+    else
+        git branch -D "$B" 2>/dev/null || true
+        log "master has $LOCAL_AHEAD unpushed commit(s) and salvage push failed; aborting cycle (work kept local for retry)."
+        exit 1
+    fi
+fi
+
+# 3. Backlog guard: is there OPEN work? Starvation is a bug, so a low (not
 
 # 3. Backlog guard: is there OPEN work? Starvation is a bug, so a low (not
 #    just empty) backlog switches the cycle to generator duty instead of idling.
@@ -145,7 +187,7 @@ while read -r n; do
     if ! is_docs_only "$n"; then
         CODE_PRS="$CODE_PRS $n"
     fi
-done < <(gh pr list --state open --json number,headRefName --jq '.[] | select(.headRefName | startswith("dependabot/") | not) | .number')
+done < <(gh_safe gh pr list --state open --json number,headRefName --jq '.[] | select(.headRefName | startswith("dependabot/") | not) | .number')
 OPEN_PRS=$(echo "$CODE_PRS" | wc -w)
 log "Open code PRs: $OPEN_PRS"
 
@@ -153,7 +195,7 @@ log "Open code PRs: $OPEN_PRS"
 # most 2 per cycle; only branches whose head is exactly their PR head.
 merged=0
 for n in $CODE_PRS; do
-    checks=$(gh pr checks "$n" 2>/dev/null)
+    checks=$(gh_safe gh pr checks "$n")
     if echo "$checks" | grep -Eq 'fail|cancel'; then
         log "PR #$n has failing/cancelled checks; leaving open."
         continue
@@ -182,7 +224,8 @@ fi
 # pick it up in Phase 0.
 FAILING=""
 for n in $CODE_PRS; do
-    if gh pr checks "$n" 2>/dev/null | grep -Eq 'fail|cancel'; then FAILING="$FAILING $n"; fi
+    checks=$(gh_safe gh pr checks "$n")
+    if echo "$checks" | grep -Eq 'fail|cancel'; then FAILING="$FAILING $n"; fi
 done
 if [[ -n "$FAILING" ]]; then
     log "Open PR(s) with failing checks:$FAILING; not starting new work."
@@ -211,7 +254,7 @@ fi
 # verdict. PRs with a REQUEST_CHANGES verdict are left to the author agent.
 REVIEW_PID=""
 for n in $CODE_PRS; do
-    checks=$(gh pr checks "$n" 2>/dev/null)
+    checks=$(gh_safe gh pr checks "$n")
     echo "$checks" | grep -Eq 'fail|cancel' && continue
     echo "$checks" | grep -qE 'pass|success' || continue
     VERDICTS=$(verdict_bodies "$n" | grep -c '^VERDICT:' || true)
@@ -238,7 +281,17 @@ git worktree list --porcelain 2>/dev/null | awk -v repo="$REPO" '
     git worktree remove --force "$wt" 2>/dev/null || true
 done || true
 # Also sweep the sibling review-* clones (git worktree list does not see them).
-find "$REPO/.." -maxdepth 1 -type d -name 'review-*' -mtime +1 -exec rm -rf {} + 2>/dev/null || true
+# Safety: only clones carrying the reviewer's .natiart-review-marker are
+# deleted — never a bare name-glob rm -rf, which could hit an unrelated
+# sibling project's review-* directory.
+find "$(dirname "$REPO")" -maxdepth 1 -type d -name 'review-*' -mtime +1 2>/dev/null | while read -r d; do
+    if [[ -f "$d/.natiart-review-marker" ]]; then
+        log "Removing abandoned reviewer clone $d."
+        rm -rf "$d"
+    else
+        log "Skipping $d (no .natiart-review-marker; not ours)."
+    fi
+done || true
 
 # Remote hygiene: retry deletion of merged loop branches (the --delete-branch
 # flag occasionally races GitHub auto-delete and leaves them behind). Only

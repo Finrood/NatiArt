@@ -20,7 +20,10 @@ which is exactly why you catch what it missed. Work in the repo root. Obey
    orphan it). Never place a worktree inside the repo itself (git forbids + it
    pollutes the author checkout). Create the clone fresh each review and
    trigger the trap cleanup on EXIT:
-   `git clone --no-checkout "$REPO_ROOT" "$REPO_ROOT/../review-$N"` then
+   `git clone --no-checkout "$REPO_ROOT" "$REPO_ROOT/../review-$N"`, then
+   immediately `touch "$REPO_ROOT/../review-$N/.natiart-review-marker"` — the
+   loop's hygiene sweep deletes only `review-*` dirs carrying this marker, so
+   a missing marker leaves your clone as immortal clutter after a crash. Then
    `git -C "$REPO_ROOT/../review-$N" checkout --detach $(gh pr view $N --json
    headRefOid --jq .headRefOid)`, with
    `trap "rm -rf $REPO_ROOT/../review-$N && git worktree prune" EXIT`.
