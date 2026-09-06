@@ -55,12 +55,21 @@ public class ProductManagerImpl implements ProductManager {
     @Override
     @Transactional(readOnly = true)
     public Optional<Product> getProduct(String id) {
+        if (id == null) {
+            // findById(null) throws InvalidDataAccessApiUsageException (500
+            // via the catch-all advice); an unknown id is a 404 instead.
+            // Same precedent as PackageManagerImpl.getPackage.
+            return Optional.empty();
+        }
         return productRepository.findById(id);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<Product> getProductWithImages(String id) {
+        if (id == null) {
+            return Optional.empty();
+        }
         return productRepository.findByIdWithImages(id);
     }
 
@@ -128,6 +137,9 @@ public class ProductManagerImpl implements ProductManager {
     public Product createProduct(ProductDto productDto, List<InputFile> imagesInput) {
         final String label = requireNonBlankLabel(productDto.getLabel());
         requireNonNullPrice(productDto.getOriginalPrice());
+        requireNonNegativePrice(productDto.getOriginalPrice(), "original");
+        requireNonNegativePrice(productDto.getMarkedPrice(), "marked");
+        requireNonNegativeStock(productDto.getStockQuantity());
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
         final Optional<Package> pack = packageManager.getPackage(productDto.getPackageId());
         final Product product = productRepository
@@ -154,6 +166,9 @@ public class ProductManagerImpl implements ProductManager {
     public Product updateProduct(ProductDto productDto, List<InputFile> imagesInput) {
         final String label = requireNonBlankLabel(productDto.getLabel());
         requireNonNullPrice(productDto.getOriginalPrice());
+        requireNonNegativePrice(productDto.getOriginalPrice(), "original");
+        requireNonNegativePrice(productDto.getMarkedPrice(), "marked");
+        requireNonNegativeStock(productDto.getStockQuantity());
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
         final Optional<Package> pack = packageManager.getPackage(productDto.getPackageId());
         final Product product = getProductOrDie(productDto.getId())
@@ -179,6 +194,11 @@ public class ProductManagerImpl implements ProductManager {
     @Override
     @Transactional
     public void deleteProduct(String id) {
+        if (id == null) {
+            // deleteById(null) throws InvalidDataAccessApiUsageException
+            // (500 via the catch-all advice); an unknown id is a 404 instead.
+            throw new ResourceNotFoundException("Product with id [null] not found");
+        }
         productRepository.deleteById(id);
     }
 
@@ -241,6 +261,18 @@ public class ProductManagerImpl implements ProductManager {
     private static void requireNonNullPrice(BigDecimal price) {
         if (price == null) {
             throw new IllegalArgumentException("Product price must not be null");
+        }
+    }
+
+    private static void requireNonNegativePrice(BigDecimal price, String field) {
+        if (price != null && price.signum() < 0) {
+            throw new IllegalArgumentException("Product " + field + " price must not be negative");
+        }
+    }
+
+    private static void requireNonNegativeStock(int stockQuantity) {
+        if (stockQuantity < 0) {
+            throw new IllegalArgumentException("Product stock quantity must not be negative");
         }
     }
 }
