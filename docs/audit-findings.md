@@ -618,7 +618,7 @@ reader, `LoginComponent`, so no loss); `doRefreshToken` inner
 (`authentication.service.ts:155` — failures already route through that
 method's own 401-reset, so no state corruption, only console noise).
 
-### L5. `LoginComponent` wipes stored tokens on any validation failure — OPEN (Low-Medium)
+### L5. `LoginComponent` wipes stored tokens on any validation failure — IN REVIEW (Low-Medium, fix in flight on this branch)
 - `frontend/natiart-app/src/app/directory/components/auth/login/login.component.ts:80-86`:
   `ngOnInit` clears tokens on ANY `fetchCurrentUser` error. `401` is already
   handled by the service (`resetAuthStateAndRedirect` clears + stays on
