@@ -220,7 +220,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
   rate-limit/count KPIs when B8 lands. Tests: all three email classes return
   the identical unauthenticated response shape.
 
-### N3. Payment status/QR endpoints fetch upstream before authorizing — OPEN (Medium-High)
+### N3. Payment status/QR endpoints fetch upstream before authorizing — IN REVIEW (Medium-High, fix in flight: `fix/payment-local-authorization`)
 - `backend/product-service/.../service/AsaasPaymentService.java:92-93`
   (`getPixQrCode`) and `:131-133` (`getPaymentStatus`) call
   `fetchPaymentOrDie(paymentId)` (upstream Asaas GET with the server key) and
