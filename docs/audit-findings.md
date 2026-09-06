@@ -631,3 +631,54 @@ byte-identical (`md5sum`), all `agents/*.md` carry `meta` frontmatter, 17
 (`frontend/natiart-app/AGENTS.md:46` bare `` `ng test`` vs npm form in CI),
 U4 still OPEN ("7 files done" vs 9 non-spec `= inject(` users). No new
 drift found this cycle — no new items appended.
+
+## AB. Injection and validation re-hunt (Lens 1, 2026-09-06)
+
+Hunt method: enumerated every `.trim()`/unboxing/`valueOf`/derived-query site
+in `backend/` per Lens 1; grepped `Number(`/`parseInt` and `.trim()` in the
+storefront. Re-verified: B3 still OPEN (zero `jakarta.validation` usage
+repo-wide; `ProfileManager.java:22-36` and `UserManager.java:79,110`
+unguarded `.trim()` calls unchanged); catalog label trims now guarded
+(`ProductManagerImpl.java:234`, `CategoryManagerImpl.java:106`,
+`PackageManagerImpl.java:91` null/blank-check before `.trim()`); Asaas
+`valueOf` parsers fail closed (try/catch, upstream input only);
+`OrderManagerImpl.validateItems` rejects null/blank ids and non-positive
+quantities; `ShippingEstimateRequest` guards blanks/non-positives in its
+constructor. Cleared as non-findings: `getProductImage` null path (controller
+`@RequestParam String path` is required, so null never reaches
+`new URI(path)` over HTTP); frontend `parseInt` in `CustomCpfValidators`
+(operates on digit-stripped substrings) and guarded `.trim()` in
+`product.service.ts:36`; `InvalidDataAccessApiUsageException` risk on the
+directory side (`findByUsername(null)` yields empty → 404, not a throw).
+AB1/AB2 below are fixed in flight on this branch rather than tracked
+separately.
+
+### AB1. Product create/update persist negative money and stock — OPEN (Medium)
+- `backend/product-service/.../service/ProductManagerImpl.java:128,154`
+  (`createProduct`/`updateProduct`): `requireNonNullPrice` checks null only —
+  a negative `originalPrice` or `markedPrice` passes straight through, and
+  `setStockQuantity` has no lower bound, so an admin caller can persist
+  negative prices (which then flow server-side into order totals via
+  `OrderManagerImpl.java:89`) or negative stock (which defeats the
+  `decreaseStockIfAvailable` guard). Entity setters
+  (`model/Product.java:116-136`) are unguarded too.
+- Fix: reject negative prices and negative stock with
+  `IllegalArgumentException` (400 via the advice) in both manager methods.
+  Tests: negative original/marked price and negative stock → 400, not persisted.
+  Found by Lens 1 hunt, 2026-09-06.
+
+### AB2. Null category/product ids → 500 instead of 404 — OPEN (Low)
+- Same file: `createProduct`/`updateProduct` pass
+  `productDto.getCategoryId()`/`getId()` straight into `getCategoryOrDie` /
+  `getProductOrDie` → `findById(null)` throws
+  `InvalidDataAccessApiUsageException`, which no `ControllerAdvice` handler
+  maps (`configuration/ControllerAdvice.java` handles `IllegalArgumentException`
+  → 400 but not Spring's data-access exception) → catch-all 500. Same shape in
+  `CategoryManagerImpl.getCategory` (no null guard, unlike the null-tolerant
+  `PackageManagerImpl.getPackage`), `updateCategory`/`deleteCategory` with a
+  null id, and `deleteProduct(null)` → `deleteById`.
+- Fix: return `Optional.empty()` on null ids in the Optional-returning lookups
+  (mirroring the `PackageManager.getPackage` precedent) so null resolves to
+  404 via `OrDie`, plus a null guard in `deleteProduct`. Tests: null category
+  id → 404 with zero repository interaction, never 500.
+  Found by Lens 1 hunt, 2026-09-06.
