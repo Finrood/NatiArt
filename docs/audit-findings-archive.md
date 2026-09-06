@@ -729,3 +729,14 @@ non-finite values).
   single-flight refresh and retried logout with rotated tokens.
 - Fix: bearer attached to logout but 401-refresh skipped — tokens cleared,
   navigate to `/login`. Spec: logout `401` → zero refresh requests.
+
+### N3. Payment status/QR endpoints fetched upstream before authorizing — FIXED (PR #148)
+- `AsaasPaymentService` called `fetchPaymentOrDie` (server-key Asaas GET)
+  before `requireOwnedPayment`: probing arbitrary ids gave an ID-existence
+  oracle (200/403/404) and burned one upstream call per probe.
+- Fix: new additive `Payment` entity + `PaymentRepository` persist the
+  payment→owner mapping at creation; status/QR paths authorize via
+  `getPaymentOrDie` first (unknown → 404, foreign → 403, zero egress —
+  403 kept for foreign instead of the uniform 404 the finding suggested, to
+  preserve the API contract). Tests assert zero `RestTemplate` interaction
+  for unknown/foreign ids; full product-service suite green, Spotless clean.

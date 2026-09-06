@@ -220,22 +220,6 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
   rate-limit/count KPIs when B8 lands. Tests: all three email classes return
   the identical unauthenticated response shape.
 
-### N3. Payment status/QR endpoints fetch upstream before authorizing — IN REVIEW (Medium-High, fix in flight: `fix/payment-local-authorization`)
-- `backend/product-service/.../service/AsaasPaymentService.java:92-93`
-  (`getPixQrCode`) and `:131-133` (`getPaymentStatus`) call
-  `fetchPaymentOrDie(paymentId)` (upstream Asaas GET with the server key) and
-  only then `requireOwnedPayment(...)`. An authenticated attacker probing
-  arbitrary `paymentId`s learns: owned → 200, existent-but-foreign → 403
-  (`UserNotAllowedException`), nonexistent → 404 — an ID-existence oracle —
-  and each probe burns one upstream Asaas call on the server's key (cost +
-  third-party rate-limit amplification).
-- Repro: as user A, `GET /api/payment/<B's paymentId>/status` → 403 vs
-  `GET /api/payment/<random>/status` → 404; watch one Asaas egress per probe.
-- Fix: persist payment→owner at creation, authorize locally before any upstream
-  fetch, return uniform 404 for foreign-or-missing ids. Tests: foreign id →
-  404 with zero upstream calls (mock `RestTemplate` unverified); owned id
-  still resolves.
-
 ### O2. Admin product-management image/list loads swallow errors — OPEN (Low)
 - `frontend/natiart-app/src/app/product/components/admin/admin-product-management/admin-product-management.component.ts:289-296`
   (`fetchImage`) and `:304-317` (`fetchImagePreview`) subscribe with a
