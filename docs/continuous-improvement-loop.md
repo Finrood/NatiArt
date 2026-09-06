@@ -8,8 +8,9 @@ The loop is designed to never run dry: a finite backlog is only the seed (see
 
 ## How it runs
 
-`systemd --user` timer → `scripts/loop-cycle.sh` → `opencode run` with
-`scripts/agent-cycle-prompt.md`, one theme batch per cycle.
+`systemd --user` timer → `scripts/loop-cycle.sh` → `scripts/run-agent.sh` with
+`scripts/agent-cycle-prompt.md`, one theme batch per cycle. The agent CLI/model
+is chosen by `scripts/agent-models.conf` (see "Model failover" below).
 
 ```
 natiart-improvement-loop.timer   every 30 min (+ up to 5 min jitter)
@@ -57,6 +58,35 @@ Note: the timer needs a lingering user session to fire while logged out
    them. Deferred items are re-evaluated every ~30 cycles; constraints change.
 5. Backlog floor: below 5 `OPEN` items the cycle switches to generator duty
    (must produce new findings or a fix — "no work" is invalid).
+
+## Model failover
+
+The loop must never be blocked because one model hit its quota. `scripts/run-agent.sh`
+is the single entry point for every agent invocation (cycle + in-cycle reviewers);
+it walks the priority list in `scripts/agent-models.conf`:
+
+1. `opencode` + Muse Spark 1.3 free — `opencode/muse-spark-1.3-contributor-free`
+2. `cline` + DeepSeek V4 Flash (xhigh) — `deepseek/deepseek-v4-flash` via the cline gateway
+3. `cline` + GLM-5.3-flash — `zai/glm-5.3-flash` via the cline gateway
+
+- **Quota detection**: a failed attempt (`rc != 0`) whose output matches quota
+  markers (quota, rate limit, 429, insufficient credits, …) falls through to the
+  next model. A no-output stall (no bytes for `--stall` seconds, default 120)
+  is treated the same — the free Muse tier blocks silently instead of erroring.
+- **Retry-until-success**: after the last entry the wrapper loops back to the top
+  and keeps trying (5s pause between full rounds) until the time budget is spent,
+  then exits `124` (the usual "cycle timeout, state persists for next cycle"
+  signal). A genuine non-quota failure propagates immediately — a real bug must
+  never be masked by switching models.
+- **No cooldown state**: every invocation starts at priority 1; a blocked model is
+  simply re-probed each round/cycle. Stateless, like lens rotation.
+- **Which model won** is printed (`opencode-muse` / `cline-deepseek` / `cline-glm`)
+  and exported as `NATIART_ACTIVE_MODEL` for the agent's cycle summary.
+- **Buttons**: `--check-only` prints the priority list; `--simulate-quota-at N`
+  fails the first N attempts synthetically (no tokens) to prove fallthrough;
+  `--stall SEC` tunes the stall detector. The cline fallback needs the cline CLI
+  authenticated with its gateway (`~/.cline`, provider `cline`) — it holds the
+  DeepSeek/GLM API access; opencode free needs no credentials.
 
 ## Never runs dry
 

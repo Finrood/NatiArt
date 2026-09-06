@@ -5,6 +5,12 @@ build/
 dist/
 node_modules/
 /logs/
+# never commit local secrets or one-off review/staging clones
+*.secrets
+*.secret
+*secrets*.json
+/../review-*/
+/tmp-review-*
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
