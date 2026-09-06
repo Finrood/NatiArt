@@ -178,29 +178,6 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
 
 ## K. Concurrency and statelessness (Lens 8 hunt, 2026-09-05)
 
-### K3. Visibility/status toggles fail loud under concurrent admin writes — OPEN (Low-Medium)
-- `service/ProductManagerImpl.java:189-193` (`inverseVisibility`),
-  `service/CategoryManagerImpl.java:66-70` (`inverseVisibility`) and
-  `service/OrderManagerImpl.java:100-104` (`updateOrderStatus`) all read an
-  entity, mutate in memory, and save. `Product`, `Category` and `CustomerOrder`
-  carry `@Version` (optimistic locking), so concurrent toggles do not silently
-  lose updates — but the loser gets `OptimisticLockException` → generic 500
-  instead of a serialized flip. Found by Lens 8 hunt, 2026-09-05.
-- Fix: atomic `UPDATE ... SET active = NOT active WHERE id = :id` queries (and
-  a direct status update by id) that serialize in the database. Tests: two
-  overlapping toggles both apply; no 500.
-
-### K4. `createCategory` label check-then-insert races to a 500 — OPEN (Low)
-- `service/CategoryManagerImpl.java:48-53` pre-checks
-  `findCategoryByLabel` and throws `IllegalArgumentException` (→ 400) on a
-  duplicate, but `Category.label` is `unique = true` (`model/Category.java:27`)
-  with no graceful handling: two concurrent creates with the same label both
-  pass the check and the loser surfaces `DataIntegrityViolationException` →
-  generic 500 instead of 400. Found by Lens 8 hunt, 2026-09-05.
-- Fix: catch `DataIntegrityViolationException` around the save and rethrow
-  `IllegalArgumentException` with the same duplicate-label message. Tests:
-  `save` throwing the violation → 400-path exception.
-
 ### K5. `TokenCleanupService` scheduler runs on every pod with no distributed lock — OPEN (Low)
 - `directory/.../service/TokenCleanupService.java:23` (`@Scheduled`
   `fixedDelay`, enabled by `@EnableScheduling` in
