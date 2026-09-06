@@ -2,6 +2,24 @@
 
 Full history of fixed findings, moved out of `docs/audit-findings.md` to keep the working backlog lean. Statuses here are final.
 
+### J4. `GET images` malformed `path` → `URISyntaxException` → 500 — FIXED (PR #140)
+- `controller/ProductController.java` took a raw `path` request param;
+  `service/ProductManagerImpl.java` passed it to `new URI(path)`. Garbage
+  (`::bad::`) threw `URISyntaxException`, which no advice handler mapped →
+  generic 500 instead of 400.
+- Fix: catch `URISyntaxException` → `IllegalArgumentException` (400 via
+  `ControllerAdvice`); `throws URISyntaxException` removed from the manager
+  interface and controller. Test: malformed path asserts the 400 message with
+  zero storage interaction.
+
+### J5. `downloadFiles` duplicate basenames collide inside the zip — FIXED (PR #140)
+- `storage/StorageFileSystem.java` named each zip entry from the file
+  basename, so `p1/a.webp` and `p2/a.webp` produced two `a.webp` entries;
+  extraction silently kept one (data loss).
+- Fix: entries built in URI-sorted order with parent-dir disambiguation
+  (`a.webp`, `p2-a.webp`, counter fallback). Test: same basename twice
+  yields two distinct entries with both payloads intact.
+
 ### K3. Visibility/status toggles fail loud under concurrent admin writes — FIXED (PR #137)
 - `service/ProductManagerImpl.java` (`inverseVisibility`),
   `service/CategoryManagerImpl.java` (`inverseVisibility`) and
