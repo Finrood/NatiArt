@@ -686,3 +686,34 @@ separately.
 - Fix: set `SessionCreationPolicy.STATELESS` on the product chain (mirroring
   directory-service). Tests: authenticated request leaves no session.
   Found by Lens 2 hunt, 2026-09-06.
+
+## AD. Secrets and configuration re-hunt (Lens 3, 2026-09-06)
+
+Hunt method: grepped `backend/` for token/password/secret log arguments,
+hard-coded `http(s)://` in main code, every `@Value` site and its property
+default; diffed all `application*.properties` profiles per service.
+Re-verified this cycle: Y1 still OPEN (both `WebConfig.java:20` files still
+bake the origin list), Y4 still OPEN (both `application-production.properties`
+files still pin no payment/shipping/directory endpoints). Cleared as
+non-findings: blank-secret fail-fast holds on every integration constructor
+(`ShippingService.java:34-37`, `AsaasPaymentService.java:44-47`,
+`UserAuthenticationProvider.java:66-74` all throw on blank); Asaas keys carry
+no property default so boot fails closed when unset; sandbox URLs as `@Value`
+defaults fail safe (misconfiguration charges sandbox, never real money);
+`console.error("Error decoding token: ", e)`
+(`authentication.service.ts:246`) logs only the `atob`/`JSON.parse`
+exception, never the token string; `data.sql` seeds bcrypt hashes only, no
+plaintext credentials; `spring.h2.console.enabled=true` and `admin/admin`
+live only in `application-local-h2.properties`, never in production profiles.
+AD1 below is fixed in flight on this branch rather than tracked separately.
+
+### AD1. Origin postal code hard-coded in `ShippingService` — OPEN (Low, fix PR: config-hardening)
+- `backend/product-service/.../service/ShippingService.java:26`
+  `public static final String FROM_POSTAL_CODE = "88085201"`, consumed by
+  `service/support/MelhorenvioShippingCalculationRequest.java:19` as the
+  `from` address of every Melhor Envio quote. Same class as Y1: a deploy-time
+  value baked into the artifact, so moving the shipping origin needs a
+  rebuild. Found by Lens 3 hunt, 2026-09-06.
+- Fix: drive from a property (`melhorenvio.api.from-postal-code`, env
+  override, current value as default). Tests: configured origin reflected in
+  the built calculation request.
