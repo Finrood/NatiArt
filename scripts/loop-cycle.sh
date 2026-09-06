@@ -11,6 +11,17 @@ CHECK_ONLY=0
 
 log() { echo "[$(date -Is)] $*"; }
 
+# Forensics: with `set -e`, any unguarded command failure kills the cycle
+# silently (seen 2026-09-06 19:05: a transient gh API error exited the cycle
+# 1s after the last log line, with no trace in the log). Trap it: always log
+# where and why before systemd records the exit.
+trap 'log "FATAL: cycle aborted by error at line $LINENO (exit $?)"; exit 1' ERR
+gh_safe() { # gh calls that may fail transiently: log and continue with empty
+    local out
+    out=$("$@" 2>&1) || { log "WARN: '$*' failed transiently; treating as empty."; return 0; }
+    printf '%s\n' "$out"
+}
+
 exec 9>"$LOCK"
 if ! flock -n 9; then
     log "Another cycle is still running; exiting."
@@ -169,7 +180,7 @@ while read -r n; do
     if ! is_docs_only "$n"; then
         CODE_PRS="$CODE_PRS $n"
     fi
-done < <(gh pr list --state open --json number,headRefName --jq '.[] | select(.headRefName | startswith("dependabot/") | not) | .number')
+done < <(gh_safe gh pr list --state open --json number,headRefName --jq '.[] | select(.headRefName | startswith("dependabot/") | not) | .number')
 OPEN_PRS=$(echo "$CODE_PRS" | wc -w)
 log "Open code PRs: $OPEN_PRS"
 
@@ -177,7 +188,7 @@ log "Open code PRs: $OPEN_PRS"
 # most 2 per cycle; only branches whose head is exactly their PR head.
 merged=0
 for n in $CODE_PRS; do
-    checks=$(gh pr checks "$n" 2>/dev/null)
+    checks=$(gh_safe gh pr checks "$n")
     if echo "$checks" | grep -Eq 'fail|cancel'; then
         log "PR #$n has failing/cancelled checks; leaving open."
         continue
@@ -206,7 +217,8 @@ fi
 # pick it up in Phase 0.
 FAILING=""
 for n in $CODE_PRS; do
-    if gh pr checks "$n" 2>/dev/null | grep -Eq 'fail|cancel'; then FAILING="$FAILING $n"; fi
+    checks=$(gh_safe gh pr checks "$n")
+    if echo "$checks" | grep -Eq 'fail|cancel'; then FAILING="$FAILING $n"; fi
 done
 if [[ -n "$FAILING" ]]; then
     log "Open PR(s) with failing checks:$FAILING; not starting new work."
@@ -235,7 +247,7 @@ fi
 # verdict. PRs with a REQUEST_CHANGES verdict are left to the author agent.
 REVIEW_PID=""
 for n in $CODE_PRS; do
-    checks=$(gh pr checks "$n" 2>/dev/null)
+    checks=$(gh_safe gh pr checks "$n")
     echo "$checks" | grep -Eq 'fail|cancel' && continue
     echo "$checks" | grep -qE 'pass|success' || continue
     VERDICTS=$(verdict_bodies "$n" | grep -c '^VERDICT:' || true)
