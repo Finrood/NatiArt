@@ -37,8 +37,9 @@ Compile and test the impacted Gradle projects, **iterate until green**.
 2. Run `./gradlew compileJava compileTestJava` for those projects; fix reported
    compilation errors and warnings.
 3. Run `./gradlew test` (or per-project) and fix failures until green.
-4. Frontend-impacted code: `cd frontend/natiart-app && ng test --watch=false
-   --browsers=ChromeHeadless` — all specs must pass.
+4. Frontend-impacted code: `cd frontend/natiart-app && npm test --
+   --watch=false --browsers=ChromeHeadless` (npm script form — never bare
+   `ng`) — all specs must pass.
 
 ### Help
 

@@ -1,6 +1,7 @@
 package com.portcelana.natiart.service;
 
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -125,10 +126,12 @@ public class ProductManagerImpl implements ProductManager {
     @Override
     @Transactional
     public Product createProduct(ProductDto productDto, List<InputFile> imagesInput) {
+        final String label = requireNonBlankLabel(productDto.getLabel());
+        requireNonNullPrice(productDto.getOriginalPrice());
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
         final Optional<Package> pack = packageManager.getPackage(productDto.getPackageId());
         final Product product = productRepository
-                .save(new Product(productDto.getLabel(), productDto.getOriginalPrice())
+                .save(new Product(label, productDto.getOriginalPrice())
                         .setDescription(productDto.getDescription())
                         .setCategory(category)
                         .setPackaging(pack.orElse(null))
@@ -149,10 +152,12 @@ public class ProductManagerImpl implements ProductManager {
     @Override
     @Transactional
     public Product updateProduct(ProductDto productDto, List<InputFile> imagesInput) {
+        final String label = requireNonBlankLabel(productDto.getLabel());
+        requireNonNullPrice(productDto.getOriginalPrice());
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
         final Optional<Package> pack = packageManager.getPackage(productDto.getPackageId());
         final Product product = getProductOrDie(productDto.getId())
-                .setLabel(productDto.getLabel())
+                .setLabel(label)
                 .setDescription(productDto.getDescription())
                 .setCategory(category)
                 .setPackaging(pack.orElse(null))
@@ -193,15 +198,16 @@ public class ProductManagerImpl implements ProductManager {
     }
 
     private List<String> processImages(Product product, List<String> existingImages, List<InputFile> newImages) {
+        final List<InputFile> uploads = newImages != null ? newImages : List.of();
         LOGGER.info(
                 "Processing [{}] images for product labelled [{}] with id [{}]",
-                newImages.size(),
+                uploads.size(),
                 product.getLabel(),
                 product.getId());
 
         final List<String> imagesUris = existingImages != null ? new ArrayList<>(existingImages) : new ArrayList<>();
 
-        List<String> newUris = newImages.parallelStream()
+        List<String> newUris = uploads.parallelStream()
                 .map(inputFile -> {
                     final String imagePath = IMAGE_BASE_PATH + product.getId() + "/" + UUID.randomUUID();
                     final URI imageUri = storageService.uploadFile(
@@ -212,5 +218,18 @@ public class ProductManagerImpl implements ProductManager {
 
         imagesUris.addAll(newUris);
         return imagesUris;
+    }
+
+    private static String requireNonBlankLabel(String label) {
+        if (label == null || label.isBlank()) {
+            throw new IllegalArgumentException("Product label must not be blank");
+        }
+        return label.trim();
+    }
+
+    private static void requireNonNullPrice(BigDecimal price) {
+        if (price == null) {
+            throw new IllegalArgumentException("Product price must not be null");
+        }
     }
 }
