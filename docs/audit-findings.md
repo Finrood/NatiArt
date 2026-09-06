@@ -129,7 +129,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
   against `totalAmount`, reject mismatches. Tests: under/over-valued payment
   rejected; exact total accepted.
 
-### H2. `GET /packages` unbounded `findAll` with in-memory sort — OPEN (Medium)
+### H2. `GET /packages` unbounded `findAll` with in-memory sort — IN REVIEW (Medium, fix PR: lens5-nplus1-pagination / PR #155)
 - `backend/product-service/.../controller/PackageController.java:26-32` returns
   the whole table (`service/PackageManagerImpl.java:40-42`
   `packageRepository.findAll()`) and sorts in memory. No pagination at all —
@@ -137,7 +137,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
 - Fix: accept capped `page`/`size` (same 100-item cap as B7), sort in the query.
   Tests: oversized `size` clamped; default page serves sorted labels.
 
-### H4. Cart listing has no entity graph for `product`/`personalization` — OPEN (Low-Medium)
+### H4. Cart listing has no entity graph for `product`/`personalization` — IN REVIEW (Low-Medium, fix PR: lens5-nplus1-pagination / PR #155)
 - `backend/product-service/.../repository/CartItemRepository.java:14`
   `findCartItemsByUsername` is a bare derived query; `CartItem.product` is
   `EAGER` (`model/CartItem.java:18-20`) so each cart line re-fetches its
@@ -671,23 +671,10 @@ FIXED (archive). Cleared as non-findings: public catalog reads (intentionally
 public), directory `permitAll` on login/register/validate-token (anonymous-entry
 design), `PaymentController` null-tolerant principal (fail-closed via
 `UserNotAllowedException`), `GET /images` public read (traversal fixed in
-PR #140). AC1 below is fixed in flight on this branch rather than tracked
-separately.
+PR #140). AC1 (stateless product chain) is FIXED and archived (PR #153); the product
+SecurityConfig now sets `SessionCreationPolicy.STATELESS` mirroring directory-service.
 
-### AC1. Product-service filter chain never goes stateless — IN REVIEW (Low, fix PR: authn-stateless-session)
-- `backend/product-service/.../configuration/SecurityConfig.java:30-40` builds
-  the chain with no `sessionManagement` configuration, while the directory twin
-  sets `SessionCreationPolicy.STATELESS`
-  (`directory/.../configuration/SecurityConfig.java:29`). The servlet default
-  (`IF_REQUIRED`) lets the container mint and persist `JSESSIONID` sessions on
-  authenticated traffic despite the JWT-per-request design — cross-request
-  server-side state plus session-fixation surface, contradicting the
-  statelessness rule in `backend/AGENTS.md`.
-- Fix: set `SessionCreationPolicy.STATELESS` on the product chain (mirroring
-  directory-service). Tests: authenticated request leaves no session.
-  Found by Lens 2 hunt, 2026-09-06.
-
-## AD. N+1 queries and pagination (Lens 5 hunt, 2026-09-06)
+## AE. N+1 queries and pagination (Lens 5 hunt, 2026-09-06)
 
 Hunt method: enumerated every repository query and every `findAll`/derived-query
 call site in `backend/`, checked each listing endpoint for page/size caps, and
@@ -696,18 +683,16 @@ traced every DTO `from()` touch against association fetch types
 query). Re-verified this cycle: B7 product/category half still FIXED
 (`ProductController.java:134-138` and `CategoryController.java:46-50` clamp to
 `MAX_PAGE_SIZE = 100`; the two-query id-then-`findAllWithImagesByIds` pattern in
-`ProductManagerImpl.java:114-127` keeps product listings at 2 queries); H2
-still OPEN (`PackageController.java:26-32` unbounded `findAll` + in-memory
-sort); H4 still OPEN (`CartItemRepository.java:17` bare derived query, EAGER
-`product` plus `personalization` `@OneToOne` re-fetched per line). H2/H4 are
-fixed in flight on this branch rather than tracked separately. Cleared as
-non-findings: `findAllIds*` id-page queries (indexed id-only selects, no
-collection fetch); `existsByCategory`/`existsByPackaging` (single `SELECT 1`
-guards); public catalog reads staying public (intentional); directory
-`findByUser`/`findByJti*` single-row lookups (no fan-out). AD1-AD3 below are
-runner-ups.
+`ProductManagerImpl.java:114-127` keeps product listings at 2 queries).
+H2 and H4 (below) are IN REVIEW: this PR (`fix/lens5-nplus1-pagination`, PR #155)
+fixes H2 (`GET /packages` pagination) and H4 (cart fetch-join) — those two items
+move to `IN REVIEW` here. Cleared as non-findings: `findAllIds*` id-page queries
+(indexed id-only selects, no collection fetch); `existsByCategory`/`existsByPackaging`
+(single `SELECT 1` guards); public catalog reads staying public (intentional);
+directory `findByUser`/`findByJti*` single-row lookups (no fan-out). AE1-AE3
+below are runner-ups.
 
-### AD1. `createOrder` loads one product per order line with no batching — OPEN (Medium)
+### AE1. `createOrder` loads one product per order line with no batching — OPEN (Medium)
 - `service/OrderManagerImpl.java:79-96` calls
   `productManager.getProductOrDie(item.getProductId())` (one `findById` select)
   plus `productRepository.decreaseStockIfAvailable` (one update) per line, up to
@@ -718,14 +703,14 @@ runner-ups.
   keep the per-line active/stock checks. Tests: 3-line order issues 1 product
   select (Hibernate statistics), unknown id still 404s.
 
-### AD2. `clearCart` loads every line entity to delete them one by one — OPEN (Low)
+### AE2. `clearCart` loads every line entity to delete them one by one — OPEN (Low)
 - `service/CartManagerImpl.java:88-90` runs `findCartItemsByUsername` (1 select
   + per-line association fetches) then `deleteAll` (N deletes) to empty a cart
   whose rows are never read — pure overhead on the checkout path.
 - Fix: bulk delete query (`deleteByUsername`, one statement) in
   `CartItemRepository`. Tests: clearing a 3-line cart issues 1 delete, lines gone.
 
-### AD3. `getAllOrders` unbounded `findAll` will N+1 on items when wired — OPEN (Low)
+### AE3. `getAllOrders` unbounded `findAll` will N+1 on items when wired — OPEN (Low)
 - `service/OrderManagerImpl.java:51-53` returns `orderRepository.findAll()`
   with no pagination; `CustomerOrder.items` is LAZY (`model/CustomerOrder.java:50-51`)
   and `OrderDto.from` (`dto/OrderDto.java:47-49`) streams the items, so each

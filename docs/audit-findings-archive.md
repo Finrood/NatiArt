@@ -1,6 +1,18 @@
 # Audit Findings Archive (FIXED items)
 
 Full history of fixed findings, moved out of `docs/audit-findings.md` to keep the working backlog lean. Statuses here are final.
+### AC1. Product-service filter chain never goes stateless — FIXED (PR #153)
+- `backend/product-service/.../configuration/SecurityConfig.java` built the
+  chain with no `sessionManagement` configuration while the directory twin set
+  `SessionCreationPolicy.STATELESS` — the servlet default (`IF_REQUIRED`) let
+  the container mint persistent `JSESSIONID` sessions despite the
+  JWT-per-request design (cross-request server-side state + session-fixation
+  surface, contradicting the statelessness rule in `backend/AGENTS.md`).
+- Fix: `.sessionManagement(s -> s.sessionCreationPolicy(
+  SessionCreationPolicy.STATELESS))` on the product chain, mirroring
+  directory-service. Found by Lens 2 hunt, 2026-09-06.
+
+### J4. `GET images` malformed `path` → `URISyntaxException` → 500 — FIXED (PR #140)
 
 ### J4. `GET images` malformed `path` → `URISyntaxException` → 500 — FIXED (PR #140)
 - `controller/ProductController.java` took a raw `path` request param;
