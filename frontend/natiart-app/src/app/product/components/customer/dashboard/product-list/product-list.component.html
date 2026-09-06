@@ -6,9 +6,9 @@
         <div class="bg-surface rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 ease-in-out group product-card">
           <!-- Product Image -->
           <div class="relative h-64 overflow-hidden">
-            <a [routerLink]="['/product', product.id]">
-              @if (imageUrls[product.id!]) {
-                <img [src]="imageUrls[product.id!]" [alt]="product.label" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">
+            <a [routerLink]="product.id ? ['/product', product.id] : null">
+              @if (product.id && imageUrls[product.id]) {
+                <img [src]="imageUrls[product.id]" [alt]="product.label" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">
               } @else {
                 <div class="w-full h-full bg-gray-200 animate-pulse"></div>
               }
