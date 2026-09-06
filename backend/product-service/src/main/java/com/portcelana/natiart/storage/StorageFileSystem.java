@@ -6,6 +6,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.zip.ZipEntry;
@@ -132,9 +134,9 @@ public class StorageFileSystem implements Storage {
         try {
             final File tempFile = TempFile.createTempFile("zip-file", "");
             try (final ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(tempFile))) {
-                uriSet.forEach((uri) -> {
-                    final String path = uri.getPath();
-                    final String fileName = Paths.get(path).getFileName().toString();
+                final Set<String> usedEntryNames = new HashSet<>();
+                uriSet.stream().sorted(Comparator.comparing(URI::toString)).forEach((uri) -> {
+                    final String fileName = uniqueZipEntryName(usedEntryNames, Paths.get(uri.getPath()));
                     addZipEntry(zip, fileName, resolveAllowedFile(uri));
                 });
             }
@@ -142,6 +144,27 @@ public class StorageFileSystem implements Storage {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Zip entries are named from the file basename, so files from different
+     * directories can collide (extraction would silently keep one). Collisions
+     * are disambiguated with the parent directory name, then a counter.
+     */
+    private static String uniqueZipEntryName(Set<String> usedNames, Path path) {
+        final String baseName = path.getFileName().toString();
+        if (usedNames.add(baseName)) {
+            return baseName;
+        }
+        final Path parent = path.getParent();
+        final String parentName = parent == null || parent.getFileName() == null
+                ? "file"
+                : parent.getFileName().toString();
+        String candidate = parentName + "-" + baseName;
+        for (int index = 2; !usedNames.add(candidate); index++) {
+            candidate = parentName + "-" + index + "-" + baseName;
+        }
+        return candidate;
     }
 
     @Override
