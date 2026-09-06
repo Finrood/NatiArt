@@ -47,7 +47,9 @@ Note: the timer needs a lingering user session to fire while logged out
 
 1. Single instance (`flock`); 25-minute agent timeout keeps cadence.
    Pre-flight gates fail fast on broken `gh` auth or <2GB disk.
-2. Cycle aborts on: dirty tree, non-fast-forward `master`, 2+ open code PRs
+2. Cycle self-heals on: dirty tree (WIP salvaged to a dated `salvage/*`
+   branch, master hard-reset to origin, newest 5 salvage branches retained),
+   non-fast-forward `master`, 2+ open code PRs
    (docs-only flips and dependabot PRs are excluded — they never block the
    loop), or any open code PR with failing checks.
 3. The agent merges ONLY on fully green CI (`gh pr checks --watch`), with
