@@ -266,7 +266,28 @@ while true; do
             fi
 
             if quota_blocked "$rc" "$ATT_LOG"; then
-                log "Attempt $attempt/${label} quota-blocked (rc=$rc); trying next model."
+                # A single non-zero opencode run with quota-class output is a
+                # strong but not infallible signal: transient API/auth blips can
+                # return rc=1 that matches the quota regex while the model is
+                # actually reachable (an interactive `opencode` on the same
+                # account still works). Mirror the silent-stall handling below:
+                # give the SAME model ONE retry before failing over, so a
+                # one-shot transient never needlessly downgrades the pool
+                # (cycle 20260906-200911 misrouted to cline on such a blip).
+                if [[ "$same_retry" -eq 0 ]]; then
+                    same_retry=1
+                    log "Attempt $attempt/${label} quota-blocked (rc=$rc); retrying SAME model once before failover."
+                    print_tail "$ATT_LOG"
+                    rm -f "$ATT_LOG"
+                    remaining=$(( DEADLINE - $(date +%s) ))
+                    if (( remaining <= 10 )); then
+                        log "Time budget exhausted during same-model quota retry."
+                        exit 124
+                    fi
+                    attempt=$((attempt + 1))
+                    continue
+                fi
+                log "Attempt $attempt/${label} quota-blocked again (rc=$rc); trying next model."
                 print_tail "$ATT_LOG"
                 rm -f "$ATT_LOG"
                 break
