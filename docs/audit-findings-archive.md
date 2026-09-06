@@ -2,6 +2,61 @@
 
 Full history of fixed findings, moved out of `docs/audit-findings.md` to keep the working backlog lean. Statuses here are final.
 
+### Y2. `environment.production.ts` endpoint shape drift (dead alias keys) — FIXED (PR #134)
+- `frontend/natiart-app/src/environments/environment.production.ts` carried
+  alias keys (`directory`, `packages`, `products`) absent from
+  `environment.ts` and `environment.development.ts`, with zero consumers
+  (only the singular keys are used). File-replacement builds mean no type
+  check across envs, so the shapes could drift silently.
+- Fix: deleted the three dead aliases so all env files share one shape.
+  Verification: storefront build green, Karma 123/123 SUCCESS.
+
+### Y3. H2 console open to the network in both `local-h2` profiles — FIXED (PR #134)
+- Both `application-local-h2.properties` set
+  `spring.h2.console.settings.web-allow-others=true`, so the dev console
+  (backed by the `admin`/`admin` datasource in the same file) accepted remote
+  connections whenever a dev port was exposed.
+- Fix: dropped `web-allow-others` (default `false`; console stays
+  localhost-only). Local-only profiles, no prod impact. Verification: backend
+  suites green (both services, 0 failures).
+
+### X2. Order line count uncapped, single request can stuff one transaction — FIXED (PR #132)
+- `service/OrderManagerImpl.java` (`validateItems`) capped per-line quantity
+  (`MAX_ITEM_QUANTITY = 100`) but not the number of lines: one
+  `POST /orders/create` could carry thousands of items, each doing a stock
+  decrement plus an insert inside a single `@Transactional`.
+- Fix: `MAX_ORDER_LINES = 50` rejected with `IllegalArgumentException` before
+  any write. Tests: oversized line list → 400-path, zero repository writes
+  (`OrderManagerImplTest.createOrderRejectsTooManyLines`).
+
+### X3. Cart line quantity uncapped, order cap unreachable from cart flow — FIXED (PR #132)
+- `service/CartManagerImpl.java` (`createCartItem`) incremented with no bound,
+  while order creation rejected quantities above 100 — a cart line grown past
+  100 could never be ordered, and a tight add-loop grew one row without limit.
+- Fix: guarded atomic increment (`incrementQuantityIfBelowCap`, `quantity <
+  cap`, same pattern as `decrementQuantityIfGreaterThanOne`), aligned to the
+  order cap (100); at-cap adds rejected with no write. Tests: at-cap add
+  rejected, below-cap add increments
+  (`CartManagerImplTest.createCartItem_rejectsAddAtQuantityCap`).
+
+### W2. `OrderController` uses `isAuthenticated()` while cart/payment use `isFullyAuthenticated()` — FIXED (PR #129)
+- `backend/product-service/.../controller/OrderController.java:20`
+  (`@PreAuthorize("isAuthenticated()")`) vs `CartController` and
+  `PaymentController` (`isFullyAuthenticated()`). With the JWT-only setup the
+  two predicates coincide today (no remember-me tokens are ever issued), so
+  this was consistency, not an open hole — but a future remember-me login
+  would silently widen order creation.
+- Fix: `isAuthenticated()` → `isFullyAuthenticated()`. Verified on master
+  (`OrderController.java:20`).
+
+### W3. `GET /products` takes an unused `@TargetUser` on a public endpoint — FIXED (PR #129)
+- `backend/product-service/.../controller/ProductController.java:50-54`
+  resolved `@TargetUser String username` and then ignored it — dead auth
+  parameter on an intentionally public listing suggesting per-user scoping
+  that does not exist.
+- Fix: dropped the parameter (and import). Verified on master: no `TargetUser`
+  in `ProductController`; anonymous listing still 200 (CI green).
+
 ### V3. `createProduct`/`updateProduct` accept null label/price, NPE on null images — FIXED (PR #128)
 - `backend/product-service/.../service/ProductManagerImpl.java` (`createProduct`/`updateProduct`) passed
   `productDto.getLabel()`/`getOriginalPrice()` straight into `new Product(...)` with no null/blank guard — a
