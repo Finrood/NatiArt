@@ -71,8 +71,11 @@ it walks the priority list in `scripts/agent-models.conf`:
 
 - **Quota detection**: a failed attempt (`rc != 0`) whose output matches quota
   markers (quota, rate limit, 429, insufficient credits, …) falls through to the
-  next model. A no-output stall (no bytes for `--stall` seconds, default 120)
-  is treated the same — the free Muse tier blocks silently instead of erroring.
+  next model. A no-output stall is treated the same — the free Muse tier blocks
+  silently instead of erroring. Stall defaults are role-tuned: cycles (long
+  builds may legitimately go quiet) stall at 180s, reviews (tight 360s budget)
+  at 45s; `--stall SEC` overrides. rc 126/127 (CLI missing/unrunnable) also
+  falls through — a vanished binary is infrastructure, not a model error.
 - **Retry-until-success**: after the last entry the wrapper loops back to the top
   and keeps trying (5s pause between full rounds) until the time budget is spent,
   then exits `124` (the usual "cycle timeout, state persists for next cycle"
