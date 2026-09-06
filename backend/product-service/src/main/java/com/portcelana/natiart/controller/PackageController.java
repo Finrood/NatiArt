@@ -1,8 +1,10 @@
 package com.portcelana.natiart.controller;
 
-import java.util.Comparator;
 import java.util.List;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +14,8 @@ import com.portcelana.natiart.service.PackageManager;
 
 @RestController
 public class PackageController {
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final PackageManager packageManager;
 
     public PackageController(PackageManager packageManager) {
@@ -24,11 +28,18 @@ public class PackageController {
     }
 
     @GetMapping("/packages")
-    public List<PackageDto> getPackages() {
-        return packageManager.getPackages().stream()
+    public List<PackageDto> getPackages(
+            @RequestParam(required = false, defaultValue = "0") int page,
+            @RequestParam(required = false, defaultValue = "20") int size) {
+        return packageManager.getPackages(toPageable(page, size)).stream()
                 .map(PackageDto::from)
-                .sorted(Comparator.comparing(PackageDto::getLabel))
                 .toList();
+    }
+
+    private static Pageable toPageable(int page, int size) {
+        final int safePage = Math.max(0, page);
+        final int safeSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
+        return PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "label"));
     }
 
     @PostMapping("/packages/create")

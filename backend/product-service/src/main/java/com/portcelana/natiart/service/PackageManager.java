@@ -3,6 +3,8 @@ package com.portcelana.natiart.service;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Pageable;
+
 import com.portcelana.natiart.dto.PackageDto;
 import com.portcelana.natiart.model.Package;
 
@@ -11,7 +13,7 @@ public interface PackageManager {
 
     Package getPackageOrDie(String packageId);
 
-    List<Package> getPackages();
+    List<Package> getPackages(Pageable pageable);
 
     Package createPackage(PackageDto packageDto);
 
