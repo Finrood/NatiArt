@@ -198,13 +198,12 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
 - Fix needs a product decision (public checkout vs authenticated-only):
   leave OPEN for the maintainer, do not change the guard unprompted.
 
-### L4. Inactivity timer never wired to user activity — OPEN (Low)
-- `frontend/natiart-app/src/app/directory/service/authentication.service.ts:51-69`:
-  `resetInactivityTimer` runs once from the constructor; no mouse/keyboard
-  listeners ever reset it, so it is a one-shot 15-minute refresh, not an
-  inactivity logout. Found by Lens 9 hunt, 2026-09-05.
-- Fix: wire activity events (`HostListener`/renderer listeners) or rename to
-  reflect the one-shot refresh. Tracked, not silently fixed.
+### L4. Inactivity timer never wired to user activity — INVALID (re-verified 2026-09-06: wired in `AppComponent`)
+- `frontend/natiart-app/src/app/app.component.ts:19-24` already wires
+  `document:mousemove/keydown/touchstart` via `@HostListener` to
+  `authenticationService.resetInactivityTimer()`, which re-arms the one-shot
+  15-minute timer on every activity event. The Lens 9 claim ("no listeners
+  ever reset it") predates or missed that wiring. No change needed.
 
 ## M. Frontend data identity (Lens 10 hunt, 2026-09-05)
 
@@ -598,6 +597,57 @@ were taken by the Lens 4 batch, PR #132.)
   (fail-closed 503 via `JwtAuthFilter`, but silent).
 - Fix needs a deploy-topology decision (explicit prod URLs vs
   fail-fast-on-sandbox-URL guard): leave OPEN for the maintainer.
+
+## AA. Frontend auth lifecycle re-hunt (Lens 9, 2026-09-06)
+
+Hunt method: re-read every file in the auth flow (`authentication.service.ts`,
+`token.service.ts`, `jwt-interceptor.service.ts`, `auth.guard.ts`,
+`admin.guard.ts`, `login/`, `logout/`, `signup.component.ts`,
+`redirect.service.ts`, `app.routes.ts`, `app.config.ts`) plus all six
+neighbouring specs, checking guard stalls, token-lifecycle edges,
+cold-observable no-ops, premature redirects and post-registration races.
+Re-verified: L3 still OPEN (guarded `/checkout` vs ghost branch unchanged),
+C11 still OPEN (`app.config.ts:20` still returns a `Subscription`), L4 flipped
+INVALID above (`app.component.ts:19-24` already wires activity listeners).
+Cleared as non-findings: post-registration auto-login (register → `/login`
+is an intentional explicit-login choice, not a race); `adminGuard`
+`isAdmin` snapshot (reads the same `stateSubject` the guard just consumed —
+equivalent to the emitted user); `RedirectService` consume-on-read (single
+reader, `LoginComponent`, so no loss); `doRefreshToken` inner
+`fetchCurrentUser().subscribe()` without an error callback
+(`authentication.service.ts:155` — failures already route through that
+method's own 401-reset, so no state corruption, only console noise).
+
+### L5. `LoginComponent` wipes stored tokens on any validation failure — OPEN (Low-Medium)
+- `frontend/natiart-app/src/app/directory/components/auth/login/login.component.ts:80-86`:
+  `ngOnInit` clears tokens on ANY `fetchCurrentUser` error. `401` is already
+  handled by the service (`resetAuthStateAndRedirect` clears + stays on
+  `/login`), so the component-level wipe only adds behaviour on transient
+  failures: a `500` or network blip while visiting `/login` logs a healthy
+  session out.
+- Fix: drop the blanket wipe (service owns 401-clearing); keep tokens on
+  non-401 failures. Spec: `500` → tokens preserved, no dashboard navigation.
+
+### L6. `LogoutComponent` redirect timer fires after destroy — OPEN (Low)
+- `frontend/natiart-app/src/app/directory/components/auth/logout/logout.component.ts:24-26`:
+  the 2s `setTimeout` stores no handle and `ngOnDestroy` never clears it, so
+  destroying mid-window navigates from a torn-down component — and a user who
+  navigates elsewhere within the 2s is yanked back to `/login`. Same timer
+  class as P2 (which covers checkout/cart/top-menu, not logout).
+- Fix: keep the handle (`ReturnType<typeof setTimeout>`) and `clearTimeout`
+  it in `ngOnDestroy`. Spec: destroy cancels the pending navigation; success
+  path still navigates after 2s.
+
+### L7. Logout on an expired access token mints fresh tokens before quitting — OPEN (Low)
+- `frontend/natiart-app/src/app/directory/interceptors/jwt-interceptor.service.ts:106-140`:
+  `/signout` is not an exempt endpoint, so a `401` from logout triggers the
+  single-flight refresh and retries the logout with rotated tokens. An
+  explicit logout should never extend the session it is ending (extra refresh
+  rotation, wasted egress, refresh-failure path navigates without server-side
+  invalidation either way).
+- Fix: attach the bearer to logout (server needs it) but skip the 401-refresh
+  for logout — clear tokens and navigate to `/login` instead. Spec: logout
+  `401` → zero refresh requests, tokens cleared.
 
 ## Z. Instruction drift, re-verification (Lens 17 hunt, 2026-09-06)
 
