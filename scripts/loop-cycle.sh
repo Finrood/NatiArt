@@ -136,6 +136,10 @@ is_docs_only() { # $1 = PR number; true iff every changed file is under docs/
     files=$(gh pr view "$1" --json files --jq '.files[].path' 2>/dev/null) || return 1
     [[ -n "$files" ]] && ! grep -qvE '^docs/' <<<"$files"
 }
+verdict_bodies() { # $1 = PR number; prints comment AND review bodies (verdicts
+    # travel via `gh pr review --comment` = review, or `gh pr comment` = comment)
+    gh pr view "$1" --json comments,reviews --jq '[(.comments // [])[].body, (.reviews // [])[].body] | .[]' 2>/dev/null || true
+}
 CODE_PRS=""
 while read -r n; do
     if ! is_docs_only "$n"; then
@@ -158,8 +162,8 @@ for n in $CODE_PRS; do
         log "PR #$n has no reported green checks yet; leaving open."
         continue
     fi
-    if ! gh pr view "$n" --json comments --jq '.comments[].body' 2>/dev/null | grep -q 'VERDICT: APPROVE'; then
-        log "PR #$n has no VERDICT: APPROVE comment yet; leaving open for review."
+    if ! verdict_bodies "$n" | grep -q 'VERDICT: APPROVE'; then
+        log "PR #$n has no VERDICT: APPROVE yet; leaving open for review."
         continue
     fi
     log "Merging healthy PR #$n (green + approved)."
@@ -210,7 +214,7 @@ for n in $CODE_PRS; do
     checks=$(gh pr checks "$n" 2>/dev/null)
     echo "$checks" | grep -Eq 'fail|cancel' && continue
     echo "$checks" | grep -qE 'pass|success' || continue
-    VERDICTS=$(gh pr view "$n" --json comments --jq '[.comments[].body | select(startswith("VERDICT:"))] | length' 2>/dev/null || echo 0)
+    VERDICTS=$(verdict_bodies "$n" | grep -c '^VERDICT:' || true)
     [[ "${VERDICTS:-0}" -ge 1 ]] && continue
     log "No verdict on green PR #$n; spawning mechanical reviewer (1 per cycle)."
     timeout 660 scripts/run-agent.sh --role review --budget 600 --title "review-pr-$n" \
@@ -301,7 +305,7 @@ if [[ -n "${REVIEW_PID:-}" ]]; then
     fi
     # Verdict presence is the real deliverable; exit code alone lies (a model can
     # exit 0 without posting). Record the miss so the next cycle re-spawns.
-    if ! gh pr view "$n" --json comments --jq '.comments[].body' 2>/dev/null | grep -q '^VERDICT:'; then
+    if ! verdict_bodies "$n" | grep -q '^VERDICT:'; then
         log "Mechanical reviewer produced NO verdict comment on PR #$n; next cycle will retry."
     fi
 fi
