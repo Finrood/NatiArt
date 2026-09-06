@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.net.URI;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -97,5 +98,14 @@ class ProductManagerImplTest {
         assertThrows(ResourceNotFoundException.class, () -> productManager.inverseVisibility("missing"));
 
         verify(productRepository, never()).save(any(Product.class));
+    }
+
+    @Test
+    void getProductImage_malformedPath_throwsBadRequestWithoutTouchingStorage() {
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> productManager.getProductImage("::bad::"));
+
+        assertEquals("Invalid image path: ::bad::", thrown.getMessage());
+        verify(storageService, never()).openFile(any(URI.class));
     }
 }

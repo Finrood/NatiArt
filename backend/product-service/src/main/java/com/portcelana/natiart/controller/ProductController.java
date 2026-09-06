@@ -1,7 +1,6 @@
 package com.portcelana.natiart.controller;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -122,7 +121,7 @@ public class ProductController {
     }
 
     @GetMapping("/images")
-    public ResponseEntity<Resource> getProductImage(@RequestParam String path) throws URISyntaxException, IOException {
+    public ResponseEntity<Resource> getProductImage(@RequestParam String path) throws IOException {
         LOGGER.info("Getting image with path [{}]", path);
 
         return ResponseEntity.ok()

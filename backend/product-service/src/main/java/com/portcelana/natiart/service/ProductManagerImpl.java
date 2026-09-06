@@ -183,8 +183,15 @@ public class ProductManagerImpl implements ProductManager {
     }
 
     @Override
-    public InputStreamResource getProductImage(String path) throws URISyntaxException {
-        final URI uri = new URI(path);
+    public InputStreamResource getProductImage(String path) {
+        final URI uri;
+        try {
+            uri = new URI(path);
+        } catch (URISyntaxException e) {
+            // Malformed paths are a client error (400 via ControllerAdvice),
+            // not a server failure.
+            throw new IllegalArgumentException("Invalid image path: " + path);
+        }
         final InputStream inputStream = storageService.openFile(uri);
         return new InputStreamResource(inputStream);
     }
