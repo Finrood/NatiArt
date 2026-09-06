@@ -628,7 +628,7 @@ method's own 401-reset, so no state corruption, only console noise).
 - Fix: drop the blanket wipe (service owns 401-clearing); keep tokens on
   non-401 failures. Spec: `500` → tokens preserved, no dashboard navigation.
 
-### L6. `LogoutComponent` redirect timer fires after destroy — OPEN (Low)
+### L6. `LogoutComponent` redirect timer fires after destroy — IN REVIEW (Low, fix in flight on this branch)
 - `frontend/natiart-app/src/app/directory/components/auth/logout/logout.component.ts:24-26`:
   the 2s `setTimeout` stores no handle and `ngOnDestroy` never clears it, so
   destroying mid-window navigates from a torn-down component — and a user who
