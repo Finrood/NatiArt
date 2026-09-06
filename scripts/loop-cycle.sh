@@ -213,10 +213,14 @@ for n in $CODE_PRS; do
     VERDICTS=$(gh pr view "$n" --json comments --jq '[.comments[].body | select(startswith("VERDICT:"))] | length' 2>/dev/null || echo 0)
     [[ "${VERDICTS:-0}" -ge 1 ]] && continue
     log "No verdict on green PR #$n; spawning mechanical reviewer (1 per cycle)."
-    timeout 420 scripts/run-agent.sh --role review --budget 360 --title "review-pr-$n" \
+    timeout 660 scripts/run-agent.sh --role review --budget 600 --title "review-pr-$n" \
         "$(cat scripts/agent-review-prompt.md)
 ---
-Review PR $n. Post your verdict comment (first line exactly 'VERDICT: APPROVE' or 'VERDICT: REQUEST_CHANGES') on the PR before the timebox ends." &
+Review PR $n. You have 10 minutes; the review typically takes ~4. Non-negotiable
+finish condition: before the timebox ends, post the verdict comment on the PR
+with `gh pr review $n --comment -b \"...\"` — first line exactly 'VERDICT: APPROVE'
+or 'VERDICT: REQUEST_CHANGES'. Posting the verdict is the deliverable; a review
+that ends without the comment posted is a failed run." &
     REVIEW_PID=$!
     break
 done
@@ -294,6 +298,11 @@ if [[ -n "${REVIEW_PID:-}" ]]; then
         log "Mechanical reviewer finished."
     else
         log "Mechanical reviewer finished without APPROVE (next cycle retries)."
+    fi
+    # Verdict presence is the real deliverable; exit code alone lies (a model can
+    # exit 0 without posting). Record the miss so the next cycle re-spawns.
+    if ! gh pr view "$n" --json comments --jq '.comments[].body' 2>/dev/null | grep -q '^VERDICT:'; then
+        log "Mechanical reviewer produced NO verdict comment on PR #$n; next cycle will retry."
     fi
 fi
 log "Agent cycle finished with status $STATUS."
