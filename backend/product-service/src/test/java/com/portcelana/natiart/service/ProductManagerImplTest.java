@@ -17,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.ProductDto;
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Product;
@@ -74,5 +75,27 @@ class ProductManagerImplTest {
         assertEquals("Mug", created.getLabel());
         assertTrue(created.getImages().isEmpty());
         verify(storageService, never()).uploadFile(any(String.class), any(InputFile.class), any(String.class));
+    }
+
+    @Test
+    void inverseVisibility_existingProduct_flipsAtomicallyWithoutReadModifyWrite() {
+        final Product product = new Product("Mug", BigDecimal.TEN);
+        when(productRepository.toggleActiveById(product.getId())).thenReturn(1);
+        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
+
+        final Product toggled = productManager.inverseVisibility(product.getId());
+
+        assertEquals(product.getId(), toggled.getId());
+        verify(productRepository).toggleActiveById(product.getId());
+        verify(productRepository, never()).save(any(Product.class));
+    }
+
+    @Test
+    void inverseVisibility_missingProduct_throwsNotFound() {
+        when(productRepository.toggleActiveById("missing")).thenReturn(0);
+
+        assertThrows(ResourceNotFoundException.class, () -> productManager.inverseVisibility("missing"));
+
+        verify(productRepository, never()).save(any(Product.class));
     }
 }

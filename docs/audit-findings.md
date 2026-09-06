@@ -201,6 +201,30 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
   `IllegalArgumentException` with the same duplicate-label message. Tests:
   `save` throwing the violation → 400-path exception.
 
+### K5. `TokenCleanupService` scheduler runs on every pod with no distributed lock — OPEN (Low)
+- `directory/.../service/TokenCleanupService.java:23` (`@Scheduled`
+  `fixedDelay`, enabled by `@EnableScheduling` in
+  `directory/.../DirectoryApplication.java:10-12`) deletes expired tokens via
+  a single idempotent bulk query, so concurrent runs are harmless — but in a
+  multi-instance deployment every pod fires the purge hourly and logs
+  `Purged [N]...` independently (duplicate work + duplicate log lines, no
+  coordination). `fixedDelay` prevents overlap within one JVM only.
+  Found by Lens 8 hunt, 2026-09-06.
+- Fix: distributed lock (ShedLock) or document single-scheduler topology.
+  Tracked, not silently fixed.
+
+### K6. `updateProduct` full-update read-modify-write loses to concurrent writes — OPEN (Low)
+- `service/ProductManagerImpl.java:159-176` (`updateProduct`) reads the entity,
+  overwrites every field in memory, and saves. `Product` carries `@Version`
+  (`model/Product.java:23-24`), so concurrent full updates do not silently mix
+  fields — but the loser gets `OptimisticLockException` → generic 500 instead
+  of a 409/conflict, same mechanism as K3 (whose atomic-toggle fix covers only
+  the visibility flips, not full updates). Admin-only path, hence Low.
+  Found by Lens 8 hunt, 2026-09-06.
+- Fix: map `OptimisticLockException`/`ObjectOptimisticLockingFailureException`
+  to 409 in the product-service advice when the admin update endpoint is wired.
+  Tests: concurrent update conflict → 409, not 500. Tracked, not silently fixed.
+
 ## L. Frontend auth flow (Lens 9 hunt, 2026-09-05)
 
 ### L3. `/checkout` requires auth but implements a guest ghost-user flow — OPEN (Medium)
