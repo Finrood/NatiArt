@@ -673,16 +673,3 @@ design), `PaymentController` null-tolerant principal (fail-closed via
 `UserNotAllowedException`), `GET /images` public read (traversal fixed in
 PR #140). AC1 below is fixed in flight on this branch rather than tracked
 separately.
-
-### AC1. Product-service filter chain never goes stateless — IN REVIEW (Low, fix PR: authn-stateless-session)
-- `backend/product-service/.../configuration/SecurityConfig.java:30-40` builds
-  the chain with no `sessionManagement` configuration, while the directory twin
-  sets `SessionCreationPolicy.STATELESS`
-  (`directory/.../configuration/SecurityConfig.java:29`). The servlet default
-  (`IF_REQUIRED`) lets the container mint and persist `JSESSIONID` sessions on
-  authenticated traffic despite the JWT-per-request design — cross-request
-  server-side state plus session-fixation surface, contradicting the
-  statelessness rule in `backend/AGENTS.md`.
-- Fix: set `SessionCreationPolicy.STATELESS` on the product chain (mirroring
-  directory-service). Tests: authenticated request leaves no session.
-  Found by Lens 2 hunt, 2026-09-06.

@@ -31,15 +31,22 @@ fi
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/loop-$(date +%Y%m%d-%H%M%S).log"
 exec > >(tee -a "$LOG_FILE") 2>&1
-# Log retention: keep the last 100 cycle logs.
-ls -t "$LOG_DIR"/loop-*.log 2>/dev/null | tail -n +101 | xargs -r rm -f || true
+# Log retention: keep the last 300 cycle logs (~6 days at 30-min cadence) so
+# every 10-day red-team window stays fully inspectable.
+ls -t "$LOG_DIR"/loop-*.log 2>/dev/null | tail -n +301 | xargs -r rm -f || true
 
 log "=== Improvement-loop cycle start (check-only=$CHECK_ONLY) ==="
 cd "$REPO"
 
 # 0. Fast-fail gates: expired token or full disk must abort loudly, not waste
 #    a 25-minute agent run on calls that cannot succeed.
-gh auth status >/dev/null 2>&1 || { log "GitHub auth broken; aborting cycle."; exit 1; }
+auth_ok=0
+for i in 1 2 3; do
+    if gh auth status >/dev/null 2>&1; then auth_ok=1; break; fi
+    log "GitHub auth check $i/3 failed; retrying in 20s (single transient API errors are common)."
+    sleep 20
+done
+[[ "$auth_ok" -eq 1 ]] || { log "GitHub auth broken after 3 tries; aborting cycle."; exit 1; }
 DISK_AVAIL_KB=$(df -k "$REPO" | awk 'NR==2 {print $4}')
 if [[ "${DISK_AVAIL_KB:-0}" -lt 2097152 ]]; then
     log "Disk low (${DISK_AVAIL_KB}KB < 2GB); aborting cycle for human review."
@@ -274,7 +281,17 @@ git worktree list --porcelain 2>/dev/null | awk -v repo="$REPO" '
     git worktree remove --force "$wt" 2>/dev/null || true
 done || true
 # Also sweep the sibling review-* clones (git worktree list does not see them).
-find "$REPO/.." -maxdepth 1 -type d -name 'review-*' -mtime +1 -exec rm -rf {} + 2>/dev/null || true
+# Safety: only clones carrying the reviewer's .natiart-review-marker are
+# deleted — never a bare name-glob rm -rf, which could hit an unrelated
+# sibling project's review-* directory.
+find "$(dirname "$REPO")" -maxdepth 1 -type d -name 'review-*' -mtime +1 2>/dev/null | while read -r d; do
+    if [[ -f "$d/.natiart-review-marker" ]]; then
+        log "Removing abandoned reviewer clone $d."
+        rm -rf "$d"
+    else
+        log "Skipping $d (no .natiart-review-marker; not ours)."
+    fi
+done || true
 
 # Remote hygiene: retry deletion of merged loop branches (the --delete-branch
 # flag occasionally races GitHub auto-delete and leaves them behind). Only

@@ -87,7 +87,7 @@ fi
 # misclassify it as quota and duplicate the work on the next model.
 if [[ -z "$STALL_EXPLICIT" ]]; then
     case "$ROLE" in
-        review) STALL_SEC=45 ;;
+        review) STALL_SEC=150 ;; # Gradle test-compile alone exceeds 45s; the verdict needs the build to finish (PR #154 starved 2+ cycles on 45s)
         cycle)  STALL_SEC=180 ;;
     esac
 fi
@@ -191,75 +191,103 @@ while true; do
         fi
 
         ATT_LOG="$TMP_ROOT/natiart-agent-attempt-$$-$attempt-$label.log"
-        log "Attempt $attempt/${label}: $cli :: $model_id${think:+, thinking=$think} (${remaining}s left)"
-        if ! launch_attempt "$cli" "$model_id" "$think"; then
-            log "Cannot spawn $label; skipping."
-            continue
-        fi
+        same_retry=0
+        while :; do # retry-same-model loop: silence ≠ quota (see below)
+            log "Attempt $attempt/${label}: $cli :: $model_id${think:+, thinking=$think} (${remaining}s left)"
+            if ! launch_attempt "$cli" "$model_id" "$think"; then
+                log "Cannot spawn $label; skipping."
+                break
+            fi
 
-        start=$(date +%s)
-        last_size=0
-        last_change=$start
-        reason="done"
-        rc=0
-        while kill -0 "$PID" 2>/dev/null; do
-            now=$(date +%s)
-            if (( now - start >= remaining )); then
-                reason="timeout"
-                kill_agent "$PID"
+            start=$(date +%s)
+            last_size=0
+            last_change=$start
+            reason="done"
+            rc=0
+            while kill -0 "$PID" 2>/dev/null; do
+                now=$(date +%s)
+                if (( now - start >= remaining )); then
+                    reason="timeout"
+                    kill_agent "$PID"
+                    break
+                fi
+                size=$(stat -c%s "$ATT_LOG" 2>/dev/null || echo 0)
+                if (( size != last_size )); then
+                    last_size=$size
+                    last_change=$now
+                elif (( now - last_change >= STALL_SEC )); then
+                    reason="stall"
+                    log "No output from $label for ${STALL_SEC}s; killing attempt."
+                    kill_agent "$PID"
+                    break
+                fi
+                sleep 2
+            done
+            wait "$PID" 2>/dev/null || rc=$?
+
+            if [[ "$reason" == "timeout" ]]; then
+                log "Attempt $attempt/${label} consumed the whole budget without finishing."
+                print_tail "$ATT_LOG"
+                rm -f "$ATT_LOG"
+                exit 124
+            fi
+
+            if (( rc == 0 )); then
+                log "Attempt $attempt succeeded with $label ($model_id${think:+, $think})."
+                rm -f "$ATT_LOG"
+                echo "NATIART_ACTIVE_MODEL=$label"
+                echo "$label"
+                exit 0
+            fi
+
+            if [[ "$reason" == "stall" ]]; then
+                # Silence alone is NOT proof of a quota block: Gradle/npm emit
+                # nothing for minutes during healthy builds (17:59/18:30 cycles
+                # killed BUILD SUCCESSFUL mid-run). So: rc=143 from a silence
+                # kill gets ONE retry on the SAME model before failover; a
+                # second silence is treated as a quota-style block.
+                if [[ "$rc" -eq 143 && "$same_retry" -eq 0 ]]; then
+                    same_retry=1
+                    log "Attempt $attempt/${label} went silent for ${STALL_SEC}s (rc=$rc); retrying SAME model once before failover."
+                    print_tail "$ATT_LOG"
+                    rm -f "$ATT_LOG"
+                    remaining=$(( DEADLINE - $(date +%s) ))
+                    if (( remaining <= 10 )); then
+                        log "Time budget exhausted during same-model retry."
+                        exit 124
+                    fi
+                    attempt=$((attempt + 1))
+                    continue
+                fi
+                log "Attempt $attempt/${label} silent again (rc=$rc); treating as quota-block; trying next model."
+                print_tail "$ATT_LOG"
+                rm -f "$ATT_LOG"
                 break
             fi
-            size=$(stat -c%s "$ATT_LOG" 2>/dev/null || echo 0)
-            if (( size != last_size )); then
-                last_size=$size
-                last_change=$now
-            elif (( now - last_change >= STALL_SEC )); then
-                reason="stall"
-                log "No output from $label for ${STALL_SEC}s; assuming quota-block."
-                kill_agent "$PID"
+
+            if quota_blocked "$rc" "$ATT_LOG"; then
+                log "Attempt $attempt/${label} quota-blocked (rc=$rc); trying next model."
+                print_tail "$ATT_LOG"
+                rm -f "$ATT_LOG"
                 break
             fi
-            sleep 2
+
+            if [[ "$rc" -eq 126 || "$rc" -eq 127 ]]; then
+                # Missing/unrunnable CLI binary is infrastructure failure, not a
+                # model error: for days-long autonomy it must fall through like
+                # quota (a typo'd model id still aborts loudly — config bugs need
+                # a human, a vanished binary does not).
+                log "Attempt $attempt/${label}: CLI missing or unrunnable (rc=$rc); trying next model."
+                print_tail "$ATT_LOG"
+                rm -f "$ATT_LOG"
+                break
+            fi
+
+            log "Attempt $attempt/${label} failed with rc=$rc and no quota signal; aborting."
+            print_tail "$ATT_LOG"
+            rm -f "$ATT_LOG"
+            exit "$rc"
         done
-        wait "$PID" 2>/dev/null || rc=$?
-
-        if [[ "$reason" == "timeout" ]]; then
-            log "Attempt $attempt/${label} consumed the whole budget without finishing."
-            print_tail "$ATT_LOG"
-            rm -f "$ATT_LOG"
-            exit 124
-        fi
-
-        if (( rc == 0 )); then
-            log "Attempt $attempt succeeded with $label ($model_id${think:+, $think})."
-            rm -f "$ATT_LOG"
-            echo "NATIART_ACTIVE_MODEL=$label"
-            echo "$label"
-            exit 0
-        fi
-
-        if [[ "$reason" == "stall" ]] || quota_blocked "$rc" "$ATT_LOG"; then
-            log "Attempt $attempt/${label} quota-blocked (rc=$rc, reason=$reason); trying next model."
-            print_tail "$ATT_LOG"
-            rm -f "$ATT_LOG"
-            continue
-        fi
-
-        if [[ "$rc" -eq 126 || "$rc" -eq 127 ]]; then
-            # Missing/unrunnable CLI binary is infrastructure failure, not a
-            # model error: for days-long autonomy it must fall through like
-            # quota (a typo'd model id still aborts loudly — config bugs need
-            # a human, a vanished binary does not).
-            log "Attempt $attempt/${label}: CLI missing or unrunnable (rc=$rc); trying next model."
-            print_tail "$ATT_LOG"
-            rm -f "$ATT_LOG"
-            continue
-        fi
-
-        log "Attempt $attempt/${label} failed with rc=$rc and no quota signal; aborting."
-        print_tail "$ATT_LOG"
-        rm -f "$ATT_LOG"
-        exit "$rc"
     done
     log "All $PRIORITY_COUNT models blocked; sleeping 5s and retrying from the top."
     sleep 5
