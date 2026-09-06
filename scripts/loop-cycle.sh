@@ -35,23 +35,48 @@ if [[ "${DISK_AVAIL_KB:-0}" -lt 2097152 ]]; then
     exit 1
 fi
 
-# 1. Clean tree guard. Recovery: dirt on a loop branch with an open PR is a
-#    killed cycle's snapshot — commit it as WIP and continue fresh from master.
-#    Anything else (dirty master, no owning PR) needs a human: abort.
+# 1. Clean tree guard. A killed cycle (timeout kill, reboot, external pkill)
+#    can leave dirt anywhere; the loop must never wedge on it. Every dirty case
+#    self-heals: salvage the WIP to a dedicated snapshot branch (inspectable
+#    later), then continue from a pristine master. (2026-09-06: two cycles
+#    wedged overnight on dirty master; dirty-master now salvages + resets.)
+salvage_wip() { # $1 = source branch label; salvages dirt to origin/salvage/*
+    local B="salvage/$(date +%Y%m%d-%H%M%S)"
+    if git checkout -q -b "$B" && git add -A && git commit -qm "[WIP] Salvaged interrupted-cycle WIP from $1 (auto-salvage)" && git push -q origin "$B"; then
+        git checkout -q master
+        git reset -q --hard origin/master
+        log "WIP salvaged to origin/$B; master reset clean."
+        return 0
+    fi
+    # Push failed (auth/network): keep WIP locally, still reach a clean master.
+    git checkout -q master 2>/dev/null || true
+    git reset -q --hard origin/master 2>/dev/null || true
+    [[ -z "$(git status --porcelain)" ]] && { log "Salvage push failed (likely network/auth); WIP kept on local $B."; return 0; }
+    log "Could not reach a clean master even after salvage; aborting for human review."
+    return 1
+}
 if [[ -n "$(git status --porcelain)" ]]; then
     CUR_BRANCH=$(git branch --show-current)
-    OWNING_PR=$(gh pr list --state open --head "$CUR_BRANCH" --json number --jq length 2>/dev/null || echo 0)
-    if [[ "$CUR_BRANCH" != "master" && "$OWNING_PR" -ge 1 ]]; then
-        log "Dirty tree on $CUR_BRANCH with an open PR: snapshotting interrupted-cycle WIP."
-        if git add -A && git commit -qm "[WIP] Interrupted cycle snapshot (auto-committed by loop guard)" && git push -q origin "$CUR_BRANCH"; then
-            log "WIP snapshot pushed; continuing fresh."
+    if [[ "$CUR_BRANCH" != "master" ]]; then
+        OWNING_PR=$(gh pr list --state open --head "$CUR_BRANCH" --json number --jq length 2>/dev/null || echo 0)
+        if [[ "$OWNING_PR" -ge 1 ]]; then
+            # Existing loop branch: keep history where its PR can see it.
+            log "Dirty tree on $CUR_BRANCH with an open PR: snapshotting interrupted-cycle WIP."
+            if git add -A && git commit -qm "[WIP] Interrupted cycle snapshot (auto-committed by loop guard)" && git push -q origin "$CUR_BRANCH"; then
+                log "WIP snapshot pushed; continuing fresh."
+            elif git reset -q --hard HEAD~1 2>/dev/null && salvage_wip "$CUR_BRANCH"; then
+                :
+            else
+                exit 1
+            fi
+        elif salvage_wip "$CUR_BRANCH"; then
+            log "Dirty tree on $CUR_BRANCH (no open PR): WIP salvaged; continuing."
         else
-            log "WIP snapshot failed; aborting for human review."
             exit 1
         fi
+    elif salvage_wip "master"; then
+        :
     else
-        log "Working tree is dirty with no safe recovery; aborting cycle."
-        git status --porcelain | head -20
         exit 1
     fi
 fi
@@ -163,6 +188,12 @@ fi
 # 5. Stale-branch hygiene: prune local branches whose remote is gone.
 git fetch -q --prune origin
 git branch -vv | awk '/: gone]/{print $1}' | grep -v '^\*' | xargs -r git branch -d 2>/dev/null || true
+# Salvage retention: keep the newest 5 salvage branches, delete older ones.
+git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads/salvage/ 2>/dev/null | tail -n +6 | while read -r sb; do
+    log "Deleting old salvage branch $sb."
+    git branch -D "$sb" 2>/dev/null || true
+    git push -q origin --delete "$sb" 2>/dev/null || true
+done
 
 if [[ "$CHECK_ONLY" -eq 1 ]]; then
     log "Check-only mode: all preconditions pass. Agent run skipped."
