@@ -1060,3 +1060,15 @@ camelCase, `PaymentController.java:38`) still OPEN on both sides
   `IllegalAccessException`, denied loudly via the existing advice shape
   (403 + static body). Tests: missing/malformed/mismatched credentials
   deny, never empty-200.
+
+### AJ1. Directory advice has no `HttpMessageNotReadable` handler: same malformed body is 400 on product-service, 500 on directory-service — FIXED (PR #177)
+- Product-service `configuration/ControllerAdvice.java:43-52` unwraps Jackson
+  `ValueInstantiationException` guard failures to 400; directory-service
+  `configuration/ControllerAdvice.java` had no such handler, so an identical
+  malformed DTO body returned 400 from one service and 500 from the other.
+  Found by Lens 15 hunt, 2026-09-07.
+- Fix: ported `handleNotReadableBody` + `findIllegalArgumentCause` to the
+  directory advice, mirroring product-service (guard-cause message surfaced,
+  generic "Malformed request body" otherwise).
+  Tests: guard failure → 400 with guard message; unrelated parse error → 400
+  generic (both proven non-vacuous by revert-check).
