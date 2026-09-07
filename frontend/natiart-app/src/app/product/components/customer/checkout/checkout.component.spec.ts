@@ -122,6 +122,21 @@ describe('CheckoutComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('cancels the pending error dismissal on destroy (P2)', () => {
+    const internals = component as unknown as {
+      setErrorMessage(message: string): void;
+      errorDismissTimer: ReturnType<typeof setTimeout> | undefined;
+    };
+    const clearSpy: jasmine.Spy = spyOn(window, 'clearTimeout').and.callThrough();
+
+    internals.setErrorMessage('boom');
+    expect(internals.errorDismissTimer).toBeDefined();
+
+    fixture.destroy();
+    expect(clearSpy).toHaveBeenCalled();
+    expect(internals.errorDismissTimer).toBeUndefined();
+  });
+
   it('navigates to the PIX confirmation when the payment response carries an id', async () => {
     await component.onProcessPixPayment(loggedInUser);
 

@@ -382,10 +382,20 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
 
+  private errorDismissTimer: ReturnType<typeof setTimeout> | undefined = undefined;
+
   private setErrorMessage(message: string): void {
     this.errorMessage = message;
     this.cdr.detectChanges();
-    setTimeout(() => this.clearErrorMessage(), 7000);
+    this.clearErrorDismissTimer();
+    this.errorDismissTimer = setTimeout(() => this.clearErrorMessage(), 7000);
+  }
+
+  private clearErrorDismissTimer(): void {
+    if (this.errorDismissTimer !== undefined) {
+      clearTimeout(this.errorDismissTimer);
+      this.errorDismissTimer = undefined;
+    }
   }
 
   private clearErrorMessage(): void {
@@ -394,6 +404,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.clearErrorDismissTimer();
     this.destroy$.next();
     this.destroy$.complete();
   }
