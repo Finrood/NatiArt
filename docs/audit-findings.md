@@ -788,7 +788,7 @@ cart `prepareImageUrls` cleanup pass revokes stale blob URLs on the next
 emission, so the AA3 resurrect is transient, not permanent. AF1-AF2 below are
 runner-ups.
 
-### AF1. Product-list (and siblings) track `@for` rows by object identity, not id — OPEN (Low)
+### AF1. Product-list (and siblings) track `@for` rows by object identity, not id — IN REVIEW (Low, fix PR: frontend-track-by-id / PR #162)
 - `product-list.component.html:5` (`@for (product of products | async; track product)`),
   `cart-modal.component.html:8` (`track item`), `order-summary.component.html:6`
   (`track item`), `product-detail.component.html:152` (`track relatedProduct`):
@@ -800,7 +800,7 @@ runner-ups.
 - Fix: `track product.id` / `track item.cartItemId` / `track relatedProduct.id`.
   Spec: emit same-id rebuilt objects → DOM nodes preserved, zero new image GETs.
 
-### AF2. Related-image resolution builds a per-product copy then discards it — OPEN (Low)
+### AF2. Related-image resolution builds a per-product copy then discards it — IN REVIEW (Low, fix PR: frontend-track-by-id / PR #162)
 - `product-detail.component.ts` (`fetchRelatedProductImage`): the `next` handler
   maps `relatedProducts$.value` into `currentRelated` (`{...p, imageUrl: ...}`)
   and then emits `next([...this.relatedProducts$.value])` — the mapped copy is

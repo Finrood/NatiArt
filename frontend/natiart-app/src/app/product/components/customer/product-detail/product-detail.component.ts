@@ -354,18 +354,9 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       next: blob => {
         const objectUrl = URL.createObjectURL(blob);
         this.relatedImageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
-        // Update the relatedProducts$ BehaviorSubject to trigger template update
-        // This is a bit inefficient, ideally you'd update just the image URL part
-        const currentRelated = this.relatedProducts$.value.map(p => {
-          if (p.id === productId) {
-            return { ...p, imageUrl: this.relatedImageUrls[productId] }; // Add a temporary imageUrl property perhaps
-          }
-          return p;
-        });
-        // If you modify the Product interface to include an optional 'displayImageUrl',
-        // you could update that here for better binding in the template.
-        // For now, just triggering an update might be enough if the template uses relatedImageUrls map.
-        this.relatedProducts$.next([...this.relatedProducts$.value]); // Trigger update
+        // The template binds images via the relatedImageUrls map; emit a new
+        // array identity so the async pipe picks up the resolved image.
+        this.relatedProducts$.next([...this.relatedProducts$.value]);
       },
       error: err => {
         console.error(`Failed to load related image for product ${productId}:`, err);

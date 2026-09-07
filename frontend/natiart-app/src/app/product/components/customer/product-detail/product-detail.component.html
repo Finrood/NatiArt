@@ -149,7 +149,7 @@
               <h2 class="text-2xl font-semibold mb-6 text-[#333333]">You May Also Like</h2>
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                 <!-- Use relatedImageUrls map for src -->
-                @for (relatedProduct of relatedProducts$ | async; track relatedProduct) {
+                @for (relatedProduct of relatedProducts$ | async; track (relatedProduct.id ?? relatedProduct)) {
                   <div class="group border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
                     <a [routerLink]="['/product', relatedProduct.id]" class="block">
                       <div class="relative aspect-square bg-gray-100"> <!-- Use aspect-square for consistent shape -->

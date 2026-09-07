@@ -2,7 +2,8 @@
   <div class="container mx-auto px-4 sm:px-6 lg:px-8">
     <h2 class="text-3xl md:text-4xl font-serif font-light text-secondary text-center mb-10">{{ title }}</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-      @for (product of products | async; track product) {
+      <!-- Track stable ids; id-less cards fall back to object identity (no duplicate-key throw). -->
+      @for (product of products | async; track (product.id ?? product)) {
         <div class="bg-surface rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 ease-in-out group product-card">
           <!-- Product Image -->
           <div class="relative h-64 overflow-hidden">
