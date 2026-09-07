@@ -1,5 +1,6 @@
 package com.portcelana.natiart.dto.payment.asaas;
 
+import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -17,7 +18,7 @@ public class AsaasPaymentCreationRequest {
     private String billingType;
 
     @JsonProperty(required = true)
-    private Double value;
+    private BigDecimal value;
 
     @JsonProperty(required = true)
     private String dueDate;
@@ -35,7 +36,7 @@ public class AsaasPaymentCreationRequest {
     private List<Split> split;
     private Callback callback;
 
-    private AsaasPaymentCreationRequest(String customer, String billingType, Double value, String dueDate) {
+    private AsaasPaymentCreationRequest(String customer, String billingType, BigDecimal value, String dueDate) {
         this.customer = customer;
         this.billingType = billingType;
         this.value = value;
@@ -76,11 +77,11 @@ public class AsaasPaymentCreationRequest {
         return this;
     }
 
-    public Double getValue() {
+    public BigDecimal getValue() {
         return value;
     }
 
-    public AsaasPaymentCreationRequest setValue(Double value) {
+    public AsaasPaymentCreationRequest setValue(BigDecimal value) {
         this.value = value;
         return this;
     }

@@ -1,5 +1,6 @@
 package com.portcelana.natiart.dto.payment;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -15,7 +16,7 @@ import com.portcelana.natiart.dto.payment.helper.PaymentProcessor;
 public class PaymentCreationRequest {
     private final PaymentProcessor paymentProcessor;
     private final String customerId;
-    private final Double value;
+    private final BigDecimal value;
     private final PaymentMethod billingType;
     private final LocalDate dueDate;
 
@@ -23,7 +24,7 @@ public class PaymentCreationRequest {
     public PaymentCreationRequest(
             @JsonProperty("paymentProcessor") PaymentProcessor paymentProcessor,
             @JsonProperty("customerId") String customerId,
-            @JsonProperty("value") Double value,
+            @JsonProperty("value") BigDecimal value,
             @JsonProperty("billingType") PaymentMethod billingType) {
         this(paymentProcessor, customerId, value, billingType, Clock.systemDefaultZone());
     }
@@ -32,7 +33,7 @@ public class PaymentCreationRequest {
     PaymentCreationRequest(
             PaymentProcessor paymentProcessor,
             String customerId,
-            Double value,
+            BigDecimal value,
             PaymentMethod billingType,
             Clock clock) {
         if (paymentProcessor == null) {
@@ -41,8 +42,12 @@ public class PaymentCreationRequest {
         if (billingType == null) {
             throw new IllegalArgumentException("Billing type is required");
         }
-        if (value == null || !Double.isFinite(value) || value <= 0) {
-            throw new IllegalArgumentException("Payment value must be a finite number greater than zero");
+        // Exact decimal money: binary floating point cannot represent most BRL
+        // cent values, so anything beyond cent precision is rejected instead
+        // of rounded.
+        if (value == null || value.signum() <= 0 || value.scale() > 2) {
+            throw new IllegalArgumentException(
+                    "Payment value must be a positive amount with at most two fraction digits");
         }
         this.paymentProcessor = paymentProcessor;
         this.customerId = customerId;
@@ -65,7 +70,7 @@ public class PaymentCreationRequest {
         return customerId;
     }
 
-    public Double getValue() {
+    public BigDecimal getValue() {
         return value;
     }
 

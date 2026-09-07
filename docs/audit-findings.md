@@ -894,4 +894,43 @@ Cleared as non-findings: prod `npm audit` (clean); Spring Boot/TS majors
   plugin) alone, green CI proving separability — never push to the
   dependabot branch. Tracked, not silently fixed.
 
+## AM. Data integrity and transactions (Lens 4 hunt, 2026-09-07)
+
+Hunt method: re-verified B4 (client-priced `deliveryAmount`,
+`OrderManagerImpl.java:59,76,98` — only non-negativity checked; `CustomerOrder`
+still carries no owner column; `OrderController.java:19-23` still takes no
+`@TargetUser`), G1 (no order reference on `PaymentCreationRequest`, no
+reconciliation against `CustomerOrder.totalAmount`; storefront charges the
+client-side cart snapshot end to end —
+`checkout.component.ts:301` sends `value: getCartTotalSnapshot()`), X1
+(`Double` value confirmed — fixed in flight this cycle) and X4 (any-to-any
+status transitions via `updateStatusById`, admin endpoints still unwired)
+against current `master`; traced `createOrder`/`createCartItem`/`createPayment`
+write paths for atomicity, money typing, quantity bounds and rollback tests.
+Cleared as non-findings: whole-order rollback contract (covered,
+`OrderManagerImplTest:143`), atomic cart increments with line cap
+(`CartManagerImpl.java:44-60`, unique constraint on username+product),
+server-computed order item prices (`OrderManagerImpl.java:88`), Jackson
+`Double` wire encoding (shortest round-trip repr — the X1 risk is
+cross-type reconciliation, not wire corruption), `AsaasPaymentCreationRequest`
+nested `Discount`/`Interest`/`Fine`/`Split` `Double` knobs (never populated
+by `from()`, upstream optionals only).
+
+### AM1. Payment creation has no idempotency guard; charge-then-save is non-atomic — OPEN (Medium)
+- `controller/PaymentController.java:26-32` (`POST /payments/create`) takes no
+  idempotency key, and `service/AsaasPaymentService.java:88-100` charges Asaas
+  upstream first, then persists the local `Payment` row outside any
+  transaction. A timeout after a successful charge plus the storefront's
+  "try again" path (`checkout.component.ts:289-319`, which re-issues the POST
+  with no key) creates a second upstream charge for the same cart; a local
+  `save` failure after a successful charge leaves an orphan upstream charge
+  with no local row to reconcile against. Repo-wide grep for `idempoten` in
+  `backend/` returns zero hits outside an unrelated comment.
+  Found by Lens 4 hunt, 2026-09-07.
+- Fix: accept an idempotency key (or derive it from the order id when G1
+  lands), dedupe repeat POSTs against the local ledger before upstream
+  egress, reconcile orphans. Tests: same-key double POST issues one upstream
+  charge; save-failure leaves no unreconciled charge.
+  Tracked, not silently fixed.
+
 

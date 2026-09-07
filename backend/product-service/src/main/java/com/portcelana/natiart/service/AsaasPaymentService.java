@@ -1,5 +1,6 @@
 package com.portcelana.natiart.service;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -76,9 +77,10 @@ public class AsaasPaymentService implements PaymentService {
         }
         // Defense in depth: the DTO constructor already rejects these, but the
         // service must not trust its input shape if that ever changes.
-        final Double value = paymentCreationRequest.getValue();
-        if (value == null || !Double.isFinite(value) || value <= 0) {
-            throw new IllegalArgumentException("Payment value must be a finite number greater than zero");
+        final BigDecimal value = paymentCreationRequest.getValue();
+        if (value == null || value.signum() <= 0 || value.scale() > 2) {
+            throw new IllegalArgumentException(
+                    "Payment value must be a positive amount with at most two fraction digits");
         }
         final HttpHeaders headers = getRequestHeaders();
 

@@ -3,6 +3,7 @@ package com.portcelana.natiart.dto.payment;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -19,7 +20,8 @@ class PaymentCreationRequestTest {
 
     private PaymentCreationRequest requestAt(String instant) {
         final Clock clock = Clock.fixed(Instant.parse(instant), ZONE);
-        return new PaymentCreationRequest(PaymentProcessor.ASAAS, "cus_1", 10.0, PaymentMethod.PIX, clock);
+        return new PaymentCreationRequest(
+                PaymentProcessor.ASAAS, "cus_1", new BigDecimal("10.00"), PaymentMethod.PIX, clock);
     }
 
     private Clock fixedClock() {
@@ -31,8 +33,16 @@ class PaymentCreationRequestTest {
         final PaymentCreationRequest request = requestAt("2026-09-04T20:59:00Z");
         assertEquals(PaymentProcessor.ASAAS, request.getPaymentProcessor());
         assertEquals("cus_1", request.getCustomerId());
-        assertEquals(10.0, request.getValue());
+        assertEquals(new BigDecimal("10.00"), request.getValue());
         assertEquals(PaymentMethod.PIX, request.getBillingType());
+    }
+
+    @Test
+    void constructor_preservesCentValueExactly() {
+        final PaymentCreationRequest request = new PaymentCreationRequest(
+                PaymentProcessor.ASAAS, "cus_1", new BigDecimal("19.99"), PaymentMethod.PIX, fixedClock());
+        assertEquals(new BigDecimal("19.99"), request.getValue());
+        assertEquals(2, request.getValue().scale());
     }
 
     @Test
@@ -40,7 +50,7 @@ class PaymentCreationRequestTest {
         final Clock clock = fixedClock();
         assertThrows(
                 IllegalArgumentException.class,
-                () -> new PaymentCreationRequest(null, "cus_1", 10.0, PaymentMethod.PIX, clock));
+                () -> new PaymentCreationRequest(null, "cus_1", new BigDecimal("10.00"), PaymentMethod.PIX, clock));
     }
 
     @Test
@@ -48,14 +58,17 @@ class PaymentCreationRequestTest {
         final Clock clock = fixedClock();
         assertThrows(
                 IllegalArgumentException.class,
-                () -> new PaymentCreationRequest(PaymentProcessor.ASAAS, "cus_1", 10.0, null, clock));
+                () -> new PaymentCreationRequest(
+                        PaymentProcessor.ASAAS, "cus_1", new BigDecimal("10.00"), null, clock));
     }
 
     @Test
-    void constructor_rejectsNullNonFiniteOrNonPositiveValue() {
+    void constructor_rejectsNullNonPositiveOrOverPreciseValue() {
         final Clock clock = fixedClock();
-        final Double[] badValues = {null, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, 0.0, -5.0};
-        for (final Double badValue : badValues) {
+        final BigDecimal[] badValues = {
+            null, BigDecimal.ZERO, new BigDecimal("-5.00"), new BigDecimal("10.001"), new BigDecimal("0.001")
+        };
+        for (final BigDecimal badValue : badValues) {
             assertThrows(
                     IllegalArgumentException.class,
                     () -> new PaymentCreationRequest(
