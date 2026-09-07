@@ -73,18 +73,31 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
   }
 
   private fetchProductImage(cartItemId: string, imagePath: string): void {
+    // Drop resolutions that arrive after the line was removed: the cleanup
+    // pass in prepareImageUrls deletes the key, and an unguarded write
+    // would resurrect it (AA3). Destroy teardown is covered by takeUntil.
     this.productService.getImage(imagePath).pipe(
       takeUntil(this.destroy$)
     ).subscribe({
-      next: blob => {
-        const objectUrl = URL.createObjectURL(blob);
+      next: (blob: Blob): void => {
+        if (!this.isCartLineLive(cartItemId)) {
+          return;
+        }
+        const objectUrl: string = URL.createObjectURL(blob);
         this.imageUrls[cartItemId] = this.sanitizer.bypassSecurityTrustUrl(objectUrl);
         this.objectUrlsCreated.push(objectUrl);
       },
-      error: () => {
+      error: (): void => {
+        if (!this.isCartLineLive(cartItemId)) {
+          return;
+        }
         this.imageUrls[cartItemId] = 'assets/img/placeholder.png';
       }
     });
+  }
+
+  private isCartLineLive(cartItemId: string): boolean {
+    return (this.cartItems ?? []).some((item: CartItem): boolean => item.cartItemId === cartItemId);
   }
 
   ngOnDestroy(): void {
