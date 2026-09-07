@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -158,7 +159,7 @@ class PaymentControllerSecurityTest {
         try {
             mockMvc.perform(get("/api/payment/pay-1/status")).andExpect(status().isOk());
             mockMvc.perform(get("/payments/pay-1/status")).andExpect(status().isOk());
-            verify(paymentService, org.mockito.Mockito.times(2)).getPaymentStatus("pay-1", "cus_MINE");
+            verify(paymentService, times(2)).getPaymentStatus("pay-1", "cus_MINE");
         } finally {
             SecurityContextHolder.clearContext();
         }
