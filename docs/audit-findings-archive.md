@@ -1126,3 +1126,16 @@ camelCase, `PaymentController.java:38`) still OPEN on both sides
   `product-service .../configuration/ControllerAdvice.java:96-100`),
   error-logged server-side. Tests: handler asserts 409 + static body.
   Verified on master 2026-09-07.
+
+### AA3. Cart/order-summary/cart-modal image fetches resurrect removed lines — FIXED (PR #185 + PR #187)
+- `cart.component.ts` (`fetchProductImage`), `order-summary.component.ts`
+  and `cart-modal.component.ts` (`fetchImage`) wrote `imageUrls[cartItemId]`
+  unconditionally on async completion: a line removed while its image GET
+  was in flight got its map entry re-created after the cleanup pass deleted
+  it. Found by Lens 10 hunt, 2026-09-06.
+- Fix: cart and order-summary halves in PR #185 (`isCartLineLive` guards,
+  spec-covered); cart-modal remainder in PR #187 (`liveLineIds` set per
+  emission, checked on next/error, spec-covered). Tests: remove-then-resolve
+  never re-adds the key in all three components (cart-modal spec proven
+  non-vacuous by revert-check: fails without the fix, 154/154 green with it).
+  Verified on master 2026-09-07.
