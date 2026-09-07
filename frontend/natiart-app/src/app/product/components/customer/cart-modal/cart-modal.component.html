@@ -5,7 +5,7 @@
   @if ((cartItems$ | async); as cartItems) {
     @if (cartItems.length) {
       <div>
-        @for (item of cartItems; track item) {
+        @for (item of cartItems; track item.cartItemId) {
           <div class="flex items-center mb-4 pb-4 border-b">
             <div class="w-16 h-16 mr-4 overflow-hidden rounded">
               @if (imageUrls[item.cartItemId]) {

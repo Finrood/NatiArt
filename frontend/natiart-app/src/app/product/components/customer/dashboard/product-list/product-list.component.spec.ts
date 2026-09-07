@@ -87,4 +87,39 @@ describe('ProductListComponent', () => {
     expect(component.selectedProduct).toBe(product);
     expect(addSpy).not.toHaveBeenCalled();
   });
+
+  it('preserves card DOM nodes across same-id re-emissions (AF1)', () => {
+    const fixture = TestBed.createComponent(ProductListComponent);
+    const component: ProductListComponent = fixture.componentInstance;
+
+    const makeProduct = (suffix: string): Product => ({
+      id: 'p-' + suffix,
+      label: 'Product ' + suffix,
+      originalPrice: 10,
+      markedPrice: 8,
+      stockQuantity: 3,
+      categoryId: 'cat-1',
+      availablePersonalizations: [],
+      tags: new Set<string>(),
+      images: [],
+    });
+
+    fixture.detectChanges();
+    const listReq = httpMock.expectOne((req: HttpRequest<unknown>): boolean => req.url.indexOf('/featured') !== -1);
+    listReq.flush([makeProduct('1'), makeProduct('2')]);
+    fixture.detectChanges();
+
+    const cardsBefore: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('.product-card'));
+    expect(cardsBefore.length).toBe(2);
+
+    component.products.next([makeProduct('1'), makeProduct('2')]);
+    fixture.detectChanges();
+
+    const cardsAfter: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('.product-card'));
+    expect(cardsAfter.length).toBe(2);
+    expect(cardsAfter[0]).toBe(cardsBefore[0]);
+    expect(cardsAfter[1]).toBe(cardsBefore[1]);
+  });
 });
