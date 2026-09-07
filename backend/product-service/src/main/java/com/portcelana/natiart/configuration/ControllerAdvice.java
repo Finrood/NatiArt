@@ -1,7 +1,10 @@
 package com.portcelana.natiart.configuration;
 
+import jakarta.persistence.OptimisticLockException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,8 +15,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.controller.helper.UserNotAllowedException;
-
-import jakarta.persistence.OptimisticLockException;
 
 @org.springframework.web.bind.annotation.ControllerAdvice
 public class ControllerAdvice {
@@ -82,6 +83,20 @@ public class ControllerAdvice {
     public ResponseEntity<Object> handleOptimisticLockingFailure(RuntimeException e) {
         LOGGER.debug("Concurrent update conflict: ", e);
         return new ResponseEntity<>("Resource was modified concurrently", HttpStatus.CONFLICT);
+    }
+
+    /**
+     * Backstop for check-then-act races (concurrent first-adds of one cart
+     * line): both racers miss the row and the loser trips the
+     * (username, product) unique constraint. A 409 conflict, not a 500 --
+     * mirrors the manager-level translation in `CategoryManagerImpl`. Static
+     * body so constraint SQL never leaks; error-logged for the server-side
+     * signal.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Object> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+        LOGGER.error("Data integrity violation: ", e);
+        return new ResponseEntity<>("Resource conflict", HttpStatus.CONFLICT);
     }
 
     private static IllegalArgumentException findIllegalArgumentCause(Throwable throwable) {

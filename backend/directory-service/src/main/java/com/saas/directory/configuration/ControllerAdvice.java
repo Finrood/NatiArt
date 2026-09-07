@@ -2,6 +2,7 @@ package com.saas.directory.configuration;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -62,6 +63,20 @@ public class ControllerAdvice {
     public ResponseEntity<Object> handleResourceAlreadyExistsException(ResourceAlreadyExistsException e) {
         logger.debug("Exception caught in controller: ", e);
         return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
+    }
+
+    /**
+     * Backstop for check-then-act races (concurrent duplicate registrations):
+     * both racers pass the pre-save existence check and the loser trips the
+     * unique constraint. That is a 409 conflict, not a 500 -- same contract
+     * as the pre-check rejection. The body stays static so constraint SQL
+     * (table/column names) never leaks; the error log below keeps the
+     * server-side signal for persistent streams.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Object> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+        logger.error("Data integrity violation: ", e);
+        return new ResponseEntity<>("Resource conflict", HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(IllegalAccessException.class)
