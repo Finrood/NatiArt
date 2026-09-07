@@ -261,25 +261,29 @@ for n in $CODE_PRS; do
     checks=$(gh_safe gh pr checks "$n")
     echo "$checks" | grep -Eq 'fail|cancel' && continue
     echo "$checks" | grep -qE 'pass|success' || continue
-    # One address-and-re-review round (docs/continuous-improvement-loop.md):
-    # a REQUEST_CHANGES verdict must not be a dead end. Re-review only when the
-    # author pushed after the verdict; verdicts whose body carries the
-    # "(re-reviewed <sha>" marker are final and never spawn again.
+    # Address-and-re-review rounds (docs/continuous-improvement-loop.md): a
+    # REQUEST_CHANGES verdict must not be a dead end. First verdicts carry no
+    # marker, so an unmarked REQUEST_CHANGES triggers re-review round 1; the
+    # re-reviewer marks its verdict with the head sha it reviewed. A marked
+    # verdict only spawns another round when the head moved past that sha; a
+    # verdict marked with the current head means the round is spent.
     RC_HEAD=$(git rev-parse --short=8 origin/"$(gh pr view "$n" --json headRefName --jq .headRefName)" 2>/dev/null || true)
     LAST_RC=$(verdict_bodies "$n" | grep -oE 'VERDICT: REQUEST_CHANGES \(re-reviewed [0-9a-f]{8}' | tail -1 | grep -oE '[0-9a-f]{8}$' || true)
     VERDICTS=$(verdict_bodies "$n" | grep -c '^VERDICT:' || true)
     if [[ "${VERDICTS:-0}" -ge 1 ]]; then
         if verdict_bodies "$n" | grep -q '^VERDICT: APPROVE' \
-            || [[ -z "$LAST_RC" ]] \
-            || [[ -z "$RC_HEAD" ]] \
-            || [[ "$LAST_RC" == "$RC_HEAD" ]]; then
+            || [[ -n "$LAST_RC" && "$LAST_RC" == "$RC_HEAD" ]] \
+            || [[ -z "$RC_HEAD" ]]; then
             continue
         fi
     fi
     log "No verdict on green PR #$n; spawning mechanical reviewer (1 per cycle)."
     if [[ -n "$LAST_RC" ]]; then
-        log "PR #$n changed since REQUEST_CHANGES (verdict@$LAST_RC -> head $RC_HEAD); spawning re-reviewer."
+        log "PR #$n changed since REQUEST_CHANGES (verdict@$LAST_RC -> head $RC_HEAD); spawning re-reviewer (next round)."
         RC_NOTE=" This is a RE-REVIEW after the author addressed the earlier REQUEST_CHANGES (that verdict was against $LAST_RC; head is now $RC_HEAD): focus on whether the blocking findings are resolved. If blockers remain, first line 'VERDICT: REQUEST_CHANGES (re-reviewed $RC_HEAD ...)'; if resolved, first line exactly 'VERDICT: APPROVE'."
+    elif [[ "${VERDICTS:-0}" -ge 1 ]]; then
+        log "PR #$n has an unmarked REQUEST_CHANGES; spawning re-reviewer (round 1)."
+        RC_NOTE=" This is a RE-REVIEW round 1: an earlier REQUEST_CHANGES verdict predated re-review marking. Focus on whether its blockers are resolved in the current head ($RC_HEAD). If blockers remain, first line 'VERDICT: REQUEST_CHANGES (re-reviewed $RC_HEAD ...)'; if resolved, first line exactly 'VERDICT: APPROVE'."
     else
         RC_NOTE=""
     fi
