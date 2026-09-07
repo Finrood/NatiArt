@@ -473,7 +473,7 @@ Cleared as non-findings: `addToCart` calls without `subscribe` (mutations run
 synchronously before the `of()` return — fragile but not cold no-ops),
 admin `product.id!` call sites (admin-only, ids server-assigned).
 
-### AA3. Cart/order-summary/cart-modal image fetches resurrect removed lines — IN REVIEW (fix/frontend-cart-image-liveness, PR #185)
+### AA3. Cart/order-summary/cart-modal image fetches resurrect removed lines — IN REVIEW (fix/frontend-cart-modal-liveness, this cycle)
 - `cart.component.ts:196-213` (`fetchProductImage`), `order-summary.component.ts:75-88`,
   and `cart-modal.component.ts:104-112` write `imageUrls[cartItemId]` unconditionally
   on async completion. A line removed while its image GET is in flight gets its map
@@ -484,9 +484,12 @@ admin `product.id!` call sites (admin-only, ids server-assigned).
   hunt, 2026-09-06.
 - Fix: re-check line liveness before writing (or cancel per-line requests), add the
   placeholder fallback to cart-modal. Spec: remove-then-resolve never re-adds the key.
-  Update 2026-09-07: cart-modal error-callback half fixed in flight
-  (`cart-modal.component.ts` `fetchImage` now falls back to the placeholder on
-  GET failure, spec-covered); the in-flight liveness-check half stays OPEN.
+  Update 2026-09-07: PR #185 merged — cart (`cart.component.ts:197-224`
+  `isCartLineLive` guard) and order-summary (`order-summary.component.ts:75-101`
+  `isCartLineLive` guard) halves FIXED on master, spec-covered; cart-modal
+  (`cart-modal.component.ts:104-118` still writes unconditionally, no liveness
+  check) remainder stays OPEN and moves to fix/frontend-cart-modal-liveness
+  this cycle.
 
 Re-verified 2026-09-06 (Lens 17 cycle hunt): four root mirrors still
 byte-identical (`md5sum`), all `agents/*.md` carry `meta` frontmatter, 17
@@ -765,16 +768,6 @@ signup/admin screens (idiomatic HttpErrorResponse lambda parameter, not a
 hidden contract). AJ1-AJ3 below are runner-ups; B11+S6 fixed in flight this
 cycle.
 
-### AJ2. Untyped `any` contracts hide frontend type breaks — IN REVIEW (fix/frontend-typed-contracts)
-- `cart.component.ts:149` (`performAction(action$: () => Observable<any>, ...)`
-  erases the cart-line response type), `top-banner.component.ts:23`
-  (`bannerInterval: any` instead of `ReturnType<typeof setInterval>`),
-  `admin-product-management.component.ts:182,425`
-  (`(preview as any).originalUrl` bypasses the preview type).
-- Fix: type the `Observable` payload, the interval handle, and the preview
-  union. Specs: existing suites stay green; no behavior change.
-  Found by Lens 15 hunt, 2026-09-07.
-
 ### AJ3. `GET /images` breaks product resource nesting — OPEN (Low)
 - `controller/ProductController.java:123` serves `GET /images` while every
   sibling product route nests under `/products`; the storefront calls it via a
@@ -932,29 +925,6 @@ checkout double-submit (guarded by `isSubmitting`,
 (`DirectoryApplication.java:10` carries `@EnableAsync`, so the annotation
 is live — only the executor choice below is filed).
 
-### AQ1. Check-then-act registration/cart races trip the unique constraint as a 500 — IN REVIEW (fix/concurrent-conflict-409)
-- `service/UserManager.java:66` (`registerUser`) checks
-  `userExist(username)` then saves; `:98` (`registerGhostUser`) checks
-  `findUserByUsernameIgnoreCase` then saves. Two concurrent same-username
-  registrations (the ghost endpoint is anonymous-reachable, so anyone can
-  race it) both pass the check; the loser trips `User.username`
-  `unique = true` (`model/User.java:31`) and the directory advice has no
-  `DataIntegrityViolationException` handler, so the generic catch-all
-  (`configuration/ControllerAdvice.java:75-79`) renders it a 500 instead
-  of a 409. Same shape in product-service: `CartManagerImpl.java:49-59`
-  increments-then-inserts, and concurrent first-adds for one
-  `(username, product)` row trip the `CartItem` unique constraint
-  (`model/CartItem.java:13`) into the product advice catch-all
-  (`configuration/ControllerAdvice.java:25-29`) → 500.
-  Precedent: `CategoryManagerImpl.java:62,81` already translates the same
-  exception to a 409 conflict at manager level. Severity Low (narrow race
-  window, self-inflicted in the common case).
-  Found by Lens 8 hunt, 2026-09-07.
-- Fix: `DataIntegrityViolationException` → 409 with a static body in both
-  advices (backstop for paths without manager-level translation), error-logged
-  server-side so a persistent stream still signals a real bug. Tests: handler
-  asserts 409 + static body that echoes no constraint SQL.
-
 ### AQ2. `@Async` registration fan-out runs on the unbounded default executor — OPEN (Low)
 - `listener/UserRegistrationListener.java:42` (`@Async` on
   `handleUserRegistration`) has no `TaskExecutor` bean behind it (repo-wide
@@ -1063,6 +1033,48 @@ runner-ups.
   emission) and revoke-before-overwrite in `fetchImage`. Spec: emission
   that drops a product revokes its URL and deletes the key.
   Found by Lens 10 hunt, 2026-09-07.
+
+## AT. Test quality (Lens 13 hunt, 2026-09-07)
+
+Hunt method: enumerated every `*.spec.ts` by `it(` count (30 of 56 specs
+have a single `should create`), then re-read the money/security-adjacent
+owners for untested behavior: `cart.service.ts` (totals, stock clamps,
+persistence), `product-guard.guard.ts` (network-gated navigation), plus
+the Q3/Q4 re-verify (top-banner and shipping-estimation still
+should-create-only). Re-verified: Q3 still OPEN
+(`top-banner.component.spec.ts:17-20` single `should create` vs
+`top-banner.component.ts:37-68` rotation/destroy logic), Q4 still OPEN
+(`shipping-estimation.component.spec.ts:17-20` single `should create` vs
+`shipping-estimation.component.ts:56-126` cheapest-option state machine).
+Cleared as non-findings: admin `should create` specs (scaffold screens,
+no branch logic to assert); directive `should create` specs (pure pipes
+covered elsewhere); `redirect.service.spec.ts` single-it (trivial
+getter, judgment per `agents/java-testing.md` twin policy).
+
+### AT1. `CartService` money logic has a should-create-only spec — OPEN (Medium)
+- `frontend/natiart-app/src/app/product/service/cart.service.ts:33-69`
+  (`addToCart` stock clamp + grouping), `:78-95` (`updateItemQuantity`
+  clamp), `:121-124` (`calculateAndEmitTotal` `markedPrice * quantity`),
+  `:133-162` (localStorage persistence) vs
+  `cart.service.spec.ts:13-15` (single `should be created`, zero total/
+  clamp/persistence assertions). A wrong total, an over-stock add, or a
+  corrupt restore ships silently — the spec cannot fail on money behavior.
+- Fix: specs — clamped add (over-stock capped), total emits
+  `markedPrice * quantity` sum, tampered localStorage restores valid lines
+  only (AS1). Tracked, not silently fixed.
+  Found by Lens 13 hunt, 2026-09-07.
+
+### AT2. `productGuard` deactivation spec never invokes the guard — OPEN (Medium)
+- `frontend/natiart-app/src/app/product/guards/product-guard.guard.ts:24-32`
+  (`getProduct(id)` network-gated `canDeactivate`, failure hijacks to
+  `/dashboard` per C9) vs `product-guard.guard.spec.ts:16-18` (asserts the
+  wrapper `executeGuard` is truthy, never calls it with a route/param — zero
+  assertions on allow/block/error paths). The C9 failure mode (slow backend
+  trapping navigation away) is spec-invisible by construction.
+- Fix: specs — valid id emits `true`, backend error navigates to
+  `/dashboard` and emits `false`, missing id blocks without egress.
+  Tracked, not silently fixed.
+  Found by Lens 13 hunt, 2026-09-07.
 
 
 
