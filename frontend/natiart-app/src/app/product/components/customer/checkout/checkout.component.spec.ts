@@ -4,7 +4,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { Router } from '@angular/router';
-import { BehaviorSubject, of } from 'rxjs';
+import { BehaviorSubject, of, throwError } from 'rxjs';
 
 import { CheckoutComponent } from './checkout.component';
 import { CartService } from '../../../service/cart.service';
@@ -122,19 +122,68 @@ describe('CheckoutComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('cancels the pending error dismissal on destroy (P2)', () => {
+  it('keeps checkout errors visible until dismissed (O3)', async () => {
+    await component.onSubmit();
+
+    expect(component.errorMessage).toContain('Please correct the errors');
+
+    component.dismissError();
+    expect(component.errorMessage).toBe('');
+  });
+
+  it('routes status messages to infoMessage, never errorMessage (O3)', () => {
     const internals = component as unknown as {
-      setErrorMessage(message: string): void;
-      errorDismissTimer: ReturnType<typeof setTimeout> | undefined;
+      setInfoMessage(message: string): void;
+      clearInfoMessage(): void;
     };
-    const clearSpy: jasmine.Spy = spyOn(window, 'clearTimeout').and.callThrough();
 
-    internals.setErrorMessage('boom');
-    expect(internals.errorDismissTimer).toBeDefined();
+    internals.setInfoMessage('Creating a temporary account...');
+    expect(component.infoMessage).toContain('temporary account');
+    expect(component.errorMessage).toBe('');
 
-    fixture.destroy();
-    expect(clearSpy).toHaveBeenCalled();
-    expect(internals.errorDismissTimer).toBeUndefined();
+    internals.clearInfoMessage();
+    expect(component.infoMessage).toBe('');
+  });
+
+  it('ignores a second submit while one is in flight (AH1)', async () => {
+    component.checkoutForm.get('userInfo')?.setValue({
+      firstname: 'Ada',
+      lastname: 'Lovelace',
+      cpf: '529.982.247-25',
+      email: 'guest@example.test',
+      phone: '(11) 99999-9999',
+    });
+    component.checkoutForm.get('shippingInfo')?.setValue({
+      country: 'Brazil',
+      state: 'SP',
+      city: 'Sao Paulo',
+      neighborhood: 'Centro',
+      zipCode: '01001-000',
+      street: 'Praca da Se',
+      complement: '',
+    });
+    component.checkoutForm.get('paymentInfo.paymentMethod')?.setValue('PIX');
+    component.checkoutForm.get('billingInfo')?.patchValue({ zipCode: '01001-000' });
+    expect(component.checkoutForm.invalid).toBeFalse();
+
+    const first: Promise<void> = component.onSubmit();
+    expect(component.isSubmitting).toBeTrue();
+    await component.onSubmit();
+    await first;
+
+    expect(createPixPaymentSpy).toHaveBeenCalledTimes(1);
+    expect(component.isSubmitting).toBeFalse();
+    expect(routerNavigateSpy).toHaveBeenCalledWith(['/pix-payment', 'pay_123']);
+  });
+
+  it('resets isSubmitting and surfaces the error after a failed PIX payment (AH1)', async () => {
+    createPixPaymentSpy.and.returnValue(throwError(() => new Error('upstream down')));
+
+    await component.onProcessPixPayment(loggedInUser);
+
+    expect(routerNavigateSpy).not.toHaveBeenCalled();
+    expect(component.errorMessage).toContain('Could not process PIX payment');
+    expect(component.isSubmitting).toBeFalse();
   });
 
   it('navigates to the PIX confirmation when the payment response carries an id', async () => {

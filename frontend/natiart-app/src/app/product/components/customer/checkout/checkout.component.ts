@@ -57,6 +57,8 @@ import {ButtonComponent} from "../../../../shared/components/button.component";
 export class CheckoutComponent implements OnInit, OnDestroy {
   checkoutForm: FormGroup;
   errorMessage = '';
+  infoMessage = '';
+  isSubmitting: boolean = false;
   cartItems$: Observable<CartItem[]>;
   cartTotal$: Observable<number>;
   isLoggedIn$: Observable<boolean>;
@@ -325,6 +327,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       this.setErrorMessage('Please correct the errors in the form.');
       return;
     }
+    if (this.isSubmitting) {
+      return;
+    }
+    this.isSubmitting = true;
 
     try {
       let user: User;
@@ -359,6 +365,8 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       if (!this.errorMessage) {
         this.setErrorMessage('An unexpected error occurred during checkout.');
       }
+    } finally {
+      this.isSubmitting = false;
     }
     this.cdr.detectChanges();
   }
@@ -371,31 +379,22 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   private setInfoMessage(message: string): void {
-    this.errorMessage = `INFO: ${message}`;
+    this.infoMessage = message;
     this.cdr.detectChanges();
   }
   private clearInfoMessage(): void {
-    if(this.errorMessage.startsWith("INFO:")) {
-      this.errorMessage = "";
-    }
+    this.infoMessage = '';
     this.cdr.detectChanges();
   }
-
-
-  private errorDismissTimer: ReturnType<typeof setTimeout> | undefined = undefined;
 
   private setErrorMessage(message: string): void {
     this.errorMessage = message;
     this.cdr.detectChanges();
-    this.clearErrorDismissTimer();
-    this.errorDismissTimer = setTimeout(() => this.clearErrorMessage(), 7000);
   }
 
-  private clearErrorDismissTimer(): void {
-    if (this.errorDismissTimer !== undefined) {
-      clearTimeout(this.errorDismissTimer);
-      this.errorDismissTimer = undefined;
-    }
+  dismissError(): void {
+    this.errorMessage = '';
+    this.cdr.detectChanges();
   }
 
   private clearErrorMessage(): void {
@@ -404,7 +403,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.clearErrorDismissTimer();
     this.destroy$.next();
     this.destroy$.complete();
   }
