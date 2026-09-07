@@ -1,7 +1,6 @@
 package com.saas.directory.listener;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -10,6 +9,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpClientErrorException;
 
 import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
@@ -109,7 +111,7 @@ public class UserRegistrationListenerTest {
     }
 
     @Test
-    void recover_shouldExecuteWithoutError_onFinalFailure() {
+    void recover_shouldCompleteWithoutSideEffects_onFinalFailure() {
         // Arrange
         UserRegisteredEvent event = new UserRegisteredEvent("faileduser");
         RuntimeException finalException = new RuntimeException("Final failure");
@@ -118,7 +120,21 @@ public class UserRegistrationListenerTest {
         // Directly invoke the recover method to test its internal logic
         userRegistrationListener.recover(finalException, event);
 
-        // Assert
-        assertTrue(true, "Recover method should execute without errors and log the failure.");
+        // Assert: retry exhaustion only logs — no manager interaction, no rethrow
+        verifyNoInteractions(userManager, asaasUserManager);
+    }
+
+    @Test
+    void recover_shouldCompleteWithoutSideEffects_onBadRequest() {
+        // Arrange
+        UserRegisteredEvent event = new UserRegisteredEvent("faileduser");
+        HttpClientErrorException badRequest = HttpClientErrorException.create(
+                HttpStatus.BAD_REQUEST, "Bad Request", HttpHeaders.EMPTY, new byte[0], null);
+
+        // Act
+        userRegistrationListener.recover(badRequest, event);
+
+        // Assert: the unrecoverable branch also only logs
+        verifyNoInteractions(userManager, asaasUserManager);
     }
 }
