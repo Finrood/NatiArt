@@ -86,7 +86,7 @@ public class CartManagerImpl implements CartManager {
     @Override
     @Transactional
     public void clearCart(String username) {
-        cartItemRepository.deleteAll(cartItemRepository.findCartItemsByUsername(username));
+        cartItemRepository.deleteByUsername(username);
     }
 
     private CartItem getCartLineOrDie(String username, Product product) {

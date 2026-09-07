@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -57,7 +58,7 @@ class OrderManagerImplTest {
     @Test
     void createOrderComputesTotalsAndPersistsItems() {
         Product plate = product("p1", "Plate", new BigDecimal("15.00"), new BigDecimal("13.00"), 100);
-        when(productManager.getProductOrDie("p1")).thenReturn(plate);
+        when(productManager.getProductsOrDie(List.of("p1"))).thenReturn(Map.of("p1", plate));
         when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1);
         when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -94,7 +95,7 @@ class OrderManagerImplTest {
     @Test
     void createOrderRejectsWhenStockUnavailable() {
         Product mug = product("p2", "Mug", new BigDecimal("10.00"), null, 1);
-        when(productManager.getProductOrDie("p2")).thenReturn(mug);
+        when(productManager.getProductsOrDie(List.of("p2"))).thenReturn(Map.of("p2", mug));
         when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(0);
 
         OrderDto dto = new OrderDto().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p2", 50)));
@@ -106,7 +107,7 @@ class OrderManagerImplTest {
     @Test
     void createOrderFallsBackToOriginalPriceWhenNoMarkedPrice() {
         Product vase = product("p3", "Vase", new BigDecimal("25.99"), null, 10);
-        when(productManager.getProductOrDie("p3")).thenReturn(vase);
+        when(productManager.getProductsOrDie(List.of("p3"))).thenReturn(Map.of("p3", vase));
         when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1);
         when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -146,7 +147,7 @@ class OrderManagerImplTest {
     void createOrderRejectsInactiveProduct() {
         Product retired = product("p4", "Retired plate", new BigDecimal("15.00"), null, 100)
                 .setActive(false);
-        when(productManager.getProductOrDie("p4")).thenReturn(retired);
+        when(productManager.getProductsOrDie(List.of("p4"))).thenReturn(Map.of("p4", retired));
 
         OrderDto dto = new OrderDto().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p4", 1)));
 
@@ -161,8 +162,7 @@ class OrderManagerImplTest {
         // (no CustomerOrder persisted) instead of persisting a partial order with one decrement.
         Product plate = product("p1", "Plate", new BigDecimal("15.00"), null, 100);
         Product mug = product("p2", "Mug", new BigDecimal("10.00"), null, 1);
-        when(productManager.getProductOrDie("p1")).thenReturn(plate);
-        when(productManager.getProductOrDie("p2")).thenReturn(mug);
+        when(productManager.getProductsOrDie(List.of("p1", "p2"))).thenReturn(Map.of("p1", plate, "p2", mug));
         // Product ids are auto-generated, so stub the atomic decrement by invocation order:
         // 1st line succeeds, 2nd line is refused.
         when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1, 0);
@@ -174,6 +174,40 @@ class OrderManagerImplTest {
         // Stock was attempted for both lines (the first decrements, the second is refused)...
         verify(productRepository, times(2)).decreaseStockIfAvailable(anyString(), anyInt());
         // ...but nothing was persisted: the @Transactional boundary rolls the whole order back.
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void createOrderBatchesProductReadsIntoOneQuery() {
+        Product plate = product("p1", "Plate", new BigDecimal("15.00"), null, 100);
+        Product mug = product("p2", "Mug", new BigDecimal("10.00"), null, 100);
+        Product vase = product("p3", "Vase", new BigDecimal("25.00"), null, 100);
+        when(productManager.getProductsOrDie(List.of("p1", "p2", "p3")))
+                .thenReturn(Map.of("p1", plate, "p2", mug, "p3", vase));
+        when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1);
+        when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        OrderDto dto = new OrderDto()
+                .setDeliveryAmount(BigDecimal.ZERO)
+                .setItems(List.of(item("p1", 1), item("p2", 1), item("p3", 1)));
+
+        CustomerOrder saved = orderManager.createOrder(dto);
+
+        assertEquals(3, saved.getItems().size());
+        verify(productManager, times(1)).getProductsOrDie(List.of("p1", "p2", "p3"));
+        verify(productRepository, times(3)).decreaseStockIfAvailable(anyString(), anyInt());
+        verify(orderRepository).save(any(CustomerOrder.class));
+    }
+
+    @Test
+    void createOrderUnknownProductId_throwsNotFoundWithoutDecrements() {
+        when(productManager.getProductsOrDie(List.of("missing")))
+                .thenThrow(new ResourceNotFoundException("Product with id [missing] not found"));
+
+        OrderDto dto = new OrderDto().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("missing", 1)));
+
+        assertThrows(ResourceNotFoundException.class, () -> orderManager.createOrder(dto));
+        verify(productRepository, never()).decreaseStockIfAvailable(anyString(), anyInt());
         verify(orderRepository, never()).save(any());
     }
 

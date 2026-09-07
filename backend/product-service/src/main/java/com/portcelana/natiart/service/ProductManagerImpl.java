@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -85,6 +86,19 @@ public class ProductManagerImpl implements ProductManager {
     public Product getProductWithImagesOrDie(String id) {
         return getProductWithImages(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product with id [" + id + "] not found"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Product> getProductsOrDie(Collection<String> ids) {
+        final Map<String, Product> byId = productRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Product::getId, Function.identity()));
+        for (String id : ids) {
+            if (!byId.containsKey(id)) {
+                throw new ResourceNotFoundException("Product with id [" + id + "] not found");
+            }
+        }
+        return byId;
     }
 
     @Override

@@ -2,6 +2,7 @@ package com.portcelana.natiart.service;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
 import java.math.BigDecimal;
@@ -143,5 +144,14 @@ class CartManagerImplTest {
         cartManager.decreaseCartItemQuantity("jane", "missing");
 
         verifyNoInteractions(cartItemRepository);
+    }
+
+    @Test
+    void clearCart_deletesInOneStatementWithoutLoadingLines() {
+        cartManager.clearCart("jane");
+
+        verify(cartItemRepository, times(1)).deleteByUsername("jane");
+        verify(cartItemRepository, never()).findCartItemsByUsername(any());
+        verify(cartItemRepository, never()).deleteAll(anyList());
     }
 }

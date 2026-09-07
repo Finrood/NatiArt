@@ -4,13 +4,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -173,5 +177,28 @@ class ProductManagerImplTest {
 
         assertEquals("Invalid image path: ::bad::", thrown.getMessage());
         verify(storageService, never()).openFile(any(URI.class));
+    }
+
+    @Test
+    void getProductsOrDie_allPresent_loadsInOneQuery() {
+        final Product plate = new Product("Plate", BigDecimal.TEN);
+        final Product mug = new Product("Mug", BigDecimal.TEN);
+        when(productRepository.findAllById(List.of(plate.getId(), mug.getId()))).thenReturn(List.of(plate, mug));
+
+        final Map<String, Product> result = productManager.getProductsOrDie(List.of(plate.getId(), mug.getId()));
+
+        assertEquals(2, result.size());
+        assertEquals(plate.getId(), result.get(plate.getId()).getId());
+        verify(productRepository, times(1)).findAllById(anyList());
+    }
+
+    @Test
+    void getProductsOrDie_missingId_throwsNotFound() {
+        final Product plate = new Product("Plate", BigDecimal.TEN);
+        when(productRepository.findAllById(List.of(plate.getId(), "missing"))).thenReturn(List.of(plate));
+
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> productManager.getProductsOrDie(List.of(plate.getId(), "missing")));
     }
 }
