@@ -3,7 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
-import { BehaviorSubject, of } from 'rxjs';
+import { BehaviorSubject, of, throwError } from 'rxjs';
 
 import { CartModalComponent } from './cart-modal.component';
 import { CartService } from '../../../service/cart.service';
@@ -109,6 +109,24 @@ describe('CartModalComponent', () => {
     fixture.destroy();
 
     expect(revokeSpy).toHaveBeenCalled();
+  });
+
+  it('falls back to the placeholder when a line image GET fails (AA3)', () => {
+    const withImage = (item: CartItem): CartItem => ({
+      ...item,
+      product: {...item.product, images: ['img-missing']},
+    });
+    const items$ = new BehaviorSubject<CartItem[]>([withImage(makeItem('line-9'))]);
+    TestBed.overrideProvider(CartService, {
+      useValue: {getCartItems: (): BehaviorSubject<CartItem[]> => items$, getCartTotal: () => of(0)},
+    });
+    const productService: ProductService = TestBed.inject(ProductService);
+    spyOn(productService, 'getImage').and.returnValue(throwError(() => new Error('boom')));
+
+    const fixture = TestBed.createComponent(CartModalComponent);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.imageUrls['line-9']).toBe('assets/img/placeholder.png');
   });
 
   it('revokes the object URL of a line removed from the cart', () => {
