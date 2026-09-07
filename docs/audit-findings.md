@@ -1006,5 +1006,63 @@ explicit-login choice (already cleared in AA). AR1 below is the runner-up.
   Tests: failed refresh asserts `currentUser$` emits null; guard denies
   after the wipe. Tracked, not silently fixed.
 
+## AS. Frontend data identity re-hunt (Lens 10, 2026-09-07)
+
+Hunt method: re-read the cart/product identity paths on current master
+(`cart.service.ts:33-162`, `cart.component.ts:163-214`,
+`order-summary.component.ts:46-88`,
+`cart-modal.component.ts:80-118`,
+`dashboard/product-list/product-list.component.ts:65-97`,
+`product-detail.component.ts:294-387`,
+`pix-payment-confirmation.component.ts:41-55`,
+`checkout.component.ts:289-321`,
+`product-list.component.html:6`, `cart.component.html:48,109`) against the
+AF baseline. Re-verified this cycle: AA3 cart/order-summary halves still
+OPEN (`cart.component.ts:197-214` and `order-summary.component.ts:75-88`
+still write `imageUrls[cartItemId]` unconditionally on async completion —
+fixed in flight this cycle); AA3 cart-modal half FIXED on master
+(`cart-modal.component.ts:89-99` guards on the live map,
+`:104-118` revokes before overwrite with a placeholder error fallback);
+AA4 FIXED on master (`product-list.component.ts:70-76` guards
+re-fetch with a null sentinel, `:91-94` falls back to the placeholder);
+AA5 FIXED on master (`fetchRelatedProductImage` at
+`product-detail.component.ts:359-387` carries the `imageRequestToken`
+liveness check). Cleared as non-findings: `product-detail` main-image
+fetch (token-guarded, revoke-on-overwrite, error fallback);
+pix-payment param subscription (follows the routed id, null maps to
+`ERROR`); `product.service.ts:35-40` blank-id guard; product-list
+`@for` track `(product.id ?? product)` with a null router link for
+id-less cards; cart `@for` track by `cartItemId`. AS1-AS2 below are
+runner-ups.
+
+### AS1. `loadCartFromLocalStorage` restores unvalidated persisted identity — OPEN (Low)
+- `frontend/natiart-app/src/app/product/service/cart.service.ts:147-162`
+  `JSON.parse`s the `natiart-cart` entry with no shape check: a stale or
+  hand-edited entry with a missing/duplicate `cartItemId` or a null
+  `product` restores lines that share one map key (remove/quantity ops
+  then hit every line at once or none) or throws inside
+  `calculateAndEmitTotal` (`item.product.markedPrice` on null). Corrupt
+  JSON is handled (reset + key removal); corrupt-but-parseable shape is
+  not.
+- Fix: validate each restored line (`cartItemId` non-blank string,
+  `product` object with non-blank `id`, `quantity` positive int),
+  regenerate colliding/blank ids, drop null-product lines before emit.
+  Spec: tampered payload restores only the valid lines.
+  Found by Lens 10 hunt, 2026-09-07.
+
+### AS2. `product-list` image map never prunes removed product ids — OPEN (Low)
+- `frontend/natiart-app/src/app/product/components/customer/dashboard/product-list/product-list.component.ts:65-81`
+  only adds map entries (with a re-fetch guard) but has no removal pass
+  for ids that left the list, unlike the cart sibling
+  (`cart.component.ts:164-175`) and the modal
+  (`cart-modal.component.ts:82-88`): a refreshed listing that drops a
+  product keeps its blob URL (and raw `objectUrls` entry) until teardown.
+  `fetchImage` (`:83-97`) additionally overwrites without revoking a
+  previous raw URL for the same id.
+- Fix: mirror the cart cleanup pass (revoke + delete ids absent from the
+  emission) and revoke-before-overwrite in `fetchImage`. Spec: emission
+  that drops a product revokes its URL and deletes the key.
+  Found by Lens 10 hunt, 2026-09-07.
+
 
 
