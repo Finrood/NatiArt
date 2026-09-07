@@ -35,7 +35,9 @@ public class PaymentController {
         return paymentService.getPaymentStatus(paymentId, principal != null ? principal.getExternalId() : null);
     }
 
-    @GetMapping("/api/payment/{paymentId}/pixQrCode")
+    // Canonical path is kebab-case per backend/AGENTS.md; the camelCase variant
+    // stays as a deprecated alias so deployed clients keep working.
+    @GetMapping({"/api/payment/{paymentId}/pix-qr-code", "/api/payment/{paymentId}/pixQrCode"})
     @PreAuthorize("isFullyAuthenticated()")
     public PaymentPixQrCodeResponse getPixQrCode(
             @PathVariable String paymentId, @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
