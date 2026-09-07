@@ -3,6 +3,7 @@ package com.portcelana.natiart.service;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,8 +41,8 @@ public class PackageManagerImpl implements PackageManager {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Package> getPackages() {
-        return packageRepository.findAll();
+    public List<Package> getPackages(Pageable pageable) {
+        return packageRepository.findAll(pageable).stream().toList();
     }
 
     @Override

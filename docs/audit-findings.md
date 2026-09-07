@@ -129,7 +129,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
   against `totalAmount`, reject mismatches. Tests: under/over-valued payment
   rejected; exact total accepted.
 
-### H2. `GET /packages` unbounded `findAll` with in-memory sort — OPEN (Medium)
+### H2. `GET /packages` unbounded `findAll` with in-memory sort — IN REVIEW (Medium, fix PR: lens5-nplus1-pagination / PR #155)
 - `backend/product-service/.../controller/PackageController.java:26-32` returns
   the whole table (`service/PackageManagerImpl.java:40-42`
   `packageRepository.findAll()`) and sorts in memory. No pagination at all —
@@ -137,7 +137,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
 - Fix: accept capped `page`/`size` (same 100-item cap as B7), sort in the query.
   Tests: oversized `size` clamped; default page serves sorted labels.
 
-### H4. Cart listing has no entity graph for `product`/`personalization` — OPEN (Low-Medium)
+### H4. Cart listing has no entity graph for `product`/`personalization` — IN REVIEW (Low-Medium, fix PR: lens5-nplus1-pagination / PR #155)
 - `backend/product-service/.../repository/CartItemRepository.java:14`
   `findCartItemsByUsername` is a bare derived query; `CartItem.product` is
   `EAGER` (`model/CartItem.java:18-20`) so each cart line re-fetches its
@@ -776,3 +776,49 @@ live only in `application-local-h2.properties`, never in production profiles.
 - Fix: drive from a property (`melhorenvio.api.from-postal-code`, env
   override, current value as default). Tests: configured origin reflected in
   the built calculation request. Fix provided by PR #154.
+
+## AE. N+1 queries and pagination (Lens 5 hunt, 2026-09-06)
+
+Hunt method: enumerated every repository query and every `findAll`/derived-query
+call site in `backend/`, checked each listing endpoint for page/size caps, and
+traced every DTO `from()` touch against association fetch types
+(`open-in-view=false`, so each lazy touch inside a `@Transactional` reader is a
+query). Re-verified this cycle: B7 product/category half still FIXED
+(`ProductController.java:134-138` and `CategoryController.java:46-50` clamp to
+`MAX_PAGE_SIZE = 100`; the two-query id-then-`findAllWithImagesByIds` pattern in
+`ProductManagerImpl.java:114-127` keeps product listings at 2 queries).
+H2 and H4 (below) are IN REVIEW: this PR (`fix/lens5-nplus1-pagination`, PR #155)
+fixes H2 (`GET /packages` pagination) and H4 (cart fetch-join) — those two items
+move to `IN REVIEW` here. Cleared as non-findings: `findAllIds*` id-page queries
+(indexed id-only selects, no collection fetch); `existsByCategory`/`existsByPackaging`
+(single `SELECT 1` guards); public catalog reads staying public (intentional);
+directory `findByUser`/`findByJti*` single-row lookups (no fan-out). AE1-AE3
+below are runner-ups.
+
+### AE1. `createOrder` loads one product per order line with no batching — OPEN (Medium)
+- `service/OrderManagerImpl.java:79-96` calls
+  `productManager.getProductOrDie(item.getProductId())` (one `findById` select)
+  plus `productRepository.decreaseStockIfAvailable` (one update) per line, up to
+  `MAX_ORDER_LINES = 50` lines per request — a 50-line checkout costs 100+
+  round trips inside one transaction. The per-line stock decrement is
+  intentionally row-atomic and stays; only the product reads can batch.
+- Fix: single `findAllById` for the distinct line product ids, then map by id;
+  keep the per-line active/stock checks. Tests: 3-line order issues 1 product
+  select (Hibernate statistics), unknown id still 404s.
+
+### AE2. `clearCart` loads every line entity to delete them one by one — OPEN (Low)
+- `service/CartManagerImpl.java:88-90` runs `findCartItemsByUsername` (1 select
+  + per-line association fetches) then `deleteAll` (N deletes) to empty a cart
+  whose rows are never read — pure overhead on the checkout path.
+- Fix: bulk delete query (`deleteByUsername`, one statement) in
+  `CartItemRepository`. Tests: clearing a 3-line cart issues 1 delete, lines gone.
+
+### AE3. `getAllOrders` unbounded `findAll` will N+1 on items when wired — OPEN (Low)
+- `service/OrderManagerImpl.java:51-53` returns `orderRepository.findAll()`
+  with no pagination; `CustomerOrder.items` is LAZY (`model/CustomerOrder.java:50-51`)
+  and `OrderDto.from` (`dto/OrderDto.java:47-49`) streams the items, so each
+  order costs one extra select the moment an admin list endpoint calls it
+  (latent today: `controller/OrderController.java:19-23` exposes only
+  `POST /orders/create`, same reason X4 stays tracked).
+- Fix: capped `Pageable` admin listing with `@EntityGraph`/fetch join on
+  `items` when the endpoint is wired (X4); until then tracked, not silently fixed.
