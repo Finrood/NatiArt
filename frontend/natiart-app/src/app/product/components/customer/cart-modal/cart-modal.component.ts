@@ -26,6 +26,7 @@ export class CartModalComponent implements OnInit, OnDestroy {
   imageUrls: { [cartItemId: string]: SafeUrl | string | null } = {};
   private subscriptions: Subscription[] = [];
   private rawObjectUrlsByLine: Map<string, string> = new Map();
+  private liveLineIds: Set<string> = new Set<string>();
 
   private readonly _cartService: CartService = inject(CartService);
   private readonly _productService: ProductService = inject(ProductService);
@@ -78,15 +79,16 @@ export class CartModalComponent implements OnInit, OnDestroy {
   }
 
   private loadProductImages(): void {
-    const subscription: Subscription = this.cartItems$.subscribe(items => {
-      const liveIds: Set<string> = new Set(items.map(item => item.cartItemId));
+    const subscription: Subscription = this.cartItems$.subscribe((items: CartItem[]): void => {
+      const liveIds: Set<string> = new Set(items.map((item: CartItem): string => item.cartItemId));
+      this.liveLineIds = liveIds;
       Array.from(this.rawObjectUrlsByLine.keys()).forEach((cartItemId: string) => {
         if (!liveIds.has(cartItemId)) {
           this.revokeObjectUrl(cartItemId);
           delete this.imageUrls[cartItemId];
         }
       });
-      items.forEach(item => {
+      items.forEach((item: CartItem): void => {
         // Skip lines already loading/loaded: without this guard every cart
         // emission re-issues GET image for all lines (siblings cart/order-summary
         // already guard on imageUrls[cartItemId]).
@@ -102,14 +104,23 @@ export class CartModalComponent implements OnInit, OnDestroy {
   }
 
   private fetchImage(cartItemId: string, imagePath: string): void {
+    // Drop resolutions that arrive after the line was removed: the cleanup
+    // pass above deletes the key, and an unguarded write would resurrect
+    // it (AA3). Destroy teardown is covered by the subscriptions list.
     const subscription: Subscription = this._productService.getImage(imagePath).subscribe({
       next: (blob: Blob): void => {
+        if (!this.liveLineIds.has(cartItemId)) {
+          return;
+        }
         this.revokeObjectUrl(cartItemId);
         const objectUrl: string = URL.createObjectURL(blob);
         this.rawObjectUrlsByLine.set(cartItemId, objectUrl);
         this.imageUrls[cartItemId] = this._sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
       },
       error: (): void => {
+        if (!this.liveLineIds.has(cartItemId)) {
+          return;
+        }
         this.revokeObjectUrl(cartItemId);
         this.imageUrls[cartItemId] = 'assets/img/placeholder.png';
       }
