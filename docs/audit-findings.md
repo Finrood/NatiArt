@@ -801,4 +801,61 @@ loaded-guard + revoke-before-delete); fly-animation `setTimeout`s
 (product-detail `:268-272`, product-list `:182-186` — guarded by parent-node
 checks, 700ms window, DOM node only, tracked as accepted micro-risk not filed).
 
+## AH. Loading and error UX re-hunt (Lens 12, 2026-09-07)
+
+Hunt method: re-read the checkout/admin/auth loading and error paths on
+current master (`checkout.component.ts:57-411`,
+`checkout.component.html:56-86`, `order.service.ts:11-24`,
+`admin-product-management.component.ts:186-324`,
+`left-menu.component.ts:28-33`, `login.component.ts:98-118`,
+`shipping-estimation.component.ts:52-75`,
+`product-detail.component.ts:72-122`) for stuck spinners, success-only
+resets, swallowed errors and unhandled rejections. Re-verified this cycle:
+O2 still OPEN (admin `getProducts`/`getCategories`/`getPackages` at
+`:242-264` and `toggleProductVisibility` at `:199-206` still
+console-only; `fetchImage` `:295-303` and `fetchImagePreview` `:311-324`
+still next-only — fixed in flight this cycle), O3 still OPEN
+(`checkout.component.ts:373-404` still shares one `errorMessage` string
+with an `INFO:` prefix and a 7s auto-dismiss — fixed in flight this
+cycle). Cleared as non-findings: shipping-estimation state machine
+(`idle`/`loading`/`success`/`error`/`no-options`, input disabled only
+while loading, re-enabled on both paths); product-detail load path
+(`isLoading` reset on both paths, `loadError` user-visible);
+signup-profile CEP lookup (`finalize` resets `isLoadingAddress`);
+logout redirect timer (handle-tracked); admin add/update/delete
+(not user-silent — `showAlert` on both paths, `isSubmitting` reset on
+both paths). AH1 fixed in flight this cycle; AH2-AH3 stay OPEN as
+runner-ups.
+
+### AH1. PIX payment path never drives the checkout loading state — OPEN (Medium)
+- `checkout.component.html:63-73` disables "Place Order" and shows the
+  spinner only while `orderService.orderProcessing$` is true, but that
+  subject is set solely by `OrderService.createOrder`
+  (`order.service.ts:18-23`) — `onProcessPixPayment`
+  (`checkout.component.ts:287-319`) awaits
+  `paymentService.createPixPayment` with no flag, so the PIX flow (the
+  only wired payment path) shows no spinner, accepts double submits, and
+  can create duplicate Asaas charges on double-click. Found by Lens 12
+  hunt, 2026-09-07.
+- Fix: submission guard set synchronously in `onSubmit`, cleared in
+  `finally`, wired into the button disable + spinner. Spec: second submit
+  while in flight creates no second payment; flag resets after success
+  and failure.
+
+### AH2. Left-menu category failure renders an empty menu, silently — OPEN (Low)
+- `left-menu.component.ts:28-33` handles `getCategories` failure with
+  `console.error` only: an empty category list is indistinguishable from
+  "no categories", with no retry affordance. (Admin twin of the same
+  pattern is O2.) Found by Lens 12 hunt, 2026-09-07.
+- Fix: error state with a retry button. Spec: failed load shows retry;
+  retry re-issues the request.
+
+### AH3. Login submit has no in-flight guard — OPEN (Low)
+- `login.component.ts:98-118` (`doLoginUser`) fires
+  `authenticationService.login` with no disabling flag: rapid double
+  submit issues two login requests; a slow failure leaves no loading
+  feedback. Found by Lens 12 hunt, 2026-09-07.
+- Fix: `isLoggingIn` flag disabling the submit button, reset on both
+  paths. Spec: double submit issues one request.
+
 
