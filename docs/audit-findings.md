@@ -625,7 +625,9 @@ admin `product.id!` call sites (admin-only, ids server-assigned).
   hunt, 2026-09-06.
 - Fix: re-check line liveness before writing (or cancel per-line requests), add the
   placeholder fallback to cart-modal. Spec: remove-then-resolve never re-adds the key.
-  Tracked, not fixed in this batch.
+  Update 2026-09-07: cart-modal error-callback half fixed in flight
+  (`cart-modal.component.ts` `fetchImage` now falls back to the placeholder on
+  GET failure, spec-covered); the in-flight liveness-check half stays OPEN.
 
 ### AA4. Product-list re-issues every image GET on each emission — IN REVIEW (Low, PR #TBD this cycle)
 - `product-list.component.ts:65-71` (`updateProductImages`) fetches unconditionally
