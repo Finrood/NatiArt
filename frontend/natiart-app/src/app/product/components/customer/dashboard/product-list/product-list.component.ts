@@ -67,6 +67,13 @@ export class ProductListComponent implements OnInit, OnDestroy {
       if (!product.id) {
         return;
       }
+      // Skip lines already loading/loaded: without this guard every emission
+      // re-issues one image GET per card and leaks one blob URL per card.
+      if (this.imageUrls[product.id] !== undefined) {
+        return;
+      }
+      // Mark the slot before the async fetch so concurrent emissions share it.
+      this.imageUrls[product.id] = null;
       if (product.images && product.images.length > 0) {
         this.fetchImage(product.id, product.images[0]);
       }
@@ -74,11 +81,17 @@ export class ProductListComponent implements OnInit, OnDestroy {
   }
 
   private fetchImage(productId: string, imagePath: string): void {
-    const sub = this.productService.getImage(imagePath).subscribe(blob => {
-      const objectUrl = URL.createObjectURL(blob);
-      this.objectUrls.push(objectUrl);
-      this.imageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
-      this.products.next([...this.products.value]);
+    const sub = this.productService.getImage(imagePath).subscribe({
+      next: (blob: Blob): void => {
+        const objectUrl: string = URL.createObjectURL(blob);
+        this.objectUrls.push(objectUrl);
+        this.imageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
+        this.products.next([...this.products.value]);
+      },
+      error: (): void => {
+        this.imageUrls[productId] = 'assets/img/placeholder.png';
+        this.products.next([...this.products.value]);
+      }
     });
     this.subscriptions.push(sub);
   }

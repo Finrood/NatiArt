@@ -4,7 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { HttpRequest } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { ProductListComponent } from './product-list.component';
 import { Product } from '../../../../models/product.model';
@@ -86,6 +86,61 @@ describe('ProductListComponent', () => {
     expect(component.showPersonalizationModal).toBeTrue();
     expect(component.selectedProduct).toBe(product);
     expect(addSpy).not.toHaveBeenCalled();
+  });
+
+  it('issues zero image GETs on a repeat emission for already loading/loaded lines (AA4)', () => {
+    const fixture = TestBed.createComponent(ProductListComponent);
+    const component: ProductListComponent = fixture.componentInstance;
+    const productService: ProductService = TestBed.inject(ProductService);
+    const getImageSpy: jasmine.Spy = spyOn(productService, 'getImage').and.returnValue(of(new Blob(['img'])));
+
+    const product: Product = {
+      id: 'p-1',
+      label: 'Card',
+      originalPrice: 10,
+      markedPrice: 8,
+      stockQuantity: 3,
+      categoryId: 'cat-1',
+      availablePersonalizations: [],
+      tags: new Set<string>(),
+      images: ['img/a.png'],
+    };
+
+    component.ngOnInit();
+    const listReq = httpMock.expectOne((req: HttpRequest<unknown>): boolean => req.url.indexOf('/featured') !== -1);
+    listReq.flush([product]);
+    expect(getImageSpy).toHaveBeenCalledTimes(1);
+
+    const internals = component as unknown as {
+      updateProductImages(products: Product[]): void;
+    };
+    internals.updateProductImages([product]);
+    expect(getImageSpy).toHaveBeenCalledTimes(1);
+    expect(component.imageUrls['p-1']).toBeTruthy();
+  });
+
+  it('falls back to the placeholder when the image GET fails (AA4)', () => {
+    const fixture = TestBed.createComponent(ProductListComponent);
+    const component: ProductListComponent = fixture.componentInstance;
+    const productService: ProductService = TestBed.inject(ProductService);
+    spyOn(productService, 'getImage').and.returnValue(throwError(() => new Error('boom')));
+
+    const product: Product = {
+      id: 'p-9',
+      label: 'Broken',
+      originalPrice: 10,
+      markedPrice: 8,
+      stockQuantity: 3,
+      categoryId: 'cat-1',
+      availablePersonalizations: [],
+      tags: new Set<string>(),
+      images: ['img/missing.png'],
+    };
+
+    component.ngOnInit();
+    const listReq = httpMock.expectOne((req: HttpRequest<unknown>): boolean => req.url.indexOf('/featured') !== -1);
+    listReq.flush([product]);
+    expect(component.imageUrls['p-9']).toBe('assets/img/placeholder.png');
   });
 
   it('preserves card DOM nodes across same-id re-emissions (AF1)', () => {
