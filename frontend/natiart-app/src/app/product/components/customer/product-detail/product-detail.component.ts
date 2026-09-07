@@ -350,15 +350,24 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     // Avoid re-fetching if URL already exists
     if (this.relatedImageUrls[productId]) return;
 
+    // Drop resolutions that arrive after a route-param reset: they belong to
+    // the previously viewed product (same mechanism as fetchImage, AA5).
+    const token: number = this.imageRequestToken;
     const subscription = this.productService.getImage(imagePath).subscribe({
-      next: blob => {
-        const objectUrl = URL.createObjectURL(blob);
+      next: (blob: Blob): void => {
+        if (token !== this.imageRequestToken) {
+          return;
+        }
+        const objectUrl: string = URL.createObjectURL(blob);
         this.relatedImageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
         // The template binds images via the relatedImageUrls map; emit a new
         // array identity so the async pipe picks up the resolved image.
         this.relatedProducts$.next([...this.relatedProducts$.value]);
       },
-      error: err => {
+      error: (err: unknown): void => {
+        if (token !== this.imageRequestToken) {
+          return;
+        }
         console.error(`Failed to load related image for product ${productId}:`, err);
         this.relatedImageUrls[productId] = 'assets/img/placeholder.png'; // Fallback
         this.relatedProducts$.next([...this.relatedProducts$.value]); // Trigger update even on error
