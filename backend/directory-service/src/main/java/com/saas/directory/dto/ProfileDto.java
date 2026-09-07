@@ -1,19 +1,41 @@
 package com.saas.directory.dto;
 
+import jakarta.validation.constraints.NotBlank;
+
 import com.saas.directory.model.Profile;
 
 public class ProfileDto {
     private String id;
+
+    @NotBlank
     private String firstname;
+
+    @NotBlank
     private String lastname;
+
+    @NotBlank
     private String cpf;
+
     private String phone;
+
+    @NotBlank
     private String country;
+
+    @NotBlank
     private String state;
+
+    @NotBlank
     private String city;
+
+    @NotBlank
     private String neighborhood;
+
+    @NotBlank
     private String zipCode;
+
+    @NotBlank
     private String street;
+
     private String complement;
 
     public static ProfileDto from(Profile profile) {

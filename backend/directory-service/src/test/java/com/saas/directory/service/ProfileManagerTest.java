@@ -1,6 +1,7 @@
 package com.saas.directory.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -59,5 +60,54 @@ public class ProfileManagerTest {
 
         // Assert
         assertEquals(expectedProfile, createdProfile);
+    }
+
+    @Test
+    public void test_createProfile_trims_and_normalizes_required_fields() {
+        final User user = new User("username", "password");
+        final ProfileDto profileDto = new ProfileDto()
+                .setFirstname("  John  ")
+                .setLastname("Doe")
+                .setCpf("000.000.000-11")
+                .setCountry("USA")
+                .setState("California")
+                .setCity("Los Angeles")
+                .setNeighborhood("Campinas")
+                .setZipCode("12345")
+                .setStreet("Main Street");
+        when(profileRepository.save(any(Profile.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        final Profile createdProfile = profileManager.createProfile(user, profileDto);
+
+        assertEquals("John", createdProfile.getFirstname());
+        assertEquals("00000000011", createdProfile.getCpf());
+    }
+
+    @Test
+    public void test_createProfile_null_profile_throws_illegal_argument() {
+        final IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class, () -> profileManager.createProfile(new User("username", "p"), null));
+
+        assertEquals("Profile cannot be null", exception.getMessage());
+    }
+
+    @Test
+    public void test_createProfile_blank_required_field_throws_illegal_argument() {
+        final ProfileDto profileDto = new ProfileDto()
+                .setFirstname("   ")
+                .setLastname("Doe")
+                .setCpf("00000000011")
+                .setCountry("USA")
+                .setState("California")
+                .setCity("Los Angeles")
+                .setNeighborhood("Campinas")
+                .setZipCode("12345")
+                .setStreet("Main Street");
+
+        final IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> profileManager.createProfile(new User("username", "p"), profileDto));
+
+        assertEquals("Firstname cannot be empty", exception.getMessage());
     }
 }

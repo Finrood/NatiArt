@@ -18,16 +18,19 @@ public class ProfileManager {
 
     @Transactional
     public Profile createProfile(User user, ProfileDto profileDto) {
+        if (profileDto == null) {
+            throw new IllegalArgumentException("Profile cannot be null");
+        }
         final Profile profile = new Profile(
-                profileDto.getFirstname().trim(),
-                profileDto.getLastname().trim(),
-                profileDto.getCpf().replaceAll("[^0-9]", "").trim(),
-                profileDto.getCountry().trim(),
-                profileDto.getState().trim(),
-                profileDto.getCity().trim(),
-                profileDto.getNeighborhood().trim(),
-                profileDto.getZipCode().trim(),
-                profileDto.getStreet().trim(),
+                required(profileDto.getFirstname(), "Firstname"),
+                required(profileDto.getLastname(), "Lastname"),
+                required(profileDto.getCpf(), "Cpf").replaceAll("[^0-9]", ""),
+                required(profileDto.getCountry(), "Country"),
+                required(profileDto.getState(), "State"),
+                required(profileDto.getCity(), "City"),
+                required(profileDto.getNeighborhood(), "Neighborhood"),
+                required(profileDto.getZipCode(), "Zip code"),
+                required(profileDto.getStreet(), "Street"),
                 user);
         if (profileDto.getPhone() != null) {
             profile.setPhone(profileDto.getPhone().trim());
@@ -37,5 +40,12 @@ public class ProfileManager {
         }
 
         return profileRepository.save(profile);
+    }
+
+    private static String required(String value, String field) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(String.format("%s cannot be empty", field));
+        }
+        return value.trim();
     }
 }

@@ -63,6 +63,9 @@ public class UserManager {
 
     @Transactional
     public User registerUser(UserRegistrationDto userRegistrationDto) throws RoleNotFoundException {
+        if (!StringUtils.hasText(userRegistrationDto.username())) {
+            throw new IllegalArgumentException("Username cannot be empty");
+        }
         if (userExist(userRegistrationDto.username())) {
             throw new ResourceAlreadyExistsException(
                     String.format("User [%s] already exist", userRegistrationDto.username()));
@@ -95,6 +98,9 @@ public class UserManager {
      */
     @Transactional
     public User registerGhostUser(UserRegistrationDto userRegistrationDto) throws Exception {
+        if (!StringUtils.hasText(userRegistrationDto.username())) {
+            throw new IllegalArgumentException("Username cannot be empty");
+        }
         final Optional<User> optionalUser = userRepository.findUserByUsernameIgnoreCase(userRegistrationDto.username());
 
         if (optionalUser.isPresent()) {

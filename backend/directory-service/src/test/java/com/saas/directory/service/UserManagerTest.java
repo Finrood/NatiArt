@@ -58,6 +58,20 @@ public class UserManagerTest {
     }
 
     @Test
+    public void test_register_blank_username_throws_illegal_argument() {
+        final UserRegistrationDto registration = new UserRegistrationDto("   ", "password", new ProfileDto());
+
+        assertThrows(IllegalArgumentException.class, () -> userManager.registerUser(registration));
+    }
+
+    @Test
+    public void test_registerGhostUser_blank_username_throws_illegal_argument() {
+        final UserRegistrationDto registration = new UserRegistrationDto(null, "irrelevant", null);
+
+        assertThrows(IllegalArgumentException.class, () -> userManager.registerGhostUser(registration));
+    }
+
+    @Test
     public void test_retrieve_existing_user_by_username() {
         // Prepare test data
         final User user = new User("existing_username", "password");

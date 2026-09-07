@@ -1,5 +1,7 @@
 package com.saas.directory.controller;
 
+import jakarta.validation.Valid;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -34,7 +36,8 @@ public class UserRegistrationController {
     }
 
     @PostMapping("/register-user")
-    public ResponseEntity<UserDto> registerUser(@RequestBody UserRegistrationDto userRegistrationDto) throws Exception {
+    public ResponseEntity<UserDto> registerUser(@Valid @RequestBody UserRegistrationDto userRegistrationDto)
+            throws Exception {
         LOGGER.info("User [{}] is signing up", userRegistrationDto.username());
 
         final UserDto userDto = UserDto.from(userManager.registerUser(userRegistrationDto), null);
@@ -42,7 +45,7 @@ public class UserRegistrationController {
     }
 
     @PostMapping("/register-ghost-user")
-    public ResponseEntity<UserAuthDto> registerGhostUser(@RequestBody UserRegistrationDto userRegistrationDto)
+    public ResponseEntity<UserAuthDto> registerGhostUser(@Valid @RequestBody UserRegistrationDto userRegistrationDto)
             throws Exception {
         LOGGER.info("Registering ghost user [{}]", userRegistrationDto.username());
 
