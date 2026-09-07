@@ -344,17 +344,6 @@ rollback contract is covered (`OrderManagerImplTest:143`), cart increments are
 atomic (`CartManagerImpl:44`), and order item prices are server-computed
 (`OrderManagerImpl.java:84`) — not filed.
 
-### X1. Payment value is `Double` floating-point money — OPEN (Medium)
-- `backend/product-service/.../dto/payment/PaymentCreationRequest.java:18,44`
-  stores the charge amount as `Double`; `AsaasPaymentService.java:57-60`
-  validates it as a double. Binary floating point cannot represent most BRL
-  cent values exactly — a value like `19.99` arrives as `19.989999...` and any
-  future server-side reconciliation against `CustomerOrder.totalAmount`
-  (`BigDecimal`, G1) compares across types with hidden rounding.
-- Fix: migrate the field to `BigDecimal` (fail on more than 2 fraction digits),
-  convert at the Asaas boundary only. Tests: `19.99` survives exactly;
-  3-decimal input rejected.
-
 ### X4. `updateOrderStatus` accepts any transition, fulfillment path unwired — OPEN (Low)
 - `service/OrderManagerImpl.java:100-104` moves any status to any status
   (`DELIVERED` → `PENDING`, `CANCELLED` → `PAID`) with no transition guard,
