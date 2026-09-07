@@ -11,14 +11,18 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
 
 ## A. Backend — Security (High)
 
-### B2. Directory `@TargetUser` 500s on anonymous requests — OPEN (Medium)
+### B2. Directory `@TargetUser` 500s on anonymous requests — INVALID (Medium; unreachable on current master)
 - `directory/.../helper/TargetUser.java:10-11` uses
   `@AuthenticationPrincipal(expression="username")`; anonymous principal breaks
   SpEL (`EL1008E`) → 500 instead of 401/403 on `refreshToken`/`logout`/`UserController`.
   Product-service already solved this with `TargetUserArgumentResolver` + `MvcConfig`.
 - Fix: port that pattern to directory-service. Tests: anonymous hit → 401/403, not 500.
+- Re-verified 2026-09-07 and marked INVALID: every `@TargetUser` endpoint (`/users/current`,
+  `/refresh-token`, `/signout`) sits under `anyRequest().authenticated()`, so anonymous requests
+  are rejected 401 by `AuthorizationFilter` before handler argument resolution; directory
+  `JwtAuthFilter` returns after 401 on invalid tokens (PR #64). The EL1008E path is unreachable.
 
-### B3. No bean validation; NPE-prone registration path — OPEN (Medium)
+### B3. No bean validation; NPE-prone registration path — IN REVIEW (PR #189)
 - Zero `jakarta.validation` usage in `backend/`; `ProfileManager.java:21-31`
   calls `.trim()` unconditionally → null profile/field = 500, not 400.
   Same flaw in `UserManager.java:79,108` (`registerUser`/`registerGhostUser`
@@ -1058,5 +1062,27 @@ getter, judgment per `agents/java-testing.md` twin policy).
   Tracked, not silently fixed.
   Found by Lens 13 hunt, 2026-09-07.
 
+## AI. Injection and validation hunt (Lens 1, 2026-09-07)
 
+Hunt method: re-read the directory registration/login path and grepped `backend/` for
+`.trim()` on client-bound fields, request DTOs without constraints, and `valueOf` on
+user-controlled strings. Re-verified this cycle: B2 marked INVALID (all `@TargetUser`
+endpoints sit behind `anyRequest().authenticated()` — anonymous requests are rejected 401
+by `AuthorizationFilter` before handler argument resolution; directory `JwtAuthFilter`
+returns after 401 since PR #64 — the EL1008E path is unreachable); B3 fixed in flight this
+cycle (bean validation + null guards, PR #189). Cleared as non-findings:
+`ShippingEstimateRequest` (validates weight/dimensions/quantity in its constructor; Jackson
+deserialization failures map to 400 via `ControllerAdvice.handleNotReadableBody`); Asaas
+upstream enums (`parseAsaasStatus`/`parsePaymentMethod`/`parsePaymentStatus` fail closed
+with static messages); login with missing/blank credentials resolves to 401 via
+`ResourceNotFoundException`, not an NPE.
 
+### AI1. Client-supplied usernames are logged raw (log-forging) — OPEN (Low)
+- `controller/AuthenticationController.java:35` logs `credentialsDto.username()` and
+  `controller/UserRegistrationController.java:38,47` log `userRegistrationDto.username()`
+  verbatim; newline/CRLF-bearing input can forge log lines. The registration path is closed
+  by PR #189 (`@Email` rejects control characters before the log line), but `/login` stays
+  unvalidated.
+- Fix: constrain `CredentialsDto` (bean validation) or sanitize before logging.
+  Found by Lens 1 hunt, 2026-09-07.
+  Tracked, not silently fixed.
