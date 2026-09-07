@@ -23,7 +23,7 @@ import {ButtonComponent} from "../../../../shared/components/button.component";
 export class CartModalComponent implements OnInit, OnDestroy {
   cartItems$: Observable<CartItem[]>;
   cartTotal$: Observable<number>;
-  imageUrls: { [cartItemId: string]: SafeUrl | null } = {};
+  imageUrls: { [cartItemId: string]: SafeUrl | string | null } = {};
   private subscriptions: Subscription[] = [];
   private rawObjectUrlsByLine: Map<string, string> = new Map();
 
@@ -102,11 +102,17 @@ export class CartModalComponent implements OnInit, OnDestroy {
   }
 
   private fetchImage(cartItemId: string, imagePath: string): void {
-    const subscription: Subscription = this._productService.getImage(imagePath).subscribe(blob => {
-      this.revokeObjectUrl(cartItemId);
-      const objectUrl: string = URL.createObjectURL(blob);
-      this.rawObjectUrlsByLine.set(cartItemId, objectUrl);
-      this.imageUrls[cartItemId] = this._sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
+    const subscription: Subscription = this._productService.getImage(imagePath).subscribe({
+      next: (blob: Blob): void => {
+        this.revokeObjectUrl(cartItemId);
+        const objectUrl: string = URL.createObjectURL(blob);
+        this.rawObjectUrlsByLine.set(cartItemId, objectUrl);
+        this.imageUrls[cartItemId] = this._sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
+      },
+      error: (): void => {
+        this.revokeObjectUrl(cartItemId);
+        this.imageUrls[cartItemId] = 'assets/img/placeholder.png';
+      }
     });
     this.subscriptions.push(subscription);
   }
