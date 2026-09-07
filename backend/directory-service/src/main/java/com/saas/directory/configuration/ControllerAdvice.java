@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import com.saas.directory.controller.helper.ResourceAlreadyExistsException;
@@ -13,6 +14,12 @@ import com.saas.directory.service.AsaasApiException;
 @org.springframework.web.bind.annotation.ControllerAdvice
 public class ControllerAdvice {
     private static final Logger logger = LoggerFactory.getLogger(ControllerAdvice.class);
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Object> handleAccessDeniedException(AccessDeniedException e) {
+        logger.debug("Access denied: ", e);
+        return new ResponseEntity<>("Access denied", HttpStatus.FORBIDDEN);
+    }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Object> handleArgumentException(IllegalArgumentException e) {

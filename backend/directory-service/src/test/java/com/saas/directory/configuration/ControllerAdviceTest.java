@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 
 import com.saas.directory.controller.helper.ResourceAlreadyExistsException;
 
@@ -33,6 +34,14 @@ class ControllerAdviceTest {
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, result.getStatusCode());
         assertEquals("Internal server error", result.getBody());
+    }
+
+    @Test
+    void handleAccessDeniedException_returns403WithStaticBody() {
+        final ResponseEntity<Object> result = advice.handleAccessDeniedException(new AccessDeniedException("denied"));
+
+        assertEquals(HttpStatus.FORBIDDEN, result.getStatusCode());
+        assertEquals("Access denied", result.getBody());
     }
 
     @Test
