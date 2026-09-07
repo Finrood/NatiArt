@@ -1,4 +1,4 @@
-import {Component, HostListener, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, HostListener, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {ProductService} from '../../../service/product.service';
@@ -29,7 +29,7 @@ interface ImagePreview {
   templateUrl: './admin-product-management.component.html',
   styleUrls: ['./admin-product-management.component.css']
 })
-export class ProductManagementComponent implements OnInit, OnDestroy {
+export class ProductManagementComponent implements OnInit, AfterViewInit, OnDestroy {
   private _products$ = new BehaviorSubject<Product[]>([]);
   products$ = this._products$.asObservable();
   categories = new BehaviorSubject<Category[]>([]);
@@ -58,6 +58,8 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   private imageService = inject(ImageService);
   private subscriptions: Subscription[] = [];
   private objectUrlsCreated: string[] = [];
+  private pendingAlerts: Array<{ message: string; type: 'success' | 'error' }> = [];
+  private pendingAlertsTimer: ReturnType<typeof setTimeout> | undefined = undefined;
 
   availablePersonalizationOptions = Object.values(PersonalizationOption);
 
@@ -109,6 +111,21 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     this.subscriptions.forEach(subscription => subscription.unsubscribe());
     this.objectUrlsCreated.forEach((url: string) => URL.revokeObjectURL(url));
     this.objectUrlsCreated = [];
+    if (this.pendingAlertsTimer !== undefined) {
+      clearTimeout(this.pendingAlertsTimer);
+      this.pendingAlertsTimer = undefined;
+    }
+  }
+
+  ngAfterViewInit(): void {
+    // Flush outside the current change-detection pass: the child view is
+    // already checked, so pushing alerts synchronously here trips NG0100.
+    this.pendingAlertsTimer = setTimeout(() => {
+      this.pendingAlertsTimer = undefined;
+      const pending = this.pendingAlerts;
+      this.pendingAlerts = [];
+      pending.forEach(alert => this.showAlert(alert.message, alert.type));
+    }, 0);
   }
 
   openModal(product?: Product): void {
@@ -201,7 +218,10 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       next: (response: Product) => {
         this._products$.next(this._products$.value.map(prod => prod.id === response.id ? response : prod));
       },
-      error: (error) => console.error('Error toggling product visibility:', error)
+      error: (error) => {
+        console.error('Error toggling product visibility:', error);
+        this.showAlert('Error changing product visibility', 'error');
+      }
     });
   }
 
@@ -245,21 +265,30 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
         this._products$.next(response);
         this.updateAllProductImages(response);
       },
-      error: (error) => console.error('Error getting products:', error)
+      error: (error) => {
+        console.error('Error getting products:', error);
+        this.showAlert('Error loading products', 'error');
+      }
     });
   }
 
   private getCategories(): void {
     this.categoryService.getCategories().subscribe({
       next: (response) => this.categories.next(response),
-      error: (error) => console.error('Error getting categories:', error)
+      error: (error) => {
+        console.error('Error getting categories:', error);
+        this.showAlert('Error loading categories', 'error');
+      }
     });
   }
 
   private getPackages(): void {
     this.packageService.getPackages().subscribe({
       next: (response) => this.packages.next(response),
-      error: (error) => console.error('Error getting packages:', error)
+      error: (error) => {
+        console.error('Error getting packages:', error);
+        this.showAlert('Error loading packages', 'error');
+      }
     });
   }
 
@@ -275,7 +304,13 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   }
 
   private showAlert(message: string, type: 'success' | 'error'): void {
-    this.alertMessageComponent.showAlert({ message, type });
+    // List loads fire in ngOnInit, before the alert child resolves: queue
+    // those so page-load failures still surface instead of throwing.
+    if (this.alertMessageComponent) {
+      this.alertMessageComponent.showAlert({ message, type });
+    } else {
+      this.pendingAlerts.push({ message, type });
+    }
   }
 
   private updateProductImage(product: Product): void {
@@ -293,11 +328,17 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   }
 
   private fetchImage(productId: string, imagePath: string): void {
-    const subscription = this.productService.getImage(imagePath).subscribe(blob => {
-      const objectUrl = URL.createObjectURL(blob);
-      this.objectUrlsCreated.push(objectUrl);
-      this.imageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
-      this._products$.next([...this._products$.value]);
+    const subscription = this.productService.getImage(imagePath).subscribe({
+      next: blob => {
+        const objectUrl = URL.createObjectURL(blob);
+        this.objectUrlsCreated.push(objectUrl);
+        this.imageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
+        this._products$.next([...this._products$.value]);
+      },
+      error: error => {
+        console.error('Error loading product image:', error);
+        this.imageUrls[productId] = null;
+      }
     });
     this.subscriptions.push(subscription);
   }
@@ -309,16 +350,22 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   }
 
   private fetchImagePreview(imagePath: string, index: number): void {
-    const subscription = this.productService.getImage(imagePath).subscribe(blob => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        this.imagePreviews[index] = {
-          url: this.sanitizer.bypassSecurityTrustResourceUrl(reader.result as string),
-          isExisting: true,
-          originalUrl: imagePath
+    const subscription = this.productService.getImage(imagePath).subscribe({
+      next: blob => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          this.imagePreviews[index] = {
+            url: this.sanitizer.bypassSecurityTrustResourceUrl(reader.result as string),
+            isExisting: true,
+            originalUrl: imagePath
+          };
         };
-      };
-      reader.readAsDataURL(blob);
+        reader.readAsDataURL(blob);
+      },
+      error: error => {
+        console.error('Error loading product image preview:', error);
+        this.showAlert('Error loading product image', 'error');
+      }
     });
     this.subscriptions.push(subscription);
   }
