@@ -202,64 +202,6 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
   rate-limit/count KPIs when B8 lands. Tests: all three email classes return
   the identical unauthenticated response shape.
 
-### O2. Admin product-management image/list loads swallow errors — IN REVIEW (Low, fix on `fix/frontend-loading-error-ux`)
-- `frontend/natiart-app/src/app/product/components/admin/admin-product-management/admin-product-management.component.ts:289-296`
-  (`fetchImage`) and `:304-317` (`fetchImagePreview`) subscribe with a
-  next-only handler, so image-fetch failures are unhandled; `getProducts` /
-  `getCategories` / `getPackages` (`:235-258`) and `toggleProductVisibility`
-  (`:192-199`) log to `console.error` with no user-visible feedback (contrast
-  `deleteProduct`/`addProduct`/`updateProduct`, which use `showAlert`).
-  A failed product list renders an empty table indistinguishable from "no
-  products". Found by Lens 12 hunt, 2026-09-05.
-- Fix: route list/toggle failures through `showAlert(..., 'error')`, add error
-  callbacks to the image subscriptions (placeholder + alert). Spec: failed
-  `getProducts` → error alert shown.
-
-### O3. Checkout error banner auto-dismisses after 7s, info/error share one string — IN REVIEW (Low, fix on `fix/frontend-loading-error-ux`)
-- `frontend/natiart-app/src/app/product/components/customer/checkout/checkout.component.ts:377-398`:
-  `setErrorMessage` arms `setTimeout(() => clearErrorMessage(), 7000)`, so a
-  checkout error vanishes even if the user has not read or acted on it; info
-  and error states share the single `errorMessage` string with an `INFO:` text
-  prefix that screen readers announce as an error. Found by Lens 12 hunt,
-  2026-09-05.
-- Fix: separate `infoMessage`/`errorMessage` fields with `role="alert"` on the
-  error, and dismiss errors on user action (or a manual close) rather than a
-  fixed timer. Tracked, not silently fixed.
-
-## Q. Test quality (Lens 13 hunt, 2026-09-05)
-
-Hunt method: enumerated all backend `*Test.java` (29 files) and frontend
-`*.spec.ts` (~55 specs) for weak assertions, unasserted interactions, missing
-specs on money/security paths, and duplicated setup. Cleared as non-findings
-this cycle: `ControllerSecurityTest`/`PaymentControllerSecurityTest` (MockMvc
-`andExpect` assertions, not weak), `CartManagerImplTest` no-op test (asserts
-via `verifyNoInteractions`), `signup.service.spec.ts` (`HttpTestingController`
-`expectOne`/`expectNone` are assertions), `AsaasPaymentServiceTest` (zero
-`verify` because it uses zero mocks — pure constructor-injected unit tests),
-no focused/disabled specs (`fdescribe`/`fit`/`xit`), `button.component.ts`
-has no spec but carries no logic (policy: obvious markup needs no spec).
-The `registerGhostUser` zero-coverage gap found in this hunt is fixed in
-flight (N1, PR #108) rather than tracked separately.
-
-## AH. Test quality re-hunt (Lens 13, 2026-09-07)
-
-Hunt method: re-ran the Q-section checks against current master — enumerated
-all backend `*Test.java` (38 files under `src/test`, excluding one `build/`
-stale copy) and frontend `*.spec.ts` (56 files, `node_modules` excluded) for
-weak assertions, tests that cannot fail, missing specs on money/security
-paths, unasserted mock interactions, and duplicated setup. Re-verified: Q1
-still OPEN (the `:61` vs `:133` pair is behaviorally identical — same stubs,
-same `registerUser` call, same assertions; only the names differ), fixed in
-flight this cycle. Cleared as non-findings: `PaymentControllerSecurityTest:160`
-and `AsaasPaymentServiceTest:192,204,235` `verifyNoInteractions` (each pairs
-with an `assertThrows` — the no-egress assertion is the behavior, not a
-weakness); `CartManagerImplTest:145` (same pattern); frontend spec count "56
-vs ~55" (holds); no focused/disabled specs (`fdescribe`/`fit`/`xit` zero
-hits); `UserManagerTest:283,295` ghost-oracle `verifyNoInteractions`
-(pairs with `assertThrows`, encodes the N2 contract pending its fix).
-The `recover` vacuous-assertion gap found in this hunt is fixed in flight
-below (Q2) rather than tracked separately.
-
 ### Q3. `TopBannerComponent` rotation/destroy logic has a should-create-only spec — OPEN (Low)
 - `frontend/natiart-app/src/app/product/components/customer/dashboard/top-banner/top-banner.component.ts:37-68`
   (`prevSlide`/`nextSlide` wrap-around, `resetBannerInterval` restart,
@@ -320,49 +262,6 @@ not filed.
   MDC, forward as header to directory-service and Asaas calls, return it in
   error responses). Tests: id present in MDC during payment creation;
   forwarded header asserted on the egress mock.
-
-### R2. Product-side upstream mappers drop the actionable error body — IN REVIEW (Low-Medium, fix on `fix/observability-log-hygiene`)
-- `backend/product-service/.../service/AsaasPaymentService.java:181-190`
-  (`mapAsaasError`) and `service/ShippingService.java:103-112`
-  (`mapShippingError`) fall through to `return e` (raw
-  `HttpStatusCodeException`) for every non-401/403/404 upstream status (Asaas
-  400/422 validation rejects, 5xx). The generic advice
-  (`configuration/ControllerAdvice.java:24-28`) then renders a static 500, so
-  the on-call engineer gets a 500 stack trace with no payment id and no
-  structured upstream status/body — the directory-side twin
-  (`directory/.../service/AsaasUserManager.java:73-77`) logs
-  `status + body` at WARN at mapping time, the product side logs nothing.
-  Found by Lens 14 hunt, 2026-09-05.
-- Repro (unit-shaped, no new test merged): feed `mapAsaasError` a 400
-  carrying a marker body → raw rethrow, zero log output at mapping time;
-  client sees static 500.
-- Fix: mirror the directory pattern — WARN-log upstream status + body
-  server-side at mapping time (never in the response), keep the static
-  client message. Tests: marker body in logs, absent from response.
-
-### R3. Bogus-token paths log at ERROR; two claim extractors are dead code — IN REVIEW (Low, fix on `fix/observability-log-hygiene`)
-- `directory/.../configuration/UserAuthenticationProvider.java:185,193,202`:
-  `invalidateToken`, `extractEmailClaim`, `extractIdClaim` all
-  `LOGGER.error("Error verifying JWT token: {}", exception.getMessage())` on
-  routine invalid input. Only `invalidateToken` has a production caller
-  (`service/AuthenticationManager.java:56-60`, reached from `/signout` when
-  `@TargetUser` resolves empty); the two extractors have zero main-code
-  callers. Exploitability is low today (the signout path resolves
-  `@TargetUser` first), but every future caller inherits ERROR-per-bogus-token
-  semantics — log-noise amplification on an input the caller fully controls.
-  Found by Lens 14 hunt, 2026-09-05.
-- Repro: authenticated session, `POST /signout` with empty user resolution
-  and `Authorization: Bearer garbage` → one ERROR line per request.
-- Fix: downgrade to DEBUG/WARN (jti-only, never token text), delete or wire
-  the dead extractors. Tests: bogus token → no ERROR-level event.
-
-## S. API and contract consistency (Lens 15 hunt, 2026-09-05)
-
-Hunt method: enumerated every `@XMapping` path in both services and both
-`ControllerAdvice`s, then diffed each frontend service's URLs and generics
-against the backend routes. Re-verified this cycle: B11 (`pixQrCode`
-camelCase, `PaymentController.java:38`) still OPEN on both sides
-(`payment.service.ts:32` unchanged).
 
 ### S6. Payment routes carry an `/api` prefix nothing else uses — OPEN (Low)
 - `backend/product-service/.../controller/PaymentController.java:22,31,38`
@@ -826,21 +725,6 @@ logout redirect timer (handle-tracked); admin add/update/delete
 (not user-silent — `showAlert` on both paths, `isSubmitting` reset on
 both paths). AH1 fixed in flight this cycle; AH2-AH3 stay OPEN as
 runner-ups.
-
-### AH1. PIX payment path never drives the checkout loading state — IN REVIEW (Medium, fix on `fix/frontend-loading-error-ux`)
-- `checkout.component.html:63-73` disables "Place Order" and shows the
-  spinner only while `orderService.orderProcessing$` is true, but that
-  subject is set solely by `OrderService.createOrder`
-  (`order.service.ts:18-23`) — `onProcessPixPayment`
-  (`checkout.component.ts:287-319`) awaits
-  `paymentService.createPixPayment` with no flag, so the PIX flow (the
-  only wired payment path) shows no spinner, accepts double submits, and
-  can create duplicate Asaas charges on double-click. Found by Lens 12
-  hunt, 2026-09-07.
-- Fix: submission guard set synchronously in `onSubmit`, cleared in
-  `finally`, wired into the button disable + spinner. Spec: second submit
-  while in flight creates no second payment; flag resets after success
-  and failure.
 
 ### AH2. Left-menu category failure renders an empty menu, silently — OPEN (Low)
 - `left-menu.component.ts:28-33` handles `getCategories` failure with
