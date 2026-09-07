@@ -20,7 +20,7 @@ export class TopBannerComponent implements OnInit, OnDestroy {
     "assets/img/a3.jpg",
     "assets/img/a4.jpg"
   ];
-  private bannerInterval: any;
+  private bannerInterval: ReturnType<typeof setInterval> | undefined;
   private readonly SLIDE_DURATION: number = 3500;
   private readonly TRANSITION_DURATION: number = 1000;
 

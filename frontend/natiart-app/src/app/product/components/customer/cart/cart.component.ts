@@ -146,7 +146,7 @@ export class CartComponent implements OnInit, OnDestroy {
 
   // --- Private Helper Methods ---
 
-  private performAction(action$: () => Observable<any>, errorMessage: string): void {
+  private performAction(action$: () => Observable<void>, errorMessage: string): void {
     this.isLoading$.next(true);
     this.setError(null);
     action$().pipe(
