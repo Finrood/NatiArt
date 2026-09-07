@@ -789,6 +789,54 @@ only, never the token string); `main.ts:6` bootstrap `console.error`
   mutating/admin actions at INFO. Tests: ListAppender asserts no INFO event
   on catalog GET. Tracked, not silently fixed.
 
+## AJ. API and contract consistency (Lens 15 hunt, 2026-09-07)
+
+Hunt method: enumerated every `@*Mapping` path in both services, diffed the
+two `ControllerAdvice` handlers site-by-site for the same failure classes, and
+grepped the storefront for `any`-typed service/component contracts
+(`:\s*any\b|as any|<any>`, specs excluded). Re-verified this cycle: B11 still
+OPEN (`PaymentController.java:38` still `pixQrCode`), S6 still OPEN (all three
+payment routes still `/api/payment/...`, frontend mirrors the prefix), S7
+still OPEN (`UserController.java:28-30` still 200-null). Cleared as
+non-findings: `/products/create`, `/categories/create`, `/packages/create`,
+`/orders/create` verb sub-paths (match the `backend/AGENTS.md`
+`/add`-`/delete` verb-sub-path convention); `/products/{id}/visibility/inverse`
+kebab-case (convention-conformant); directory `/register-user`,
+`/register-ghost-user`, `/refresh-token` kebab-case (conformant); public
+catalog reads (intentionally public); `error: (error: any)` callbacks in login/
+signup/admin screens (idiomatic HttpErrorResponse lambda parameter, not a
+hidden contract). AJ1-AJ3 below are runner-ups; B11+S6 fixed in flight this
+cycle.
+
+### AJ1. Directory advice has no `HttpMessageNotReadable` handler: same malformed body is 400 on product-service, 500 on directory-service — OPEN (Medium)
+- Product-service `configuration/ControllerAdvice.java:43-52` unwraps Jackson
+  `ValueInstantiationException` guard failures to 400; directory-service
+  `configuration/ControllerAdvice.java` has no such handler, so an identical
+  malformed DTO body (e.g. a `@JsonCreator` guard rejection) returns 400 from
+  one service and 500 from the other.
+- Fix: port the `HttpMessageNotReadableException` handler to the directory
+  advice. Tests: malformed body → 400 on both services, never 500.
+  Found by Lens 15 hunt, 2026-09-07.
+
+### AJ2. Untyped `any` contracts hide frontend type breaks — OPEN (Low)
+- `cart.component.ts:149` (`performAction(action$: () => Observable<any>, ...)`
+  erases the cart-line response type), `top-banner.component.ts:23`
+  (`bannerInterval: any` instead of `ReturnType<typeof setInterval>`),
+  `admin-product-management.component.ts:182,425`
+  (`(preview as any).originalUrl` bypasses the preview type).
+- Fix: type the `Observable` payload, the interval handle, and the preview
+  union. Specs: existing suites stay green; no behavior change.
+  Found by Lens 15 hunt, 2026-09-07.
+
+### AJ3. `GET /images` breaks product resource nesting — OPEN (Low)
+- `controller/ProductController.java:123` serves `GET /images` while every
+  sibling product route nests under `/products`; the storefront calls it via a
+  separate `apiUrlImages` base (`product.service.ts:59`).
+- Fix: canonical `GET /products/images` with the bare `/images` kept as a
+  deprecated alias (B11/S6 pattern), frontend moved in the same PR.
+  Tests: both paths serve; alias documented.
+  Found by Lens 15 hunt, 2026-09-07.
+
 ### AI3. Storefront ships 54 `console.*` call sites with raw error objects, no reporting channel — OPEN (Low)
 - 54 `console.log|error|warn` sites in `frontend/natiart-app/src`
   (specs excluded): admin management components, cart/checkout,
