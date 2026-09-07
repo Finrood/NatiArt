@@ -14,6 +14,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
@@ -89,8 +90,8 @@ class AsaasPaymentServiceTest {
     @Test
     void createPaymentRejectsMissingRequester() {
         final AsaasPaymentService service = newService();
-        final PaymentCreationRequest request =
-                new PaymentCreationRequest(PaymentProcessor.ASAAS, "cus_OTHER", 10.0, PaymentMethod.PIX);
+        final PaymentCreationRequest request = new PaymentCreationRequest(
+                PaymentProcessor.ASAAS, "cus_OTHER", new BigDecimal("10.00"), PaymentMethod.PIX);
         assertThrows(UserNotAllowedException.class, () -> service.createPayment(request, null));
         assertThrows(UserNotAllowedException.class, () -> service.createPayment(request, "  "));
     }
@@ -101,12 +102,14 @@ class AsaasPaymentServiceTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> service.createPayment(
-                        new PaymentCreationRequest(PaymentProcessor.ASAAS, "cus_MINE", 0.0, PaymentMethod.PIX),
+                        new PaymentCreationRequest(
+                                PaymentProcessor.ASAAS, "cus_MINE", BigDecimal.ZERO, PaymentMethod.PIX),
                         "cus_MINE"));
         assertThrows(
                 IllegalArgumentException.class,
                 () -> service.createPayment(
-                        new PaymentCreationRequest(PaymentProcessor.ASAAS, "cus_MINE", -5.0, PaymentMethod.PIX),
+                        new PaymentCreationRequest(
+                                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("-5.00"), PaymentMethod.PIX),
                         "cus_MINE"));
         assertThrows(
                 IllegalArgumentException.class,
@@ -116,25 +119,25 @@ class AsaasPaymentServiceTest {
     }
 
     @Test
-    void createPayment_rejectsNonFiniteValue() {
+    void createPayment_rejectsNullOrOverPreciseValue() {
         final AsaasPaymentService service = newService();
         // Stubbed DTOs: the real constructor would throw first, so only a stub
         // proves the service-level guard itself executes.
-        final PaymentCreationRequest nanRequest = mock(PaymentCreationRequest.class);
-        when(nanRequest.getValue()).thenReturn(Double.NaN);
-        assertThrows(IllegalArgumentException.class, () -> service.createPayment(nanRequest, "cus_MINE"));
-        final PaymentCreationRequest infiniteRequest = mock(PaymentCreationRequest.class);
-        when(infiniteRequest.getValue()).thenReturn(Double.NEGATIVE_INFINITY);
-        assertThrows(IllegalArgumentException.class, () -> service.createPayment(infiniteRequest, "cus_MINE"));
+        final PaymentCreationRequest nullRequest = mock(PaymentCreationRequest.class);
+        when(nullRequest.getValue()).thenReturn(null);
+        assertThrows(IllegalArgumentException.class, () -> service.createPayment(nullRequest, "cus_MINE"));
+        final PaymentCreationRequest overPreciseRequest = mock(PaymentCreationRequest.class);
+        when(overPreciseRequest.getValue()).thenReturn(new BigDecimal("10.001"));
+        assertThrows(IllegalArgumentException.class, () -> service.createPayment(overPreciseRequest, "cus_MINE"));
     }
 
     @Test
     void asaasMappingBindsCustomerToRequesterNotRequestBody() {
-        final PaymentCreationRequest request =
-                new PaymentCreationRequest(PaymentProcessor.ASAAS, "cus_SPOOFED", 10.0, PaymentMethod.PIX);
+        final PaymentCreationRequest request = new PaymentCreationRequest(
+                PaymentProcessor.ASAAS, "cus_SPOOFED", new BigDecimal("10.00"), PaymentMethod.PIX);
         final AsaasPaymentCreationRequest mapped = AsaasPaymentCreationRequest.from(request, "cus_MINE");
         assertEquals("cus_MINE", mapped.getCustomer());
-        assertEquals(10.0, mapped.getValue());
+        assertEquals(new BigDecimal("10.00"), mapped.getValue());
     }
 
     @Test
@@ -309,7 +312,8 @@ class AsaasPaymentServiceTest {
 
         final PaymentCreationResponse response = newService(restTemplate, paymentRepository)
                 .createPayment(
-                        new PaymentCreationRequest(PaymentProcessor.ASAAS, "cus_MINE", 10.0, PaymentMethod.PIX),
+                        new PaymentCreationRequest(
+                                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX),
                         "cus_MINE");
 
         assertEquals("pay-9", response.getPaymentId());
