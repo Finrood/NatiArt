@@ -766,3 +766,63 @@ non-finite values).
   `deleteCategory`, `deleteProduct(null)`).
 - Fix: null ids resolve to `Optional.empty()` (mirroring `PackageManager.getPackage`)
   so null → 404 via `OrDie`, plus a null guard in `deleteProduct`.
+
+### H2. `GET /packages` unbounded `findAll` with in-memory sort — FIXED (PR #155)
+- `backend/product-service/.../controller/PackageController.java:26-32` returned
+  the whole table (`service/PackageManagerImpl.java:40-42`
+  `packageRepository.findAll()`) and sorted in memory. No pagination at all —
+  same lens as B7, separate endpoint. Found by Lens 5 hunt, 2026-09-06.
+- Fix: capped `page`/`size` (`MAX_PAGE_SIZE = 100`, same cap as B7), sort in the
+  query (`Sort ASC on label`). Tests: oversized `size` clamped; default page
+  serves sorted labels (`PackageControllerPaginationTest`).
+
+### H4. Cart listing has no entity graph for `product`/`personalization` — FIXED (PR #155)
+- `backend/product-service/.../repository/CartItemRepository.java:14`
+  `findCartItemsByUsername` was a bare derived query; `CartItem.product` is
+  `EAGER` (`model/CartItem.java:18-20`) so each cart line re-fetched its
+  product, and `CartItemDto.from` (`dto/CartItemDto.java:10-15`) additionally
+  touched the `personalization` `@OneToOne` (`:22-23`). Found by Lens 5 hunt,
+  2026-09-06.
+- Fix: `DISTINCT` + `LEFT JOIN FETCH` on `findCartItemsByUsername` for
+  `product`/`images`/`personalization`. Tests: N lines load with a bounded
+  query count (Hibernate statistics, `CartItemRepositoryFetchTest`).
+
+### Y1. CORS allowed origins hard-coded in both services — FIXED (PR #154)
+- `backend/product-service/.../configuration/WebConfig.java:20` and
+  `backend/directory-service/.../configuration/WebConfig.java:20` baked
+  `List.of("http://localhost:4200", "https://natiart.samuelpetre.com")`
+  into the artifact: the dev origin shipped to production, and every origin
+  change needed a rebuild. Found by Lens 3 hunt, 2026-09-05.
+- Fix: list driven from `nati.cors.allowed-origins` (`@Value` + `CORS_ALLOWED_ORIGINS`
+  env override, current origins as default). Tests: configured origins reflected
+  in the `CorsConfigurationSource` bean (`WebConfigTest` per service).
+
+### AD1. Origin postal code hard-coded in `ShippingService` — FIXED (PR #154)
+- `backend/product-service/.../service/ShippingService.java:26`
+  `public static final String FROM_POSTAL_CODE = "88085201"`, consumed by
+  `service/support/MelhorenvioShippingCalculationRequest.java:19` as the
+  `from` address of every Melhor Envio quote. A deploy-time value baked into
+  the artifact, so moving the shipping origin needed a rebuild. Found by Lens 3
+  hunt, 2026-09-06.
+- Fix: driven from `melhorenvio.api.from-postal-code` (`MELHORENVIO_FROM_POSTAL_CODE`
+  env override, current value as default, fail-fast on blank). Tests: configured
+  origin reflected in the built calculation request.
+
+### AA1. Product-list personalization check + `product.id!` wrong-key — FIXED (PR #157)
+- `frontend/natiart-app/src/app/product/components/customer/dashboard/product-list/product-list.component.ts:68,84`
+  called `product.availablePersonalizations.includes(...)` with no guard (a product
+  without the array threw), and keyed images/fetches with `product.id!`
+  (template `[routerLink]="['/product', product.id]"` + `imageUrls[product.id!]`).
+  An id-less product navigated to `/product/undefined` and collided on
+  `imageUrls["undefined"]`. Found by Lens 10 hunt, 2026-09-06.
+- Fix: guard with `?? []`, skip image fetch and router link when `id` is missing
+  (`if (!product.id) return`, `[routerLink]="product.id ? [...] : null"`).
+  Spec: id-less/option-less product renders without throwing, zero image GETs.
+
+### AA2. Personalization-modal getters throw when options array missing — FIXED (PR #157)
+- `frontend/natiart-app/src/app/product/components/customer/personalization-modal/personalization-modal.component.ts:27,31`:
+  `this.product?.availablePersonalizations.includes(...)` guarded a null product
+  but not a present product with an undefined array → `TypeError` when the modal
+  opened. Found by Lens 10 hunt, 2026-09-06.
+- Fix: `this.product?.availablePersonalizations?.includes(...) ?? false`.
+  Spec: product without the array → both getters `false`, no throw.
