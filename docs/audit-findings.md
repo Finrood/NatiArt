@@ -67,17 +67,6 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
 - Fix: `private static final Logger LOGGER = getLogger(OwnClass.class)`;
   constructor injection. No behavior change; include in a boy-scout PR.
 
-### B11. camelCase URL segment `pixQrCode` breaks kebab-case convention — IN REVIEW (fix/payment-api-consistency: canonical `/payments/{id}/pix-qr-code`, legacy aliases kept)
-- `backend/product-service/.../controller/PaymentController.java:38`
-  maps `GET /api/payment/{paymentId}/pixQrCode`; `backend/AGENTS.md`
-  requires kebab-case segments. Callers: `payment.service.ts:31`,
-  `pix-payment-confirmation.component.spec.ts:13`,
-  `PaymentControllerSecurityTest.java`.
-- Fix: rename to `/pix-qr-code` (keep old path as deprecated alias or
-  versioned break with frontend updated in the same PR). Tests: old path
-  404s (or 301s), new path serves the QR payload. Found by Lens 15 hunt,
-  2026-09-04.
-
 ### C9. `canDeactivate` does network I/O on every navigation away — OPEN (Medium)
 - `product-guard.guard.ts:24-32`: leaving `/product/:id` blocks on
   `GET /products/:id`; slow backend traps user, failure hijacks to `/dashboard`.
@@ -262,15 +251,6 @@ not filed.
   MDC, forward as header to directory-service and Asaas calls, return it in
   error responses). Tests: id present in MDC during payment creation;
   forwarded header asserted on the egress mock.
-
-### S6. Payment routes carry an `/api` prefix nothing else uses — IN REVIEW (fix/payment-api-consistency: canonical `/payments/...`, legacy `/api/payment/...` aliases kept)
-- `backend/product-service/.../controller/PaymentController.java:22,31,38`
-  serve `/api/payment/...` while every sibling controller serves bare
-  `/products`, `/cart`, `/orders`, `/categories`, `/packages`, `/shipping`.
-  `payment.service.ts:18,32,46` mirrors the prefix, so a rename must move both
-  sides in one PR (B11-style).
-- Fix: drop the `/api` prefix on both sides (breaking for deployed clients —
-  coordinate) or document the exception.
 
 ### S7. `GET /users/current` returns 200 + null body for anonymous callers — OPEN (Low-Medium)
 - `backend/directory-service/.../controller/UserController.java:28-30`
@@ -846,5 +826,64 @@ cycle.
   Found by Lens 14 hunt, 2026-09-07.
 - Fix: central error-reporting service (console in dev, collector in prod)
   and downgrade non-actionable noise. Tracked, not silently fixed.
+
+## AK. Auth-denial and auth-response contracts (Lens 15 hunt, 2026-09-07)
+
+Hunt method: diffed the two `ControllerAdvice` classes handler-by-handler,
+then traced each auth-denial path (filter vs controller vs method security)
+to its status/body, and compared auth endpoint signatures against their
+siblings (`AuthenticationController.java`, `UserAuthenticationProvider.java`,
+both `JwtAuthFilter`s). B11/S6 merged as PR #173 this cycle, so the hunt
+re-verified the remaining contract surface instead of re-filing them.
+
+### AK1. Same auth denial is a bare 401, a 403 "Invalid or expired token", or a 403 "Access denied" depending on the layer — OPEN (Medium)
+- Directory `JwtAuthFilter.java:46-49` clears the context and short-circuits
+  with a bodyless 401 on `IllegalAccessException`; the same exception from
+  `validateToken` (`AuthenticationController.java:61-65`) travels to the
+  directory advice (`ControllerAdvice.java:41-47`) and becomes 403
+  "Invalid or expired token"; product-service `@PreAuthorize` denials become
+  403 "Access denied" (`product-service .../configuration/ControllerAdvice.java:19-23`).
+  One failure, three contracts — the storefront cannot match denials uniformly.
+- Fix: single denial shape per service at minimum (status + static body),
+  aligned across services; document it next to the advices. Tests: invalid
+  token via filter vs via `validateToken` assert the same status/body.
+  Found by Lens 15 hunt, 2026-09-07.
+
+### AK2. Directory advice has no `AccessDeniedException` handler: Spring authorization denials fall to catch-all 500 — OPEN (Low)
+- Product advice maps `AccessDeniedException` to 403; directory advice has no
+  such handler, so any Spring authorization denial on directory-service
+  (e.g. a future `@PreAuthorize`) lands in `handleException` as 500
+  "Internal server error" with an error-level log for a client error.
+  Latent today (no `@PreAuthorize` on directory controllers), contract drift
+  by construction.
+- Fix: port the 403 `AccessDeniedException` handler to the directory advice.
+  Tests: forced denial → 403 on both services, never 500.
+  Found by Lens 15 hunt, 2026-09-07.
+
+### AK3. `refreshToken` answers imperatively with a per-request `ObjectMapper`; missing credentials get a silent empty 200 — OPEN (Medium)
+- `UserAuthenticationProvider.java:115-139` serializes `UserAuthDto` via
+  `new ObjectMapper().writeValue(response.getOutputStream(), ...)`,
+  bypassing the app-wide Jackson configuration (naming strategy, modules),
+  and never sets status/content-type in the contract
+  (`AuthenticationController.java:44-50` returns void). A missing/malformed
+  `Authorization` header falls through silently — 200 with an empty body —
+  while the storefront parses it as `{accessToken, refreshToken}`
+  (`jwt-interceptor.service.ts:82-89`).
+- Fix: return `ResponseEntity<UserAuthDto>` from the controller with the
+  injected Spring `ObjectMapper`, 401 on missing/mismatched credentials.
+  Tests: refresh happy path asserts content-type + payload; missing header
+  → 401, never empty-200.
+  Found by Lens 15 hunt, 2026-09-07.
+
+### AK4. `validateToken` returns a Spring `Authentication` instead of a DTO — OPEN (Low)
+- `AuthenticationController.java:60-66` returns
+  `ResponseEntity<Authentication>` — a framework internal, not a versioned
+  contract type — while every sibling auth endpoint returns a DTO. The
+  serialized shape can shift with Spring upgrades and may carry principal
+  internals; no storefront caller references the endpoint.
+- Fix: return a narrow DTO (valid flag + username/expiry) or document the
+  endpoint as service-internal. Tests: response shape asserted, no
+  `Authentication` internals serialized.
+  Found by Lens 15 hunt, 2026-09-07.
 
 
