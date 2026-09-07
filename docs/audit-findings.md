@@ -473,24 +473,6 @@ Cleared as non-findings: `addToCart` calls without `subscribe` (mutations run
 synchronously before the `of()` return — fragile but not cold no-ops),
 admin `product.id!` call sites (admin-only, ids server-assigned).
 
-### AA3. Cart/order-summary/cart-modal image fetches resurrect removed lines — IN REVIEW (fix/frontend-cart-modal-liveness, this cycle)
-- `cart.component.ts:196-213` (`fetchProductImage`), `order-summary.component.ts:75-88`,
-  and `cart-modal.component.ts:104-112` write `imageUrls[cartItemId]` unconditionally
-  on async completion. A line removed while its image GET is in flight gets its map
-  entry re-created after `prepareImageUrls`/`loadProductImages` deleted it
-  (stale closure over the list; `takeUntil(destroy$)` covers destroy only, not
-  removal). Cart-modal additionally has no error callback, so a failed GET leaves
-  the slot unset while siblings fall back to the placeholder. Found by Lens 10
-  hunt, 2026-09-06.
-- Fix: re-check line liveness before writing (or cancel per-line requests), add the
-  placeholder fallback to cart-modal. Spec: remove-then-resolve never re-adds the key.
-  Update 2026-09-07: PR #185 merged — cart (`cart.component.ts:197-224`
-  `isCartLineLive` guard) and order-summary (`order-summary.component.ts:75-101`
-  `isCartLineLive` guard) halves FIXED on master, spec-covered; cart-modal
-  (`cart-modal.component.ts:104-118` still writes unconditionally, no liveness
-  check) remainder stays OPEN and moves to fix/frontend-cart-modal-liveness
-  this cycle.
-
 Re-verified 2026-09-06 (Lens 17 cycle hunt): four root mirrors still
 byte-identical (`md5sum`), all `agents/*.md` carry `meta` frontmatter, 17
 `## Lens` headers parse, spec count 56 ("~55" holds), versions hold
@@ -1114,3 +1096,6 @@ getter, judgment per `agents/java-testing.md` twin policy).
 
 
 
+
+### AU1. Bulk clearCart bypasses the Personalization cascade and orphans rows — OPEN (High)
+`CartItem.personalization` is `@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)` (`backend/product-service/src/main/java/com/portcelana/natiart/model/CartItem.java:26-29`), so removing a line via `EntityManager.remove` also deletes the line's `Personalization` row and its `@ElementCollection` options. `CartManagerImpl.clearCart` (plus `CartItemRepository.deleteByUsername`) was switched to a Spring Data **derived bulk DELETE**, which does not honor JPA cascade/orphanRemoval — every cleared personalized cart line now leaks an orphaned `Personalization` row carrying user-supplied option text (and its option rows). Personal data is retained after a deletion intent, and rows accumulate per clear. The same orphaning already exists on the pre-PR `deleteByUsernameAndProduct` path. Found as the BLOCKER in the mechanical review of PR #182; resolution per that review's option (b): tracked here instead of silently fixed — a follow-up fix must restore cascade semantics (targeted JPQL deletes for now-unreferenced personalizations, FK order respected) and cover both delete paths.
