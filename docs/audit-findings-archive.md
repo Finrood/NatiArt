@@ -1015,3 +1015,21 @@ camelCase, `PaymentController.java:38`) still OPEN on both sides
   while in flight creates no second payment; flag resets after success
   and failure.
 
+### B11. camelCase URL segment `pixQrCode` breaks kebab-case convention — FIXED (PR #173)
+- `backend/product-service/.../controller/PaymentController.java:38`
+  mapped `GET /api/payment/{paymentId}/pixQrCode` against the kebab-case
+  rule in `backend/AGENTS.md`. Found by Lens 15 hunt, 2026-09-04.
+- Fix: canonical `GET /payments/{paymentId}/pix-qr-code`, camelCase path
+  kept as deprecated alias; storefront moved to the canonical path in the
+  same PR. Tests: canonical + `/payments` paths reject anonymous;
+  deprecated aliases still serve authenticated callers.
+
+### S6. Payment routes carry an `/api` prefix nothing else uses — FIXED (PR #173)
+- `backend/product-service/.../controller/PaymentController.java:22,31,38`
+  served `/api/payment/...` while every sibling controller serves bare
+  `/products`, `/cart`, `/orders`, `/categories`, `/packages`, `/shipping`.
+- Fix: canonical plural prefix-free paths (`POST /payments/create`,
+  `GET /payments/{id}/status`, `GET /payments/{id}/pix-qr-code`) with
+  legacy `/api/payment/...` variants kept as deprecated aliases;
+  storefront moved in the same PR.
+
