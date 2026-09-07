@@ -785,28 +785,4 @@ blob URL per card until teardown); AA5 still OPEN
 Cleared as non-findings: cart-modal removal path revokes before delete
 (`cart-modal.component.ts:83-86` via `revokeObjectUrl`, raw map entry dropped);
 cart `prepareImageUrls` cleanup pass revokes stale blob URLs on the next
-emission, so the AA3 resurrect is transient, not permanent. AF1-AF2 below are
-runner-ups.
-
-### AF1. Product-list (and siblings) track `@for` rows by object identity, not id — IN REVIEW (Low, fix PR: frontend-track-by-id / PR #162)
-- `product-list.component.html:5` (`@for (product of products | async; track product)`),
-  `cart-modal.component.html:8` (`track item`), `order-summary.component.html:6`
-  (`track item`), `product-detail.component.html:152` (`track relatedProduct`):
-  rows keyed by object identity while the cart twin uses a key function
-  (`cart.component.html:48,109` `track trackByCartItem`). Any emission carrying
-  rebuilt objects with stable ids (fresh page fetch, sort change) destroys and
-  recreates every card/line DOM node: image flicker, hover/animation state loss,
-  and re-resolution pressure on the image maps. Found by Lens 10 hunt, 2026-09-07.
-- Fix: `track product.id` / `track item.cartItemId` / `track relatedProduct.id`.
-  Spec: emit same-id rebuilt objects → DOM nodes preserved, zero new image GETs.
-
-### AF2. Related-image resolution builds a per-product copy then discards it — IN REVIEW (Low, fix PR: frontend-track-by-id / PR #162)
-- `product-detail.component.ts` (`fetchRelatedProductImage`): the `next` handler
-  maps `relatedProducts$.value` into `currentRelated` (`{...p, imageUrl: ...}`)
-  and then emits `next([...this.relatedProducts$.value])` — the mapped copy is
-  dead; the template binds via the `relatedImageUrls` map instead. A reader
-  cannot tell which binding carries the image (identity-mapping ambiguity), and
-  the next emission still re-renders every related row. Found by Lens 10 hunt,
-  2026-09-07.
-- Fix: drop the dead map (or bind the copied field and stop emitting on image
-  resolution). Spec: one related resolution updates exactly one exposed binding.
+emission, so the AA3 resurrect is transient, not permanent.

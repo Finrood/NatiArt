@@ -826,3 +826,22 @@ non-finite values).
   opened. Found by Lens 10 hunt, 2026-09-06.
 - Fix: `this.product?.availablePersonalizations?.includes(...) ?? false`.
   Spec: product without the array → both getters `false`, no throw.
+
+### AF1. Product-list (and siblings) track `@for` rows by object identity, not id — FIXED (PR #162)
+- `product-list.component.html:5`, `cart-modal.component.html:8`,
+  `order-summary.component.html:6`, `product-detail.component.html:152`: rows
+  keyed by object identity while the cart twin used a key function
+  (`trackByCartItem`). Any emission carrying rebuilt objects with stable ids
+  destroyed and recreated every card/line DOM node. Found by Lens 10 hunt,
+  2026-09-07.
+- Fix: `track (product.id ?? product)` / `track item.cartItemId` (id-less
+  fallback to identity, no duplicate-key throw). Spec: same-id rebuilt objects
+  → DOM nodes preserved (proven non-vacuous: fails on the old template).
+
+### AF2. Related-image resolution builds a per-product copy then discards it — FIXED (PR #162)
+- `product-detail.component.ts` (`fetchRelatedProductImage`): the `next` handler
+  mapped `relatedProducts$.value` into `currentRelated` (`{...p, imageUrl: ...}`)
+  then discarded it, emitting the same refs; the template binds via the
+  `relatedImageUrls` map. Found by Lens 10 hunt, 2026-09-07.
+- Fix: dead map removed, trigger emission kept. Behavior unchanged; existing
+  product-detail specs green.
