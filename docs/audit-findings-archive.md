@@ -1139,3 +1139,15 @@ camelCase, `PaymentController.java:38`) still OPEN on both sides
   never re-adds the key in all three components (cart-modal spec proven
   non-vacuous by revert-check: fails without the fix, 154/154 green with it).
   Verified on master 2026-09-07.
+
+### B3. No bean validation; NPE-prone registration path — FIXED (PR #189)
+- Zero `jakarta.validation` usage in `backend/`; `ProfileManager.java:21-31`
+  calls `.trim()` unconditionally → null profile/field = 500, not 400.
+  Same flaw in `UserManager.java:79,108` (`registerUser`/`registerGhostUser`
+  call `userRegistrationDto.username().trim()` with no null guard — a null
+  username NPEs instead of returning 400). Found by Lens 1 hunt, 2026-09-05.
+- Fix: add `spring-boot-starter-validation`, annotate DTOs
+  (`@NotBlank`/`@Email`/`@Valid`), null-guard `createProfile`. Tests: null/blank → 400.
+- Merged 2026-09-07 (PR #189: directory registration payloads bean-validated,
+  NPE path null-guarded); flipped by the Lens 3 cycle.
+

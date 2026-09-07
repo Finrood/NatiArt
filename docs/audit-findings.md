@@ -22,15 +22,6 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
   are rejected 401 by `AuthorizationFilter` before handler argument resolution; directory
   `JwtAuthFilter` returns after 401 on invalid tokens (PR #64). The EL1008E path is unreachable.
 
-### B3. No bean validation; NPE-prone registration path — IN REVIEW (PR #189)
-- Zero `jakarta.validation` usage in `backend/`; `ProfileManager.java:21-31`
-  calls `.trim()` unconditionally → null profile/field = 500, not 400.
-  Same flaw in `UserManager.java:79,108` (`registerUser`/`registerGhostUser`
-  call `userRegistrationDto.username().trim()` with no null guard — a null
-  username NPEs instead of returning 400). Found by Lens 1 hunt, 2026-09-05.
-- Fix: add `spring-boot-starter-validation`, annotate DTOs
-  (`@NotBlank`/`@Email`/`@Valid`), null-guard `createProfile`. Tests: null/blank → 400.
-
 ### B4. Order integrity gaps: client-priced shipping, no owner — OPEN (Medium)
 - `OrderManagerImpl.java` trusts client `deliveryAmount` (send `0` = free
   shipping — only non-negativity is checked); `CustomerOrder` has no owner
@@ -1123,6 +1114,53 @@ with static messages); login with missing/blank credentials resolves to 401 via
   Found by Lens 1 hunt, 2026-09-07.
   Tracked, not silently fixed.
 
-### AU1. Bulk clearCart bypasses the Personalization cascade and orphans rows — OPEN (High)
-`CartItem.personalization` is `@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)` (`backend/product-service/src/main/java/com/portcelana/natiart/model/CartItem.java:26-29`), so removing a line via `EntityManager.remove` also deletes the line's `Personalization` row and its `@ElementCollection` options. `CartManagerImpl.clearCart` (plus `CartItemRepository.deleteByUsername`) was switched to a Spring Data **derived bulk DELETE**, which does not honor JPA cascade/orphanRemoval — every cleared personalized cart line now leaks an orphaned `Personalization` row carrying user-supplied option text (and its option rows). Personal data is retained after a deletion intent, and rows accumulate per clear. The same orphaning already exists on the pre-PR `deleteByUsernameAndProduct` path. Found as the BLOCKER in the mechanical review of PR #182; resolution per that review's option (b): tracked here instead of silently fixed — a follow-up fix must restore cascade semantics (targeted JPQL deletes for now-unreferenced personalizations, FK order respected) and cover both delete paths.
+### AU1. Bulk clearCart bypasses the Personalization cascade and orphans rows — INVALID (re-verified 2026-09-07 with an executable spec, PR #191)
+`CartItem.personalization` is `@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)` (`backend/product-service/src/main/java/com/portcelana/natiart/model/CartItem.java:27-28`). Original claim (PR #182 mechanical review): the Spring Data derived `deleteByUsername` bulk-deletes cart rows without honoring the cascade, orphaning Personalization rows. Disproven empirically (PR #191): a `@DataJpaTest` (`repository/CartItemCascadeSemanticsTest`) shows void derived deletes run load-then-remove — the cascade fires and the Personalization row and its option rows are deleted with the cart lines on BOTH delete paths. Only `@Modifying`/`@Modifying(clearAutomatically)` bulk deletes bypass the persistence context. The re-verification spec instead caught a real adjacent bug, fixed in PR #191: `deleteByUsernameAndProduct` declared with a `long` return threw `ClassCastException` inside the Spring Data proxy on every invocation, so the production path `CartManagerImpl.decreaseCartItemQuantity` (removing a line's last unit) 500ed. Fixed by declaring the method `void` and pinned by the same spec (red on unpatched master, green with the fix).
+
+### AV1. Base profile arms the credential-seeding `data.sql`; tutorial bcrypt hash on the seeded admin — OPEN (Low)
+- Directory base `application.properties` sets no `spring.sql.init.mode`
+  (default `embedded`), and H2 is a `runtimeOnly` dependency
+  (`backend/directory-service/build.gradle.kts:20`), so any unprofiled boot
+  resolves an embedded datasource and executes
+  `backend/directory-service/src/main/resources/data.sql` — which seeds
+  `admin@gmail.com` with the ADMIN role using bcrypt hash
+  `$2a$10$xXUJ6rhpG39.C7mXYhdXB.oq2DLVgbAIvcp2chu3uQlGj20i9E.Iq`
+  (`data.sql:19-33`), a hash that appears verbatim in public Spring tutorials
+  (well-known plaintext). Empirically verified 2026-09-07 (Lens 3): the
+  unprofiled boot currently CRASHES (`ScriptStatementFailedException`, table
+  ROLE not found) because script init runs before Hibernate DDL without
+  `defer-datasource-initialization` — so today it is a startup trap, not a
+  live backdoor; but the safety depends on the production profile's
+  `spring.sql.init.mode=never` being loaded, and the seed credential is a
+  public constant. Product-service base properties have the same armed
+  `data.sql` (non-credential seed data).
+- Fix: set `spring.sql.init.mode=never` in both base `application.properties`
+  and `spring.sql.init.mode=always` in `application-local-h2.properties`
+  (opt-in seeding), and replace the tutorial hash with a locally generated
+  one. Severity Low: local-only blast radius today.
+
+### AV2. JWT-expiration comment drift: "2 minutes" documented, 24 hours configured — OPEN (Low)
+- `backend/directory-service/src/main/resources/application.properties:7-11`:
+  the comment block says "Access Token expiration time in milliseconds (here,
+  2 minutes)" while `saas.security.jwt.expiration=86400000` (24 hours;
+  refresh is 7 days and matches its comment). A reviewer auditing token
+  lifetime reads the comment and signs off on a 2-minute access token that is
+  actually 24h. Found by Lens 3 hunt, 2026-09-07.
+- Fix: correct the comment (and record the actual lifetime choice); severity
+  Low, config-doc drift only.
+
+### AV3. `UserAuthenticationProvider` uses field `@Value` injection and a `@PostConstruct` blank-secret guard — OPEN (Low)
+- `backend/directory-service/src/main/java/com/saas/directory/configuration/UserAuthenticationProvider.java:47-56`:
+  three config fields (`secretKey`, both expirations) are field-injected with
+  `@Value`, and the blank-JWT-secret fail-fast runs in `@PostConstruct init()`
+  instead of the constructor. `agents/java-spring.md` mandates setter
+  injection with `@Value` for config values ("field injection is not used in
+  production code") and the sibling precedents (`ShippingService`,
+  `AsaasPaymentService`, `AsaasUserManager`) fail fast in the constructor.
+  Field injection also hides the blank-secret guard from plain unit
+  construction. Found by Lens 3 hunt, 2026-09-07.
+- Fix: move the three `@Value`s to constructor parameters, make the fields
+  `final`, derive/validate in the constructor; keep the `@PostConstruct`-free
+  fail-fast semantics. Tests: blank secret → constructor throws.
+
 
