@@ -182,25 +182,9 @@ public class UserAuthenticationProvider {
             final String jti = decodedJWT.getId();
             tokenRepository.deleteByJti(jti);
         } catch (JWTVerificationException exception) {
-            LOGGER.error("Error verifying JWT token: {}", exception.getMessage());
-        }
-    }
-
-    public String extractEmailClaim(String token) {
-        try {
-            return decodeJWT(token).getClaim("email").asString();
-        } catch (JWTVerificationException exception) {
-            LOGGER.error("Error verifying JWT token: {}", exception.getMessage());
-            return null;
-        }
-    }
-
-    public String extractIdClaim(String token) {
-        try {
-            return decodeJWT(token).getClaim("id").asString();
-        } catch (JWTVerificationException exception) {
-            LOGGER.error("Error verifying JWT token: {}", exception.getMessage());
-            return null;
+            // Routine invalid input is caller-controlled -- DEBUG keeps
+            // bogus-token probes from flooding ERROR.
+            LOGGER.debug("Error verifying JWT token: {}", exception.getMessage());
         }
     }
 
