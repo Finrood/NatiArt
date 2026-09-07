@@ -1,9 +1,6 @@
 package com.saas.directory.controller;
 
-import java.io.IOException;
-
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,11 +39,12 @@ public class AuthenticationController {
     }
 
     @PostMapping("/refresh-token")
-    public void refreshToken(@TargetUser String username, HttpServletRequest request, HttpServletResponse response)
-            throws IOException, IllegalAccessException {
+    public ResponseEntity<UserAuthDto> refreshToken(@TargetUser String username, HttpServletRequest request)
+            throws IllegalAccessException {
         LOGGER.info("User [{}] is refreshing is access token", username);
 
-        userAuthenticationProvider.refreshToken(username, request, response);
+        final UserAuthDto userAuthDto = userAuthenticationProvider.refreshToken(username, request);
+        return ResponseEntity.ok(userAuthDto);
     }
 
     @PostMapping("/signout")
