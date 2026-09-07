@@ -64,8 +64,11 @@ export class ProductListComponent implements OnInit, OnDestroy {
 
   private updateProductImages(products: Product[]): void {
     products.forEach(product => {
+      if (!product.id) {
+        return;
+      }
       if (product.images && product.images.length > 0) {
-        this.fetchImage(product.id!, product.images[0]);
+        this.fetchImage(product.id, product.images[0]);
       }
     });
   }
@@ -81,7 +84,8 @@ export class ProductListComponent implements OnInit, OnDestroy {
   }
 
   addToCart(product: Product, event: MouseEvent) {
-    if (product.availablePersonalizations.includes(PersonalizationOption.GOLDEN_BORDER) || product.availablePersonalizations.includes(PersonalizationOption.CUSTOM_IMAGE)) {
+    const personalizations: PersonalizationOption[] = product.availablePersonalizations ?? [];
+    if (personalizations.includes(PersonalizationOption.GOLDEN_BORDER) || personalizations.includes(PersonalizationOption.CUSTOM_IMAGE)) {
       // If personalization is needed, store the event target for later animation
       this.openPersonalizationModal(product, event.currentTarget as HTMLElement);
     } else {

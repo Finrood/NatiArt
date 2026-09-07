@@ -623,6 +623,79 @@ Gradle coordinate staleness (none), workflow filename drift (none).
 Instruction-file fixes stay OPEN for human review per the
 self-modification ban — tracked, not silently fixed.
 
+## AA. Frontend data identity, follow-ups (Lens 10 hunt, 2026-09-06)
+
+Hunt method: re-read cart/product/checkout identity paths on current master
+(`cart.service.ts`, `cart.component.ts`, `cart-modal.component.ts`,
+`order-summary.component.ts`, `product-detail.component.ts`,
+`product-list.component.ts`, `personalization-modal.component.ts`,
+`add-to-cart-button.component.ts`, `payment.service.ts`, `app.routes.ts`).
+Re-verified: cart ops are `cartItemId`-keyed (`cart.service.ts:72-95`,
+`cart.component.ts:86-106,142-144`, `cart-modal.component.ts:48-60`),
+`product-detail` route-param race guards intact (`switchMap` + `imageRequestToken`
+in `product-detail.component.ts:77-117,284-313`, related-fetch cancel `:315-344`),
+PIX param subscription follows routed id (`pix-payment-confirmation.component.ts:41-55`),
+`ProductService.getProduct` rejects blank ids (`product.service.ts:35-40`), and
+`pix-payment/:paymentId` matches `params.get('paymentId')` (`app.routes.ts:41`).
+Cleared as non-findings: `addToCart` calls without `subscribe` (mutations run
+synchronously before the `of()` return — fragile but not cold no-ops),
+admin `product.id!` call sites (admin-only, ids server-assigned).
+
+### AA1. Product-list personalization check + `product.id!` wrong-key — OPEN (Medium)
+- `frontend/natiart-app/src/app/product/components/customer/dashboard/product-list/product-list.component.ts:68,84`
+  calls `product.availablePersonalizations.includes(...)` with no guard (a product
+  without the array throws), and keys images/fetches with `product.id!`
+  (`:68`, template `product-list.component.html:9-10` `[routerLink]="['/product',
+  product.id]"` + `imageUrls[product.id!]`). An id-less product navigates to
+  `/product/undefined` and collides on `imageUrls["undefined"]` (wrong-key
+  images across all id-less cards). Safe precedent in the same flow uses
+  `?.some` (`product-detail.component.ts:150`, `add-to-cart-button.component.ts:50`).
+  Found by Lens 10 hunt, 2026-09-06.
+- Fix: guard with `?.includes(...) ?? false` (or `?.some`), skip image fetch and
+  router link when `id` is missing. Spec: id-less/option-less product renders
+  without throwing and issues zero image GETs.
+- Status: IN REVIEW here.
+
+### AA2. Personalization-modal getters throw when options array missing — OPEN (Medium)
+- `frontend/natiart-app/src/app/product/components/customer/personalization-modal/personalization-modal.component.ts:27,31`:
+  `this.product?.availablePersonalizations.includes(...)` guards a null product
+  but not a present product with an undefined array → `TypeError` when the modal
+  opens. Same class as AA1, separate file. Found by Lens 10 hunt, 2026-09-06.
+- Fix: `this.product?.availablePersonalizations?.includes(...) ?? false`.
+  Spec: product without the array → both getters `false`, no throw.
+- Status: IN REVIEW here.
+
+### AA3. Cart/order-summary/cart-modal image fetches resurrect removed lines — OPEN (Low)
+- `cart.component.ts:196-213` (`fetchProductImage`), `order-summary.component.ts:75-88`,
+  and `cart-modal.component.ts:104-112` write `imageUrls[cartItemId]` unconditionally
+  on async completion. A line removed while its image GET is in flight gets its map
+  entry re-created after `prepareImageUrls`/`loadProductImages` deleted it
+  (stale closure over the list; `takeUntil(destroy$)` covers destroy only, not
+  removal). Cart-modal additionally has no error callback, so a failed GET leaves
+  the slot unset while siblings fall back to the placeholder. Found by Lens 10
+  hunt, 2026-09-06.
+- Fix: re-check line liveness before writing (or cancel per-line requests), add the
+  placeholder fallback to cart-modal. Spec: remove-then-resolve never re-adds the key.
+  Tracked, not fixed in this batch.
+
+### AA4. Product-list re-issues every image GET on each emission — OPEN (Low)
+- `product-list.component.ts:65-71` (`updateProductImages`) fetches unconditionally
+  for all products on every `products.next`, with no `if (imageUrls[productId])`
+  guard (siblings `cart-modal.component.ts:93` and `product-detail.component.ts:351`
+  already guard). Each refresh burns one GET per card and races concurrent lookups
+  (last-writer wins on `imageUrls[productId]`). Found by Lens 10 hunt, 2026-09-06.
+- Fix: skip lines already loading/loaded. Spec: second emission issues zero GETs.
+  Tracked, not fixed in this batch.
+
+### AA5. Related-product image fetches ignore the route-change token — OPEN (Low)
+- `product-detail.component.ts:349-377` (`fetchRelatedProductImage`) has no
+  `imageRequestToken` check (main images `:284-313` do), and `relatedImageUrls`
+  is reset on param change (`:86`) while old related GETs stay subscribed. A fast
+  product→product navigation lets stale related resolutions re-add old-productId
+  keys and spuriously `relatedProducts$.next([...])`. Found by Lens 10 hunt,
+  2026-09-06.
+- Fix: capture and compare the token (or unsubscribe per-line fetches on reset).
+  Spec: stale related resolution writes nothing. Tracked, not fixed in this batch.
 Re-verified 2026-09-06 (Lens 17 cycle hunt): four root mirrors still
 byte-identical (`md5sum`), all `agents/*.md` carry `meta` frontmatter, 17
 `## Lens` headers parse, spec count 56 ("~55" holds), versions hold
