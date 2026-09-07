@@ -195,6 +195,10 @@ log "Open code PRs: $OPEN_PRS"
 # most 2 per cycle; only branches whose head is exactly their PR head.
 merged=0
 for n in $CODE_PRS; do
+    if gh pr view "$n" --json files --jq '.files[].path' 2>/dev/null | grep -qE '^(scripts/|agents/|AGENTS\.md|CLAUDE\.md|GEMINI\.md|\.cursorrules|docs/continuous-improvement-loop\.md|docs/loop-lenses\.md)'; then
+        log "PR #$n touches loop machinery; leaving OPEN for human review (self-modification ban)."
+        continue
+    fi
     checks=$(gh_safe gh pr checks "$n")
     if echo "$checks" | grep -Eq 'fail|cancel'; then
         log "PR #$n has failing/cancelled checks; leaving open."
@@ -257,16 +261,39 @@ for n in $CODE_PRS; do
     checks=$(gh_safe gh pr checks "$n")
     echo "$checks" | grep -Eq 'fail|cancel' && continue
     echo "$checks" | grep -qE 'pass|success' || continue
+    # Address-and-re-review rounds (docs/continuous-improvement-loop.md): a
+    # REQUEST_CHANGES verdict must not be a dead end. First verdicts carry no
+    # marker, so an unmarked REQUEST_CHANGES triggers re-review round 1; the
+    # re-reviewer marks its verdict with the head sha it reviewed. A marked
+    # verdict only spawns another round when the head moved past that sha; a
+    # verdict marked with the current head means the round is spent.
+    RC_HEAD=$(git rev-parse --short=8 origin/"$(gh pr view "$n" --json headRefName --jq .headRefName)" 2>/dev/null || true)
+    LAST_RC=$(verdict_bodies "$n" | grep -oE 'VERDICT: REQUEST_CHANGES \(re-reviewed [0-9a-f]{8}' | tail -1 | grep -oE '[0-9a-f]{8}$' || true)
     VERDICTS=$(verdict_bodies "$n" | grep -c '^VERDICT:' || true)
-    [[ "${VERDICTS:-0}" -ge 1 ]] && continue
+    if [[ "${VERDICTS:-0}" -ge 1 ]]; then
+        if verdict_bodies "$n" | grep -q '^VERDICT: APPROVE' \
+            || [[ -n "$LAST_RC" && "$LAST_RC" == "$RC_HEAD" ]] \
+            || [[ -z "$RC_HEAD" ]]; then
+            continue
+        fi
+    fi
     log "No verdict on green PR #$n; spawning mechanical reviewer (1 per cycle)."
+    if [[ -n "$LAST_RC" ]]; then
+        log "PR #$n changed since REQUEST_CHANGES (verdict@$LAST_RC -> head $RC_HEAD); spawning re-reviewer (next round)."
+        RC_NOTE=" This is a RE-REVIEW after the author addressed the earlier REQUEST_CHANGES (that verdict was against $LAST_RC; head is now $RC_HEAD): focus on whether the blocking findings are resolved. If blockers remain, first line 'VERDICT: REQUEST_CHANGES (re-reviewed $RC_HEAD ...)'; if resolved, first line exactly 'VERDICT: APPROVE'."
+    elif [[ "${VERDICTS:-0}" -ge 1 ]]; then
+        log "PR #$n has an unmarked REQUEST_CHANGES; spawning re-reviewer (round 1)."
+        RC_NOTE=" This is a RE-REVIEW round 1: an earlier REQUEST_CHANGES verdict predated re-review marking. Focus on whether its blockers are resolved in the current head ($RC_HEAD). If blockers remain, first line 'VERDICT: REQUEST_CHANGES (re-reviewed $RC_HEAD ...)'; if resolved, first line exactly 'VERDICT: APPROVE'."
+    else
+        RC_NOTE=""
+    fi
     timeout 660 scripts/run-agent.sh --role review --budget 600 --title "review-pr-$n" \
         "$(cat scripts/agent-review-prompt.md)
 ---
 Review PR $n. You have 10 minutes; the review typically takes ~4. Non-negotiable
 finish condition: before the timebox ends, post the verdict comment on the PR
-with `gh pr review $n --comment -b \"...\"` — first line exactly 'VERDICT: APPROVE'
-or 'VERDICT: REQUEST_CHANGES'. Posting the verdict is the deliverable; a review
+with 'gh pr review $n --comment' and a body starting 'VERDICT: APPROVE'
+or 'VERDICT: REQUEST_CHANGES'.${RC_NOTE} Posting the verdict is the deliverable; a review
 that ends without the comment posted is a failed run." &
     REVIEW_PID=$!
     break
