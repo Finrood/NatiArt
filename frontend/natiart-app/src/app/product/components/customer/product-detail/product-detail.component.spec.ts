@@ -155,3 +155,100 @@ describe('ProductDetailComponent stale main images', () => {
     component.ngOnDestroy();
   });
 });
+
+describe('ProductDetailComponent stale related images (AA5)', () => {
+  let paramMap$: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
+  let imageSubjects: Map<string, Subject<Blob>>;
+
+  function makeCategorizedProduct(id: string): Product {
+    return {...makeProduct(id), categoryId: 'cat-1', images: [`img-${id}`]};
+  }
+
+  function makeRelated(id: string): Product {
+    return {...makeProduct(id), categoryId: 'cat-1', images: [`rel-${id}`]};
+  }
+
+  beforeEach(async () => {
+    paramMap$ = new BehaviorSubject(convertToParamMap({id: 'p1'}));
+    imageSubjects = new Map<string, Subject<Blob>>();
+    let relatedCalls: number = 0;
+
+    await TestBed.configureTestingModule({
+      imports: [ProductDetailComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideAnimations(),
+        {provide: ActivatedRoute, useValue: {paramMap: paramMap$.asObservable()}},
+        {
+          provide: ProductService,
+          useValue: {
+            getProduct: (id: string) => of(makeCategorizedProduct(id)),
+            // Each product view lists a different related product, so the
+            // stale and current image fetches use different paths.
+            getProductsByCategory: () => of([makeRelated(relatedCalls++ === 0 ? 'r-old' : 'r-new')]),
+            getImage: (path: string) => {
+              if (!imageSubjects.has(path)) {
+                imageSubjects.set(path, new Subject<Blob>());
+              }
+              return imageSubjects.get(path)!.asObservable();
+            },
+          },
+        },
+        {provide: CartService, useValue: {addToCart: () => undefined, getCartCount: () => of(0)}},
+      ],
+    }).compileComponents();
+  });
+
+  it('drops a previous related image that resolves after navigating away', () => {
+    const fixture = TestBed.createComponent(ProductDetailComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    expect(component.product$.value?.id).toBe('p1');
+
+    // Navigate to p2 before p1's related image resolves.
+    paramMap$.next(convertToParamMap({id: 'p2'}));
+    expect(component.product$.value?.id).toBe('p2');
+
+    // Late p1-related resolution must not re-add the old product id key.
+    imageSubjects.get('rel-r-old')!.next(new Blob(['stale-related']));
+    expect(component.relatedImageUrls['r-old']).toBeUndefined();
+
+    // The current related image still loads normally.
+    imageSubjects.get('rel-r-new')!.next(new Blob(['fresh-related']));
+    expect(component.relatedImageUrls['r-new']).toBeTruthy();
+    component.ngOnDestroy();
+  });
+
+  it('revokes main and related blob URLs when navigating between products (AG1)', () => {
+    const revokeSpy: jasmine.Spy = spyOn(URL, 'revokeObjectURL');
+    const fixture = TestBed.createComponent(ProductDetailComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    imageSubjects.get('img-p1')!.next(new Blob(['p1-bytes']));
+    imageSubjects.get('rel-r-old')!.next(new Blob(['old-related']));
+    expect(component.imageUrls[0]).toBeTruthy();
+    expect(component.relatedImageUrls['r-old']).toBeTruthy();
+    expect(revokeSpy).not.toHaveBeenCalled();
+
+    // Navigation resets both maps: live blob URLs must be revoked first.
+    paramMap$.next(convertToParamMap({id: 'p2'}));
+    expect(revokeSpy.calls.count()).toBe(2);
+    component.ngOnDestroy();
+  });
+
+  it('revokes related blob URLs on destroy (AG1)', () => {
+    const revokeSpy: jasmine.Spy = spyOn(URL, 'revokeObjectURL');
+    const fixture = TestBed.createComponent(ProductDetailComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    imageSubjects.get('img-p1')!.next(new Blob(['p1-bytes']));
+    imageSubjects.get('rel-r-old')!.next(new Blob(['old-related']));
+    expect(component.relatedImageUrls['r-old']).toBeTruthy();
+
+    fixture.destroy();
+    expect(revokeSpy.calls.count()).toBe(2);
+  });
+});

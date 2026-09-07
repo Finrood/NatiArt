@@ -81,8 +81,12 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
         this.product$.next(null);
         this.quantity = 1;
         this.selectedImageIndex = 0;
+        // Revoke before dropping: resetting the maps without revoking leaks
+        // one blob URL per image for the rest of the session (AG1).
+        this.revokeImageMap(this.imageUrls);
         this.imageUrls = {};
         this.relatedProducts$.next([]);
+        this.revokeImageMap(this.relatedImageUrls);
         this.relatedImageUrls = {};
         // Invalidate in-flight main-image fetches for the previous product:
         // image slots are index-keyed, so a stale resolution must not write
@@ -119,12 +123,18 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.subscriptions.forEach(subscription => subscription.unsubscribe());
-    Object.values(this.imageUrls).forEach(url => {
-      if (url) {
-        const urlString = this.sanitizer.sanitize(4 /* SecurityContext.RESOURCE_URL */, url);
-        if (urlString) {
-          URL.revokeObjectURL(urlString);
-        }
+    this.revokeImageMap(this.imageUrls);
+    this.revokeImageMap(this.relatedImageUrls);
+  }
+
+  private revokeImageMap(map: { [key: string]: SafeUrl | string | null }): void {
+    Object.values(map).forEach((url: SafeUrl | string | null): void => {
+      if (!url) {
+        return;
+      }
+      const raw: string | null = typeof url === 'string' ? url : this.sanitizer.sanitize(4, url);
+      if (raw && raw.startsWith('blob:')) {
+        URL.revokeObjectURL(raw);
       }
     });
   }
@@ -350,15 +360,24 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     // Avoid re-fetching if URL already exists
     if (this.relatedImageUrls[productId]) return;
 
+    // Drop resolutions that arrive after a route-param reset: they belong to
+    // the previously viewed product (same mechanism as fetchImage, AA5).
+    const token: number = this.imageRequestToken;
     const subscription = this.productService.getImage(imagePath).subscribe({
-      next: blob => {
-        const objectUrl = URL.createObjectURL(blob);
+      next: (blob: Blob): void => {
+        if (token !== this.imageRequestToken) {
+          return;
+        }
+        const objectUrl: string = URL.createObjectURL(blob);
         this.relatedImageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
         // The template binds images via the relatedImageUrls map; emit a new
         // array identity so the async pipe picks up the resolved image.
         this.relatedProducts$.next([...this.relatedProducts$.value]);
       },
-      error: err => {
+      error: (err: unknown): void => {
+        if (token !== this.imageRequestToken) {
+          return;
+        }
         console.error(`Failed to load related image for product ${productId}:`, err);
         this.relatedImageUrls[productId] = 'assets/img/placeholder.png'; // Fallback
         this.relatedProducts$.next([...this.relatedProducts$.value]); // Trigger update even on error

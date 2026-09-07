@@ -91,7 +91,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     this.getPackages();
     this.isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
-    this.productForm.get('hasFixedGoldenBorder')?.valueChanges.subscribe((hasFixed) => {
+    const borderToggle = this.productForm.get('hasFixedGoldenBorder')?.valueChanges.subscribe((hasFixed) => {
       const goldenControl = this.productForm.get('GOLDEN_BORDER');
       if (hasFixed) {
         goldenControl?.setValue(false);
@@ -100,6 +100,9 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
         goldenControl?.enable();
       }
     });
+    if (borderToggle) {
+      this.subscriptions.push(borderToggle);
+    }
   }
 
   ngOnDestroy(): void {

@@ -228,7 +228,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
 
 ## P. Frontend resource hygiene (Lens 11 hunt, 2026-09-05)
 
-### P1. Admin `valueChanges` subscription never tracked, leaks until destroy — OPEN (Low-Medium)
+### P1. Admin `valueChanges` subscription never tracked, leaks until destroy — IN REVIEW (Low-Medium, PR #TBD this cycle)
 - `frontend/natiart-app/src/app/product/components/admin/admin-product-management/admin-product-management.component.ts:92-100`:
   `hasFixedGoldenBorder` `valueChanges.subscribe(...)` is never pushed into
   `this.subscriptions`, so `ngOnDestroy` (`:103-105`) does not unsubscribe it.
@@ -627,7 +627,7 @@ admin `product.id!` call sites (admin-only, ids server-assigned).
   placeholder fallback to cart-modal. Spec: remove-then-resolve never re-adds the key.
   Tracked, not fixed in this batch.
 
-### AA4. Product-list re-issues every image GET on each emission — OPEN (Low)
+### AA4. Product-list re-issues every image GET on each emission — IN REVIEW (Low, PR #TBD this cycle)
 - `product-list.component.ts:65-71` (`updateProductImages`) fetches unconditionally
   for all products on every `products.next`, with no `if (imageUrls[productId])`
   guard (siblings `cart-modal.component.ts:93` and `product-detail.component.ts:351`
@@ -636,7 +636,7 @@ admin `product.id!` call sites (admin-only, ids server-assigned).
 - Fix: skip lines already loading/loaded. Spec: second emission issues zero GETs.
   Tracked, not fixed in this batch.
 
-### AA5. Related-product image fetches ignore the route-change token — OPEN (Low)
+### AA5. Related-product image fetches ignore the route-change token — IN REVIEW (Low, PR #TBD this cycle)
 - `product-detail.component.ts:349-377` (`fetchRelatedProductImage`) has no
   `imageRequestToken` check (main images `:284-313` do), and `relatedImageUrls`
   is reset on param change (`:86`) while old related GETs stay subscribed. A fast
@@ -786,3 +786,41 @@ Cleared as non-findings: cart-modal removal path revokes before delete
 (`cart-modal.component.ts:83-86` via `revokeObjectUrl`, raw map entry dropped);
 cart `prepareImageUrls` cleanup pass revokes stale blob URLs on the next
 emission, so the AA3 resurrect is transient, not permanent.
+
+## AG. Frontend resource hygiene re-hunt (Lens 11, 2026-09-07)
+
+Hunt method: grepped the storefront for `createObjectURL` / `revokeObjectURL` /
+`setInterval` / `setTimeout` / `interval(` / `timer(` (59 hits), then re-read
+every owner for revoke parity, destroy cleanup, and stale-write guards.
+Re-verified this cycle: P1 still OPEN (admin `valueChanges` at
+`admin-product-management.component.ts:94` still untracked — fixed in flight
+this cycle), P2 still OPEN (fire-and-forget timers in `checkout.component.ts:388`,
+`cart.component.ts:218`, `top-menu.component.ts:61` still handle-less),
+AA3 still OPEN (cart/order-summary/cart-modal completion handlers still write
+`imageUrls[cartItemId]` unconditionally), AA4 still OPEN (product-list
+`updateProductImages`/`fetchImage` at `product-list.component.ts:65-84` still
+guard-less, next-only, overwrite-without-revoke — fixed in flight this cycle),
+AA5 still OPEN (`fetchRelatedProductImage` still token-less — fixed in flight
+this cycle). Cleared as non-findings: top-banner `setInterval`
+(`top-banner.component.ts:55-64`, stopped on destroy + on every reset);
+pix-payment polling (`pix-payment-confirmation.component.ts:72-128`, capped at
+60 attempts, 5-error kill-switch, unsubscribed on param change + destroy) and
+fireworks timer (`:150-170`, stopped on destroy); `authentication.service.ts`
+inactivity/token timers (`:56-69`, `:203`, `takeUntil(destroy$)` + explicit
+unsubscribe); logout redirect timer (`logout.component.ts:17-26`, already
+handle-tracked); product-detail main-image fetch (`:284-313`, token-guarded,
+revoke-on-overwrite, error fallback); cart-modal load path (`:80-102`,
+loaded-guard + revoke-before-delete); fly-animation `setTimeout`s
+(product-detail `:268-272`, product-list `:182-186` — guarded by parent-node
+checks, 700ms window, DOM node only, tracked as accepted micro-risk not filed).
+
+### AG1. Product-detail related blob URLs never revoked; route reset drops both image maps — OPEN (Medium)
+- `product-detail.component.ts:86` resets `relatedImageUrls = {}` on every
+  route-param change and `ngOnDestroy` (`:120-129`) revokes `imageUrls` only —
+  `relatedImageUrls` blob URLs are never revoked anywhere, and the main-map
+  reset at `:84` drops live blob URLs without revoking them either. Every
+  product→product navigation leaks all main + related blob URLs for the
+  session lifetime (long-lived SPA, image-heavy catalog).
+- Fix: track raw related URLs and revoke both maps on reset + destroy.
+  Spec: navigate p1→p2 revokes p1 URLs; destroy revokes related URLs.
+  Found by Lens 11 hunt, 2026-09-07.
