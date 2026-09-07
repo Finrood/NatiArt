@@ -81,8 +81,12 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
         this.product$.next(null);
         this.quantity = 1;
         this.selectedImageIndex = 0;
+        // Revoke before dropping: resetting the maps without revoking leaks
+        // one blob URL per image for the rest of the session (AG1).
+        this.revokeImageMap(this.imageUrls);
         this.imageUrls = {};
         this.relatedProducts$.next([]);
+        this.revokeImageMap(this.relatedImageUrls);
         this.relatedImageUrls = {};
         // Invalidate in-flight main-image fetches for the previous product:
         // image slots are index-keyed, so a stale resolution must not write
@@ -119,12 +123,18 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.subscriptions.forEach(subscription => subscription.unsubscribe());
-    Object.values(this.imageUrls).forEach(url => {
-      if (url) {
-        const urlString = this.sanitizer.sanitize(4 /* SecurityContext.RESOURCE_URL */, url);
-        if (urlString) {
-          URL.revokeObjectURL(urlString);
-        }
+    this.revokeImageMap(this.imageUrls);
+    this.revokeImageMap(this.relatedImageUrls);
+  }
+
+  private revokeImageMap(map: { [key: string]: SafeUrl | string | null }): void {
+    Object.values(map).forEach((url: SafeUrl | string | null): void => {
+      if (!url) {
+        return;
+      }
+      const raw: string | null = typeof url === 'string' ? url : this.sanitizer.sanitize(4, url);
+      if (raw && raw.startsWith('blob:')) {
+        URL.revokeObjectURL(raw);
       }
     });
   }

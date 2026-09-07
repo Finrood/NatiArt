@@ -219,4 +219,36 @@ describe('ProductDetailComponent stale related images (AA5)', () => {
     expect(component.relatedImageUrls['r-new']).toBeTruthy();
     component.ngOnDestroy();
   });
+
+  it('revokes main and related blob URLs when navigating between products (AG1)', () => {
+    const revokeSpy: jasmine.Spy = spyOn(URL, 'revokeObjectURL');
+    const fixture = TestBed.createComponent(ProductDetailComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    imageSubjects.get('img-p1')!.next(new Blob(['p1-bytes']));
+    imageSubjects.get('rel-r-old')!.next(new Blob(['old-related']));
+    expect(component.imageUrls[0]).toBeTruthy();
+    expect(component.relatedImageUrls['r-old']).toBeTruthy();
+    expect(revokeSpy).not.toHaveBeenCalled();
+
+    // Navigation resets both maps: live blob URLs must be revoked first.
+    paramMap$.next(convertToParamMap({id: 'p2'}));
+    expect(revokeSpy.calls.count()).toBe(2);
+    component.ngOnDestroy();
+  });
+
+  it('revokes related blob URLs on destroy (AG1)', () => {
+    const revokeSpy: jasmine.Spy = spyOn(URL, 'revokeObjectURL');
+    const fixture = TestBed.createComponent(ProductDetailComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    imageSubjects.get('img-p1')!.next(new Blob(['p1-bytes']));
+    imageSubjects.get('rel-r-old')!.next(new Blob(['old-related']));
+    expect(component.relatedImageUrls['r-old']).toBeTruthy();
+
+    fixture.destroy();
+    expect(revokeSpy.calls.count()).toBe(2);
+  });
 });
