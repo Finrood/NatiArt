@@ -2,15 +2,21 @@ package com.saas.directory.configuration;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.HashMap;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.validation.MapBindingResult;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import com.saas.directory.controller.helper.ResourceAlreadyExistsException;
+import com.saas.directory.dto.UserRegistrationDto;
 
 class ControllerAdviceTest {
 
@@ -87,4 +93,27 @@ class ControllerAdviceTest {
         assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
         assertEquals("Malformed request body", result.getBody());
     }
+
+    @Test
+    void handleMethodArgumentNotValid_returns400ListingFieldNamesOnly() throws NoSuchMethodException {
+        final MethodParameter parameter = new MethodParameter(
+                ControllerAdviceTest.class.getDeclaredMethod("sample", UserRegistrationDto.class), 0);
+        final MapBindingResult bindingResult = new MapBindingResult(new HashMap<>(), "userRegistrationDto");
+        bindingResult.rejectValue("username", "NotBlank");
+        bindingResult.rejectValue("profile.lastname", "NotBlank");
+
+        final ResponseEntity<Object> result =
+                advice.handleMethodArgumentNotValid(new MethodArgumentNotValidException(parameter, bindingResult));
+
+        assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
+        final String body = (String) result.getBody();
+        assertTrue(body.contains("profile.lastname"));
+        assertTrue(body.contains("username"));
+        // the rejected values are client input and must never be echoed back
+        assertFalse(body.contains("attacker@example.com"));
+        assertFalse(body.contains("secret-value"));
+    }
+
+    @SuppressWarnings("unused")
+    private static void sample(UserRegistrationDto dto) {}
 }
