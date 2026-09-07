@@ -6,6 +6,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -29,6 +31,8 @@ import com.portcelana.natiart.repository.PaymentRepository;
 
 @Service
 public class AsaasPaymentService implements PaymentService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(AsaasPaymentService.class);
+
     private final String asaasPaymentUrl;
     private final RestTemplate restTemplate;
     private final PaymentRepository paymentRepository;
@@ -218,8 +222,13 @@ public class AsaasPaymentService implements PaymentService {
      * RestTemplate throws {@link HttpStatusCodeException} instead of returning
      * 4xx/5xx responses, so the status-code branches above would otherwise be
      * dead code and every Asaas 401/404 would surface as a 500.
+     *
+     * The raw upstream body is logged server-side only -- it is never embedded
+     * in the exception message because the product advice reflects mapped
+     * messages to the caller.
      */
     static RuntimeException mapAsaasError(HttpStatusCodeException e) {
+        LOGGER.warn("Asaas payment API error: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
         final HttpStatusCode statusCode = e.getStatusCode();
         if (statusCode == HttpStatus.UNAUTHORIZED || statusCode == HttpStatus.FORBIDDEN) {
             return new UserNotAllowedException("Unauthorized api call to the payment provider");

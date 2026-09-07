@@ -1,16 +1,28 @@
 package com.portcelana.natiart.service;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.controller.helper.UserNotAllowedException;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 class ShippingServiceTest {
 
@@ -72,5 +84,51 @@ class ShippingServiceTest {
         final HttpServerErrorException upstream =
                 HttpServerErrorException.create(HttpStatus.INTERNAL_SERVER_ERROR, "Bad Gateway", null, null, null);
         assertSame(upstream, ShippingService.mapShippingError(upstream));
+    }
+
+    @Test
+    void mapShippingError_warnLogsUpstreamStatusAndBodyOnFallThrough() {
+        final byte[] body = "{\"errors\":[\"validation-failed-marker\"]}".getBytes(StandardCharsets.UTF_8);
+        final HttpClientErrorException upstream = HttpClientErrorException.create(
+                HttpStatus.BAD_REQUEST, "Bad Request", null, body, StandardCharsets.UTF_8);
+
+        final RuntimeException[] mapped = new RuntimeException[1];
+        final List<ILoggingEvent> events =
+                captureLogEvents(ShippingService.class, () -> mapped[0] = ShippingService.mapShippingError(upstream));
+
+        assertSame(upstream, mapped[0]);
+        assertEquals(1, events.size());
+        assertEquals(Level.WARN, events.get(0).getLevel());
+        final String message = events.get(0).getFormattedMessage();
+        assertTrue(message.contains("400"));
+        assertTrue(message.contains("validation-failed-marker"));
+    }
+
+    @Test
+    void mapShippingError_mappedMessagesStayStaticWithoutUpstreamBody() {
+        final byte[] body = "{\"errors\":[\"validation-failed-marker\"]}".getBytes(StandardCharsets.UTF_8);
+        final HttpClientErrorException upstream = HttpClientErrorException.create(
+                HttpStatus.UNAUTHORIZED, "Unauthorized", null, body, StandardCharsets.UTF_8);
+
+        final RuntimeException mapped = ShippingService.mapShippingError(upstream);
+
+        assertEquals("Unauthorized api call to the shipping provider", mapped.getMessage());
+        assertFalse(mapped.getMessage().contains("validation-failed-marker"));
+    }
+
+    private List<ILoggingEvent> captureLogEvents(Class<?> loggedClass, Runnable action) {
+        final Logger logger = (Logger) LoggerFactory.getLogger(loggedClass);
+        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        final Level previousLevel = logger.getLevel();
+        logger.setLevel(Level.DEBUG);
+        try {
+            action.run();
+            return List.copyOf(appender.list);
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(previousLevel);
+        }
     }
 }
