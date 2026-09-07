@@ -24,11 +24,11 @@ export class PersonalizationModalComponent {
 
   // Helper getters to check available personalizations
   get canAddGoldBorder(): boolean {
-    return !!this.product?.availablePersonalizations.includes(PersonalizationOption.GOLDEN_BORDER);
+    return !!this.product?.availablePersonalizations?.includes(PersonalizationOption.GOLDEN_BORDER);
   }
 
   get canAddCustomImage(): boolean {
-    return !!this.product?.availablePersonalizations.includes(PersonalizationOption.CUSTOM_IMAGE);
+    return !!this.product?.availablePersonalizations?.includes(PersonalizationOption.CUSTOM_IMAGE);
   }
 
   onFileSelected(event: Event) {

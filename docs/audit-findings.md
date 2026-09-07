@@ -623,6 +623,79 @@ Gradle coordinate staleness (none), workflow filename drift (none).
 Instruction-file fixes stay OPEN for human review per the
 self-modification ban — tracked, not silently fixed.
 
+## AA. Frontend data identity, follow-ups (Lens 10 hunt, 2026-09-06)
+
+Hunt method: re-read cart/product/checkout identity paths on current master
+(`cart.service.ts`, `cart.component.ts`, `cart-modal.component.ts`,
+`order-summary.component.ts`, `product-detail.component.ts`,
+`product-list.component.ts`, `personalization-modal.component.ts`,
+`add-to-cart-button.component.ts`, `payment.service.ts`, `app.routes.ts`).
+Re-verified: cart ops are `cartItemId`-keyed (`cart.service.ts:72-95`,
+`cart.component.ts:86-106,142-144`, `cart-modal.component.ts:48-60`),
+`product-detail` route-param race guards intact (`switchMap` + `imageRequestToken`
+in `product-detail.component.ts:77-117,284-313`, related-fetch cancel `:315-344`),
+PIX param subscription follows routed id (`pix-payment-confirmation.component.ts:41-55`),
+`ProductService.getProduct` rejects blank ids (`product.service.ts:35-40`), and
+`pix-payment/:paymentId` matches `params.get('paymentId')` (`app.routes.ts:41`).
+Cleared as non-findings: `addToCart` calls without `subscribe` (mutations run
+synchronously before the `of()` return — fragile but not cold no-ops),
+admin `product.id!` call sites (admin-only, ids server-assigned).
+
+### AA1. Product-list personalization check + `product.id!` wrong-key — OPEN (Medium)
+- `frontend/natiart-app/src/app/product/components/customer/dashboard/product-list/product-list.component.ts:68,84`
+  calls `product.availablePersonalizations.includes(...)` with no guard (a product
+  without the array throws), and keys images/fetches with `product.id!`
+  (`:68`, template `product-list.component.html:9-10` `[routerLink]="['/product',
+  product.id]"` + `imageUrls[product.id!]`). An id-less product navigates to
+  `/product/undefined` and collides on `imageUrls["undefined"]` (wrong-key
+  images across all id-less cards). Safe precedent in the same flow uses
+  `?.some` (`product-detail.component.ts:150`, `add-to-cart-button.component.ts:50`).
+  Found by Lens 10 hunt, 2026-09-06.
+- Fix: guard with `?.includes(...) ?? false` (or `?.some`), skip image fetch and
+  router link when `id` is missing. Spec: id-less/option-less product renders
+  without throwing and issues zero image GETs.
+- Status: IN REVIEW here.
+
+### AA2. Personalization-modal getters throw when options array missing — OPEN (Medium)
+- `frontend/natiart-app/src/app/product/components/customer/personalization-modal/personalization-modal.component.ts:27,31`:
+  `this.product?.availablePersonalizations.includes(...)` guards a null product
+  but not a present product with an undefined array → `TypeError` when the modal
+  opens. Same class as AA1, separate file. Found by Lens 10 hunt, 2026-09-06.
+- Fix: `this.product?.availablePersonalizations?.includes(...) ?? false`.
+  Spec: product without the array → both getters `false`, no throw.
+- Status: IN REVIEW here.
+
+### AA3. Cart/order-summary/cart-modal image fetches resurrect removed lines — OPEN (Low)
+- `cart.component.ts:196-213` (`fetchProductImage`), `order-summary.component.ts:75-88`,
+  and `cart-modal.component.ts:104-112` write `imageUrls[cartItemId]` unconditionally
+  on async completion. A line removed while its image GET is in flight gets its map
+  entry re-created after `prepareImageUrls`/`loadProductImages` deleted it
+  (stale closure over the list; `takeUntil(destroy$)` covers destroy only, not
+  removal). Cart-modal additionally has no error callback, so a failed GET leaves
+  the slot unset while siblings fall back to the placeholder. Found by Lens 10
+  hunt, 2026-09-06.
+- Fix: re-check line liveness before writing (or cancel per-line requests), add the
+  placeholder fallback to cart-modal. Spec: remove-then-resolve never re-adds the key.
+  Tracked, not fixed in this batch.
+
+### AA4. Product-list re-issues every image GET on each emission — OPEN (Low)
+- `product-list.component.ts:65-71` (`updateProductImages`) fetches unconditionally
+  for all products on every `products.next`, with no `if (imageUrls[productId])`
+  guard (siblings `cart-modal.component.ts:93` and `product-detail.component.ts:351`
+  already guard). Each refresh burns one GET per card and races concurrent lookups
+  (last-writer wins on `imageUrls[productId]`). Found by Lens 10 hunt, 2026-09-06.
+- Fix: skip lines already loading/loaded. Spec: second emission issues zero GETs.
+  Tracked, not fixed in this batch.
+
+### AA5. Related-product image fetches ignore the route-change token — OPEN (Low)
+- `product-detail.component.ts:349-377` (`fetchRelatedProductImage`) has no
+  `imageRequestToken` check (main images `:284-313` do), and `relatedImageUrls`
+  is reset on param change (`:86`) while old related GETs stay subscribed. A fast
+  product→product navigation lets stale related resolutions re-add old-productId
+  keys and spuriously `relatedProducts$.next([...])`. Found by Lens 10 hunt,
+  2026-09-06.
+- Fix: capture and compare the token (or unsubscribe per-line fetches on reset).
+  Spec: stale related resolution writes nothing. Tracked, not fixed in this batch.
 Re-verified 2026-09-06 (Lens 17 cycle hunt): four root mirrors still
 byte-identical (`md5sum`), all `agents/*.md` carry `meta` frontmatter, 17
 `## Lens` headers parse, spec count 56 ("~55" holds), versions hold
@@ -673,6 +746,36 @@ design), `PaymentController` null-tolerant principal (fail-closed via
 `UserNotAllowedException`), `GET /images` public read (traversal fixed in
 PR #140). AC1 (stateless product chain) is FIXED and archived (PR #153); the product
 SecurityConfig now sets `SessionCreationPolicy.STATELESS` mirroring directory-service.
+
+## AD. Secrets and configuration re-hunt (Lens 3, 2026-09-06)
+
+Hunt method: grepped `backend/` for token/password/secret log arguments,
+hard-coded `http(s)://` in main code, every `@Value` site and its property
+default; diffed all `application*.properties` profiles per service.
+Re-verified this cycle: Y1 still OPEN (both `WebConfig.java:20` files still
+bake the origin list), Y4 still OPEN (both `application-production.properties`
+files still pin no payment/shipping/directory endpoints). Cleared as
+non-findings: blank-secret fail-fast holds on every integration constructor
+(`ShippingService.java:34-37`, `AsaasPaymentService.java:44-47`,
+`UserAuthenticationProvider.java:66-74` all throw on blank); Asaas keys carry
+no property default so boot fails closed when unset; sandbox URLs as `@Value`
+defaults fail safe (misconfiguration charges sandbox, never real money);
+`console.error("Error decoding token: ", e)`
+(`authentication.service.ts:246`) logs only the `atob`/`JSON.parse`
+exception, never the token string; `data.sql` seeds bcrypt hashes only, no
+plaintext credentials; `spring.h2.console.enabled=true` and `admin/admin`
+live only in `application-local-h2.properties`, never in production profiles.
+
+### AD1. Origin postal code hard-coded in `ShippingService` — IN REVIEW (Low, fix PR: config-hardening / PR #154)
+- `backend/product-service/.../service/ShippingService.java:26`
+  `public static final String FROM_POSTAL_CODE = "88085201"`, consumed by
+  `service/support/MelhorenvioShippingCalculationRequest.java:19` as the
+  `from` address of every Melhor Envio quote. Same class as Y1: a deploy-time
+  value baked into the artifact, so moving the shipping origin needs a
+  rebuild. Found by Lens 3 hunt, 2026-09-06.
+- Fix: drive from a property (`melhorenvio.api.from-postal-code`, env
+  override, current value as default). Tests: configured origin reflected in
+  the built calculation request. Fix provided by PR #154.
 
 ## AE. N+1 queries and pagination (Lens 5 hunt, 2026-09-06)
 
