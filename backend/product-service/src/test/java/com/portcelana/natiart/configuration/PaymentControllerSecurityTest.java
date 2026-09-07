@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -30,6 +31,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.portcelana.natiart.dto.AuthenticationResponseDto;
 import com.portcelana.natiart.dto.payment.PaymentCreationRequest;
 import com.portcelana.natiart.dto.payment.PaymentCreationResponse;
+import com.portcelana.natiart.dto.payment.PaymentPixQrCodeResponse;
 import com.portcelana.natiart.dto.payment.PaymentStatusResponse;
 import com.portcelana.natiart.dto.payment.helper.PaymentMethod;
 import com.portcelana.natiart.dto.payment.helper.PaymentStatus;
@@ -85,6 +87,82 @@ class PaymentControllerSecurityTest {
                         throw new AssertionError("Expected 401/403 for anonymous payment creation but got " + s);
                     }
                 });
+    }
+
+    @Test
+    @WithAnonymousUser
+    void anonymousCannotReadPixQrCodeAtCanonicalKebabPath() throws Exception {
+        mockMvc.perform(get("/api/payment/pay-1/pix-qr-code")).andExpect(result -> {
+            int s = result.getResponse().getStatus();
+            if (s != 401 && s != 403) {
+                throw new AssertionError("Expected 401/403 for anonymous PIX QR but got " + s);
+            }
+        });
+    }
+
+    @Test
+    void deprecatedCamelCasePixQrCodeAliasStillServes() throws Exception {
+        final AuthenticationResponseDto.Principal principal = mock(AuthenticationResponseDto.Principal.class);
+        when(principal.getExternalId()).thenReturn("cus_MINE");
+        final UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        when(paymentService.getPixQrCode("pay-1", "cus_MINE"))
+                .thenReturn(new PaymentPixQrCodeResponse(true, "abc", "payload", LocalDateTime.now()));
+
+        try {
+            mockMvc.perform(get("/api/payment/pay-1/pixQrCode")).andExpect(status().isOk());
+            verify(paymentService).getPixQrCode("pay-1", "cus_MINE");
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    @WithAnonymousUser
+    void anonymousCannotUseCanonicalPaymentPaths() throws Exception {
+        mockMvc.perform(get("/payments/pay-1/status")).andExpect(result -> {
+            int s = result.getResponse().getStatus();
+            if (s != 401 && s != 403) {
+                throw new AssertionError("Expected 401/403 for anonymous payment status but got " + s);
+            }
+        });
+        mockMvc.perform(get("/payments/pay-1/pix-qr-code")).andExpect(result -> {
+            int s = result.getResponse().getStatus();
+            if (s != 401 && s != 403) {
+                throw new AssertionError("Expected 401/403 for anonymous PIX QR but got " + s);
+            }
+        });
+        mockMvc.perform(
+                        post("/payments/create")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"paymentProcessor\":\"ASAAS\",\"customerId\":\"cus_OTHER\",\"value\":10.0,\"billingType\":\"PIX\"}"))
+                .andExpect(result -> {
+                    int s = result.getResponse().getStatus();
+                    if (s != 401 && s != 403) {
+                        throw new AssertionError("Expected 401/403 for anonymous payment creation but got " + s);
+                    }
+                });
+    }
+
+    @Test
+    void deprecatedApiPrefixAliasesStillServe() throws Exception {
+        final AuthenticationResponseDto.Principal principal = mock(AuthenticationResponseDto.Principal.class);
+        when(principal.getExternalId()).thenReturn("cus_MINE");
+        final UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        when(paymentService.getPaymentStatus("pay-1", "cus_MINE"))
+                .thenReturn(new PaymentStatusResponse("pay-1", PaymentStatus.PENDING));
+
+        try {
+            mockMvc.perform(get("/api/payment/pay-1/status")).andExpect(status().isOk());
+            mockMvc.perform(get("/payments/pay-1/status")).andExpect(status().isOk());
+            verify(paymentService, times(2)).getPaymentStatus("pay-1", "cus_MINE");
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     @Test

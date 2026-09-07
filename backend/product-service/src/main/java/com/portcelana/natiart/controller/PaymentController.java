@@ -19,7 +19,10 @@ public class PaymentController {
         this.paymentService = paymentService;
     }
 
-    @PostMapping("/api/payment/create")
+    // Canonical paths use the plural resource name with no /api prefix, matching
+    // every sibling controller; the /api/payment variants stay as deprecated
+    // aliases so deployed clients keep working.
+    @PostMapping({"/payments/create", "/api/payment/create"})
     @PreAuthorize("isFullyAuthenticated()")
     public PaymentCreationResponse createPayment(
             @RequestBody PaymentCreationRequest paymentCreationRequest,
@@ -28,14 +31,20 @@ public class PaymentController {
                 paymentCreationRequest, principal != null ? principal.getExternalId() : null);
     }
 
-    @GetMapping("/api/payment/{paymentId}/status")
+    @GetMapping({"/payments/{paymentId}/status", "/api/payment/{paymentId}/status"})
     @PreAuthorize("isFullyAuthenticated()")
     public PaymentStatusResponse getPaymentStatus(
             @PathVariable String paymentId, @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
         return paymentService.getPaymentStatus(paymentId, principal != null ? principal.getExternalId() : null);
     }
 
-    @GetMapping("/api/payment/{paymentId}/pixQrCode")
+    // Canonical path is kebab-case per backend/AGENTS.md; legacy variants
+    // stay as deprecated aliases so deployed clients keep working.
+    @GetMapping({
+        "/payments/{paymentId}/pix-qr-code",
+        "/api/payment/{paymentId}/pix-qr-code",
+        "/api/payment/{paymentId}/pixQrCode"
+    })
     @PreAuthorize("isFullyAuthenticated()")
     public PaymentPixQrCodeResponse getPixQrCode(
             @PathVariable String paymentId, @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {

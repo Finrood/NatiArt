@@ -11,8 +11,8 @@ import {environment} from '../../../../../../environments/environment';
 describe('PixPaymentConfirmationComponent', () => {
   let http: HttpTestingController;
   let paramMap$: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
-  const statusUrl = `${environment.api.product.url}/api/payment/pay_123/status`;
-  const qrUrl = `${environment.api.product.url}/api/payment/pay_123/pixQrCode`;
+  const statusUrl = `${environment.api.product.url}/payments/pay_123/status`;
+  const qrUrl = `${environment.api.product.url}/payments/pay_123/pix-qr-code`;
 
   beforeEach(async () => {
     paramMap$ = new BehaviorSubject(convertToParamMap({paymentId: 'pay_123'}));
@@ -101,8 +101,8 @@ describe('PixPaymentConfirmationComponent', () => {
 
   it('follows the routed payment id: param change restarts QR and polling for the new id', fakeAsync(() => {
     const {component} = createAndFlushQr();
-    const newQrUrl = `${environment.api.product.url}/api/payment/pay_456/pixQrCode`;
-    const newStatusUrl = `${environment.api.product.url}/api/payment/pay_456/status`;
+    const newQrUrl = `${environment.api.product.url}/payments/pay_456/pix-qr-code`;
+    const newStatusUrl = `${environment.api.product.url}/payments/pay_456/status`;
 
     paramMap$.next(convertToParamMap({paymentId: 'pay_456'}));
     tick(0);
@@ -142,7 +142,7 @@ describe('PixPaymentConfirmationComponent', () => {
   it('cancels the in-flight QR lookup when the routed payment changes', fakeAsync(() => {
     const fixture = TestBed.createComponent(PixPaymentConfirmationComponent);
     const component = fixture.componentInstance;
-    const newQrUrl = `${environment.api.product.url}/api/payment/pay_456/pixQrCode`;
+    const newQrUrl = `${environment.api.product.url}/payments/pay_456/pix-qr-code`;
     fixture.detectChanges(); // QR request for pay_123 is in flight
 
     paramMap$.next(convertToParamMap({paymentId: 'pay_456'}));
