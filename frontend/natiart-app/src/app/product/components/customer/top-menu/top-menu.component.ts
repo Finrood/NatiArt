@@ -23,6 +23,7 @@ export class TopMenuComponent implements OnInit, OnDestroy {
   isMobileMenuOpen = false;
 
   private authSubscription: Subscription | undefined;
+  private cartHoverCloseTimer: ReturnType<typeof setTimeout> | undefined = undefined;
 
   constructor(
     private cartService: CartService,
@@ -37,7 +38,8 @@ export class TopMenuComponent implements OnInit, OnDestroy {
     });
   }
 
-  ngOnDestroy() {
+  ngOnDestroy(): void {
+    this.clearCartHoverCloseTimer();
     this.authSubscription?.unsubscribe();
   }
 
@@ -56,13 +58,21 @@ export class TopMenuComponent implements OnInit, OnDestroy {
     this.isCartHovered = true;
   }
 
-  hideCartModal() {
+  hideCartModal(): void {
     // Using setTimeout to allow clicking inside the modal before it closes
-    setTimeout(() => {
+    this.clearCartHoverCloseTimer();
+    this.cartHoverCloseTimer = setTimeout(() => {
       if (!this.isCartHovered) {
         this.isCartHovered = false;
       }
     }, 200);
+  }
+
+  private clearCartHoverCloseTimer(): void {
+    if (this.cartHoverCloseTimer !== undefined) {
+      clearTimeout(this.cartHoverCloseTimer);
+      this.cartHoverCloseTimer = undefined;
+    }
   }
 
   search(term: string) {
