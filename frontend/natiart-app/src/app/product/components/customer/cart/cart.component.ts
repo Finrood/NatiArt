@@ -76,6 +76,7 @@ export class CartComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.clearErrorDismissTimer();
     this.destroy$.next();
     this.destroy$.complete();
     // Clean up ALL previously created object URLs
@@ -212,10 +213,20 @@ export class CartComponent implements OnInit, OnDestroy {
     });
   }
 
+  private errorDismissTimer: ReturnType<typeof setTimeout> | undefined = undefined;
+
   protected setError(message: string | null): void {
     this.error$.next(message);
+    this.clearErrorDismissTimer();
     if (message) {
-      setTimeout(() => this.error$.next(null), 5000);
+      this.errorDismissTimer = setTimeout(() => this.error$.next(null), 5000);
+    }
+  }
+
+  private clearErrorDismissTimer(): void {
+    if (this.errorDismissTimer !== undefined) {
+      clearTimeout(this.errorDismissTimer);
+      this.errorDismissTimer = undefined;
     }
   }
 }
