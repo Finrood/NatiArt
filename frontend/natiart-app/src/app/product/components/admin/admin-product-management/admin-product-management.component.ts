@@ -179,7 +179,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         // Get existing image URLs from previews.
       product.images = this.imagePreviews
         .filter(preview => preview.isExisting)
-        .map(preview => (preview as any).originalUrl || preview.url as string);
+        .map(preview => preview.originalUrl || preview.url as string);
 
       formData.append('productDto', new Blob([JSON.stringify(product)], { type: 'application/json' }));
       this.imagePreviews
@@ -422,7 +422,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   private updateProductImages(): void {
     const existingImages = this.imagePreviews
       .filter(preview => preview.isExisting)
-      .map(preview => (preview as any).originalUrl || preview.url as string);
+      .map(preview => preview.originalUrl || preview.url as string);
     this.productForm.patchValue({ images: existingImages });
     this.imageFiles = this.imagePreviews
       .filter(preview => !preview.isExisting && preview.file)

@@ -788,7 +788,7 @@ signup/admin screens (idiomatic HttpErrorResponse lambda parameter, not a
 hidden contract). AJ1-AJ3 below are runner-ups; B11+S6 fixed in flight this
 cycle.
 
-### AJ2. Untyped `any` contracts hide frontend type breaks — OPEN (Low)
+### AJ2. Untyped `any` contracts hide frontend type breaks — IN REVIEW (fix/frontend-typed-contracts)
 - `cart.component.ts:149` (`performAction(action$: () => Observable<any>, ...)`
   erases the cart-line response type), `top-banner.component.ts:23`
   (`bannerInterval: any` instead of `ReturnType<typeof setInterval>`),
