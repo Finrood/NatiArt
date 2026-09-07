@@ -1,6 +1,5 @@
 package com.saas.directory.configuration;
 
-import java.io.IOException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
@@ -10,7 +9,6 @@ import java.util.UUID;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +26,6 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.saas.directory.dto.UserAuthDto;
 import com.saas.directory.dto.UserDto;
@@ -112,30 +109,30 @@ public class UserAuthenticationProvider {
     }
 
     @Transactional
-    public void refreshToken(String username, HttpServletRequest request, HttpServletResponse response)
-            throws IOException, IllegalAccessException {
+    public UserAuthDto refreshToken(String username, HttpServletRequest request) throws IllegalAccessException {
         final String header = request.getHeader(HttpHeaders.AUTHORIZATION);
 
-        if (header != null) {
-            final String[] authElements = header.split(" ");
-
-            if (authElements.length == 2 && "Bearer".equals(authElements[0])) {
-                final String refreshToken = authElements[1];
-                final Authentication currentAuth = authenticateWithToken(refreshToken, TokenType.AUTH_REFRESH);
-                if (currentAuth != null) {
-                    final UserDto userDto = (UserDto) currentAuth.getPrincipal();
-
-                    if (!username.equals(userDto.getUsername())) {
-                        throw new IllegalAccessException(
-                                "User from access token does not match user from refresh token.");
-                    }
-
-                    final String accessToken = createAccessToken(userDto);
-                    final UserAuthDto userAuthDto = new UserAuthDto(accessToken, refreshToken);
-                    new ObjectMapper().writeValue(response.getOutputStream(), userAuthDto);
-                }
-            }
+        if (header == null) {
+            throw new IllegalAccessException("Missing Authorization header on refresh-token request.");
         }
+        final String[] authElements = header.split(" ");
+
+        if (authElements.length != 2 || !"Bearer".equals(authElements[0])) {
+            throw new IllegalAccessException("Malformed Authorization header on refresh-token request.");
+        }
+        final String refreshToken = authElements[1];
+        final Authentication currentAuth = authenticateWithToken(refreshToken, TokenType.AUTH_REFRESH);
+        if (currentAuth == null) {
+            throw new IllegalAccessException("Authentication token is not valid");
+        }
+        final UserDto userDto = (UserDto) currentAuth.getPrincipal();
+
+        if (!username.equals(userDto.getUsername())) {
+            throw new IllegalAccessException("User from access token does not match user from refresh token.");
+        }
+
+        final String accessToken = createAccessToken(userDto);
+        return new UserAuthDto(accessToken, refreshToken);
     }
 
     @Transactional(readOnly = true)
