@@ -27,6 +27,13 @@ public interface CartItemRepository extends JpaRepository<CartItem, String> {
     Optional<CartItem> findCartItemByUsernameAndProduct(String username, Product product);
 
     /**
+     * Empties a user's cart in one statement. The rows are never read on this
+     * path, so loading them first only to delete them one by one is pure
+     * overhead on the checkout flow.
+     */
+    void deleteByUsername(String username);
+
+    /**
      * Atomically increments the line quantity without a read-modify-write round
      * trip, so concurrent adds for the same user and product cannot lose
      * increments — but only while the line stays below the caller's cap, so a

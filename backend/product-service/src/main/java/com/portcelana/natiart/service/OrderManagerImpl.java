@@ -3,6 +3,7 @@ package com.portcelana.natiart.service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,8 +77,14 @@ public class OrderManagerImpl implements OrderManager {
                 .setDeliveryAmount(orderDto.getDeliveryAmount());
 
         BigDecimal totalItemsAmount = BigDecimal.ZERO;
+        // One batched product read for the whole order: the per-line stock
+        // decrements below stay row-atomic on purpose, only the reads batch.
+        final Map<String, Product> products = productManager.getProductsOrDie(orderDto.getItems().stream()
+                .map(OrderItemDto::getProductId)
+                .distinct()
+                .toList());
         for (OrderItemDto item : orderDto.getItems()) {
-            final Product product = productManager.getProductOrDie(item.getProductId());
+            final Product product = products.get(item.getProductId());
             if (!product.isActive()) {
                 throw new IllegalArgumentException("Product [" + product.getLabel() + "] is no longer available");
             }

@@ -1,7 +1,9 @@
 package com.portcelana.natiart.service;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.core.io.InputStreamResource;
@@ -20,6 +22,11 @@ public interface ProductManager {
     Product getProductOrDie(String id);
 
     Product getProductWithImagesOrDie(String id);
+
+    /**
+     * Loads all requested products in one query, throwing when any id is unknown.
+     */
+    Map<String, Product> getProductsOrDie(Collection<String> ids);
 
     List<Product> getProducts(Pageable pageable);
 

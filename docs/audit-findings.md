@@ -889,6 +889,42 @@ by `from()`, upstream optionals only).
   charge; save-failure leaves no unreconciled charge.
   Tracked, not silently fixed.
 
+## AN. N+1 queries and pagination (Lens 5 hunt, 2026-09-07)
+
+Hunt method: enumerated every repository query and every `findAll`/derived-query
+call site in `backend/`, checked each listing endpoint for page/size caps, and
+traced every DTO `from()` touch against association fetch types
+(`open-in-view=false`, so each lazy touch inside a `@Transactional` reader is a
+query). Re-verified this cycle: AE1 still OPEN
+(`service/OrderManagerImpl.java:79-80` per-line `getProductOrDie` + per-line
+`decreaseStockIfAvailable`, up to `MAX_ORDER_LINES = 50` lines — fixed in
+flight this cycle), AE2 still OPEN
+(`service/CartManagerImpl.java:88-90` `findCartItemsByUsername` + `deleteAll`
+to empty a cart whose rows are never read — fixed in flight this cycle), AE3
+still OPEN and latent (`service/OrderManagerImpl.java:51-53` unbounded
+`findAll` on LAZY `CustomerOrder.items`, `controller/OrderController.java:19-23`
+still exposes only `POST /orders/create`). Cleared as non-findings: product /
+category / package listings (all three controllers clamp via `toPageable` to
+`MAX_PAGE_SIZE = 100`); cart listing (fetch join on product + images +
+personalization, `CartItemRepository.java:23-25`); `findAllIds*` id-page
+queries (indexed id-only selects); `existsByCategory`/`existsByPackaging`
+(single `SELECT 1` guards); directory-service (single-row lookups only, no
+`findAll`, no listing endpoint).
+
+### AE4. `getOrderById` fans out over order items and their products — OPEN (Low)
+- `service/OrderManagerImpl.java:43-47` loads the order with plain `findById`,
+  then `dto/OrderDto.java:47-49` streams `customerOrder.getItems()` (LAZY
+  `CustomerOrder.items`, `model/CustomerOrder.java:50-51`), and each
+  `model/CustomerOrderItem.java:22-25` carries its `product` EAGER — so one
+  single-order read costs 1 (order) + 1 (items collection) + M (product per
+  line). Latent today: `controller/OrderController.java:19-23` exposes only
+  `POST /orders/create`, so no read endpoint triggers it yet (same reason AE3
+  and X4 stay tracked).
+- Fix: fetch join on items (+ product) in a dedicated `findByIdWithItems`
+  query when the admin/single-order read endpoint is wired (with X4/AE3).
+  Tests: single-order read issues a bounded query count (Hibernate
+  statistics), items present. Found by Lens 5 hunt, 2026-09-07.
+  Tracked, not silently fixed.
 ## AQ. Concurrency and statelessness (Lens 8 hunt, 2026-09-07)
 
 Hunt method: grepped `backend/` for cross-request in-memory state
@@ -1077,7 +1113,7 @@ upstream enums (`parseAsaasStatus`/`parsePaymentMethod`/`parsePaymentStatus` fai
 with static messages); login with missing/blank credentials resolves to 401 via
 `ResourceNotFoundException`, not an NPE.
 
-### AI1. Client-supplied usernames are logged raw (log-forging) — OPEN (Low)
+### AI4. Client-supplied usernames are logged raw (log-forging) — OPEN (Low)
 - `controller/AuthenticationController.java:35` logs `credentialsDto.username()` and
   `controller/UserRegistrationController.java:38,47` log `userRegistrationDto.username()`
   verbatim; newline/CRLF-bearing input can forge log lines. The registration path is closed
@@ -1086,3 +1122,7 @@ with static messages); login with missing/blank credentials resolves to 401 via
 - Fix: constrain `CredentialsDto` (bean validation) or sanitize before logging.
   Found by Lens 1 hunt, 2026-09-07.
   Tracked, not silently fixed.
+
+### AU1. Bulk clearCart bypasses the Personalization cascade and orphans rows — OPEN (High)
+`CartItem.personalization` is `@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)` (`backend/product-service/src/main/java/com/portcelana/natiart/model/CartItem.java:26-29`), so removing a line via `EntityManager.remove` also deletes the line's `Personalization` row and its `@ElementCollection` options. `CartManagerImpl.clearCart` (plus `CartItemRepository.deleteByUsername`) was switched to a Spring Data **derived bulk DELETE**, which does not honor JPA cascade/orphanRemoval — every cleared personalized cart line now leaks an orphaned `Personalization` row carrying user-supplied option text (and its option rows). Personal data is retained after a deletion intent, and rows accumulate per clear. The same orphaning already exists on the pre-PR `deleteByUsernameAndProduct` path. Found as the BLOCKER in the mechanical review of PR #182; resolution per that review's option (b): tracked here instead of silently fixed — a follow-up fix must restore cascade semantics (targeted JPQL deletes for now-unreferenced personalizations, FK order respected) and cover both delete paths.
+
