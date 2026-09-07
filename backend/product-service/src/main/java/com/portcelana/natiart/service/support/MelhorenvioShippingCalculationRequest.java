@@ -1,7 +1,5 @@
 package com.portcelana.natiart.service.support;
 
-import static com.portcelana.natiart.service.ShippingService.FROM_POSTAL_CODE;
-
 import java.util.Collections;
 import java.util.List;
 
@@ -12,11 +10,12 @@ public class MelhorenvioShippingCalculationRequest {
     private Address to;
     private List<Volume> volumes;
 
-    public static MelhorenvioShippingCalculationRequest from(ShippingEstimateRequest shippingEstimateRequest) {
+    public static MelhorenvioShippingCalculationRequest from(
+            ShippingEstimateRequest shippingEstimateRequest, String fromPostalCode) {
         final MelhorenvioShippingCalculationRequest request = new MelhorenvioShippingCalculationRequest();
 
         final Address fromAddress = new Address();
-        fromAddress.setPostal_code(FROM_POSTAL_CODE);
+        fromAddress.setPostal_code(fromPostalCode);
         request.setFrom(fromAddress);
 
         final Address toAddress = new Address();
