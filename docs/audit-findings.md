@@ -241,16 +241,51 @@ has no spec but carries no logic (policy: obvious markup needs no spec).
 The `registerGhostUser` zero-coverage gap found in this hunt is fixed in
 flight (N1, PR #108) rather than tracked separately.
 
-### Q1. `UserManagerTest` near-duplicate create/register tests — OPEN (Low)
+### Q1. `UserManagerTest` near-duplicate create/register tests — IN REVIEW (Low, fix in flight this cycle)
 - `backend/directory-service/.../service/UserManagerTest.java:57`
-  (`test_create_new_user_with_unique_username_and_password`) vs `:129`
-  (`test_register_new_user_with_unique_username_and_password`): identical
-  bodies (same profile data, same event-capture assertions). The exact-duplicate
-  `testRegisterUser_DuplicateUsername` pair in the same file was already removed
-  (PR #108); this near-dup pair remains. Found by Lens 13 hunt, 2026-09-05.
 - Fix: collapse into one test, spend the freed slot on an uncovered branch
   (e.g. null-password `IllegalArgumentException`). Tests: suite still green,
   single creation-path test.
+
+## AH. Test quality re-hunt (Lens 13, 2026-09-07)
+
+Hunt method: re-ran the Q-section checks against current master — enumerated
+all backend `*Test.java` (38 files under `src/test`, excluding one `build/`
+stale copy) and frontend `*.spec.ts` (56 files, `node_modules` excluded) for
+weak assertions, tests that cannot fail, missing specs on money/security
+paths, unasserted mock interactions, and duplicated setup. Re-verified: Q1
+still OPEN (the `:61` vs `:133` pair is behaviorally identical — same stubs,
+same `registerUser` call, same assertions; only the names differ), fixed in
+flight this cycle. Cleared as non-findings: `PaymentControllerSecurityTest:160`
+and `AsaasPaymentServiceTest:192,204,235` `verifyNoInteractions` (each pairs
+with an `assertThrows` — the no-egress assertion is the behavior, not a
+weakness); `CartManagerImplTest:145` (same pattern); frontend spec count "56
+vs ~55" (holds); no focused/disabled specs (`fdescribe`/`fit`/`xit` zero
+hits); `UserManagerTest:283,295` ghost-oracle `verifyNoInteractions`
+(pairs with `assertThrows`, encodes the N2 contract pending its fix).
+The `recover` vacuous-assertion gap found in this hunt is fixed in flight
+below (Q2) rather than tracked separately.
+
+### Q3. `TopBannerComponent` rotation/destroy logic has a should-create-only spec — OPEN (Low)
+- `frontend/natiart-app/src/app/product/components/customer/dashboard/top-banner/top-banner.component.ts:37-68`
+  (`prevSlide`/`nextSlide` wrap-around, `resetBannerInterval` restart,
+  `ngOnDestroy` cleanup) vs
+  `top-banner.component.spec.ts` (single `should create`, zero timer/index
+  assertions). A leaked interval or off-by-one wrap renders silently — the spec
+  cannot catch it. Found by Lens 13 hunt, 2026-09-07.
+- Fix: fakeAsync specs — `nextSlide` wraps `3 → 0`, `prevSlide` wraps `0 → 3`,
+  destroy clears the interval (no further advance). Tracked, not silently fixed.
+
+### Q4. `ShippingEstimationComponent` cheapest-option state machine has a should-create-only spec — OPEN (Medium)
+- `frontend/natiart-app/src/app/product/components/customer/shipping-estimation/shipping-estimation.component.ts:56-126`
+  (debounced CEP stream, `loading`/`success`/`error`/`no-options` states,
+  cheapest-option selection driving what the buyer pays) vs
+  `shipping-estimation.component.spec.ts` (single `should create`). Wrong
+  cheapest-option or swallowed estimate error is money-adjacent and spec-invisible.
+  Found by Lens 13 hunt, 2026-09-07.
+- Fix: `HttpTestingController` specs — valid CEP emits cheapest option,
+  backend error surfaces `error` state, empty options surface `no-options`.
+  Tracked, not silently fixed.
 
 ## R. Red-team: payment observability + log hygiene (adversarial cycle, 2026-09-05)
 
