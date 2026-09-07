@@ -18,4 +18,21 @@ describe('CartComponent', () => {
     const fixture = TestBed.createComponent(CartComponent);
     expect(fixture.componentInstance).toBeTruthy();
   });
+
+  it('cancels the pending error dismissal on destroy (P2)', () => {
+    const fixture = TestBed.createComponent(CartComponent);
+    const component = fixture.componentInstance;
+    const internals = component as unknown as {
+      setError(message: string | null): void;
+      errorDismissTimer: ReturnType<typeof setTimeout> | undefined;
+    };
+    const clearSpy: jasmine.Spy = spyOn(window, 'clearTimeout').and.callThrough();
+
+    internals.setError('boom');
+    expect(internals.errorDismissTimer).toBeDefined();
+
+    fixture.destroy();
+    expect(clearSpy).toHaveBeenCalled();
+    expect(internals.errorDismissTimer).toBeUndefined();
+  });
 });
