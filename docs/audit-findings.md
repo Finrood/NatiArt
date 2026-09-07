@@ -239,7 +239,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
 - Fix: push the subscription into `this.subscriptions` (or `takeUntil` a
   destroy subject). Spec: destroy unsubscribes the `valueChanges` listener.
 
-### P2. Fire-and-forget error-dismiss timers fire after destroy — OPEN (Low)
+### P2. Fire-and-forget error-dismiss timers fire after destroy — IN REVIEW (Low, PR #TBD this cycle)
 - `frontend/natiart-app/src/app/product/components/customer/checkout/checkout.component.ts:389-393`
   (`setTimeout(() => this.clearErrorMessage(), 7000)`),
   `frontend/natiart-app/src/app/product/components/customer/cart/cart.component.ts:216-221`
