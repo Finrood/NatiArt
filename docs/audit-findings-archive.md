@@ -1033,3 +1033,30 @@ camelCase, `PaymentController.java:38`) still OPEN on both sides
   legacy `/api/payment/...` variants kept as deprecated aliases;
   storefront moved in the same PR.
 
+
+### AK2. Directory advice has no `AccessDeniedException` handler: Spring authorization denials fall to catch-all 500 — FIXED (PR #175)
+- Product advice maps `AccessDeniedException` to 403; directory advice has no
+  such handler, so any Spring authorization denial on directory-service
+  (e.g. a future `@PreAuthorize`) lands in `handleException` as 500
+  "Internal server error" with an error-level log for a client error.
+  Latent today (no `@PreAuthorize` on directory controllers), contract drift
+  by construction. Found by Lens 15 hunt, 2026-09-07.
+- Fix: ported the 403 `AccessDeniedException` handler (same static body)
+  to the directory advice, mirroring product-service.
+  Test: ControllerAdviceTest.handleAccessDeniedException_returns403WithStaticBody.
+
+### AK3. `refreshToken` answers imperatively with a per-request `ObjectMapper`; missing credentials get a silent empty 200 — FIXED (PR #175)
+- `UserAuthenticationProvider.java:115-139` serializes `UserAuthDto` via
+  `new ObjectMapper().writeValue(response.getOutputStream(), ...)`,
+  bypassing the app-wide Jackson configuration (naming strategy, modules),
+  and never sets status/content-type in the contract
+  (`AuthenticationController.java:44-50` returns void). A missing/malformed
+  `Authorization` header falls through silently — 200 with an empty body —
+  while the storefront parses it as `{accessToken, refreshToken}`
+  (`jwt-interceptor.service.ts:82-89`). Found by Lens 15 hunt, 2026-09-07.
+- Fix: `refreshToken` returns `UserAuthDto`; the controller wraps it in
+  `ResponseEntity.ok` (status/content-type from Spring's converter);
+  missing/malformed header and username mismatch throw
+  `IllegalAccessException`, denied loudly via the existing advice shape
+  (403 + static body). Tests: missing/malformed/mismatched credentials
+  deny, never empty-200.
