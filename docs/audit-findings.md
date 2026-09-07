@@ -67,7 +67,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
 - Fix: `private static final Logger LOGGER = getLogger(OwnClass.class)`;
   constructor injection. No behavior change; include in a boy-scout PR.
 
-### B11. camelCase URL segment `pixQrCode` breaks kebab-case convention — OPEN (Low)
+### B11. camelCase URL segment `pixQrCode` breaks kebab-case convention — IN REVIEW (fix/payment-api-consistency: canonical `/payments/{id}/pix-qr-code`, legacy aliases kept)
 - `backend/product-service/.../controller/PaymentController.java:38`
   maps `GET /api/payment/{paymentId}/pixQrCode`; `backend/AGENTS.md`
   requires kebab-case segments. Callers: `payment.service.ts:31`,
@@ -263,7 +263,7 @@ not filed.
   error responses). Tests: id present in MDC during payment creation;
   forwarded header asserted on the egress mock.
 
-### S6. Payment routes carry an `/api` prefix nothing else uses — OPEN (Low)
+### S6. Payment routes carry an `/api` prefix nothing else uses — IN REVIEW (fix/payment-api-consistency: canonical `/payments/...`, legacy `/api/payment/...` aliases kept)
 - `backend/product-service/.../controller/PaymentController.java:22,31,38`
   serve `/api/payment/...` while every sibling controller serves bare
   `/products`, `/cart`, `/orders`, `/categories`, `/packages`, `/shipping`.

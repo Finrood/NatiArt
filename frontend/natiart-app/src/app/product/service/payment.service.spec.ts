@@ -43,7 +43,7 @@ describe('PaymentService', () => {
         expect(actual.paymentId).toBe('pay_123');
       });
 
-    http.expectOne(`${apiUrl}/api/payment/create`).flush(response);
+    http.expectOne(`${apiUrl}/payments/create`).flush(response);
   });
 
   it('maps the QR payload and parses the expiration date', () => {
@@ -53,7 +53,7 @@ describe('PaymentService', () => {
     });
 
     http
-      .expectOne(`${apiUrl}/api/payment/pay_123/pixQrCode`)
+      .expectOne(`${apiUrl}/payments/pay_123/pix-qr-code`)
       .flush({ success: true, encodedImage: 'abc', payload: 'payload', expirationDate: '2030-01-01T00:00:00Z' });
   });
 
@@ -64,6 +64,6 @@ describe('PaymentService', () => {
         expect(actual.status).toBe('PENDING');
       });
 
-    http.expectOne(`${apiUrl}/api/payment/pay_123/status`).flush({ paymentId: 'pay_123', status: 'PENDING' });
+    http.expectOne(`${apiUrl}/payments/pay_123/status`).flush({ paymentId: 'pay_123', status: 'PENDING' });
   });
 });

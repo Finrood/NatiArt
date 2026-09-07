@@ -15,7 +15,7 @@ export class PaymentService {
   }
 
   createPixPayment(paymentCreationRequest: PaymentCreationRequest): Observable<PaymentCreationResponse> {
-    return this.http.post<PaymentCreationResponse>(`${this.apiUrl}/api/payment/create`, paymentCreationRequest);
+    return this.http.post<PaymentCreationResponse>(`${this.apiUrl}/payments/create`, paymentCreationRequest);
   }
 
   getPixQrCode(paymentId: string): Observable<{
@@ -29,7 +29,7 @@ export class PaymentService {
         encodedImage: string;
         payload: string;
         expirationDate: string | [number, number, number, number, number, number];
-      }>(`${this.apiUrl}/api/payment/${paymentId}/pixQrCode`)
+      }>(`${this.apiUrl}/payments/${paymentId}/pix-qr-code`)
       .pipe(
         map((response) => ({
           encodedImage: `data:image/png;base64,${response.encodedImage}`,
@@ -43,7 +43,7 @@ export class PaymentService {
     return this.http.get<{
       paymentId: string;
       status: string;
-    }>(`${this.apiUrl}/api/payment/${paymentId}/status`);
+    }>(`${this.apiUrl}/payments/${paymentId}/status`);
   }
 }
 
