@@ -6,6 +6,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
@@ -23,6 +25,8 @@ import com.portcelana.natiart.service.support.MelhorenvioShippingCalculationResp
 
 @Service
 public class ShippingService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ShippingService.class);
+
     private final RestTemplate restTemplate;
     private final String apiUrl;
     private final String apiToken;
@@ -105,8 +109,13 @@ public class ShippingService {
      * RestTemplate throws {@link HttpStatusCodeException} instead of returning
      * 4xx/5xx responses, so without this mapping every upstream error would
      * surface as a 500.
+     *
+     * The raw upstream body is logged server-side only -- it is never embedded
+     * in the exception message because the product advice reflects mapped
+     * messages to the caller.
      */
     static RuntimeException mapShippingError(HttpStatusCodeException e) {
+        LOGGER.warn("Shipping provider API error: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
         final HttpStatusCode statusCode = e.getStatusCode();
         if (statusCode == HttpStatus.UNAUTHORIZED || statusCode == HttpStatus.FORBIDDEN) {
             return new UserNotAllowedException("Unauthorized api call to the shipping provider");

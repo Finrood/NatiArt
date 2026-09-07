@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.auth0.jwt.JWT;
@@ -30,6 +32,11 @@ import com.saas.directory.model.User;
 import com.saas.directory.repository.ExternalUserRepository;
 import com.saas.directory.repository.TokenRepository;
 import com.saas.directory.service.UserManager;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 /**
  * Constructor-agnostic on purpose: the provider's constructor signature changes across
@@ -106,6 +113,27 @@ class UserAuthenticationProviderTest {
         assertEquals("Authentication token issuer mismatch", exception.getMessage());
         assertFalse(exception.getMessage().contains(token));
         verify(tokenRepository).deleteByJti(jti);
+    }
+
+    @Test
+    void invalidateToken_bogusToken_logsBelowError() throws ReflectiveOperationException {
+        final UserAuthenticationProvider provider = providerWithSecret("bogus-token-test-secret");
+        final Logger logger = (Logger) LoggerFactory.getLogger(UserAuthenticationProvider.class);
+        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        final Level previousLevel = logger.getLevel();
+        logger.setLevel(Level.DEBUG);
+        try {
+            assertDoesNotThrow(() -> provider.invalidateToken("not-a-jwt"));
+            assertTrue(
+                    appender.list.stream().noneMatch(event -> event.getLevel().isGreaterOrEqual(Level.ERROR)));
+            assertEquals(1, appender.list.size());
+            assertEquals(Level.DEBUG, appender.list.get(0).getLevel());
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(previousLevel);
+        }
     }
 
     private UserAuthenticationProvider providerWithMocks(String secret) {
