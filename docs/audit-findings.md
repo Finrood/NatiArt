@@ -321,7 +321,7 @@ not filed.
   error responses). Tests: id present in MDC during payment creation;
   forwarded header asserted on the egress mock.
 
-### R2. Product-side upstream mappers drop the actionable error body — OPEN (Low-Medium)
+### R2. Product-side upstream mappers drop the actionable error body — IN REVIEW (Low-Medium, fix on `fix/observability-log-hygiene`)
 - `backend/product-service/.../service/AsaasPaymentService.java:181-190`
   (`mapAsaasError`) and `service/ShippingService.java:103-112`
   (`mapShippingError`) fall through to `return e` (raw
@@ -340,7 +340,7 @@ not filed.
   server-side at mapping time (never in the response), keep the static
   client message. Tests: marker body in logs, absent from response.
 
-### R3. Bogus-token paths log at ERROR; two claim extractors are dead code — OPEN (Low)
+### R3. Bogus-token paths log at ERROR; two claim extractors are dead code — IN REVIEW (Low, fix on `fix/observability-log-hygiene`)
 - `directory/.../configuration/UserAuthenticationProvider.java:185,193,202`:
   `invalidateToken`, `extractEmailClaim`, `extractIdClaim` all
   `LOGGER.error("Error verifying JWT token: {}", exception.getMessage())` on
@@ -857,5 +857,62 @@ runner-ups.
   feedback. Found by Lens 12 hunt, 2026-09-07.
 - Fix: `isLoggingIn` flag disabling the submit button, reset on both
   paths. Spec: double submit issues one request.
+
+## AI. Observability and log hygiene re-hunt (Lens 14, 2026-09-07)
+
+Hunt method: enumerated every `LOGGER.*`/`LoggerFactory` site in `backend/`
+main code (`rg`, tests excluded), verified zero-logger files with a per-file
+count, and counted storefront `console.*` call sites (`src/`, `*.spec.ts`
+excluded). Re-verified this cycle: R1 still OPEN (repo-wide grep for
+`MDC|correlation|requestId|X-Request|traceId` in `backend/` still zero hits;
+both `PerformanceLoggingFilter`s still log method + URI only), R2/R3 IN
+REVIEW (fix in flight this cycle). Cleared as non-findings: slow-request
+INFO threshold (`PerformanceLoggingFilter`, both services, 1s threshold with
+DEBUG below — sampled correctly); `TokenCleanupService` hourly purge INFO
+(single line per hour, actionable count); `UserRegistrationListener`
+INFO/ERROR lines (registration lifecycle with asaas id, already actionable);
+`AsaasUserManager` WARN with status + body (the pattern R2 mirrors);
+`authentication.service.ts:246` token-decode error log (logs the exception
+only, never the token string); `main.ts:6` bootstrap `console.error`
+(single crash path). AI1-AI3 below are runner-ups.
+
+### AI1. Money-path services are log-silent: no audit trail on payment/order/shipping flows — OPEN (Medium)
+- `AsaasPaymentService.java`, `ShippingService.java`, `OrderManagerImpl.java`
+  and `CartManagerImpl.java` contain zero `slf4j`/`Logger` references
+  (verified per-file). Payment creation/status (`createPayment`,
+  `getPaymentStatus`, `getPixQrCode`), shipping estimates and order creation
+  emit no audit line — after a disputed charge there is no server-side record
+  of who was charged what value under which upstream payment id. The only
+  payment-adjacent logging is the directory-side Asaas customer WARN and the
+  generic advice 500 ERROR without a payment id. Found by Lens 14 hunt,
+  2026-09-07.
+- Fix: INFO audit log on payment creation (upstream payment id, value,
+  requester external id — never card/token material) plus WARN on upstream
+  failure (R2 covers the failure half). Tests: ListAppender asserts the
+  audit line carries the payment id; response bodies stay static.
+  Tracked, not silently fixed.
+
+### AI2. Per-request INFO logs on hot catalog/cart read paths — OPEN (Low)
+- `ProductController.java` (6 INFO sites: every GET including
+  `getAllProducts`/`getNewProducts`/`getFeaturedProducts`/image),
+  `CategoryController.java` (6 sites), `CartController.java` (4 sites),
+  directory `AuthenticationController.java` (3 sites: login/refresh/logout),
+  `UserController.java:26`, `UserRegistrationController.java:38,47`. Every
+  catalog GET logs INFO unconditionally, so normal browsing traffic is all
+  INFO volume with no sampling — signal (auth events, admin mutations)
+  drowns in read noise. Found by Lens 14 hunt, 2026-09-07.
+- Fix: downgrade read-path logs to DEBUG, keep auth lifecycle and
+  mutating/admin actions at INFO. Tests: ListAppender asserts no INFO event
+  on catalog GET. Tracked, not silently fixed.
+
+### AI3. Storefront ships 54 `console.*` call sites with raw error objects, no reporting channel — OPEN (Low)
+- 54 `console.log|error|warn` sites in `frontend/natiart-app/src`
+  (specs excluded): admin management components, cart/checkout,
+  product-detail/list, auth screens. Every failure path dumps the raw error
+  object to the browser console — noise in prod, no severity routing, no
+  correlation id, nothing a maintainer can query after a user report.
+  Found by Lens 14 hunt, 2026-09-07.
+- Fix: central error-reporting service (console in dev, collector in prod)
+  and downgrade non-actionable noise. Tracked, not silently fixed.
 
 
