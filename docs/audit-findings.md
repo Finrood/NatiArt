@@ -144,18 +144,6 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
 - Fix: distributed lock (ShedLock) or document single-scheduler topology.
   Tracked, not silently fixed.
 
-### K6. `updateProduct` full-update read-modify-write loses to concurrent writes — IN REVIEW (fix/concurrent-conflict-409)
-- `service/ProductManagerImpl.java:159-176` (`updateProduct`) reads the entity,
-  overwrites every field in memory, and saves. `Product` carries `@Version`
-  (`model/Product.java:23-24`), so concurrent full updates do not silently mix
-  fields — but the loser gets `OptimisticLockException` → generic 500 instead
-  of a 409/conflict, same mechanism as K3 (whose atomic-toggle fix covers only
-  the visibility flips, not full updates). Admin-only path, hence Low.
-  Found by Lens 8 hunt, 2026-09-06.
-- Fix: map `OptimisticLockException`/`ObjectOptimisticLockingFailureException`
-  to 409 in the product-service advice when the admin update endpoint is wired.
-  Tests: concurrent update conflict → 409, not 500. Tracked, not silently fixed.
-
 ## L. Frontend auth flow (Lens 9 hunt, 2026-09-05)
 
 ### L3. `/checkout` requires auth but implements a guest ghost-user flow — OPEN (Medium)
@@ -978,6 +966,45 @@ is live — only the executor choice below is filed).
 - Fix: bounded `ThreadPoolTaskExecutor` bean (fixed pool + bounded queue,
   caller-runs rejection) in directory-service. Tests: bean present with
   bounded queue capacity. Tracked, not silently fixed.
+
+## AR. Frontend auth flow re-hunt (Lens 9, 2026-09-07)
+
+Hunt method: re-read the auth flow on current master
+(`authentication.service.ts`, `token.service.ts`,
+`jwt-interceptor.service.ts`, `auth.guard.ts`, `admin.guard.ts`,
+`login.component.ts`, `app.routes.ts`, `app.config.ts`).
+Re-verified this cycle: L3 still OPEN (`app.routes.ts:37` still guards
+`/checkout` with `authGuard` while `checkout.component.ts:237-289` keeps
+its guest branch — needs the product decision, unchanged), C11 still OPEN
+(`app.config.ts:20` still returns a root-scope `Subscription` from the
+`APP_INITIALIZER` factory), AH3 still OPEN (`login.component.ts:98-118`
+still has no in-flight guard). Cleared as non-findings: concurrent
+refresh stampedes (`UserAuthenticationProvider.java:135` echoes the same
+refresh token back — no rotation, so overlapping refresh POSTs from the
+60s monitor, the 15-minute inactivity timer and the interceptor single-flight
+are redundant egress, never mutual invalidation); `doRefreshToken` inner
+`fetchCurrentUser().subscribe()` without an error callback (already cleared
+in AA — failures route through that method's own 401-reset); post-registration
+explicit-login choice (already cleared in AA). AR1 below is the runner-up.
+
+### AR1. Interceptor-side token wipe leaves a stale logged-in user; guards read the stale principal — OPEN (Low)
+- `jwt-interceptor.service.ts:96-101` (`performRefresh` error path) and
+  `:128-134` (logout-401 path) call `tokenService.clearTokens()`, but
+  `TokenService` is a dumb localStorage wrapper with no notification channel,
+  so `AuthenticationService.stateSubject` keeps the last user:
+  `currentUser$`/`isLoggedIn$` still emit the stale user and `isAdmin`
+  (`authentication.service.ts:112-114`) still returns the old role. The
+  refresh-error chain navigates to `/login`, but nothing resets the state —
+  and the 60s monitor never fires the reset either (all its branches require
+  a non-null token). A back-button navigation to a guarded route then reads
+  the stale principal (`auth.guard.ts:14-21`) and activates with no tokens;
+  the next user-fetching call 401s and self-heals, so no backend bypass —
+  shell-only exposure, hence Low. Found by Lens 9 hunt, 2026-09-07.
+- Fix: route interceptor-side session ends through
+  `AuthenticationService.resetAuthStateAndRedirect()` (or expose a
+  `notifyLoggedOut()` the interceptor calls after `clearTokens()`).
+  Tests: failed refresh asserts `currentUser$` emits null; guard denies
+  after the wipe. Tracked, not silently fixed.
 
 
 

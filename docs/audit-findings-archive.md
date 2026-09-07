@@ -1085,3 +1085,17 @@ camelCase, `PaymentController.java:38`) still OPEN on both sides
   rounded. Tests: `19.99` survives exactly with scale 2; `10.001`/`0.001`
   rejected; service-guard stub test for null/over-precise values (both
   proven non-vacuous by revert-check).
+
+### K6. `updateProduct` full-update read-modify-write loses to concurrent writes — FIXED (PR #183)
+- `service/ProductManagerImpl.java:159-176` (`updateProduct`) reads the entity,
+  overwrites every field in memory, and saves. `Product` carries `@Version`
+  (`model/Product.java:23-24`), so concurrent full updates do not silently mix
+  fields — but the loser gets `OptimisticLockException` → generic 500 instead
+  of a 409/conflict, same mechanism as K3 (whose atomic-toggle fix covers only
+  the visibility flips, not full updates). Admin-only path, hence Low.
+  Found by Lens 8 hunt, 2026-09-06.
+- Fix: `OptimisticLockingFailureException`/`OptimisticLockException` map to
+  409 with a static body in the product-service advice, and
+  `DataIntegrityViolationException` maps to 409 in both services as a backstop
+  for check-then-act registration/cart races. Tests: each handler asserts
+  409 + static body (proven non-vacuous by revert-check).
