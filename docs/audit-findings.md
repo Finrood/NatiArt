@@ -129,24 +129,6 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
   against `totalAmount`, reject mismatches. Tests: under/over-valued payment
   rejected; exact total accepted.
 
-### H2. `GET /packages` unbounded `findAll` with in-memory sort — IN REVIEW (Medium, fix PR: lens5-nplus1-pagination / PR #155)
-- `backend/product-service/.../controller/PackageController.java:26-32` returns
-  the whole table (`service/PackageManagerImpl.java:40-42`
-  `packageRepository.findAll()`) and sorts in memory. No pagination at all —
-  same lens as B7, separate endpoint.
-- Fix: accept capped `page`/`size` (same 100-item cap as B7), sort in the query.
-  Tests: oversized `size` clamped; default page serves sorted labels.
-
-### H4. Cart listing has no entity graph for `product`/`personalization` — IN REVIEW (Low-Medium, fix PR: lens5-nplus1-pagination / PR #155)
-- `backend/product-service/.../repository/CartItemRepository.java:14`
-  `findCartItemsByUsername` is a bare derived query; `CartItem.product` is
-  `EAGER` (`model/CartItem.java:18-20`) so each cart line re-fetches its
-  product, and `CartItemDto.from` (`dto/CartItemDto.java:10-15`) additionally
-  touches the `personalization` `@OneToOne` (`:22-23`). Per-user carts are
-  small, hence Low-Medium, not High.
-- Fix: `@EntityGraph`/`JOIN FETCH` on `findCartItemsByUsername` for
-  `product` + `personalization`. Tests: N lines load with a bounded query count.
-
 ## I. HTTP integration robustness (Lens 6 hunt, 2026-09-05)
 
 ### Re-verified this cycle (Lens 6)
@@ -563,15 +545,6 @@ statements repo-wide. Y2/Y3 flipped FIXED below (PR #134); Y1/Y4 stay OPEN
 as runner-ups. (Renamed X→Y on rebase: the X1–X4 labels
 were taken by the Lens 4 batch, PR #132.)
 
-### Y1. CORS allowed origins hard-coded in both services — OPEN (Low)
-- `backend/product-service/.../configuration/WebConfig.java:20` and
-  `backend/directory-service/.../configuration/WebConfig.java:20` bake
-  `List.of("http://localhost:4200", "https://natiart.samuelpetre.com")`
-  into the artifact: the dev origin ships to production, and every origin
-  change needs a rebuild. Same class as the sandbox/localhost defaults below.
-- Fix: drive the list from a property (`@Value` + env override per deploy).
-  Tests: configured origin reflected in the `CorsConfigurationSource` bean.
-
 ### Y4. Production profiles pin no payment/shipping/directory endpoints — OPEN (Low)
 - `application-production.properties` (both services) sets only datasource,
   JPA and storage keys: Asaas URLs, Melhor Envio URL/token and
@@ -640,30 +613,6 @@ PIX param subscription follows routed id (`pix-payment-confirmation.component.ts
 Cleared as non-findings: `addToCart` calls without `subscribe` (mutations run
 synchronously before the `of()` return — fragile but not cold no-ops),
 admin `product.id!` call sites (admin-only, ids server-assigned).
-
-### AA1. Product-list personalization check + `product.id!` wrong-key — OPEN (Medium)
-- `frontend/natiart-app/src/app/product/components/customer/dashboard/product-list/product-list.component.ts:68,84`
-  calls `product.availablePersonalizations.includes(...)` with no guard (a product
-  without the array throws), and keys images/fetches with `product.id!`
-  (`:68`, template `product-list.component.html:9-10` `[routerLink]="['/product',
-  product.id]"` + `imageUrls[product.id!]`). An id-less product navigates to
-  `/product/undefined` and collides on `imageUrls["undefined"]` (wrong-key
-  images across all id-less cards). Safe precedent in the same flow uses
-  `?.some` (`product-detail.component.ts:150`, `add-to-cart-button.component.ts:50`).
-  Found by Lens 10 hunt, 2026-09-06.
-- Fix: guard with `?.includes(...) ?? false` (or `?.some`), skip image fetch and
-  router link when `id` is missing. Spec: id-less/option-less product renders
-  without throwing and issues zero image GETs.
-- Status: IN REVIEW here.
-
-### AA2. Personalization-modal getters throw when options array missing — OPEN (Medium)
-- `frontend/natiart-app/src/app/product/components/customer/personalization-modal/personalization-modal.component.ts:27,31`:
-  `this.product?.availablePersonalizations.includes(...)` guards a null product
-  but not a present product with an undefined array → `TypeError` when the modal
-  opens. Same class as AA1, separate file. Found by Lens 10 hunt, 2026-09-06.
-- Fix: `this.product?.availablePersonalizations?.includes(...) ?? false`.
-  Spec: product without the array → both getters `false`, no throw.
-- Status: IN REVIEW here.
 
 ### AA3. Cart/order-summary/cart-modal image fetches resurrect removed lines — OPEN (Low)
 - `cart.component.ts:196-213` (`fetchProductImage`), `order-summary.component.ts:75-88`,
@@ -766,17 +715,6 @@ exception, never the token string; `data.sql` seeds bcrypt hashes only, no
 plaintext credentials; `spring.h2.console.enabled=true` and `admin/admin`
 live only in `application-local-h2.properties`, never in production profiles.
 
-### AD1. Origin postal code hard-coded in `ShippingService` — IN REVIEW (Low, fix PR: config-hardening / PR #154)
-- `backend/product-service/.../service/ShippingService.java:26`
-  `public static final String FROM_POSTAL_CODE = "88085201"`, consumed by
-  `service/support/MelhorenvioShippingCalculationRequest.java:19` as the
-  `from` address of every Melhor Envio quote. Same class as Y1: a deploy-time
-  value baked into the artifact, so moving the shipping origin needs a
-  rebuild. Found by Lens 3 hunt, 2026-09-06.
-- Fix: drive from a property (`melhorenvio.api.from-postal-code`, env
-  override, current value as default). Tests: configured origin reflected in
-  the built calculation request. Fix provided by PR #154.
-
 ## AE. N+1 queries and pagination (Lens 5 hunt, 2026-09-06)
 
 Hunt method: enumerated every repository query and every `findAll`/derived-query
@@ -787,9 +725,9 @@ query). Re-verified this cycle: B7 product/category half still FIXED
 (`ProductController.java:134-138` and `CategoryController.java:46-50` clamp to
 `MAX_PAGE_SIZE = 100`; the two-query id-then-`findAllWithImagesByIds` pattern in
 `ProductManagerImpl.java:114-127` keeps product listings at 2 queries).
-H2 and H4 (below) are IN REVIEW: this PR (`fix/lens5-nplus1-pagination`, PR #155)
-fixes H2 (`GET /packages` pagination) and H4 (cart fetch-join) — those two items
-move to `IN REVIEW` here. Cleared as non-findings: `findAllIds*` id-page queries
+H2 and H4 are FIXED (PR #155 merged 2026-09-07; sections moved to
+`docs/audit-findings-archive.md`): `GET /packages` is paginated and the cart
+listing uses a fetch join. Cleared as non-findings: `findAllIds*` id-page queries
 (indexed id-only selects, no collection fetch); `existsByCategory`/`existsByPackaging`
 (single `SELECT 1` guards); public catalog reads staying public (intentional);
 directory `findByUser`/`findByJti*` single-row lookups (no fan-out). AE1-AE3
@@ -822,3 +760,53 @@ below are runner-ups.
   `POST /orders/create`, same reason X4 stays tracked).
 - Fix: capped `Pageable` admin listing with `@EntityGraph`/fetch join on
   `items` when the endpoint is wired (X4); until then tracked, not silently fixed.
+
+## AF. Frontend data identity re-hunt (Lens 10, 2026-09-07)
+
+Hunt method: re-read the cart/product identity paths on current master
+(`cart.component.ts:162-216`, `order-summary.component.ts:60-90`,
+`cart-modal.component.ts:28-112`, `product-list.component.ts:45-95` +
+`product-list.component.html:1-20`, `personalization-modal.component.ts:20-40`,
+`product-detail.component.ts:340-380`, all five `*.component.html` `@for`
+track expressions) against the AA baseline. Re-verified this cycle: AA1 FIXED
+on master (`product-list.component.ts:66-74` guards `if (!product.id) return`
+and uses `?? []`; template guards the router link), AA2 FIXED
+(`personalization-modal.component.ts:27,31` use `?.includes(...) ?? false`);
+AA3 still OPEN (completion handlers in `cart.component.ts:196-213`,
+`order-summary.component.ts:75-88`, `cart-modal.component.ts:104-112` still
+write `imageUrls[cartItemId]` unconditionally — cart/order-summary do guard
+fetch initiation via `if (!this.imageUrls[...])`, but the in-flight write has
+no liveness check; cart-modal additionally still has no error callback);
+AA4 still OPEN (`product-list.component.ts:65-71` still fetches unconditionally
+per emission — and each re-fetch pushes a new blob URL onto `objectUrls`
+(`:79`), which is only revoked on destroy, so every refresh also leaks one
+blob URL per card until teardown); AA5 still OPEN
+(`fetchRelatedProductImage` still has no `imageRequestToken` check).
+Cleared as non-findings: cart-modal removal path revokes before delete
+(`cart-modal.component.ts:83-86` via `revokeObjectUrl`, raw map entry dropped);
+cart `prepareImageUrls` cleanup pass revokes stale blob URLs on the next
+emission, so the AA3 resurrect is transient, not permanent. AF1-AF2 below are
+runner-ups.
+
+### AF1. Product-list (and siblings) track `@for` rows by object identity, not id — OPEN (Low)
+- `product-list.component.html:5` (`@for (product of products | async; track product)`),
+  `cart-modal.component.html:8` (`track item`), `order-summary.component.html:6`
+  (`track item`), `product-detail.component.html:152` (`track relatedProduct`):
+  rows keyed by object identity while the cart twin uses a key function
+  (`cart.component.html:48,109` `track trackByCartItem`). Any emission carrying
+  rebuilt objects with stable ids (fresh page fetch, sort change) destroys and
+  recreates every card/line DOM node: image flicker, hover/animation state loss,
+  and re-resolution pressure on the image maps. Found by Lens 10 hunt, 2026-09-07.
+- Fix: `track product.id` / `track item.cartItemId` / `track relatedProduct.id`.
+  Spec: emit same-id rebuilt objects → DOM nodes preserved, zero new image GETs.
+
+### AF2. Related-image resolution builds a per-product copy then discards it — OPEN (Low)
+- `product-detail.component.ts` (`fetchRelatedProductImage`): the `next` handler
+  maps `relatedProducts$.value` into `currentRelated` (`{...p, imageUrl: ...}`)
+  and then emits `next([...this.relatedProducts$.value])` — the mapped copy is
+  dead; the template binds via the `relatedImageUrls` map instead. A reader
+  cannot tell which binding carries the image (identity-mapping ambiguity), and
+  the next emission still re-renders every related row. Found by Lens 10 hunt,
+  2026-09-07.
+- Fix: drop the dead map (or bind the copied field and stop emitting on image
+  resolution). Spec: one related resolution updates exactly one exposed binding.
