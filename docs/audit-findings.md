@@ -473,7 +473,7 @@ Cleared as non-findings: `addToCart` calls without `subscribe` (mutations run
 synchronously before the `of()` return — fragile but not cold no-ops),
 admin `product.id!` call sites (admin-only, ids server-assigned).
 
-### AA3. Cart/order-summary/cart-modal image fetches resurrect removed lines — OPEN (Low)
+### AA3. Cart/order-summary/cart-modal image fetches resurrect removed lines — IN REVIEW (fix/frontend-cart-image-liveness, PR #185)
 - `cart.component.ts:196-213` (`fetchProductImage`), `order-summary.component.ts:75-88`,
   and `cart-modal.component.ts:104-112` write `imageUrls[cartItemId]` unconditionally
   on async completion. A line removed while its image GET is in flight gets its map
