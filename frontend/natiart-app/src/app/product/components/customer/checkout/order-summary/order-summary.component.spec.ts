@@ -7,7 +7,6 @@ import { Subject } from 'rxjs';
 
 import { OrderSummaryComponent } from './order-summary.component';
 import { ProductService } from '../../../../service/product.service';
-import { CartItem } from '../../../../models/CartItem.model';
 import { Product } from '../../../../models/product.model';
 
 describe('OrderSummaryComponent', () => {
