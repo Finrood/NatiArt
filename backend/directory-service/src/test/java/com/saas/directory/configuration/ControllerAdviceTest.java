@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 
 import com.saas.directory.controller.helper.ResourceAlreadyExistsException;
@@ -52,5 +53,26 @@ class ControllerAdviceTest {
 
         assertEquals(HttpStatus.FORBIDDEN, result.getStatusCode());
         assertEquals("Invalid or expired token", result.getBody());
+    }
+
+    @Test
+    void handleNotReadableBody_unwrapsGuardFailureTo400WithItsMessage() {
+        final HttpMessageNotReadableException unreadable = new HttpMessageNotReadableException(
+                "JSON parse error", new IllegalArgumentException("Username is required"));
+
+        final ResponseEntity<Object> result = advice.handleNotReadableBody(unreadable);
+
+        assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
+        assertEquals("Username is required", result.getBody());
+    }
+
+    @Test
+    void handleNotReadableBody_mapsUnrelatedParseErrorsToGeneric400() {
+        final HttpMessageNotReadableException unreadable = new HttpMessageNotReadableException("JSON parse error");
+
+        final ResponseEntity<Object> result = advice.handleNotReadableBody(unreadable);
+
+        assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
+        assertEquals("Malformed request body", result.getBody());
     }
 }

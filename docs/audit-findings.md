@@ -788,7 +788,7 @@ signup/admin screens (idiomatic HttpErrorResponse lambda parameter, not a
 hidden contract). AJ1-AJ3 below are runner-ups; B11+S6 fixed in flight this
 cycle.
 
-### AJ1. Directory advice has no `HttpMessageNotReadable` handler: same malformed body is 400 on product-service, 500 on directory-service — OPEN (Medium)
+### AJ1. Directory advice has no `HttpMessageNotReadable` handler: same malformed body is 400 on product-service, 500 on directory-service — IN REVIEW (fix/directory-not-readable-body)
 - Product-service `configuration/ControllerAdvice.java:43-52` unwraps Jackson
   `ValueInstantiationException` guard failures to 400; directory-service
   `configuration/ControllerAdvice.java` has no such handler, so an identical
