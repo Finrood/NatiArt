@@ -226,32 +226,6 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
   error, and dismiss errors on user action (or a manual close) rather than a
   fixed timer. Tracked, not silently fixed.
 
-## P. Frontend resource hygiene (Lens 11 hunt, 2026-09-05)
-
-### P1. Admin `valueChanges` subscription never tracked, leaks until destroy — IN REVIEW (Low-Medium, PR #TBD this cycle)
-- `frontend/natiart-app/src/app/product/components/admin/admin-product-management/admin-product-management.component.ts:92-100`:
-  `hasFixedGoldenBorder` `valueChanges.subscribe(...)` is never pushed into
-  `this.subscriptions`, so `ngOnDestroy` (`:103-105`) does not unsubscribe it.
-  The form control outlives emissions for the whole admin-page lifetime; every
-  visit adds one more permanent listener. Sibling `fetchImage`/`fetchImagePreview`
-  subscriptions in the same file are tracked correctly. Found by Lens 11 hunt,
-  2026-09-05.
-- Fix: push the subscription into `this.subscriptions` (or `takeUntil` a
-  destroy subject). Spec: destroy unsubscribes the `valueChanges` listener.
-
-### P2. Fire-and-forget error-dismiss timers fire after destroy — IN REVIEW (Low, PR #TBD this cycle)
-- `frontend/natiart-app/src/app/product/components/customer/checkout/checkout.component.ts:389-393`
-  (`setTimeout(() => this.clearErrorMessage(), 7000)`),
-  `frontend/natiart-app/src/app/product/components/customer/cart/cart.component.ts:216-221`
-  (`setTimeout(() => this.error$.next(null), 5000)`) and
-  `frontend/natiart-app/src/app/product/components/customer/top-menu/top-menu.component.ts:59-66`
-  (200ms hover-close `setTimeout`) store no timer handle and never clear it in
-  `ngOnDestroy`. Destroy mid-window touches torn-down state (`cdr.detectChanges()`
-  on a destroyed view, `next` on a completed stream). Found by Lens 11 hunt,
-  2026-09-05.
-- Fix: keep the handle (`ReturnType<typeof setTimeout>`) and `clearTimeout` it
-  in `ngOnDestroy`. Spec: destroy cancels the pending dismissal.
-
 ## Q. Test quality (Lens 13 hunt, 2026-09-05)
 
 Hunt method: enumerated all backend `*Test.java` (29 files) and frontend
@@ -629,24 +603,6 @@ admin `product.id!` call sites (admin-only, ids server-assigned).
   (`cart-modal.component.ts` `fetchImage` now falls back to the placeholder on
   GET failure, spec-covered); the in-flight liveness-check half stays OPEN.
 
-### AA4. Product-list re-issues every image GET on each emission — IN REVIEW (Low, PR #TBD this cycle)
-- `product-list.component.ts:65-71` (`updateProductImages`) fetches unconditionally
-  for all products on every `products.next`, with no `if (imageUrls[productId])`
-  guard (siblings `cart-modal.component.ts:93` and `product-detail.component.ts:351`
-  already guard). Each refresh burns one GET per card and races concurrent lookups
-  (last-writer wins on `imageUrls[productId]`). Found by Lens 10 hunt, 2026-09-06.
-- Fix: skip lines already loading/loaded. Spec: second emission issues zero GETs.
-  Tracked, not fixed in this batch.
-
-### AA5. Related-product image fetches ignore the route-change token — IN REVIEW (Low, PR #TBD this cycle)
-- `product-detail.component.ts:349-377` (`fetchRelatedProductImage`) has no
-  `imageRequestToken` check (main images `:284-313` do), and `relatedImageUrls`
-  is reset on param change (`:86`) while old related GETs stay subscribed. A fast
-  product→product navigation lets stale related resolutions re-add old-productId
-  keys and spuriously `relatedProducts$.next([...])`. Found by Lens 10 hunt,
-  2026-09-06.
-- Fix: capture and compare the token (or unsubscribe per-line fetches on reset).
-  Spec: stale related resolution writes nothing. Tracked, not fixed in this batch.
 Re-verified 2026-09-06 (Lens 17 cycle hunt): four root mirrors still
 byte-identical (`md5sum`), all `agents/*.md` carry `meta` frontmatter, 17
 `## Lens` headers parse, spec count 56 ("~55" holds), versions hold
@@ -816,13 +772,4 @@ loaded-guard + revoke-before-delete); fly-animation `setTimeout`s
 (product-detail `:268-272`, product-list `:182-186` — guarded by parent-node
 checks, 700ms window, DOM node only, tracked as accepted micro-risk not filed).
 
-### AG1. Product-detail related blob URLs never revoked; route reset drops both image maps — OPEN (Medium)
-- `product-detail.component.ts:86` resets `relatedImageUrls = {}` on every
-  route-param change and `ngOnDestroy` (`:120-129`) revokes `imageUrls` only —
-  `relatedImageUrls` blob URLs are never revoked anywhere, and the main-map
-  reset at `:84` drops live blob URLs without revoking them either. Every
-  product→product navigation leaks all main + related blob URLs for the
-  session lifetime (long-lived SPA, image-heavy catalog).
-- Fix: track raw related URLs and revoke both maps on reset + destroy.
-  Spec: navigate p1→p2 revokes p1 URLs; destroy revokes related URLs.
-  Found by Lens 11 hunt, 2026-09-07.
+

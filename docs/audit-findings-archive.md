@@ -845,3 +845,44 @@ non-finite values).
   `relatedImageUrls` map. Found by Lens 10 hunt, 2026-09-07.
 - Fix: dead map removed, trigger emission kept. Behavior unchanged; existing
   product-detail specs green.
+
+### P1. Admin `valueChanges` subscription never tracked, leaks until destroy — FIXED (PR #164)
+- `admin-product-management.component.ts:94` (`hasFixedGoldenBorder`
+  `valueChanges.subscribe(...)`) was never pushed into `this.subscriptions`, so
+  `ngOnDestroy` did not unsubscribe it. Found by Lens 11 hunt, 2026-09-05.
+- Fix: subscription pushed into `this.subscriptions`. Spec: control stream
+  observed after init, unobserved after destroy.
+
+### P2. Fire-and-forget error-dismiss timers fire after destroy — FIXED (PR #165)
+- `checkout.component.ts` (7s error dismiss), `cart.component.ts` (5s error
+  dismiss) and `top-menu.component.ts` (200ms hover-close) stored no timer
+  handle and never cleared it in `ngOnDestroy`. Found by Lens 11 hunt,
+  2026-09-05.
+- Fix: each timer handle-tracked (`ReturnType<typeof setTimeout>`), re-armed
+  safely, cleared in `ngOnDestroy`. Spec per site: destroy calls
+  `clearTimeout` and clears the handle.
+
+### AA4. Product-list re-issues every image GET on each emission — FIXED (PR #164)
+- `product-list.component.ts:65-71` (`updateProductImages`) fetched
+  unconditionally for all products on every emission, with no loaded guard and
+  no error callback (failed GET left the slot unset). Found by Lens 10 hunt,
+  2026-09-06.
+- Fix: skip lines already loading/loaded (slot marked before the async fetch),
+  error callback falls back to the placeholder. Specs: repeat emission issues
+  zero GETs; failed GET lands the placeholder.
+
+### AA5. Related-product image fetches ignore the route-change token — FIXED (PR #164)
+- `product-detail.component.ts` (`fetchRelatedProductImage`) had no
+  `imageRequestToken` check, so stale related resolutions re-added
+  old-productId keys after navigation. Found by Lens 10 hunt, 2026-09-06.
+- Fix: capture and compare the token on resolve (mirroring main images).
+  Spec: stale related resolution writes nothing; current one loads.
+
+### AG1. Product-detail related blob URLs never revoked; route reset drops both image maps — FIXED (PR #164)
+- `product-detail.component.ts:86` reset `relatedImageUrls = {}` on every
+  route-param change and `ngOnDestroy` revoked `imageUrls` only — related blob
+  URLs were never revoked, and the main-map reset dropped live URLs without
+  revoking. Found by Lens 11 hunt, 2026-09-07.
+- Fix: `revokeImageMap` helper (skips non-blob strings like the placeholder)
+  applied to both maps on reset and destroy. Specs: navigate revokes both
+  URLs; destroy revokes both URLs.
