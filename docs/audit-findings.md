@@ -788,16 +788,6 @@ signup/admin screens (idiomatic HttpErrorResponse lambda parameter, not a
 hidden contract). AJ1-AJ3 below are runner-ups; B11+S6 fixed in flight this
 cycle.
 
-### AJ1. Directory advice has no `HttpMessageNotReadable` handler: same malformed body is 400 on product-service, 500 on directory-service — IN REVIEW (fix/directory-not-readable-body)
-- Product-service `configuration/ControllerAdvice.java:43-52` unwraps Jackson
-  `ValueInstantiationException` guard failures to 400; directory-service
-  `configuration/ControllerAdvice.java` has no such handler, so an identical
-  malformed DTO body (e.g. a `@JsonCreator` guard rejection) returns 400 from
-  one service and 500 from the other.
-- Fix: port the `HttpMessageNotReadableException` handler to the directory
-  advice. Tests: malformed body → 400 on both services, never 500.
-  Found by Lens 15 hunt, 2026-09-07.
-
 ### AJ2. Untyped `any` contracts hide frontend type breaks — OPEN (Low)
 - `cart.component.ts:149` (`performAction(action$: () => Observable<any>, ...)`
   erases the cart-line response type), `top-banner.component.ts:23`
