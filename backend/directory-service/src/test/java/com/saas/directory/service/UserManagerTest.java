@@ -58,55 +58,6 @@ public class UserManagerTest {
     }
 
     @Test
-    public void test_create_new_user_with_unique_username_and_password() throws RoleNotFoundException {
-        // Prepare test data
-        final ProfileDto profileDto = new ProfileDto();
-        profileDto.setFirstname("John");
-        profileDto.setLastname("Doe");
-        profileDto.setPhone("+1234567890");
-        profileDto.setCountry("USA");
-        profileDto.setState("California");
-        profileDto.setCity("Los Angeles");
-        profileDto.setZipCode("90001");
-        profileDto.setStreet("123 Main St");
-        profileDto.setComplement("Apt 101");
-
-        final UserRegistrationDto userRegistrationDto = new UserRegistrationDto("new_username", "password", profileDto);
-
-        final User user = new User("new_username", "password");
-        when(userRepository.existsUserByUsernameIgnoreCase("new_username")).thenReturn(false);
-        when(userRepository.save(any())).thenReturn(user);
-        final Profile profile = new Profile(
-                        "John",
-                        "Doe",
-                        "00000000011",
-                        "USA",
-                        "USA",
-                        "Los Angeles",
-                        "Campinas",
-                        "90001",
-                        "123 Main St",
-                        user)
-                .setPhone("+1234567890")
-                .setComplement("Apt 101");
-        when(profileManager.createProfile(any(User.class), any(ProfileDto.class)))
-                .thenReturn(profile);
-        when(roleRepository.findRoleByLabel(RoleName.USER)).thenReturn(Optional.of(new Role(RoleName.USER)));
-
-        // Perform the registration
-        final User result = userManager.registerUser(userRegistrationDto);
-
-        assertEquals(user, result);
-        assertEquals("new_username", result.getUsername());
-
-        verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
-
-        UserRegisteredEvent capturedEvent = eventCaptor.getValue();
-        assertNotNull(capturedEvent);
-        assertEquals("new_username", capturedEvent.username());
-    }
-
-    @Test
     public void test_retrieve_existing_user_by_username() {
         // Prepare test data
         final User user = new User("existing_username", "password");
@@ -176,6 +127,18 @@ public class UserManagerTest {
         UserRegisteredEvent capturedEvent = eventCaptor.getValue();
         assertNotNull(capturedEvent);
         assertEquals("new_username", capturedEvent.username());
+    }
+
+    @Test
+    public void registerUser_blankPassword_throwsWithoutSideEffects() {
+        when(userRepository.existsUserByUsernameIgnoreCase("new_username")).thenReturn(false);
+
+        final UserRegistrationDto userRegistrationDto =
+                new UserRegistrationDto("new_username", "   ", new ProfileDto());
+
+        assertThrows(IllegalArgumentException.class, () -> userManager.registerUser(userRegistrationDto));
+        verify(userRepository, never()).save(any(User.class));
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
