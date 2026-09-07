@@ -1072,3 +1072,16 @@ camelCase, `PaymentController.java:38`) still OPEN on both sides
   generic "Malformed request body" otherwise).
   Tests: guard failure → 400 with guard message; unrelated parse error → 400
   generic (both proven non-vacuous by revert-check).
+
+### X1. Payment value is `Double` floating-point money — FIXED (PR #180)
+- `backend/product-service/.../dto/payment/PaymentCreationRequest.java`
+  stored the charge amount as `Double`; `AsaasPaymentService.java` validated
+  it as a double. Binary floating point cannot represent most BRL cent values
+  exactly, and any future server-side reconciliation against
+  `CustomerOrder.totalAmount` (`BigDecimal`, G1) would compare across types
+  with hidden rounding. Found by Lens 4 hunt, 2026-09-05.
+- Fix: `BigDecimal` end to end (DTO constructor, service guard, Asaas
+  boundary `value` field); more than two fraction digits rejected instead of
+  rounded. Tests: `19.99` survives exactly with scale 2; `10.001`/`0.001`
+  rejected; service-guard stub test for null/over-precise values (both
+  proven non-vacuous by revert-check).
