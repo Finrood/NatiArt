@@ -202,7 +202,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
   rate-limit/count KPIs when B8 lands. Tests: all three email classes return
   the identical unauthenticated response shape.
 
-### O2. Admin product-management image/list loads swallow errors — OPEN (Low)
+### O2. Admin product-management image/list loads swallow errors — IN REVIEW (Low, fix on `fix/frontend-loading-error-ux`)
 - `frontend/natiart-app/src/app/product/components/admin/admin-product-management/admin-product-management.component.ts:289-296`
   (`fetchImage`) and `:304-317` (`fetchImagePreview`) subscribe with a
   next-only handler, so image-fetch failures are unhandled; `getProducts` /
@@ -215,7 +215,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
   callbacks to the image subscriptions (placeholder + alert). Spec: failed
   `getProducts` → error alert shown.
 
-### O3. Checkout error banner auto-dismisses after 7s, info/error share one string — OPEN (Low)
+### O3. Checkout error banner auto-dismisses after 7s, info/error share one string — IN REVIEW (Low, fix on `fix/frontend-loading-error-ux`)
 - `frontend/natiart-app/src/app/product/components/customer/checkout/checkout.component.ts:377-398`:
   `setErrorMessage` arms `setTimeout(() => clearErrorMessage(), 7000)`, so a
   checkout error vanishes even if the user has not read or acted on it; info
@@ -827,7 +827,7 @@ logout redirect timer (handle-tracked); admin add/update/delete
 both paths). AH1 fixed in flight this cycle; AH2-AH3 stay OPEN as
 runner-ups.
 
-### AH1. PIX payment path never drives the checkout loading state — OPEN (Medium)
+### AH1. PIX payment path never drives the checkout loading state — IN REVIEW (Medium, fix on `fix/frontend-loading-error-ux`)
 - `checkout.component.html:63-73` disables "Place Order" and shows the
   spinner only while `orderService.orderProcessing$` is true, but that
   subject is set solely by `OrderService.createOrder`
