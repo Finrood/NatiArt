@@ -886,3 +886,13 @@ non-finite values).
 - Fix: `revokeImageMap` helper (skips non-blob strings like the placeholder)
   applied to both maps on reset and destroy. Specs: navigate revokes both
   URLs; destroy revokes both URLs.
+
+### Q1. `UserManagerTest` near-duplicate create/register tests — FIXED (PR #168)
+- `backend/directory-service/.../service/UserManagerTest.java:61` vs `:133`
+  were behaviorally identical (same stubs, same `registerUser` call, same
+  assertions — only the names differed). Found by Lens 13 hunt, 2026-09-05.
+- Fix: removed one; spent the freed slot on
+  `registerUser_blankPassword_throwsWithoutSideEffects` covering the `hasText`
+  password guard (`UserManager.java:71-73`) with no-save/no-event assertions.
+  Same PR also replaced the vacuous `assertTrue(true)` recover assertion with a
+  `verifyNoInteractions` contract on both branches (found + fixed in flight).
