@@ -3,7 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 
 import { ProductManagementComponent } from './admin-product-management.component';
 import { ProductService } from '../../../service/product.service';
@@ -19,6 +19,20 @@ describe('ProductManagementComponent', () => {
   it('should create', () => {
     const fixture = TestBed.createComponent(ProductManagementComponent);
     expect(fixture.componentInstance).toBeTruthy();
+  });
+
+  it('tracks the golden-border valueChanges subscription so destroy unsubscribes it (P1)', () => {
+    const fixture = TestBed.createComponent(ProductManagementComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    const control = component.productForm.get('hasFixedGoldenBorder');
+    expect(control).toBeTruthy();
+    const stream: Subject<boolean> = (control?.valueChanges as unknown) as Subject<boolean>;
+    expect(stream.observed).toBeTrue();
+
+    fixture.destroy();
+    expect(stream.observed).toBeFalse();
   });
 
   it('revokes product image object URLs on destroy', () => {
