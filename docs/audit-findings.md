@@ -241,12 +241,6 @@ has no spec but carries no logic (policy: obvious markup needs no spec).
 The `registerGhostUser` zero-coverage gap found in this hunt is fixed in
 flight (N1, PR #108) rather than tracked separately.
 
-### Q1. `UserManagerTest` near-duplicate create/register tests — IN REVIEW (Low, fix in flight this cycle)
-- `backend/directory-service/.../service/UserManagerTest.java:57`
-- Fix: collapse into one test, spend the freed slot on an uncovered branch
-  (e.g. null-password `IllegalArgumentException`). Tests: suite still green,
-  single creation-path test.
-
 ## AH. Test quality re-hunt (Lens 13, 2026-09-07)
 
 Hunt method: re-ran the Q-section checks against current master — enumerated
