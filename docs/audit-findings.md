@@ -144,18 +144,6 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
 - Fix: distributed lock (ShedLock) or document single-scheduler topology.
   Tracked, not silently fixed.
 
-### K6. `updateProduct` full-update read-modify-write loses to concurrent writes — OPEN (Low)
-- `service/ProductManagerImpl.java:159-176` (`updateProduct`) reads the entity,
-  overwrites every field in memory, and saves. `Product` carries `@Version`
-  (`model/Product.java:23-24`), so concurrent full updates do not silently mix
-  fields — but the loser gets `OptimisticLockException` → generic 500 instead
-  of a 409/conflict, same mechanism as K3 (whose atomic-toggle fix covers only
-  the visibility flips, not full updates). Admin-only path, hence Low.
-  Found by Lens 8 hunt, 2026-09-06.
-- Fix: map `OptimisticLockException`/`ObjectOptimisticLockingFailureException`
-  to 409 in the product-service advice when the admin update endpoint is wired.
-  Tests: concurrent update conflict → 409, not 500. Tracked, not silently fixed.
-
 ## L. Frontend auth flow (Lens 9 hunt, 2026-09-05)
 
 ### L3. `/checkout` requires auth but implements a guest ghost-user flow — OPEN (Medium)
@@ -485,7 +473,7 @@ Cleared as non-findings: `addToCart` calls without `subscribe` (mutations run
 synchronously before the `of()` return — fragile but not cold no-ops),
 admin `product.id!` call sites (admin-only, ids server-assigned).
 
-### AA3. Cart/order-summary/cart-modal image fetches resurrect removed lines — OPEN (Low)
+### AA3. Cart/order-summary/cart-modal image fetches resurrect removed lines — IN REVIEW (fix/frontend-cart-modal-liveness, this cycle)
 - `cart.component.ts:196-213` (`fetchProductImage`), `order-summary.component.ts:75-88`,
   and `cart-modal.component.ts:104-112` write `imageUrls[cartItemId]` unconditionally
   on async completion. A line removed while its image GET is in flight gets its map
@@ -496,9 +484,12 @@ admin `product.id!` call sites (admin-only, ids server-assigned).
   hunt, 2026-09-06.
 - Fix: re-check line liveness before writing (or cancel per-line requests), add the
   placeholder fallback to cart-modal. Spec: remove-then-resolve never re-adds the key.
-  Update 2026-09-07: cart-modal error-callback half fixed in flight
-  (`cart-modal.component.ts` `fetchImage` now falls back to the placeholder on
-  GET failure, spec-covered); the in-flight liveness-check half stays OPEN.
+  Update 2026-09-07: PR #185 merged — cart (`cart.component.ts:197-224`
+  `isCartLineLive` guard) and order-summary (`order-summary.component.ts:75-101`
+  `isCartLineLive` guard) halves FIXED on master, spec-covered; cart-modal
+  (`cart-modal.component.ts:104-118` still writes unconditionally, no liveness
+  check) remainder stays OPEN and moves to fix/frontend-cart-modal-liveness
+  this cycle.
 
 Re-verified 2026-09-06 (Lens 17 cycle hunt): four root mirrors still
 byte-identical (`md5sum`), all `agents/*.md` carry `meta` frontmatter, 17
@@ -777,16 +768,6 @@ signup/admin screens (idiomatic HttpErrorResponse lambda parameter, not a
 hidden contract). AJ1-AJ3 below are runner-ups; B11+S6 fixed in flight this
 cycle.
 
-### AJ2. Untyped `any` contracts hide frontend type breaks — IN REVIEW (fix/frontend-typed-contracts)
-- `cart.component.ts:149` (`performAction(action$: () => Observable<any>, ...)`
-  erases the cart-line response type), `top-banner.component.ts:23`
-  (`bannerInterval: any` instead of `ReturnType<typeof setInterval>`),
-  `admin-product-management.component.ts:182,425`
-  (`(preview as any).originalUrl` bypasses the preview type).
-- Fix: type the `Observable` payload, the interval handle, and the preview
-  union. Specs: existing suites stay green; no behavior change.
-  Found by Lens 15 hunt, 2026-09-07.
-
 ### AJ3. `GET /images` breaks product resource nesting — OPEN (Low)
 - `controller/ProductController.java:123` serves `GET /images` while every
   sibling product route nests under `/products`; the storefront calls it via a
@@ -958,5 +939,178 @@ queries (indexed id-only selects); `existsByCategory`/`existsByPackaging`
   Tests: single-order read issues a bounded query count (Hibernate
   statistics), items present. Found by Lens 5 hunt, 2026-09-07.
   Tracked, not silently fixed.
+## AQ. Concurrency and statelessness (Lens 8 hunt, 2026-09-07)
+
+Hunt method: grepped `backend/` for cross-request in-memory state
+(`Map`/`Set`/`Atomic*` instance fields — zero hits outside the known B8
+filter), every `@Scheduled`/`@Async`/`@EnableAsync` site, and every
+check-then-act registration/insert path; re-read `RateLimitFilter`,
+`TokenCleanupService`, `UserRegistrationListener`, `UserManager`
+registration flows and `CartManagerImpl` against the K-section baseline.
+Re-verified this cycle: B8 still OPEN (`RateLimitFilter.java` in-memory
+`ConcurrentHashMap` window map unchanged, product-service still has no rate
+limiting), K5 still OPEN (`TokenCleanupService.java:23` `@Scheduled`
+purge unchanged, no distributed lock), K6 re-verified and IN REVIEW
+(`ProductManagerImpl.java:166` `updateProduct` still read-modify-write,
+`Product.java:23-24` `@Version` intact — fixed this cycle).
+Cleared as non-findings: cart quantity increments/decrements
+(`CartManagerImpl.java:49,72` atomic guarded updates, unchanged);
+order stock decrements (row-atomic `decreaseStockIfAvailable`, unchanged);
+checkout double-submit (guarded by `isSubmitting`,
+`checkout.component.ts:330-333`); `@Async` delivery itself
+(`DirectoryApplication.java:10` carries `@EnableAsync`, so the annotation
+is live — only the executor choice below is filed).
+
+### AQ2. `@Async` registration fan-out runs on the unbounded default executor — OPEN (Low)
+- `listener/UserRegistrationListener.java:42` (`@Async` on
+  `handleUserRegistration`) has no `TaskExecutor` bean behind it (repo-wide
+  grep for `TaskExecutor|ThreadPool` in `backend/` returns zero hits), so
+  Spring falls back to `SimpleAsyncTaskExecutor`: one fresh thread per
+  registration, unbounded, no queue. A ghost-checkout burst spawns a thread
+  burst with it. Severity Low (registration rate is human-scale today).
+  Found by Lens 8 hunt, 2026-09-07.
+- Fix: bounded `ThreadPoolTaskExecutor` bean (fixed pool + bounded queue,
+  caller-runs rejection) in directory-service. Tests: bean present with
+  bounded queue capacity. Tracked, not silently fixed.
+
+## AR. Frontend auth flow re-hunt (Lens 9, 2026-09-07)
+
+Hunt method: re-read the auth flow on current master
+(`authentication.service.ts`, `token.service.ts`,
+`jwt-interceptor.service.ts`, `auth.guard.ts`, `admin.guard.ts`,
+`login.component.ts`, `app.routes.ts`, `app.config.ts`).
+Re-verified this cycle: L3 still OPEN (`app.routes.ts:37` still guards
+`/checkout` with `authGuard` while `checkout.component.ts:237-289` keeps
+its guest branch — needs the product decision, unchanged), C11 still OPEN
+(`app.config.ts:20` still returns a root-scope `Subscription` from the
+`APP_INITIALIZER` factory), AH3 still OPEN (`login.component.ts:98-118`
+still has no in-flight guard). Cleared as non-findings: concurrent
+refresh stampedes (`UserAuthenticationProvider.java:135` echoes the same
+refresh token back — no rotation, so overlapping refresh POSTs from the
+60s monitor, the 15-minute inactivity timer and the interceptor single-flight
+are redundant egress, never mutual invalidation); `doRefreshToken` inner
+`fetchCurrentUser().subscribe()` without an error callback (already cleared
+in AA — failures route through that method's own 401-reset); post-registration
+explicit-login choice (already cleared in AA). AR1 below is the runner-up.
+
+### AR1. Interceptor-side token wipe leaves a stale logged-in user; guards read the stale principal — OPEN (Low)
+- `jwt-interceptor.service.ts:96-101` (`performRefresh` error path) and
+  `:128-134` (logout-401 path) call `tokenService.clearTokens()`, but
+  `TokenService` is a dumb localStorage wrapper with no notification channel,
+  so `AuthenticationService.stateSubject` keeps the last user:
+  `currentUser$`/`isLoggedIn$` still emit the stale user and `isAdmin`
+  (`authentication.service.ts:112-114`) still returns the old role. The
+  refresh-error chain navigates to `/login`, but nothing resets the state —
+  and the 60s monitor never fires the reset either (all its branches require
+  a non-null token). A back-button navigation to a guarded route then reads
+  the stale principal (`auth.guard.ts:14-21`) and activates with no tokens;
+  the next user-fetching call 401s and self-heals, so no backend bypass —
+  shell-only exposure, hence Low. Found by Lens 9 hunt, 2026-09-07.
+- Fix: route interceptor-side session ends through
+  `AuthenticationService.resetAuthStateAndRedirect()` (or expose a
+  `notifyLoggedOut()` the interceptor calls after `clearTokens()`).
+  Tests: failed refresh asserts `currentUser$` emits null; guard denies
+  after the wipe. Tracked, not silently fixed.
+
+## AS. Frontend data identity re-hunt (Lens 10, 2026-09-07)
+
+Hunt method: re-read the cart/product identity paths on current master
+(`cart.service.ts:33-162`, `cart.component.ts:163-214`,
+`order-summary.component.ts:46-88`,
+`cart-modal.component.ts:80-118`,
+`dashboard/product-list/product-list.component.ts:65-97`,
+`product-detail.component.ts:294-387`,
+`pix-payment-confirmation.component.ts:41-55`,
+`checkout.component.ts:289-321`,
+`product-list.component.html:6`, `cart.component.html:48,109`) against the
+AF baseline. Re-verified this cycle: AA3 cart/order-summary halves still
+OPEN (`cart.component.ts:197-214` and `order-summary.component.ts:75-88`
+still write `imageUrls[cartItemId]` unconditionally on async completion —
+fixed in flight this cycle); AA3 cart-modal half FIXED on master
+(`cart-modal.component.ts:89-99` guards on the live map,
+`:104-118` revokes before overwrite with a placeholder error fallback);
+AA4 FIXED on master (`product-list.component.ts:70-76` guards
+re-fetch with a null sentinel, `:91-94` falls back to the placeholder);
+AA5 FIXED on master (`fetchRelatedProductImage` at
+`product-detail.component.ts:359-387` carries the `imageRequestToken`
+liveness check). Cleared as non-findings: `product-detail` main-image
+fetch (token-guarded, revoke-on-overwrite, error fallback);
+pix-payment param subscription (follows the routed id, null maps to
+`ERROR`); `product.service.ts:35-40` blank-id guard; product-list
+`@for` track `(product.id ?? product)` with a null router link for
+id-less cards; cart `@for` track by `cartItemId`. AS1-AS2 below are
+runner-ups.
+
+### AS1. `loadCartFromLocalStorage` restores unvalidated persisted identity — OPEN (Low)
+- `frontend/natiart-app/src/app/product/service/cart.service.ts:147-162`
+  `JSON.parse`s the `natiart-cart` entry with no shape check: a stale or
+  hand-edited entry with a missing/duplicate `cartItemId` or a null
+  `product` restores lines that share one map key (remove/quantity ops
+  then hit every line at once or none) or throws inside
+  `calculateAndEmitTotal` (`item.product.markedPrice` on null). Corrupt
+  JSON is handled (reset + key removal); corrupt-but-parseable shape is
+  not.
+- Fix: validate each restored line (`cartItemId` non-blank string,
+  `product` object with non-blank `id`, `quantity` positive int),
+  regenerate colliding/blank ids, drop null-product lines before emit.
+  Spec: tampered payload restores only the valid lines.
+  Found by Lens 10 hunt, 2026-09-07.
+
+### AS2. `product-list` image map never prunes removed product ids — OPEN (Low)
+- `frontend/natiart-app/src/app/product/components/customer/dashboard/product-list/product-list.component.ts:65-81`
+  only adds map entries (with a re-fetch guard) but has no removal pass
+  for ids that left the list, unlike the cart sibling
+  (`cart.component.ts:164-175`) and the modal
+  (`cart-modal.component.ts:82-88`): a refreshed listing that drops a
+  product keeps its blob URL (and raw `objectUrls` entry) until teardown.
+  `fetchImage` (`:83-97`) additionally overwrites without revoking a
+  previous raw URL for the same id.
+- Fix: mirror the cart cleanup pass (revoke + delete ids absent from the
+  emission) and revoke-before-overwrite in `fetchImage`. Spec: emission
+  that drops a product revokes its URL and deletes the key.
+  Found by Lens 10 hunt, 2026-09-07.
+
+## AT. Test quality (Lens 13 hunt, 2026-09-07)
+
+Hunt method: enumerated every `*.spec.ts` by `it(` count (30 of 56 specs
+have a single `should create`), then re-read the money/security-adjacent
+owners for untested behavior: `cart.service.ts` (totals, stock clamps,
+persistence), `product-guard.guard.ts` (network-gated navigation), plus
+the Q3/Q4 re-verify (top-banner and shipping-estimation still
+should-create-only). Re-verified: Q3 still OPEN
+(`top-banner.component.spec.ts:17-20` single `should create` vs
+`top-banner.component.ts:37-68` rotation/destroy logic), Q4 still OPEN
+(`shipping-estimation.component.spec.ts:17-20` single `should create` vs
+`shipping-estimation.component.ts:56-126` cheapest-option state machine).
+Cleared as non-findings: admin `should create` specs (scaffold screens,
+no branch logic to assert); directive `should create` specs (pure pipes
+covered elsewhere); `redirect.service.spec.ts` single-it (trivial
+getter, judgment per `agents/java-testing.md` twin policy).
+
+### AT1. `CartService` money logic has a should-create-only spec — OPEN (Medium)
+- `frontend/natiart-app/src/app/product/service/cart.service.ts:33-69`
+  (`addToCart` stock clamp + grouping), `:78-95` (`updateItemQuantity`
+  clamp), `:121-124` (`calculateAndEmitTotal` `markedPrice * quantity`),
+  `:133-162` (localStorage persistence) vs
+  `cart.service.spec.ts:13-15` (single `should be created`, zero total/
+  clamp/persistence assertions). A wrong total, an over-stock add, or a
+  corrupt restore ships silently — the spec cannot fail on money behavior.
+- Fix: specs — clamped add (over-stock capped), total emits
+  `markedPrice * quantity` sum, tampered localStorage restores valid lines
+  only (AS1). Tracked, not silently fixed.
+  Found by Lens 13 hunt, 2026-09-07.
+
+### AT2. `productGuard` deactivation spec never invokes the guard — OPEN (Medium)
+- `frontend/natiart-app/src/app/product/guards/product-guard.guard.ts:24-32`
+  (`getProduct(id)` network-gated `canDeactivate`, failure hijacks to
+  `/dashboard` per C9) vs `product-guard.guard.spec.ts:16-18` (asserts the
+  wrapper `executeGuard` is truthy, never calls it with a route/param — zero
+  assertions on allow/block/error paths). The C9 failure mode (slow backend
+  trapping navigation away) is spec-invisible by construction.
+- Fix: specs — valid id emits `true`, backend error navigates to
+  `/dashboard` and emits `false`, missing id blocks without egress.
+  Tracked, not silently fixed.
+  Found by Lens 13 hunt, 2026-09-07.
+
 
 

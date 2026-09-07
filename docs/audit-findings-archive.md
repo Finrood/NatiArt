@@ -1085,3 +1085,44 @@ camelCase, `PaymentController.java:38`) still OPEN on both sides
   rounded. Tests: `19.99` survives exactly with scale 2; `10.001`/`0.001`
   rejected; service-guard stub test for null/over-precise values (both
   proven non-vacuous by revert-check).
+
+### K6. `updateProduct` full-update read-modify-write loses to concurrent writes — FIXED (PR #183)
+- `service/ProductManagerImpl.java:159-176` (`updateProduct`) reads the entity,
+  overwrites every field in memory, and saves. `Product` carries `@Version`
+  (`model/Product.java:23-24`), so concurrent full updates do not silently mix
+  fields — but the loser gets `OptimisticLockException` → generic 500 instead
+  of a 409/conflict, same mechanism as K3 (whose atomic-toggle fix covers only
+  the visibility flips, not full updates). Admin-only path, hence Low.
+  Found by Lens 8 hunt, 2026-09-06.
+- Fix: `OptimisticLockingFailureException`/`OptimisticLockException` map to
+  409 with a static body in the product-service advice, and
+  `DataIntegrityViolationException` maps to 409 in both services as a backstop
+  for check-then-act registration/cart races. Tests: each handler asserts
+  409 + static body (proven non-vacuous by revert-check).
+
+### AJ2. Untyped `any` contracts hide frontend type breaks — FIXED (PR #179)
+- `cart.component.ts:149` (`performAction(action$: () => Observable<any>, ...)`
+  erases the cart-line response type), `top-banner.component.ts:23`
+  (`bannerInterval: any` instead of `ReturnType<typeof setInterval>`),
+  `admin-product-management.component.ts:182,425`
+  (`(preview as any).originalUrl` bypasses the preview type).
+  Found by Lens 15 hunt, 2026-09-07.
+- Fix: typed the `Observable` payload (`Observable<void>`), the interval
+  handle (`ReturnType<typeof setInterval>`), and the preview union
+  (`originalUrl` on the type). Tests: existing suites stay green; no
+  behavior change. Verified on master 2026-09-07 (no `Observable<any>`,
+  no `bannerInterval: any`, no `as any` on previews).
+
+### AQ1. Check-then-act registration/cart races trip the unique constraint as a 500 — FIXED (PR #183)
+- `service/UserManager.java:66` (`registerUser`) checks
+  `userExist(username)` then saves; `:98` (`registerGhostUser`) checks
+  `findUserByUsernameIgnoreCase` then saves. Two concurrent same-username
+  registrations both pass the check; the loser trips `User.username`
+  `unique = true` and the directory advice catch-all renders it a 500.
+  Same shape in product-service cart increments vs the `CartItem` unique
+  constraint. Severity Low. Found by Lens 8 hunt, 2026-09-07.
+- Fix: `DataIntegrityViolationException` → 409 with a static body in both
+  advices (`directory .../configuration/ControllerAdvice.java:76-80`,
+  `product-service .../configuration/ControllerAdvice.java:96-100`),
+  error-logged server-side. Tests: handler asserts 409 + static body.
+  Verified on master 2026-09-07.

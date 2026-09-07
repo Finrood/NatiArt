@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -27,6 +28,17 @@ class ControllerAdviceTest {
 
         assertEquals(HttpStatus.CONFLICT, result.getStatusCode());
         assertEquals("taken", result.getBody());
+    }
+
+    @Test
+    void handleDataIntegrityViolation_returns409WithStaticBody() {
+        final DataIntegrityViolationException duplicate = new DataIntegrityViolationException(
+                "could not execute statement [insert into users (username) values (?)]");
+
+        final ResponseEntity<Object> result = advice.handleDataIntegrityViolation(duplicate);
+
+        assertEquals(HttpStatus.CONFLICT, result.getStatusCode());
+        assertEquals("Resource conflict", result.getBody());
     }
 
     @Test

@@ -195,22 +195,32 @@ export class CartComponent implements OnInit, OnDestroy {
   }
 
   private fetchProductImage(cartItemId: string, imagePath: string): void {
-    // Indicate loading state maybe?
-    // this.imageUrls[cartItemId] = 'loading'; // Or some indicator URL
-
+    // Drop resolutions that arrive after the line was removed: the cleanup
+    // pass in prepareImageUrls deletes the key, and an unguarded write
+    // would resurrect it (AA3). Destroy teardown is covered by takeUntil.
     this.productService.getImage(imagePath).pipe(
       takeUntil(this.destroy$) // Auto-unsubscribe
     ).subscribe({
-      next: blob => {
-        const objectUrl = URL.createObjectURL(blob);
+      next: (blob: Blob): void => {
+        if (!this.isCartLineLive(cartItemId)) {
+          return;
+        }
+        const objectUrl: string = URL.createObjectURL(blob);
         this.imageUrls[cartItemId] = this.sanitizer.bypassSecurityTrustUrl(objectUrl);
         this.objectUrlsCreated.push(objectUrl); // Track for cleanup
       },
-      error: error => {
+      error: (error: unknown): void => {
+        if (!this.isCartLineLive(cartItemId)) {
+          return;
+        }
         console.error(`Failed to load product image for cart item ${cartItemId}:`, error);
         this.imageUrls[cartItemId] = 'assets/img/placeholder.png'; // Fallback
       }
     });
+  }
+
+  private isCartLineLive(cartItemId: string): boolean {
+    return this.cartService.getCartItemsSnapshot().some((item: CartItem): boolean => item.cartItemId === cartItemId);
   }
 
   private errorDismissTimer: ReturnType<typeof setTimeout> | undefined = undefined;
