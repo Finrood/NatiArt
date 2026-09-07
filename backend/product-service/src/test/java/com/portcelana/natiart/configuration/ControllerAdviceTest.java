@@ -2,8 +2,12 @@ package com.portcelana.natiart.configuration;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import jakarta.persistence.OptimisticLockException;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -33,6 +37,35 @@ class ControllerAdviceTest {
 
         assertEquals(HttpStatus.FORBIDDEN, result.getStatusCode());
         assertEquals("Access denied", result.getBody());
+    }
+
+    @Test
+    void handleOptimisticLockingFailure_springShape_returns409WithStaticBody() {
+        final ResponseEntity<Object> result = advice.handleOptimisticLockingFailure(
+                new OptimisticLockingFailureException("Batch update row count wrong"));
+
+        assertEquals(HttpStatus.CONFLICT, result.getStatusCode());
+        assertEquals("Resource was modified concurrently", result.getBody());
+    }
+
+    @Test
+    void handleOptimisticLockingFailure_jakartaShape_returns409WithStaticBody() {
+        final ResponseEntity<Object> result =
+                advice.handleOptimisticLockingFailure(new OptimisticLockException("Row was updated"));
+
+        assertEquals(HttpStatus.CONFLICT, result.getStatusCode());
+        assertEquals("Resource was modified concurrently", result.getBody());
+    }
+
+    @Test
+    void handleDataIntegrityViolation_returns409WithStaticBody() {
+        final DataIntegrityViolationException duplicate = new DataIntegrityViolationException(
+                "could not execute statement [insert into cart_item (username, product_id) values (?, ?)]");
+
+        final ResponseEntity<Object> result = advice.handleDataIntegrityViolation(duplicate);
+
+        assertEquals(HttpStatus.CONFLICT, result.getStatusCode());
+        assertEquals("Resource conflict", result.getBody());
     }
 
     @Test

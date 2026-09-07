@@ -144,7 +144,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
 - Fix: distributed lock (ShedLock) or document single-scheduler topology.
   Tracked, not silently fixed.
 
-### K6. `updateProduct` full-update read-modify-write loses to concurrent writes — OPEN (Low)
+### K6. `updateProduct` full-update read-modify-write loses to concurrent writes — IN REVIEW (fix/concurrent-conflict-409)
 - `service/ProductManagerImpl.java:159-176` (`updateProduct`) reads the entity,
   overwrites every field in memory, and saves. `Product` carries `@Version`
   (`model/Product.java:23-24`), so concurrent full updates do not silently mix
@@ -921,5 +921,63 @@ by `from()`, upstream optionals only).
   egress, reconcile orphans. Tests: same-key double POST issues one upstream
   charge; save-failure leaves no unreconciled charge.
   Tracked, not silently fixed.
+
+## AQ. Concurrency and statelessness (Lens 8 hunt, 2026-09-07)
+
+Hunt method: grepped `backend/` for cross-request in-memory state
+(`Map`/`Set`/`Atomic*` instance fields — zero hits outside the known B8
+filter), every `@Scheduled`/`@Async`/`@EnableAsync` site, and every
+check-then-act registration/insert path; re-read `RateLimitFilter`,
+`TokenCleanupService`, `UserRegistrationListener`, `UserManager`
+registration flows and `CartManagerImpl` against the K-section baseline.
+Re-verified this cycle: B8 still OPEN (`RateLimitFilter.java` in-memory
+`ConcurrentHashMap` window map unchanged, product-service still has no rate
+limiting), K5 still OPEN (`TokenCleanupService.java:23` `@Scheduled`
+purge unchanged, no distributed lock), K6 re-verified and IN REVIEW
+(`ProductManagerImpl.java:166` `updateProduct` still read-modify-write,
+`Product.java:23-24` `@Version` intact — fixed this cycle).
+Cleared as non-findings: cart quantity increments/decrements
+(`CartManagerImpl.java:49,72` atomic guarded updates, unchanged);
+order stock decrements (row-atomic `decreaseStockIfAvailable`, unchanged);
+checkout double-submit (guarded by `isSubmitting`,
+`checkout.component.ts:330-333`); `@Async` delivery itself
+(`DirectoryApplication.java:10` carries `@EnableAsync`, so the annotation
+is live — only the executor choice below is filed).
+
+### AQ1. Check-then-act registration/cart races trip the unique constraint as a 500 — IN REVIEW (fix/concurrent-conflict-409)
+- `service/UserManager.java:66` (`registerUser`) checks
+  `userExist(username)` then saves; `:98` (`registerGhostUser`) checks
+  `findUserByUsernameIgnoreCase` then saves. Two concurrent same-username
+  registrations (the ghost endpoint is anonymous-reachable, so anyone can
+  race it) both pass the check; the loser trips `User.username`
+  `unique = true` (`model/User.java:31`) and the directory advice has no
+  `DataIntegrityViolationException` handler, so the generic catch-all
+  (`configuration/ControllerAdvice.java:75-79`) renders it a 500 instead
+  of a 409. Same shape in product-service: `CartManagerImpl.java:49-59`
+  increments-then-inserts, and concurrent first-adds for one
+  `(username, product)` row trip the `CartItem` unique constraint
+  (`model/CartItem.java:13`) into the product advice catch-all
+  (`configuration/ControllerAdvice.java:25-29`) → 500.
+  Precedent: `CategoryManagerImpl.java:62,81` already translates the same
+  exception to a 409 conflict at manager level. Severity Low (narrow race
+  window, self-inflicted in the common case).
+  Found by Lens 8 hunt, 2026-09-07.
+- Fix: `DataIntegrityViolationException` → 409 with a static body in both
+  advices (backstop for paths without manager-level translation), error-logged
+  server-side so a persistent stream still signals a real bug. Tests: handler
+  asserts 409 + static body that echoes no constraint SQL.
+
+### AQ2. `@Async` registration fan-out runs on the unbounded default executor — OPEN (Low)
+- `listener/UserRegistrationListener.java:42` (`@Async` on
+  `handleUserRegistration`) has no `TaskExecutor` bean behind it (repo-wide
+  grep for `TaskExecutor|ThreadPool` in `backend/` returns zero hits), so
+  Spring falls back to `SimpleAsyncTaskExecutor`: one fresh thread per
+  registration, unbounded, no queue. A ghost-checkout burst spawns a thread
+  burst with it. Severity Low (registration rate is human-scale today).
+  Found by Lens 8 hunt, 2026-09-07.
+- Fix: bounded `ThreadPoolTaskExecutor` bean (fixed pool + bounded queue,
+  caller-runs rejection) in directory-service. Tests: bean present with
+  bounded queue capacity. Tracked, not silently fixed.
+
 
 
