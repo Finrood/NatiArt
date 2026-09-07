@@ -849,32 +849,6 @@ re-verified the remaining contract surface instead of re-filing them.
   token via filter vs via `validateToken` assert the same status/body.
   Found by Lens 15 hunt, 2026-09-07.
 
-### AK2. Directory advice has no `AccessDeniedException` handler: Spring authorization denials fall to catch-all 500 — OPEN (Low)
-- Product advice maps `AccessDeniedException` to 403; directory advice has no
-  such handler, so any Spring authorization denial on directory-service
-  (e.g. a future `@PreAuthorize`) lands in `handleException` as 500
-  "Internal server error" with an error-level log for a client error.
-  Latent today (no `@PreAuthorize` on directory controllers), contract drift
-  by construction.
-- Fix: port the 403 `AccessDeniedException` handler to the directory advice.
-  Tests: forced denial → 403 on both services, never 500.
-  Found by Lens 15 hunt, 2026-09-07.
-
-### AK3. `refreshToken` answers imperatively with a per-request `ObjectMapper`; missing credentials get a silent empty 200 — OPEN (Medium)
-- `UserAuthenticationProvider.java:115-139` serializes `UserAuthDto` via
-  `new ObjectMapper().writeValue(response.getOutputStream(), ...)`,
-  bypassing the app-wide Jackson configuration (naming strategy, modules),
-  and never sets status/content-type in the contract
-  (`AuthenticationController.java:44-50` returns void). A missing/malformed
-  `Authorization` header falls through silently — 200 with an empty body —
-  while the storefront parses it as `{accessToken, refreshToken}`
-  (`jwt-interceptor.service.ts:82-89`).
-- Fix: return `ResponseEntity<UserAuthDto>` from the controller with the
-  injected Spring `ObjectMapper`, 401 on missing/mismatched credentials.
-  Tests: refresh happy path asserts content-type + payload; missing header
-  → 401, never empty-200.
-  Found by Lens 15 hunt, 2026-09-07.
-
 ### AK4. `validateToken` returns a Spring `Authentication` instead of a DTO — OPEN (Low)
 - `AuthenticationController.java:60-66` returns
   `ResponseEntity<Authentication>` — a framework internal, not a versioned
@@ -885,5 +859,49 @@ re-verified the remaining contract surface instead of re-filing them.
   endpoint as service-internal. Tests: response shape asserted, no
   `Authentication` internals serialized.
   Found by Lens 15 hunt, 2026-09-07.
+
+## AL. Dependency and supply chain (Lens 16 hunt, 2026-09-07)
+
+Hunt method: `npm audit --omit=dev` (0 vulns) and full `npm audit`
+(2 moderate, dev-only) on the storefront; diffed dependabot PR #124
+(frontend) and #118 (backend) bump-by-bump for semver scope vs CI signal;
+read `backend/build.gradle.kts` and all three workflow files for pinning
+and reproducibility gaps. Re-verified this cycle: T5 still OPEN (no
+`audit`/lockfile/`verification-metadata` references in workflows or
+`backend/`); Spring Boot `3.5.6` → `4.1.1` (#118) and Angular `20` →
+`22` + TypeScript `5.9` → `7` (#124) majors stay red on their dependabot
+branches for a human decision per the Lens-16 routine, never touched here.
+Cleared as non-findings: prod `npm audit` (clean); Spring Boot/TS majors
+(already tracked as human-decision, not re-filed).
+
+### AL1. Moderate `qs` advisory in the dev-only karma chain — OPEN (Low)
+- Full `npm audit` reports 2 moderate `qs` advisories
+  (`GHSA-x5fp-wj9c-mxmx` array-limit bypass, `GHSA-4mjr-xmp4-gh2g` DoS)
+  via `node_modules/karma/node_modules/body-parser` → nested `qs`
+  (`frontend/natiart-app/package.json` devDependencies: `karma`). Prod
+  install (`--omit=dev`) is clean — test-infra exposure only.
+- Fix: `npm audit fix` for the nested bump or pick up the karma upgrade
+  when the Angular 22 major (#124) lands for a human decision.
+  Tracked, not silently fixed.
+
+### AL2. Workflow action versions drift across workflows; all use mutable tags — OPEN (Low)
+- `.github/workflows/guidelines-consistency.yml:51` and
+  `frontend_workflow.yml:34,37` pin `actions/checkout@v7` /
+  `actions/setup-node@v7`, while `backend_workflow.yml:32,35,41,49,63,66,72,80`
+  pins `checkout@v4` / `setup-java@v4` / `setup-gradle@v4` /
+  `upload-artifact@v4`. Every reference is a mutable major tag — a
+  compromised tag moves every build with no reviewable diff.
+- Fix: align all workflows on one major line and pin to full commit SHAs
+  (or adopt tag-immutable pinning). Tracked, not silently fixed.
+
+### AL3. Gradle wrapper `9.1.0` → `9.7.1` minor buried behind the red Spring major — OPEN (Low)
+- Dependabot PR #118 bundles a `9.1.0` → `9.7.1` Gradle wrapper minor
+  (`backend/gradle/wrapper/gradle-wrapper.properties:4`) and a
+  `ben-manes-versions` `0.52.0` → `0.61.0` bump behind the red Spring
+  Boot `3.5.6` → `4.1.1` major, so the safe minors cannot land until a
+  human resolves the major.
+- Fix: our own `chore/` branch bumping the wrapper (and the versions
+  plugin) alone, green CI proving separability — never push to the
+  dependabot branch. Tracked, not silently fixed.
 
 
