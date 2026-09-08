@@ -64,20 +64,25 @@ which is exactly why you catch what it missed. Work in the repo root. Obey
 4. Post exactly one review as a comment (all loop agents share one GitHub
    identity, and GitHub rejects self-approvals — so the verdict lives in the
    comment body, not the review state): `gh pr review $N --comment -b "<full
-   findings with file:line>"`, opening the body with `VERDICT: APPROVE` or
-   `VERDICT: REQUEST_CHANGES`, then on the next lines:
+   findings with file:line>"`. The first line binds the verdict to the exact
+   head you reviewed — read it with `git -C "$REPO_ROOT/../review-$N" rev-parse
+   --short=8 HEAD` (call it H):
+   - clean: first line exactly `VERDICT: APPROVE (reviewed H)`
+   - blockers: first line `VERDICT: REQUEST_CHANGES (re-reviewed H <one-line reason>)`
+   Then on the next lines:
    `Model: <value of $NATIART_MODEL>` (read it with `echo "$NATIART_MODEL"`;
-   e.g. body starts `VERDICT: APPROVE` newline `Model: cline:zai/glm-5.3-flash/medium`),
+   e.g. second line `Model: cline:zai/glm-5.3-flash/medium`),
    then `Build: PASS|FAIL|PENDING` (your step-1b result, plus failing job names)
    and `Merge: MERGEABLE|CONFLICTING|UNKNOWN`.
    Verdict rule: `APPROVE` only when build is green AND mergeable (or UNKNOWN
    with no other blockers) AND zero blocking findings; red build or conflict
    always forces `REQUEST_CHANGES` with the build log excerpt / conflicted
-   files first, then code findings. The loop machinery reads only the first
-   line for the verdict and parses `Build:`/`Merge:` for repair; the Model
-   line never interferes. Pure nits without blockers still open with
-   `VERDICT: APPROVE`.
-5. Print a final line: `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES`.
+   files first, then code findings. The loop machinery merges only when the
+   latest verdict is an `APPROVE` whose `(reviewed H)` equals the PR's current
+   head — an unbound or stale verdict never merges, so writing the sha
+   correctly is load-bearing. Pure nits without blockers still open with
+   `VERDICT: APPROVE (reviewed H)`.
+5. Print a final line: `VERDICT: APPROVE (reviewed H)` or `VERDICT: REQUEST_CHANGES (re-reviewed H ...)`.
 
 HARD RULES: review only. No code changes, no pushes, no merges, no re-runs of
 your own review. One round per invocation — the author decides what happens

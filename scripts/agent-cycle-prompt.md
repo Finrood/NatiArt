@@ -70,10 +70,12 @@ Phase 3 — review, then merge everything green:
    it as green. Workflows are path-scoped (table in the runbook): merge ONLY
    when every reported check is green AND every workflow relevant to the PR's
    changed paths has reported AND the PR is mergeable (not `CONFLICTING` —
-   resolve first) AND the latest reviewer comment opens with
-   `VERDICT: APPROVE` (verdicts travel by comment body — GitHub blocks
+   resolve first) AND the latest reviewer comment's first line is
+   `VERDICT: APPROVE (reviewed <sha>)` with `<sha>` equal to the PR's current
+   head (verdicts travel by comment body — GitHub blocks
    self-approvals and all loop agents share one identity; re-check with
-   `gh pr view --json reviews` — a newer `VERDICT: REQUEST_CHANGES` vetoes). Docs-only PRs (`docs/**`) report Guidelines —
+   `gh pr view --json reviews` — a newer `VERDICT: REQUEST_CHANGES` vetoes, and
+   a stale `(reviewed <old-sha>)` after new pushes needs a binding re-review). Docs-only PRs (`docs/**`) report Guidelines —
    green Guidelines is a mergeable signal for them. A backend PR must show
    both Backend CI service jobs. On REQUEST_CHANGES: address blockers, push,
    re-run the reviewer once; still blocked or still red after one flake
