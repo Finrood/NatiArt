@@ -57,5 +57,13 @@ public interface CartItemRepository extends JpaRepository<CartItem, String> {
             "UPDATE CartItem c SET c.quantity = c.quantity - 1 WHERE c.username = :username AND c.product.id = :productId AND c.quantity > 1")
     int decrementQuantityIfGreaterThanOne(@Param("username") String username, @Param("productId") String productId);
 
-    long deleteByUsernameAndProduct(String username, Product product);
+    /**
+     * Removes one cart line by user and product. Declared void on purpose:
+     * Spring Data runs a void derived delete as load-then-remove, so the
+     * {@link CartItem#getPersonalization()} cascade (ALL, orphanRemoval) fires
+     * and the line's Personalization row goes with it. The {@code long}-return
+     * form of the same query fails result unwrapping with a ClassCastException
+     * at runtime (pinned by CartItemCascadeSemanticsTest).
+     */
+    void deleteByUsernameAndProduct(String username, Product product);
 }

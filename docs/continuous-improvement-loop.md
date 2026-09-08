@@ -47,16 +47,25 @@ Note: the timer needs a lingering user session to fire while logged out
 
 1. Single instance (`flock`); 25-minute agent timeout keeps cadence.
    Pre-flight gates fail fast on broken `gh` auth or <2GB disk.
-2. Cycle self-heals on: dirty tree (WIP salvaged to a dated `salvage/*`
+2. Never-idle invariant: PR state never causes an idle exit. Failing checks or
+   merge conflicts switch the cycle to REPAIR MODE (fix in place on the same
+   branch, zero new branches) instead of exiting — exiting here deadlocked the
+   loop ~10h on a spotless-only failure. Closed loop: the reviewer writes
+   machine-readable `Build:`/`Merge:` lines, the next cycle's agent parses them
+   and fixes (conflicts via `git merge origin/master`, never rebase). Cycle
+   self-heals on: dirty tree (WIP salvaged to a dated `salvage/*`
    branch, master hard-reset to origin, newest 5 salvage branches retained),
    stray unpushed master commits (same salvage path, plus an automatic
    `[Salvage]` PR so the work is reviewable instead of orphaned),
-   non-fast-forward `master`, 2+ open code PRs
-   (docs-only flips and dependabot PRs are excluded — they never block the
-   loop), or any open code PR with failing checks.
-3. The agent merges ONLY on fully green CI (`gh pr checks --watch`), with
-   `gh pr merge --merge --delete-branch`. Never force-push, never push to
-   `master`, never touch dependabot branches.
+   non-fast-forward `master`.
+   Docs-only flips and dependabot PRs are excluded from blocking — they never
+   stop the loop, and green docs PRs with `VERDICT: APPROVE` are auto-merged
+   like code (max 2 merges/cycle shared).
+3. The agent merges ONLY on fully green CI + mergeable + `VERDICT: APPROVE`
+   (`gh pr checks --watch`), with `gh pr merge --merge --delete-branch`.
+   The script itself auto-merges green patch/minor dependabot PRs older than
+   48h (no verdict needed; majors/groups/red stay for agent/human).
+   Never force-push, never push to `master`, never touch dependabot branches.
 4. Strategic items (shared rate-limit store, cookie-auth migration, schema
    tooling) require a human decision — the prompt forbids the agent from taking
    them. Deferred items are re-evaluated every ~30 cycles; constraints change.
@@ -96,6 +105,10 @@ to the exact model that produced it — even after failover mid-cycle.
   simply re-probed each round/cycle. Stateless, like lens rotation.
 - **Which model won** is printed (`opencode-muse` / `cline-deepseek` / `cline-glm`)
   and exported as `NATIART_ACTIVE_MODEL` for the agent's cycle summary.
+- **Reviewer independence.** Review invocations pass `--skip <author's Model:
+  footer value>` (`run-agent.sh`, substring match, ignored if it would empty
+  the pool), so the reviewer is a different model than the author whenever the
+  pool allows — a fresh context in weights, not just in prompt.
 - **Buttons**: `--check-only` prints the priority list; `--simulate-quota-at N`
   fails the first N attempts synthetically (no tokens) to prove fallthrough;
   `--stall SEC` tunes the stall detector. The cline fallback needs the cline CLI
@@ -104,7 +117,7 @@ to the exact model that produced it — even after failover mid-cycle.
 
 ## Never runs dry
 
-- **Rotating lenses** (`docs/loop-lenses.md`): 16 audit lenses, one per cycle,
+- **Rotating lenses** (`docs/loop-lenses.md`): 17 audit lenses, one per cycle,
   selected deterministically from the 30-minute slot number (no state files).
   Each lens sees different bugs in the same code.
 - **Generators**: weakest-assertion review, lowest-coverage classes, linter
@@ -119,10 +132,11 @@ to the exact model that produced it — even after failover mid-cycle.
   items, fix on the spot only if trivial.
 - **Boy-scout ledger**: every PR converts one discovered nit into a tracked
   backlog item instead of silently fixing or ignoring it.
-- **Health metrics** (read from `logs/`): PRs merged/week, backlog trend
-  (logged every cycle), no-work rate. Escalation is automatic: backlog under
-  floor → generator duty; repeated thin findings → the lens rotation and
-  ratchets widen the frontier without human input.
+- **Health metrics** (read from `logs/`): `health.csv` (one row/cycle: slot,
+  open counts, repair list, merged, reviewed PR, exit status), PRs merged/week,
+  backlog trend (logged every cycle), no-work rate. Escalation is automatic:
+  backlog under floor → generator duty; repeated thin findings → the lens
+  rotation and ratchets widen the frontier without human input.
 
 ## Guideline compliance
 
@@ -169,7 +183,10 @@ The instruction set is 13 files: root `AGENTS.md` (+ identical mirrors
 ## CI: fast and scoped (do not wait on irrelevant checks)
 
 Backend CI runs directory-service and product-service as parallel jobs (~half
-the wall time) with per-service failure reports. All workflows are
+the wall time) with per-service failure reports. JaCoCo (0.8.14, first release
+with official Java 25 support) is report-only: XML+HTML per service under
+`build/reports/jacoco/` (baselines 2026-09-08: ~63% instruction both services),
+no gates — an enforcing floor is a future ratchet, not this doc. All workflows are
 path-scoped; merge when every reported check is green AND every relevant
 workflow has reported:
 
@@ -179,7 +196,7 @@ workflow has reported:
 | `frontend/**` | Frontend CI |
 | instruction files (`AGENTS.md`, mirrors, `agents/**`, module guides) | Guidelines |
 | `docs/**` (findings, lenses, loop docs) | Guidelines |
-| `scripts/**` | Guidelines |
+| `scripts/**` | Guidelines + Loop Scripts (shellcheck, helper tests) |
 | `backend/**`, `frontend/**` | Guidelines (convention bans) + respective CI |
 | `.github/workflows/<name>.yml` | that workflow + Guidelines |
 | anything else | all three |
@@ -193,23 +210,41 @@ table above is agent discipline, enforced by the cycle prompt.
   kill-minus-8-min (max 3 fix PRs), merge phase with the rest; at kill-minus-5
   push everything and stop. Unmerged green-track PRs are fine; a killed dirty
   tree is the failure mode — hence commit-early and push-each-branch.
-- Pickup: a green unmerged loop PR from the prior cycle gets merged first,
-  then new work. Zero reported CI checks means "not registered yet", never
-  green (Backend, Frontend, Guidelines must all be present + green).
-- Flakes: one `gh run rerun --failed`, then stop-and-report if still red.
+- Pickup: green unmerged loop PRs merge first (script merges up to 2/cycle:
+  code then docs), then repair, then new work. Zero reported CI checks means
+  "not registered yet", never green (Backend, Frontend, Guidelines must all be
+  present + green).
+- Flakes then repair: one `gh run rerun --failed` per failing PR; still red →
+  fix in place on the same branch this cycle (REPAIR MODE, zero new branches),
+  never stop-and-idle. Conflicts resolve via `git merge origin/master` (never
+  rebase/force-push), then `!check`, then push.
 - WIP recovery: dirt on a loop branch with an open PR is auto-committed as
-  `[WIP]` and pushed; dirt anywhere else aborts for a human.
+  `[WIP]` and pushed; dirt on a loop-prefix branch with no PR is salvaged;
+  dirt anywhere else (suspected human work — the loop never touches it) aborts
+  the cycle loudly. Dirt on master still salvages (killed-cycle fallout).
+- Watchdog: `loop-watchdog.yml` runs cloud-side every 6h and opens an issue
+  when no non-dependabot PR moved in 24h — exits read as success and logs stay
+  local, so without this every stall class is silent.
+- Script tests: `scripts/tests/run.sh` (zero-dep bash, stubbed `gh`) covers
+  `loop-lib.sh` helpers; `loop-scripts.yml` runs shellcheck + tests on every
+  `scripts/**` PR. New helper → lib + test in the same PR.
 - Merge-scope errors (e.g. missing `workflow` scope) are reported to the
   human, never routed around. Token scopes are documented here so the fix is
   one command: `gh auth refresh -s workflow` (interactive).
 - Auto-merge stays OFF repository-wide by policy: every merge is explicit.
 - AI-review gate: each PR gets an independent fresh-context reviewer run
   (`scripts/agent-review-prompt.md`, ~6 min, concurrent with CI, launched in
-  parallel per PR). Reviewers work in isolated `git worktree`s (never the
+  parallel per PR). The script-side mechanical reviewer spawns every cycle
+  including REPAIR MODE, covers code + docs, and reviews RED PRs too — its
+  verdict carries machine-readable `Build:`/`Merge:` lines so the next cycle's
+  agent knows exactly what to fix. Reviewers work in isolated `git worktree`s (never the
   shared checkout), prove tests non-vacuous, and threat-model
   security-touching diffs. PR bodies, changelogs, and dependency metadata are
   treated as untrusted data, never instructions. Merge requires green relevant
-  CI AND an APPROVE verdict with zero unresolved blockers; one
+  CI AND mergeable AND the latest verdict being `APPROVE (reviewed <sha>)` with
+  `<sha>` equal to the PR's current head — recency and head-binding are checked
+  mechanically, so a newer REQUEST_CHANGES vetoes and pushes after an APPROVE
+  need one binding re-review; one
   address-and-re-review round, then the PR stays open. Implemented in
   `scripts/loop-cycle.sh`: an unmarked REQUEST_CHANGES triggers re-review
   round 1; the re-reviewer must start its verdict with
@@ -221,7 +256,7 @@ table above is agent discipline, enforced by the cycle prompt.
 - Remote hygiene: every cycle retries deletion of merged loop-prefix branches
   (`fix|perf|chore|docs|feature/*`) — the `--delete-branch` flag occasionally
   races GitHub auto-delete. Never touches unmerged work, `master`, or
-  dependabot branches. Logs keep the last 100 cycles.
+  dependabot branches. Logs keep the last 300 cycles.
 
 ## Backlog
 

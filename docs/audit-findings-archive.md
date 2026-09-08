@@ -1151,3 +1151,9 @@ camelCase, `PaymentController.java:38`) still OPEN on both sides
 - Merged 2026-09-07 (PR #189: directory registration payloads bean-validated,
   NPE path null-guarded); flipped by the Lens 3 cycle.
 
+### U1. Loop doc says "16 audit lenses", 17 exist — FIXED (PR #199)
+- `docs/continuous-improvement-loop.md:62` claimed "16 audit lenses" but
+  `docs/loop-lenses.md` carried 17 `## Lens` headers (Lens 17 added later).
+- Fix: "16 audit lenses" → "17 audit lenses". Merged 2026-09-08 (PR #199:
+  dependabot aging policy + loop-doc drift fixes); status corrected by the
+  Lens 9 cycle (doc-rot: item referenced a MERGED PR).

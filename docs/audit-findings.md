@@ -283,13 +283,6 @@ loop doc (match `scripts/systemd/` + `scripts/loop-cycle.sh:176`).
 Instruction-file fixes go in a human-review PR per the self-modification ban
 — tracked here, not silently fixed.
 
-### U1. Loop doc says "16 audit lenses", 17 exist — OPEN (Low)
-- `docs/continuous-improvement-loop.md:62` claims "16 audit lenses" but
-  `docs/loop-lenses.md` carries 17 `## Lens` headers (Lens 17 added later;
-  line 99 of the same doc already references "Lens 17").
-- Fix: "16 audit lenses" → "17 audit lenses". Human-review PR (touches loop
-  machinery docs).
-
 ### U2. Frontend guide still prescribes bare `ng test`, CI uses npm scripts — OPEN (Low)
 - `frontend/natiart-app/AGENTS.md:46` (bare `ng test`) vs reality:
   `.github/workflows/frontend_workflow.yml:53` runs
@@ -1163,4 +1156,32 @@ with static messages); login with missing/blank credentials resolves to 401 via
   `final`, derive/validate in the constructor; keep the `@PostConstruct`-free
   fail-fast semantics. Tests: blank secret → constructor throws.
 
+
+## AW. Frontend auth flow re-hunt (Lens 9, 2026-09-08)
+
+Hunt method: re-read the auth flow on current master
+(`authentication.service.ts`, `token.service.ts`,
+`jwt-interceptor.service.ts`, `auth.guard.ts`, `admin.guard.ts`,
+`login.component.ts`, `logout.component.ts`, `signup.component.ts`,
+`redirect.service.ts`, `app.routes.ts`, `app.config.ts`) against the AR
+baseline. Re-verified this cycle: L3 still OPEN (`app.routes.ts:37` still
+guards `/checkout` with `authGuard` while `checkout.component.ts:237-289`
+keeps its guest branch — needs the product decision, unchanged), AR1 still
+OPEN (`jwt-interceptor.service.ts:96-101,128-134` still call
+`tokenService.clearTokens()` with no notification to
+`AuthenticationService.stateSubject`), AH3 still OPEN
+(`login.component.ts` `doLoginUser` still has no in-flight guard —
+double-click fires duplicate login POSTs), C11 still OPEN
+(`app.config.ts:20` still returns a root-scope `Subscription` from the
+`APP_INITIALIZER` factory). Cleared as non-findings: post-registration
+explicit-login choice (intentional, cleared in AA); `adminGuard`
+`isAdmin` snapshot (same `stateSubject` the guard just consumed);
+`RedirectService` consume-on-read (single reader, `LoginComponent`);
+`doRefreshToken` inner `fetchCurrentUser().subscribe()` without error
+callback (failures route through that method's own 401-reset, AA);
+`logout.component.ts` subscribes (no cold-observable no-op) and clears
+its redirect timer on destroy; `getTokenExpiration` fails closed
+(malformed token → 0 → treated expired); saved-redirect navigation uses
+router-internal `state.url` only (no open redirect). No new actionable
+items — no new sections appended.
 
