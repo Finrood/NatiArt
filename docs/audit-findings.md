@@ -102,16 +102,22 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
 
 ## F. Secrets and configuration (Lens 3 hunt, 2026-09-05)
 
-### G1. Payment value is client-priced, never reconciled to an order — OPEN (Medium-High)
+### G1. Payment value is client-priced, never reconciled to an order — IN REVIEW (Medium-High; backend reconciliation in PR #207)
 - `backend/product-service/.../dto/payment/PaymentCreationRequest.java:13` takes
   a client-supplied `Double value`; `AsaasPaymentService.java:54-56` only checks
   `> 0`; `PaymentController.java:22-29` carries no order reference, so nothing
   ties a charge to a `CustomerOrder` total. An authenticated user can create a
   R$0.01 Asaas charge against a R$500 order (underpayment → fulfillment
   confusion). Found by Lens 4 hunt, 2026-09-05.
-- Fix: link payment creation to an order id, reconcile the value server-side
-  against `totalAmount`, reject mismatches. Tests: under/over-valued payment
-  rejected; exact total accepted.
+- Backend half fixed in PR #207 (IN REVIEW): the request accepts an optional
+  `orderId`; when present the service loads the order, rejects any value that
+  does not equal the server-computed `CustomerOrder.totalAmount` before any
+  upstream call, and persists the order link on the `Payment` row.
+- Remaining OPEN frontend half: the storefront still charges the client cart
+  snapshot (`checkout.component.ts:301` sends `value: getCartTotalSnapshot()`)
+  because checkout creates no order yet — wire order creation into the payment
+  flow and send `orderId`. Tests then: under/over-valued payment rejected;
+  exact total accepted (backend halves covered in PR #207).
 
 ## I. HTTP integration robustness (Lens 6 hunt, 2026-09-05)
 
@@ -341,6 +347,15 @@ in `backend/` per Lens 1. Re-verified this cycle: B3 still OPEN (zero
 product ids and non-positive quantities — not filed. V1/V2 below were fixed
 in flight on the same branch rather than tracked separately. (V3 was flipped
 to FIXED on master as PR #128 while this branch was open.)
+
+Re-verified this cycle (Lens 1 re-hunt, 2026-09-08): B3 archived FIXED
+(PR #189 — `jakarta.validation` now guards the registration path, so the
+`ProfileManager`/`UserManager` `.trim()` sites are pre-validated);
+`Integer.parseInt`/`Long.parseLong`/`enum valueOf` on raw user input: zero
+new hits (only upstream fail-closed parsers remain); pagination `page`/`size`
+request params on all four listing controllers still clamp via `toPageable`
+(`MAX_PAGE_SIZE = 100`). No new runner-up findings this cycle. G1 backend
+reconciliation in flight (PR #207).
 
 ## W. AuthN and AuthZ boundaries (Lens 2 hunt, 2026-09-05)
 
