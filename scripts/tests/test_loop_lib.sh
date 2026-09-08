@@ -152,6 +152,7 @@ done
 assert_eq "opencode:opencode/muse-spark-1.3-contributor-free" "$(printf '## Summary\nstuff\n- Model: should-not-match\n- x\nModel: opencode:opencode/muse-spark-1.3-contributor-free\n' | author_model_of)" "last Model: line wins"
 assert_eq "cline:zai/glm-5.3-flash/medium" "$(printf 'body\nModel: cline:zai/glm-5.3-flash/medium\n' | author_model_of)" "cline model value passes through"
 assert_eq "" "$(printf 'no footer here\n' | author_model_of)" "missing footer -> empty (no skip)"
+assert_eq "opencode:opencode/muse-spark-1.3-contributor-free" "$(printf 'body\n  **Model:** opencode:opencode/muse-spark-1.3-contributor-free\n' | author_model_of)" "indented bold footer tolerated"
 
 # --- semver_bump: scope dependabot titles conservatively ---
 assert_eq "patch" "$(semver_bump 'chore(deps): bump lodash from 4.17.20 to 4.17.21')" "patch bump"
@@ -160,6 +161,46 @@ assert_eq "major" "$(semver_bump 'chore(deps): bump react from 18.2.0 to 19.0.0'
 assert_eq "minor" "$(semver_bump 'chore(deps): bump junit from v5.9.3 to v5.10.0')" "minor with v prefix"
 assert_eq "unknown" "$(semver_bump 'chore(deps)(deps): bump the frontend-dependencies group across 1 directory with 15 updates')" "group bump -> unknown"
 assert_eq "unknown" "$(semver_bump 'random title without versions')" "unparseable -> unknown"
+assert_eq "unknown" "$(semver_bump 'chore(deps): bump A from 1.0.0 to 2.0.0, B from 1.0.0 to 1.0.1')" "multi-pair title -> unknown (never auto-merge a hidden major)"
+
+# --- sha_match: short/full tolerance, empty never matches ---
+if sha_match deadbeef deadbeefca; then got=yes; else got=no; fi
+assert_eq "yes" "$got" "short-8 covers full-40"
+if sha_match deadbeefca deadbeef; then got=yes; else got=no; fi
+assert_eq "yes" "$got" "full-40 covers short-8"
+if sha_match deadbeef cafe1234; then got=yes; else got=no; fi
+assert_eq "no" "$got" "different shas do not match"
+if sha_match "" deadbeef; then got=yes; else got=no; fi
+assert_eq "no" "$got" "empty sha never matches"
+
+# --- latest_verdict tolerates indented verdict bodies ---
+d=$(mkfixture indented)
+printf '%s' '{"comments": [{"createdAt": "2026-09-07T15:00:00Z", "body": "  VERDICT: APPROVE (reviewed abc1234)"}], "reviews": []}' > "$d/comments-reviews.json"
+GH_FIXTURE_DIR="$d"
+assert_eq "VERDICT: APPROVE (reviewed abc1234)" "$(latest_verdict 1)" "indented verdict found and trimmed"
+rm -rf "$d"
+
+# --- null bodies and gh failure degrade to empty (fail-safe) ---
+d=$(mkfixture nullbody)
+echo '{"comments": [{"createdAt": "2026-09-07T15:00:00Z", "body": null}], "reviews": []}' > "$d/comments-reviews.json"
+GH_FIXTURE_DIR="$d"
+assert_eq "" "$(latest_verdict 1)" "null body -> empty"
+rm -rf "$d"
+
+d=$(mkfixture ghfail)
+GH_FIXTURE_DIR="$d"
+assert_eq "" "$(latest_verdict 1)" "gh failure -> empty (merge held, reviewer respawns)"
+rm -rf "$d"
+
+# --- gh_safe keeps stdout parseable on failure (WARN goes to stderr) ---
+d=$(mkfixture warnpath)
+GH_FIXTURE_DIR="$d"
+got_stdout=$(gh_safe gh pr checks 1 2>/dev/null)
+got_stderr=$(gh_safe gh pr checks 1 2>&1 >/dev/null)
+assert_eq "" "$got_stdout" "gh_safe failure -> empty stdout"
+if [[ -n "$got_stderr" ]]; then got=yes; else got=no; fi
+assert_eq "yes" "$got" "gh_safe failure -> WARN on stderr"
+rm -rf "$d"
 
 if [[ "$ASSERT_FAILS" -gt 0 ]]; then
     echo "$ASSERT_FAILS assertion(s) failed" >&2

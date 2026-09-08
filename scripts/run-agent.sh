@@ -18,7 +18,7 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP_ROOT="${TMPDIR:-/tmp}"   # override with TMPDIR for tests; attempt logs are removed after each run
 
 # --- overridables ----------------------------------------------------------
-ROLE="cycle"          # cycle (1500s budget) | review (360s budget)
+ROLE="cycle"          # cycle (1500s budget) | review (360s default; loop overrides to 600)
 BUDGET=""             # empty = role default (set after parsing)
 TITLE="improvement-loop"
 STALL_SEC=120          # no-output stall detection per attempt (role default applied later)
@@ -39,7 +39,8 @@ Options:
   --role cycle|review     Role preset: cycle=1500s budget, review=360s (default cycle)
   --budget SEC            Override the total time budget
   --title TITLE           Session title (passed to CLIs that support it)
-  --stall SEC             Kill an attempt that produces no output for SEC (default 120)
+  --stall SEC             Kill an attempt that produces no output for SEC (role
+                          defaults: cycle 180, review 150; plain default 120)
   --simulate-quota-at N   Test: fail the first N attempts with synthetic quota
   --allowed "ARGS"        Extra permission args passed to cline (e.g. "--auto-approve true")
   --skip SUBSTR           Skip models whose cli:model_id or label contains SUBSTR
@@ -57,13 +58,13 @@ log_err() { echo "[$(date -Is)] ERROR: $*" >&2; }
 PROMPT_ARGS=()
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --role) ROLE="$2"; shift 2 ;;
-        --budget) BUDGET="$2"; shift 2 ;;
-        --title) TITLE="$2"; shift 2 ;;
-        --stall) STALL_SEC="$2"; STALL_EXPLICIT=1; shift 2 ;;
-        --simulate-quota-at) SIMULATE_QUOTA_AT="$2"; shift 2 ;;
-        --allowed) ALLOWED_ARGS=("$2"); shift 2 ;;
-        --skip) SKIP+=("$2"); shift 2 ;;
+              --role) ROLE="${2:-}"; [[ $# -ge 2 ]] || { log_err "Missing value for --role."; usage; exit 2; }; shift 2 ;;
+        --budget) BUDGET="${2:-}"; [[ $# -ge 2 ]] || { log_err "Missing value for --budget."; usage; exit 2; }; shift 2 ;;
+        --title) TITLE="${2:-}"; [[ $# -ge 2 ]] || { log_err "Missing value for --title."; usage; exit 2; }; shift 2 ;;
+        --stall) STALL_SEC="${2:-}"; [[ $# -ge 2 ]] || { log_err "Missing value for --stall."; usage; exit 2; }; STALL_EXPLICIT=1; shift 2 ;;
+        --simulate-quota-at) SIMULATE_QUOTA_AT="${2:-}"; [[ $# -ge 2 ]] || { log_err "Missing value for --simulate-quota-at."; usage; exit 2; }; shift 2 ;;
+        --allowed) ALLOWED_ARGS=(); [[ $# -ge 2 ]] || { log_err "Missing value for --allowed."; usage; exit 2; }; read -ra ALLOWED_ARGS <<< "$2"; shift 2 ;;
+        --skip) [[ $# -ge 2 ]] || { log_err "Missing value for --skip."; usage; exit 2; }; SKIP+=("$2"); shift 2 ;;
         --check-only) CHECK_ONLY=1; shift ;;
         -h|--help) usage; exit 0 ;;
         --) shift; PROMPT_ARGS+=("$@"); break ;;
@@ -106,16 +107,20 @@ PROMPT="${PROMPT_ARGS[*]}"
 # --- model registry (priority list) ----------------------------------------
 # Override with NATIART_MODELS_CONF to test with a throwaway priority list.
 # shellcheck source=scripts/agent-models.conf
-source "${NATIART_MODELS_CONF:-$REPO/scripts/agent-models.conf}"
+source "${NATIART_MODELS_CONF:-$REPO/scripts/agent-models.conf}" || { log_err "Cannot source model config."; exit 2; }
+[[ -v 'PRIORITY[@]' ]] || PRIORITY=()
 PRIORITY_COUNT=${#PRIORITY[@]}
 if [[ "$PRIORITY_COUNT" -eq 0 ]]; then
     log_err "agent-models.conf defines no models."
     exit 2
 fi
 
-# Quota-block patterns. A failing attempt (rc != 0, or a no-output stall) whose
-# output matches these is treated as quota and falls through to the next model.
-QUOTA_RE='quota|rate.?limit(ed)?|429|too many requests|insufficient|exceeded|(monthly|daily|usage|free tier) (quota|limit)|credits? (depleted|exhausted)|billing issu|out of (free )?usage'
+# Quota-block patterns, matched against the TAIL of the attempt log (a failure
+# anywhere in a long build log mentioning e.g. a test named "*quota*" must not
+# reroute a genuine failure into failover). Curated against real provider
+# strings: opencode Console "Rate limit exceeded", cline gateway
+# INFERENCE_CAP_ERROR/429, Anthropic-style 529 overload/capacity.
+QUOTA_RE='quota|rate.?limit(ed)?|429|too many requests|insufficient|exceeded|(monthly|daily|usage|free tier) (quota|limit)|credits? (depleted|exhausted)|billing issu|out of (free )?usage|overload(ed)?|capacity|529'
 
 # Reviewer/author independence: drop skipped models up front (substring match on
 # cli:model_id or label). A skip list that empties the pool is ignored — never
@@ -123,9 +128,20 @@ QUOTA_RE='quota|rate.?limit(ed)?|429|too many requests|insufficient|exceeded|(mo
 EFFECTIVE=()
 for entry in "${PRIORITY[@]}"; do
     IFS='|' read -r cli label model_id think <<< "$entry"
+    case "$cli" in
+        opencode) bin="opencode" ;;
+        cline) bin="cline" ;;
+        *) bin="$cli" ;;
+    esac
+    if ! command -v "$bin" >/dev/null 2>&1; then
+        log "CLI '$bin' for $label not installed; dropping entry (loud, not a silent spin)."
+        continue
+    fi
     skip_hit=""
     for s in ${SKIP[@]+"${SKIP[@]}"}; do
-        if [[ "$cli:$model_id" == *"$s"* || "$label" == *"$s"* ]]; then skip_hit="$s"; break; fi
+        # Bidirectional: footers carry cli:model_id[/think] (needle longer than
+        # haystack), labels carry short names — either direction may contain.
+        if [[ "$cli:$model_id" == *"$s"* || "$label" == *"$s"* || "$s" == *"$cli:$model_id"* || "$s" == *"$label"* ]]; then skip_hit="$s"; break; fi
     done
     if [[ -n "$skip_hit" ]]; then
         log "Skipping $label ($model_id) for independence (matched --skip '$skip_hit')."
@@ -136,6 +152,10 @@ done
 if [[ "${#EFFECTIVE[@]}" -eq 0 && "${#SKIP[@]}" -gt 0 ]]; then
     log "WARNING: --skip emptied the model pool; ignoring skips."
     EFFECTIVE=("${PRIORITY[@]}")
+fi
+if [[ "${#EFFECTIVE[@]}" -eq 0 ]]; then
+    log_err "No runnable models: every CLI is missing (not a quota event — needs a human)."
+    exit 2
 fi
 
 if [[ "$CHECK_ONLY" -eq 1 ]]; then
@@ -152,7 +172,7 @@ fi
 quota_blocked() { # $1 = rc, $2 = log file; 0 if quota, 1 otherwise
     local rc="$1" f="$2"
     if [[ "$rc" -eq 0 ]]; then return 1; fi
-    if grep -qiE "$QUOTA_RE" "$f" 2>/dev/null; then return 0; fi
+    if tail -c 4096 "$f" 2>/dev/null | grep -qiE "$QUOTA_RE"; then return 0; fi
     return 1
 }
 
@@ -216,7 +236,7 @@ while true; do
             continue
         fi
 
-        ATT_LOG="$TMP_ROOT/natiart-agent-attempt-$$-$attempt-$label.log"
+        ATT_LOG="$(mktemp "$TMP_ROOT/natiart-agent-attempt-XXXXXX.log")"
         same_retry=0
         while :; do # retry-same-model loop: silence ≠ quota (see below)
             log "Attempt $attempt/${label}: $cli :: $model_id${think:+, thinking=$think} (${remaining}s left)"
@@ -237,7 +257,7 @@ while true; do
                     kill_agent "$PID"
                     break
                 fi
-                size=$(stat -c%s "$ATT_LOG" 2>/dev/null || echo 0)
+                size=$(stat -c%s "$ATT_LOG" 2>/dev/null || stat -f%z "$ATT_LOG" 2>/dev/null || echo 0)
                 if (( size != last_size )); then
                     last_size=$size
                     last_change=$now
@@ -269,10 +289,11 @@ while true; do
             if [[ "$reason" == "stall" ]]; then
                 # Silence alone is NOT proof of a quota block: Gradle/npm emit
                 # nothing for minutes during healthy builds (17:59/18:30 cycles
-                # killed BUILD SUCCESSFUL mid-run). So: rc=143 from a silence
-                # kill gets ONE retry on the SAME model before failover; a
-                # second silence is treated as a quota-style block.
-                if [[ "$rc" -eq 143 && "$same_retry" -eq 0 ]]; then
+                # killed BUILD SUCCESSFUL mid-run). So: rc=143 (TERM) or 137
+                # (KILL escalation) from a silence kill gets ONE retry on the
+                # SAME model before failover; a second silence is treated as
+                # a quota-style block.
+                if [[ ("$rc" -eq 143 || "$rc" -eq 137) && "$same_retry" -eq 0 ]]; then
                     same_retry=1
                     log "Attempt $attempt/${label} went silent for ${STALL_SEC}s (rc=$rc); retrying SAME model once before failover."
                     print_tail "$ATT_LOG"

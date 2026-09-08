@@ -57,15 +57,21 @@ fi
 #    wedged overnight on dirty master; dirty-master now salvages + resets.)
 salvage_wip() { # $1 = source branch label; salvages dirt to origin/salvage/*
     local B
-    B="salvage/$(date +%Y%m%d-%H%M%S)"
+    B="salvage/$(date +%Y%m%d-%H%M%S)-$$"
     if git checkout -q -b "$B" && git add -A && git commit -qm "[WIP] Salvaged interrupted-cycle WIP from $1 (auto-salvage)" && git push -q origin "$B"; then
         git checkout -q master
         git reset -q --hard origin/master
         log "WIP salvaged to origin/$B; master reset clean."
         return 0
     fi
-    # Push failed (auth/network): keep WIP locally, still reach a clean master.
+    # Push (or commit) failed: keep WIP locally, still reach a clean master —
+    # but only reset a branch we own. If the master checkout failed (e.g. dirt
+    # blocks it), resetting here would wipe the salvage branch's staged WIP.
     git checkout -q master 2>/dev/null || true
+    if [[ "$(git branch --show-current 2>/dev/null)" != "master" ]]; then
+        log "Could not reach master for reset; aborting with WIP kept locally on $B."
+        return 1
+    fi
     git reset -q --hard origin/master 2>/dev/null || true
     [[ -z "$(git status --porcelain)" ]] && { log "Salvage push failed (likely network/auth); WIP kept on local $B."; return 0; }
     log "Could not reach a clean master even after salvage; aborting for human review."
@@ -78,9 +84,22 @@ if [[ -n "$(git status --porcelain)" ]]; then
         if [[ "$OWNING_PR" -ge 1 ]]; then
             # Existing loop branch: keep history where its PR can see it.
             log "Dirty tree on $CUR_BRANCH with an open PR: snapshotting interrupted-cycle WIP."
+            SNAP_BEFORE="$(git rev-parse HEAD 2>/dev/null || echo none)"
             if git add -A && git commit -qm "[WIP] Interrupted cycle snapshot (auto-committed by loop guard)" && git push -q origin "$CUR_BRANCH"; then
                 log "WIP snapshot pushed; continuing fresh."
-            elif git reset -q --hard HEAD~1 2>/dev/null && salvage_wip "$CUR_BRANCH"; then
+            elif [[ "$(git rev-parse HEAD 2>/dev/null)" != "$SNAP_BEFORE" ]]; then
+                # Commit created but push failed: resetting would orphan the WIP.
+                # Bookmark it on a salvage branch, rewind the loop branch, push
+                # the bookmark (best effort — local bookmark survives regardless).
+                SNAP_B="salvage/$(date +%Y%m%d-%H%M%S)-$$"
+                git branch "$SNAP_B" 2>/dev/null || true
+                git reset -q --hard "$SNAP_BEFORE" 2>/dev/null || true
+                if git push -q origin "$SNAP_B" 2>/dev/null; then
+                    log "WIP snapshot preserved on origin/$SNAP_B; $CUR_BRANCH rewound."
+                else
+                    log "WIP snapshot kept on local $SNAP_B (push failed); $CUR_BRANCH rewound."
+                fi
+            elif salvage_wip "$CUR_BRANCH"; then
                 :
             else
                 exit 1
@@ -130,8 +149,6 @@ if [[ "$LOCAL_AHEAD" -gt 0 ]]; then
         exit 1
     fi
 fi
-
-# 3. Backlog guard: is there OPEN work? Starvation is a bug, so a low (not
 
 # 3. Backlog guard: is there OPEN work? Starvation is a bug, so a low (not
 #    just empty) backlog switches the cycle to generator duty instead of idling.
@@ -185,8 +202,8 @@ while read -r n; do
     else
         CODE_PRS="$CODE_PRS $n"
     fi
-done < <(gh_safe gh pr list --state open --json number,headRefName --jq '.[] | select(.headRefName | startswith("dependabot/") | not) | .number')
-OPEN_PRS=$(echo "$CODE_PRS" | wc -w)
+done < <(gh_safe gh pr list --state open --limit 100 --json number,headRefName --jq '.[] | select(.headRefName | startswith("dependabot/") | not) | .number')
+OPEN_PRS=$(echo "$CODE_PRS" | wc -w | tr -d '[:space:]')
 log "Open code PRs: $OPEN_PRS"
 log "Open docs PRs:$DOCS_PRS"
 
@@ -197,7 +214,10 @@ log "Open docs PRs:$DOCS_PRS"
 merged=0
 for n in $CODE_PRS $DOCS_PRS; do
     [[ "$merged" -ge 2 ]] && { log "Merged 2 this cycle; handing the rest to the agent/next cycle."; break; }
-    if gh pr view "$n" --json files --jq '.files[].path' 2>/dev/null | grep -qE '^(scripts/|agents/|AGENTS\.md|CLAUDE\.md|GEMINI\.md|\.cursorrules|docs/continuous-improvement-loop\.md|docs/loop-lenses\.md)'; then
+    # Self-modification ban: any touch of instructions, loop scripts, loop docs,
+    # module guides, or CI config stays OPEN for human review — never auto-merge
+    # changes to the loop's own brain, even on green CI.
+    if gh pr view "$n" --json files --jq '.files[].path' 2>/dev/null | grep -qE '^(scripts/|agents/|\.github/|\.cursorrules|docs/continuous-improvement-loop\.md|docs/loop-lenses\.md)|(^|/)(AGENTS\.md|CLAUDE\.md|GEMINI\.md)$'; then
         log "PR #$n touches loop machinery; leaving OPEN for human review (self-modification ban)."
         continue
     fi
@@ -206,11 +226,11 @@ for n in $CODE_PRS $DOCS_PRS; do
         continue
     fi
     checks=$(gh_safe gh pr checks "$n")
-    if echo "$checks" | grep -Eq 'fail|cancel'; then
+    if checks_failed <<<"$checks"; then
         log "PR #$n has failing/cancelled checks; leaving open."
         continue
     fi
-    if ! echo "$checks" | grep -qE 'pass|success'; then
+    if ! checks_passed <<<"$checks"; then
         log "PR #$n has no reported green checks yet; leaving open."
         continue
     fi
@@ -225,13 +245,17 @@ for n in $CODE_PRS $DOCS_PRS; do
         log "PR #$n APPROVE predates head-binding; leaving open for one binding re-review."
         continue
     fi
-    if [[ "$HEAD_SHA" != "$RV_SHA"* ]]; then
+    if ! sha_match "$RV_SHA" "$HEAD_SHA"; then
         log "PR #$n APPROVE is for $RV_SHA but head is ${HEAD_SHA:0:8}; leaving open for re-review."
         continue
     fi
     log "Merging healthy PR #$n (green + latest APPROVE for current head + mergeable)."
-    gh pr merge "$n" --merge --delete-branch 2>&1 | tail -2
-    merged=$((merged + 1))
+    if gh pr merge "$n" --merge --delete-branch 2>&1 | tail -2; then
+        merged=$((merged + 1))
+    else
+        log "Merge of PR #$n failed transiently; leaving open for next cycle."
+        continue
+    fi
 done
 
 # Dependabot aging policy: green + patch/minor + older than 48h merges WITHOUT
@@ -253,18 +277,22 @@ while IFS=$'\t' read -r dn dcreated dtitle; do
         continue
     fi
     dchecks=$(gh_safe gh pr checks "$dn")
-    if echo "$dchecks" | grep -Eq 'fail|cancel'; then
+    if checks_failed <<<"$dchecks"; then
         log "Dependabot #$dn has failing checks; leaving open."
         continue
     fi
-    if ! echo "$dchecks" | grep -qE 'pass|success'; then
+    if ! checks_passed <<<"$dchecks"; then
         log "Dependabot #$dn has no green checks yet; leaving open."
         continue
     fi
     log "Merging aged green dependabot #$dn ($bump, >48h)."
-    gh pr merge "$dn" --merge --delete-branch 2>&1 | tail -2
-    merged=$((merged + 1))
-done < <(gh_safe gh pr list --state open --json number,headRefName,createdAt,title \
+    if gh pr merge "$dn" --merge --delete-branch 2>&1 | tail -2; then
+        merged=$((merged + 1))
+    else
+        log "Merge of dependabot #$dn failed transiently; leaving open for next cycle."
+        continue
+    fi
+done < <(gh_safe gh pr list --state open --limit 100 --json number,headRefName,createdAt,title \
     --jq '.[] | select(.headRefName | startswith("dependabot/")) | "\(.number)\t\(.createdAt)\t\(.title)"')
 # Refresh once if anything merged above (branches may be deleted by the merge).
 if [[ "$merged" -ge 1 ]]; then
@@ -284,12 +312,15 @@ FAILING=""
 CONFLICTING=""
 for n in $ALL_PRS; do
     checks=$(gh_safe gh pr checks "$n")
-    if echo "$checks" | grep -Eq 'fail|cancel'; then FAILING="$FAILING $n"; fi
+    if checks_failed <<<"$checks"; then FAILING="$FAILING $n"; fi
     if [[ "$(pr_mergeable "$n")" == "CONFLICTING" ]]; then CONFLICTING="$CONFLICTING $n"; fi
 done
-FAILING="$(echo "$FAILING" | xargs || true)"
-CONFLICTING="$(echo "$CONFLICTING" | xargs || true)"
-REPAIR_PRS="$(echo "$FAILING $CONFLICTING" | xargs -n1 2>/dev/null | sort -u | xargs || true)"
+# Keep only numeric tokens (defense in depth: a polluted token must never reach
+# a gh call or the agent prompt as a PR number).
+only_numbers() { tr ' ' '\n' | grep -E '^[0-9]+$' | sort -un | xargs -r || true; }
+FAILING="$(only_numbers <<<"$FAILING")"
+CONFLICTING="$(only_numbers <<<"$CONFLICTING")"
+REPAIR_PRS="$(echo "$FAILING $CONFLICTING" | xargs -r -n1 2>/dev/null | sort -u | xargs -r || true)"
 if [[ -n "$REPAIR_PRS" ]]; then
     log "REPAIR MODE ON — build-failing:$FAILING conflicting:$CONFLICTING — agent fixes in place, no new branches."
 else
@@ -327,7 +358,7 @@ for n in $ALL_PRS; do
     # verdict only spawns another round when the head moved past that sha; a
     # verdict marked with the current head means the round is spent.
     RC_HEAD=$(git rev-parse --short=8 origin/"$(gh pr view "$n" --json headRefName --jq .headRefName)" 2>/dev/null || true)
-    LAST_RC=$(verdict_bodies "$n" | grep -oE 'VERDICT: REQUEST_CHANGES \(re-reviewed [0-9a-f]{8}' | tail -1 | grep -oE '[0-9a-f]{8}$' || true)
+    LAST_RC=$(verdict_bodies "$n" | grep -oE '^VERDICT: REQUEST_CHANGES \(re-reviewed [0-9a-f]{7,40}' | tail -1 | grep -oE '[0-9a-f]{7,40}$' || true)
     VERDICTS=$(verdict_bodies "$n" | grep -c '^VERDICT:' || true)
     LATEST_V="$(latest_verdict "$n")"
     if [[ -z "$RC_HEAD" ]]; then
@@ -336,11 +367,11 @@ for n in $ALL_PRS; do
     fi
     if grep -q '^VERDICT: APPROVE' <<<"$LATEST_V"; then
         RV_SHA="$(reviewed_sha "$LATEST_V")"
-        if [[ -n "$RV_SHA" && "$RV_SHA" == "$RC_HEAD" ]]; then
+        if sha_match "$RV_SHA" "$RC_HEAD"; then
             continue
         fi
         log "PR #$n APPROVE is stale (approved ${RV_SHA:-unbound} vs head $RC_HEAD); spawning binding re-review."
-    elif [[ -n "$LAST_RC" && "$LAST_RC" == "$RC_HEAD" ]]; then
+    elif [[ -n "$LAST_RC" ]] && sha_match "$LAST_RC" "$RC_HEAD"; then
         continue
     fi
     AUTHOR_SKIP="$(gh pr view "$n" --json body --jq .body 2>/dev/null | author_model_of || true)"
@@ -387,7 +418,9 @@ done || true
 # Also sweep the sibling review-* clones (git worktree list does not see them).
 # Safety: only clones carrying the reviewer's .natiart-review-marker are
 # deleted — never a bare name-glob rm -rf, which could hit an unrelated
-# sibling project's review-* directory.
+# sibling project's review-* directory. The +1-day age gate spares the ACTIVE
+# reviewer's clone (it is always younger); worktrees above go immediately
+# because `git worktree list` only shows live ones.
 find "$(dirname "$REPO")" -maxdepth 1 -type d -name 'review-*' -mtime +1 2>/dev/null | while read -r d; do
     if [[ -f "$d/.natiart-review-marker" ]]; then
         log "Removing abandoned reviewer clone $d."
@@ -400,12 +433,19 @@ done || true
 # Remote hygiene: retry deletion of merged loop branches (the --delete-branch
 # flag occasionally races GitHub auto-delete and leaves them behind). Only
 # branches fully merged into master, only loop prefixes — never master,
-# dependabot/*, or unmerged work.
+# dependabot/*, or unmerged work. Salvage names embed timestamps
+# (salvage/YYYYMMDD-HHMMSS-pid), so remote-only salvage branches beyond the
+# newest 5 are pruned by name order — the local retention above cannot see them.
 git branch -r --merged origin/master 2>/dev/null | sed 's#^ *origin/##' | grep -E '^(fix|perf|chore|docs|feature)/' | sort -u | while read -r b; do
     if git ls-remote --heads origin "$b" 2>/dev/null | grep -q .; then
         log "Deleting merged remote branch $b."
         git push -q origin --delete "$b" 2>/dev/null || log "Could not delete $b (likely already gone)."
     fi
+done || true
+git ls-remote --heads origin 'salvage/*' 2>/dev/null | awk '{print $2}' | sed 's#refs/heads/##' | sort | head -n -5 | while read -r sb; do
+    [[ -z "$sb" ]] && continue
+    log "Deleting old remote-only salvage branch $sb."
+    git push -q origin --delete "$sb" 2>/dev/null || log "Could not delete $sb (likely already gone)."
 done || true
 
 # 6. Hand one item to the agent (non-interactive, repo permission policy applies;
@@ -448,8 +488,10 @@ log "Invoking agent for one cycle item."
 # falls through on quota/stall blocks and keeps retrying until the budget is up —
 # the loop must never be blocked by one model's quota. See
 # docs/continuous-improvement-loop.md (Model failover).
-timeout 1500 scripts/run-agent.sh --role cycle --budget 1500 --title "improvement-loop $(date +%Y%m%d-%H%M)" "$CYCLE_MSG"
-STATUS=$?
+# STATUS is preset: a failing agent run must NOT trip `set -e` before the
+# reviewer-wait and health row below (a dead reviewer wait orphans the review).
+STATUS=0
+timeout 1500 scripts/run-agent.sh --role cycle --budget 1500 --title "improvement-loop $(date +%Y%m%d-%H%M)" "$CYCLE_MSG" || STATUS=$?
 if [[ "$STATUS" -eq 124 ]]; then
     log "Agent cycle hit the 25-minute timeout; leaving state for next cycle."
 fi
@@ -478,5 +520,5 @@ log "Agent cycle finished with status $STATUS."
 # post-mortems — grep it for merged counts, repair frequency, idle stretches.
 HEALTH="$LOG_DIR/health.csv"
 [[ -f "$HEALTH" ]] || echo "timestamp,slot,open_code,open_docs,repair_prs,merged,reviewed_pr,exit_status" > "$HEALTH"
-echo "$(date -Is),${SLOT:-?},${OPEN_PRS:-?},$(echo "${DOCS_PRS:-}" | wc -w),\"${REPAIR_PRS:-}\",${merged:-0},${REVIEW_PR:-none},$STATUS" >> "$HEALTH"
+echo "$(date -Is),${SLOT:-?},${OPEN_PRS:-?},$(echo "${DOCS_PRS:-}" | wc -w | tr -d '[:space:]'),\"${REPAIR_PRS:-}\",${merged:-0},${REVIEW_PR:-none},$STATUS" >> "$HEALTH"
 exit "$STATUS"

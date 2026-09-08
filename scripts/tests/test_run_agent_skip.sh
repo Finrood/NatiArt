@@ -55,6 +55,13 @@ first=$(tail -1 <<<"$out")
 assert_eq "opencode-muse" "$first" "non-first skip keeps preferred first"
 assert_contains "$out" "Skipping cline-deepseek" "model_id substring matches"
 
+# --- full footer value incl. /think suffix still skips (reviewer independence) ---
+out=$(check_only --skip cline:zai/glm-5.3-flash/medium --skip cline:deepseek/deepseek-v4-flash/xhigh) || out=""
+first=$(tail -1 <<<"$out")
+assert_eq "opencode-muse" "$first" "think-suffixed footers skip both cline entries"
+assert_contains "$out" "Skipping cline-glm" "think-suffixed glm skipped"
+assert_contains "$out" "Skipping cline-deepseek" "think-suffixed deepseek skipped"
+
 # --- skips that empty the pool are ignored, never idle ---
 out=$(check_only --skip opencode --skip deepseek --skip glm) || out=""
 first=$(tail -1 <<<"$out")
