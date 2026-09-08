@@ -233,7 +233,40 @@ for n in $CODE_PRS $DOCS_PRS; do
     gh pr merge "$n" --merge --delete-branch 2>&1 | tail -2
     merged=$((merged + 1))
 done
-# Refresh the list after any merges (branches below are deleted by the merge).
+
+# Dependabot aging policy: green + patch/minor + older than 48h merges WITHOUT
+# a verdict (routine bumps; the agent's Lens-16 routine and the human own the
+# rest). Majors, group bumps (unparseable semver), young, and red PRs stay
+# open. Shares the max-2 merge budget above. Never pushes to their branches.
+while IFS=$'\t' read -r dn dcreated dtitle; do
+    [[ -z "$dn" ]] && continue
+    [[ "$merged" -ge 2 ]] && { log "Merged 2 this cycle; dependabot #$dn waits for next cycle."; break; }
+    bump="$(semver_bump "$dtitle")"
+    if [[ "$bump" != "patch" && "$bump" != "minor" ]]; then
+        log "Dependabot #$dn left open ($bump scope needs agent/human)."
+        continue
+    fi
+    created_s=$(date -d "$dcreated" +%s 2>/dev/null || echo 0)
+    now_s=$(date +%s)
+    if [[ "$created_s" -le 0 || $(( (now_s - created_s) / 3600 )) -lt 48 ]]; then
+        log "Dependabot #$dn left open ($bump but younger than 48h)."
+        continue
+    fi
+    dchecks=$(gh_safe gh pr checks "$dn")
+    if echo "$dchecks" | grep -Eq 'fail|cancel'; then
+        log "Dependabot #$dn has failing checks; leaving open."
+        continue
+    fi
+    if ! echo "$dchecks" | grep -qE 'pass|success'; then
+        log "Dependabot #$dn has no green checks yet; leaving open."
+        continue
+    fi
+    log "Merging aged green dependabot #$dn ($bump, >48h)."
+    gh pr merge "$dn" --merge --delete-branch 2>&1 | tail -2
+    merged=$((merged + 1))
+done < <(gh_safe gh pr list --state open --json number,headRefName,createdAt,title \
+    --jq '.[] | select(.headRefName | startswith("dependabot/")) | "\(.number)\t\(.createdAt)\t\(.title)"')
+# Refresh once if anything merged above (branches may be deleted by the merge).
 if [[ "$merged" -ge 1 ]]; then
     git fetch -q --prune origin
     git pull -q --ff-only origin master || log "ff pull after merge failed (next cycle retries)."

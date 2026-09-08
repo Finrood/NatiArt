@@ -28,6 +28,8 @@ Phase 0 — sync and pickup (~2 min):
    green, safe dependabot PRs (Lens-16 routine: check semver scope, require
    green CI, never push to their branches, skip majors/red ones, report
    scope-blocked ones to the human).
+   (The script auto-merges green patch/minor dependabot PRs older than 48h;
+   you handle majors, groups, young, and red ones.)
 3. If 2+ open code PRs still stand (docs-only flips and dependabot excluded)
    and none could be merged, do NOT open new fix branches; instead repair the
    existing opens (fix red checks, address `REQUEST_CHANGES` verdicts) and
