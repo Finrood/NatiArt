@@ -292,7 +292,7 @@ loop doc (match `scripts/systemd/` + `scripts/loop-cycle.sh:176`).
 Instruction-file fixes go in a human-review PR per the self-modification ban
 — tracked here, not silently fixed.
 
-### U1. Loop doc says "16 audit lenses", 17 exist — OPEN (Low)
+### U1. Loop doc says "16 audit lenses", 17 exist — IN REVIEW (PR #199)
 - `docs/continuous-improvement-loop.md:62` claims "16 audit lenses" but
   `docs/loop-lenses.md` carries 17 `## Lens` headers (Lens 17 added later;
   line 99 of the same doc already references "Lens 17").

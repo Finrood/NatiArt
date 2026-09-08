@@ -153,6 +153,14 @@ assert_eq "opencode:opencode/muse-spark-1.3-contributor-free" "$(printf '## Summ
 assert_eq "cline:zai/glm-5.3-flash/medium" "$(printf 'body\nModel: cline:zai/glm-5.3-flash/medium\n' | author_model_of)" "cline model value passes through"
 assert_eq "" "$(printf 'no footer here\n' | author_model_of)" "missing footer -> empty (no skip)"
 
+# --- semver_bump: scope dependabot titles conservatively ---
+assert_eq "patch" "$(semver_bump 'chore(deps): bump lodash from 4.17.20 to 4.17.21')" "patch bump"
+assert_eq "minor" "$(semver_bump 'chore(deps): bump vite from 5.0.0 to 5.1.3')" "minor bump"
+assert_eq "major" "$(semver_bump 'chore(deps): bump react from 18.2.0 to 19.0.0')" "major bump"
+assert_eq "minor" "$(semver_bump 'chore(deps): bump junit from v5.9.3 to v5.10.0')" "minor with v prefix"
+assert_eq "unknown" "$(semver_bump 'chore(deps)(deps): bump the frontend-dependencies group across 1 directory with 15 updates')" "group bump -> unknown"
+assert_eq "unknown" "$(semver_bump 'random title without versions')" "unparseable -> unknown"
+
 if [[ "$ASSERT_FAILS" -gt 0 ]]; then
     echo "$ASSERT_FAILS assertion(s) failed" >&2
     exit 1

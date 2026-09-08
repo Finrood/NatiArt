@@ -23,6 +23,20 @@ is_loop_branch() { # $1 = branch name; true iff the loop owns it (may salvage)
     [[ "${1:-}" =~ ^(fix|perf|chore|docs|feature|salvage)/ ]]
 }
 
+semver_bump() { # $1 = dependabot title; prints patch|minor|major|unknown
+    # Only single-dependency "bump X from a.b.c to x.y.z" titles classify;
+    # group bumps ("across 1 directory with N updates") and anything else
+    # return unknown (conservative: never auto-merge what we cannot scope).
+    local title="$1"
+    if [[ "$title" =~ from\ [vV]?([0-9]+)\.([0-9]+)\.([0-9]+).*to\ [vV]?([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+        if [[ "${BASH_REMATCH[1]}" != "${BASH_REMATCH[4]}" ]]; then echo major
+        elif [[ "${BASH_REMATCH[2]}" != "${BASH_REMATCH[5]}" ]]; then echo minor
+        else echo patch; fi
+    else
+        echo unknown
+    fi
+}
+
 verdict_bodies() { # $1 = PR number; prints comment AND review bodies (verdicts
     # travel via `gh pr review --comment` = review, or `gh pr comment` = comment)
     gh pr view "$1" --json comments,reviews --jq '[(.comments // [])[].body, (.reviews // [])[].body] | .[]' 2>/dev/null || true

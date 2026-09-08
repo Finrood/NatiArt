@@ -63,6 +63,8 @@ Note: the timer needs a lingering user session to fire while logged out
    like code (max 2 merges/cycle shared).
 3. The agent merges ONLY on fully green CI + mergeable + `VERDICT: APPROVE`
    (`gh pr checks --watch`), with `gh pr merge --merge --delete-branch`.
+   The script itself auto-merges green patch/minor dependabot PRs older than
+   48h (no verdict needed; majors/groups/red stay for agent/human).
    Never force-push, never push to `master`, never touch dependabot branches.
 4. Strategic items (shared rate-limit store, cookie-auth migration, schema
    tooling) require a human decision — the prompt forbids the agent from taking
@@ -115,7 +117,7 @@ to the exact model that produced it — even after failover mid-cycle.
 
 ## Never runs dry
 
-- **Rotating lenses** (`docs/loop-lenses.md`): 16 audit lenses, one per cycle,
+- **Rotating lenses** (`docs/loop-lenses.md`): 17 audit lenses, one per cycle,
   selected deterministically from the 30-minute slot number (no state files).
   Each lens sees different bugs in the same code.
 - **Generators**: weakest-assertion review, lowest-coverage classes, linter
@@ -254,7 +256,7 @@ table above is agent discipline, enforced by the cycle prompt.
 - Remote hygiene: every cycle retries deletion of merged loop-prefix branches
   (`fix|perf|chore|docs|feature/*`) — the `--delete-branch` flag occasionally
   races GitHub auto-delete. Never touches unmerged work, `master`, or
-  dependabot branches. Logs keep the last 100 cycles.
+  dependabot branches. Logs keep the last 300 cycles.
 
 ## Backlog
 
