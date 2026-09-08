@@ -102,22 +102,23 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
 
 ## F. Secrets and configuration (Lens 3 hunt, 2026-09-05)
 
-### G1. Payment value is client-priced, never reconciled to an order — IN REVIEW (Medium-High; backend reconciliation in PR #207)
-- `backend/product-service/.../dto/payment/PaymentCreationRequest.java:13` takes
+### G1. Payment value is client-priced, never reconciled to an order — OPEN (Medium-High; backend half MERGED as PR #207)
+- Original finding: `backend/product-service/.../dto/payment/PaymentCreationRequest.java:13` takes
   a client-supplied `Double value`; `AsaasPaymentService.java:54-56` only checks
   `> 0`; `PaymentController.java:22-29` carries no order reference, so nothing
   ties a charge to a `CustomerOrder` total. An authenticated user can create a
   R$0.01 Asaas charge against a R$500 order (underpayment → fulfillment
   confusion). Found by Lens 4 hunt, 2026-09-05.
-- Backend half fixed in PR #207 (IN REVIEW): the request accepts an optional
+- Backend half FIXED (PR #207, merged): the request accepts an optional
   `orderId`; when present the service loads the order, rejects any value that
   does not equal the server-computed `CustomerOrder.totalAmount` before any
   upstream call, and persists the order link on the `Payment` row.
 - Remaining OPEN frontend half: the storefront still charges the client cart
   snapshot (`checkout.component.ts:301` sends `value: getCartTotalSnapshot()`)
   because checkout creates no order yet — wire order creation into the payment
-  flow and send `orderId`. Tests then: under/over-valued payment rejected;
-  exact total accepted (backend halves covered in PR #207).
+  flow and send `orderId`. Tests: under/over-valued payment rejected;
+  exact total accepted (backend halves covered in PR #207). Residual
+  cross-user `orderId` reference risk is owned by B4 (no order owner column).
 
 ## I. HTTP integration robustness (Lens 6 hunt, 2026-09-05)
 
