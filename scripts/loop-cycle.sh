@@ -182,6 +182,18 @@ verdict_bodies() { # $1 = PR number; prints comment AND review bodies (verdicts
     # travel via `gh pr review --comment` = review, or `gh pr comment` = comment)
     gh pr view "$1" --json comments,reviews --jq '[(.comments // [])[].body, (.reviews // [])[].body] | .[]' 2>/dev/null || true
 }
+latest_verdict() { # $1 = PR number; prints the FIRST LINE of the newest VERDICT
+    # comment/review (chronological by posted time), or empty when none exists.
+    # Merge and reviewer-round decisions must use this — never a presence grep —
+    # so a newer REQUEST_CHANGES always vetoes an older APPROVE.
+    gh pr view "$1" --json comments,reviews --jq -r '[((.comments // [])[] | {t: .createdAt, b: .body}),
+        ((.reviews // [])[] | {t: .submittedAt, b: .body})]
+        | map(select(.b | startswith("VERDICT:"))) | sort_by(.t) | last | .b // empty' \
+        2>/dev/null | grep -m1 '^VERDICT:' || true
+}
+reviewed_sha() { # $1 = verdict first line; prints the (reviewed <sha>) marker sha or empty
+    grep -oE '\(reviewed [0-9a-f]{7,40}' <<<"$1" | grep -oE '[0-9a-f]{7,40}$' || true
+}
 pr_mergeable() { # $1 = PR number; prints MERGEABLE|CONFLICTING|UNKNOWN (never fails)
     gh pr view "$1" --json mergeable --jq .mergeable 2>/dev/null || echo UNKNOWN
 }
@@ -207,10 +219,10 @@ OPEN_PRS=$(echo "$CODE_PRS" | wc -w)
 log "Open code PRs: $OPEN_PRS"
 log "Open docs PRs:$DOCS_PRS"
 
-# Merge any healthy PRs (green CI + VERDICT: APPROVE + mergeable). Code first,
-# then docs-only (docs report Guidelines as their CI signal). Bounded: at most
-# 2 total per cycle; never merge loop-machinery touches (self-modification ban)
-# or conflicting branches (they go to REPAIR MODE instead).
+# Merge any healthy PRs (green CI + latest VERDICT: APPROVE bound to the current
+# head + mergeable). Code first, then docs-only (docs report Guidelines as their
+# CI signal). Bounded: at most 2 total per cycle; never merge loop-machinery
+# touches (self-modification ban) or conflicting branches (REPAIR MODE instead).
 merged=0
 for n in $CODE_PRS $DOCS_PRS; do
     [[ "$merged" -ge 2 ]] && { log "Merged 2 this cycle; handing the rest to the agent/next cycle."; break; }
@@ -231,11 +243,22 @@ for n in $CODE_PRS $DOCS_PRS; do
         log "PR #$n has no reported green checks yet; leaving open."
         continue
     fi
-    if ! verdict_bodies "$n" | grep -q 'VERDICT: APPROVE'; then
-        log "PR #$n has no VERDICT: APPROVE yet; leaving open for review."
+    LATEST_V="$(latest_verdict "$n")"
+    if ! grep -q '^VERDICT: APPROVE' <<<"$LATEST_V"; then
+        log "PR #$n latest verdict is not APPROVE; leaving open for review."
         continue
     fi
-    log "Merging healthy PR #$n (green + approved + mergeable)."
+    RV_SHA="$(reviewed_sha "$LATEST_V")"
+    HEAD_SHA="$(gh pr view "$n" --json headRefOid --jq .headRefOid 2>/dev/null || true)"
+    if [[ -z "$RV_SHA" ]]; then
+        log "PR #$n APPROVE predates head-binding; leaving open for one binding re-review."
+        continue
+    fi
+    if [[ "$HEAD_SHA" != "$RV_SHA"* ]]; then
+        log "PR #$n APPROVE is for $RV_SHA but head is ${HEAD_SHA:0:8}; leaving open for re-review."
+        continue
+    fi
+    log "Merging healthy PR #$n (green + latest APPROVE for current head + mergeable)."
     gh pr merge "$n" --merge --delete-branch 2>&1 | tail -2
     merged=$((merged + 1))
 done
@@ -302,21 +325,31 @@ for n in $ALL_PRS; do
     RC_HEAD=$(git rev-parse --short=8 origin/"$(gh pr view "$n" --json headRefName --jq .headRefName)" 2>/dev/null || true)
     LAST_RC=$(verdict_bodies "$n" | grep -oE 'VERDICT: REQUEST_CHANGES \(re-reviewed [0-9a-f]{8}' | tail -1 | grep -oE '[0-9a-f]{8}$' || true)
     VERDICTS=$(verdict_bodies "$n" | grep -c '^VERDICT:' || true)
-    if [[ "${VERDICTS:-0}" -ge 1 ]]; then
-        if verdict_bodies "$n" | grep -q '^VERDICT: APPROVE' \
-            || [[ -n "$LAST_RC" && "$LAST_RC" == "$RC_HEAD" ]] \
-            || [[ -z "$RC_HEAD" ]]; then
+    LATEST_V="$(latest_verdict "$n")"
+    if [[ -z "$RC_HEAD" ]]; then
+        log "PR #$n branch head unresolvable; skipping reviewer this cycle."
+        continue
+    fi
+    if grep -q '^VERDICT: APPROVE' <<<"$LATEST_V"; then
+        RV_SHA="$(reviewed_sha "$LATEST_V")"
+        if [[ -n "$RV_SHA" && "$RV_SHA" == "$RC_HEAD" ]]; then
             continue
         fi
+        log "PR #$n APPROVE is stale (approved ${RV_SHA:-unbound} vs head $RC_HEAD); spawning binding re-review."
+    elif [[ -n "$LAST_RC" && "$LAST_RC" == "$RC_HEAD" ]]; then
+        continue
     fi
     log "Spawning mechanical reviewer for PR #$n (build $BUILD_STATUS, merge $MERGE_STATUS, 1 per cycle)."
     STATUS_NOTE=" Known loop status — Build: $BUILD_STATUS, Merge: $MERGE_STATUS. Re-verify both yourself with 'gh pr checks $n' and 'gh pr view $n --json mergeable', report them as 'Build: ...' and 'Merge: ...' lines per the review prompt, and let them drive the verdict: red build or conflict forces REQUEST_CHANGES."
-    if [[ -n "$LAST_RC" ]]; then
+    if grep -q '^VERDICT: APPROVE' <<<"$LATEST_V"; then
+        log "PR #$n binding re-review: prior APPROVE does not cover head $RC_HEAD."
+        RC_NOTE=" This is a BINDING re-review: a prior APPROVE exists but does not cover the current head ($RC_HEAD) — do a full fresh review of the current head. If clean, first line exactly 'VERDICT: APPROVE (reviewed $RC_HEAD)'; else 'VERDICT: REQUEST_CHANGES (re-reviewed $RC_HEAD ...)'."
+    elif [[ -n "$LAST_RC" ]]; then
         log "PR #$n changed since REQUEST_CHANGES (verdict@$LAST_RC -> head $RC_HEAD); spawning re-reviewer (next round)."
-        RC_NOTE=" This is a RE-REVIEW after the author addressed the earlier REQUEST_CHANGES (that verdict was against $LAST_RC; head is now $RC_HEAD): focus on whether the blocking findings are resolved. If blockers remain, first line 'VERDICT: REQUEST_CHANGES (re-reviewed $RC_HEAD ...)'; if resolved, first line exactly 'VERDICT: APPROVE'."
+        RC_NOTE=" This is a RE-REVIEW after the author addressed the earlier REQUEST_CHANGES (that verdict was against $LAST_RC; head is now $RC_HEAD): focus on whether the blocking findings are resolved. If blockers remain, first line 'VERDICT: REQUEST_CHANGES (re-reviewed $RC_HEAD ...)'; if resolved, first line exactly 'VERDICT: APPROVE (reviewed $RC_HEAD)'."
     elif [[ "${VERDICTS:-0}" -ge 1 ]]; then
         log "PR #$n has an unmarked REQUEST_CHANGES; spawning re-reviewer (round 1)."
-        RC_NOTE=" This is a RE-REVIEW round 1: an earlier REQUEST_CHANGES verdict predated re-review marking. Focus on whether its blockers are resolved in the current head ($RC_HEAD). If blockers remain, first line 'VERDICT: REQUEST_CHANGES (re-reviewed $RC_HEAD ...)'; if resolved, first line exactly 'VERDICT: APPROVE'."
+        RC_NOTE=" This is a RE-REVIEW round 1: an earlier REQUEST_CHANGES verdict predated re-review marking. Focus on whether its blockers are resolved in the current head ($RC_HEAD). If blockers remain, first line 'VERDICT: REQUEST_CHANGES (re-reviewed $RC_HEAD ...)'; if resolved, first line exactly 'VERDICT: APPROVE (reviewed $RC_HEAD)'."
     else
         RC_NOTE=""
     fi
@@ -329,6 +362,8 @@ with 'gh pr review $n --comment' and a body starting 'VERDICT: APPROVE'
 or 'VERDICT: REQUEST_CHANGES'.${RC_NOTE}${STATUS_NOTE} Posting the verdict is the deliverable; a review
 that ends without the comment posted is a failed run." &
     REVIEW_PID=$!
+    REVIEW_PR="$n"
+    REVIEW_BEFORE="${VERDICTS:-0}"
     break
 done
 
@@ -419,10 +454,14 @@ if [[ -n "${REVIEW_PID:-}" ]]; then
     else
         log "Mechanical reviewer finished without APPROVE (next cycle retries)."
     fi
-    # Verdict presence is the real deliverable; exit code alone lies (a model can
-    # exit 0 without posting). Record the miss so the next cycle re-spawns.
-    if ! verdict_bodies "$n" | grep -q '^VERDICT:'; then
-        log "Mechanical reviewer produced NO verdict comment on PR #$n; next cycle will retry."
+    # A new verdict is the real deliverable; exit code alone lies (a model can
+    # exit 0 without posting). Count before/after so a pre-existing verdict is
+    # not mistaken for this reviewer's output. Record the miss for next cycle.
+    REVIEW_AFTER=$(verdict_bodies "$REVIEW_PR" | grep -c '^VERDICT:' || true)
+    if [[ "${REVIEW_AFTER:-0}" -le "${REVIEW_BEFORE:-0}" ]]; then
+        log "Mechanical reviewer posted NO new verdict on PR #$REVIEW_PR; next cycle will retry."
+    else
+        log "Mechanical reviewer posted verdict on PR #$REVIEW_PR (latest: $(latest_verdict "$REVIEW_PR"))."
     fi
 fi
 log "Agent cycle finished with status $STATUS."
