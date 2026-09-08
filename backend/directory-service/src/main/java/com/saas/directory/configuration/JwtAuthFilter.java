@@ -44,8 +44,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         .setAuthentication(
                                 userAuthenticationProvider.authenticateWithToken(jwtToken, requiredTokenType));
             } catch (IllegalAccessException e) {
+                // Same contract as the ControllerAdvice handler for handler-level denials:
+                // 401 with the static ControllerAdvice.INVALID_TOKEN_MESSAGE body, so one
+                // failure has one shape regardless of the layer that rejects it.
                 SecurityContextHolder.clearContext();
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("text/plain;charset=UTF-8");
+                response.getWriter().write(ControllerAdvice.INVALID_TOKEN_MESSAGE);
                 return;
             } catch (RuntimeException e) {
                 SecurityContextHolder.clearContext();
