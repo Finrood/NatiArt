@@ -11,11 +11,13 @@ which is exactly why you catch what it missed. Work in the repo root. Obey
 
 1. The invocation message names the PR number. Fetch it: `gh pr view $N`
    (title, body, compliance footer — a missing footer is itself a finding),
-   `gh pr diff $N`, and the file list. Do ALL work in an isolated worktree —
+   `gh pr diff $N`, and the file list. `REPO_ROOT` is exported by the loop
+   (repo checkout); verify with `echo "$REPO_ROOT"` and stop with
+   REQUEST_CHANGES if empty. Do ALL work in an isolated worktree —
    never touch the main checkout (the author agent may be working there
-   concurrently). Use the standard review dir `$REPO_ROOT/../review-$N` (clone
-   the repo from the parent dir; e.g. for `$REPO_ROOT=~/Documents/Programming/Java/Personal/NatiArt`
-   use `~/Documents/Programming/Java/Personal/NatiArt/../review-$N` = `~/Documents/Programming/Java/Personal/NatiArt/../review-$N`),
+   concurrently). Use the standard review dir `$REPO_ROOT/../review-$N` (a
+   sibling of the checkout, e.g. repo at `~/proj/NatiArt` →
+   `~/proj/review-$N`),
    NOT `/tmp` (opencode auto-rejects `/tmp` writes and the OS may reboot and
    orphan it). Never place a worktree inside the repo itself (git forbids + it
    pollutes the author checkout). Create the clone fresh each review and
@@ -69,8 +71,13 @@ which is exactly why you catch what it missed. Work in the repo root. Obey
    --short=8 HEAD` (call it H):
    - clean: first line exactly `VERDICT: APPROVE (reviewed H)`
    - blockers: first line `VERDICT: REQUEST_CHANGES (re-reviewed H <one-line reason>)`
+   (always marked — there is no unmarked form; a legacy bare
+   `VERDICT: REQUEST_CHANGES` without a marker counts as round 0 and earns one
+   re-review round when the head moves).
    Then on the next lines:
-   `Model: <value of $NATIART_MODEL>` (read it with `echo "$NATIART_MODEL"`;
+   `Model: <value of $NATIART_MODEL>` (own line at column 0, exactly
+   `Model: <literal value>` — no bullet, no indent, no bold; read the value
+   with `echo "$NATIART_MODEL"`;
    e.g. second line `Model: cline:zai/glm-5.3-flash/medium`),
    then `Build: PASS|FAIL|PENDING` (your step-1b result, plus failing job names)
    and `Merge: MERGEABLE|CONFLICTING|UNKNOWN`.
