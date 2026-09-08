@@ -22,15 +22,6 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
   are rejected 401 by `AuthorizationFilter` before handler argument resolution; directory
   `JwtAuthFilter` returns after 401 on invalid tokens (PR #64). The EL1008E path is unreachable.
 
-### B3. No bean validation; NPE-prone registration path — IN REVIEW (PR #189)
-- Zero `jakarta.validation` usage in `backend/`; `ProfileManager.java:21-31`
-  calls `.trim()` unconditionally → null profile/field = 500, not 400.
-  Same flaw in `UserManager.java:79,108` (`registerUser`/`registerGhostUser`
-  call `userRegistrationDto.username().trim()` with no null guard — a null
-  username NPEs instead of returning 400). Found by Lens 1 hunt, 2026-09-05.
-- Fix: add `spring-boot-starter-validation`, annotate DTOs
-  (`@NotBlank`/`@Email`/`@Valid`), null-guard `createProfile`. Tests: null/blank → 400.
-
 ### B4. Order integrity gaps: client-priced shipping, no owner — OPEN (Medium)
 - `OrderManagerImpl.java` trusts client `deliveryAmount` (send `0` = free
   shipping — only non-negativity is checked); `CustomerOrder` has no owner
@@ -1116,8 +1107,8 @@ with static messages); login with missing/blank credentials resolves to 401 via
   Found by Lens 1 hunt, 2026-09-07.
   Tracked, not silently fixed.
 
-### AU1. Bulk clearCart bypasses the Personalization cascade and orphans rows — OPEN (High)
-`CartItem.personalization` is `@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)` (`backend/product-service/src/main/java/com/portcelana/natiart/model/CartItem.java:26-29`), so removing a line via `EntityManager.remove` also deletes the line's `Personalization` row and its `@ElementCollection` options. `CartManagerImpl.clearCart` (plus `CartItemRepository.deleteByUsername`) was switched to a Spring Data **derived bulk DELETE**, which does not honor JPA cascade/orphanRemoval — every cleared personalized cart line now leaks an orphaned `Personalization` row carrying user-supplied option text (and its option rows). Personal data is retained after a deletion intent, and rows accumulate per clear. The same orphaning already exists on the pre-PR `deleteByUsernameAndProduct` path. Found as the BLOCKER in the mechanical review of PR #182; resolution per that review's option (b): tracked here instead of silently fixed — a follow-up fix must restore cascade semantics (targeted JPQL deletes for now-unreferenced personalizations, FK order respected) and cover both delete paths.
+### AU1. Bulk clearCart bypasses the Personalization cascade and orphans rows — INVALID (re-verified 2026-09-07 with an executable spec)
+`CartItem.personalization` is `@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)` (`backend/product-service/src/main/java/com/portcelana/natiart/model/CartItem.java:27-28`). Original claim (PR #182 mechanical review): the Spring Data derived `deleteByUsername` bulk-deletes cart rows without honoring the cascade, orphaning Personalization rows. Disproven empirically this cycle: a `@DataJpaTest` (`repository/CartItemCascadeSemanticsTest`) on current master shows `deleteByUsername` runs load-then-remove — the cascade fires and the Personalization row and its option rows are deleted with the cart lines. Void derived deletes honor JPA cascade; only `@Modifying`/InBatch deletes bypass it. The re-verification spec instead caught a real adjacent bug, fixed in flight this cycle: `deleteByUsernameAndProduct` declared with a `long` return threw `ClassCastException` inside the Spring Data proxy on every invocation, so the production path `CartManagerImpl.decreaseCartItemQuantity` (removing a line's last unit) 500ed. Fixed by declaring the method `void` (cascade-honoring load-then-remove) and pinned by the same spec (red on master, green with the fix).
 
 ## AW. Frontend auth flow re-hunt (Lens 9, 2026-09-08)
 
