@@ -62,6 +62,8 @@ Phase 3 — review, then merge everything green:
 7. At PR open, launch one independent reviewer per PR, all in parallel in the
    background (`timeout 360 scripts/run-agent.sh --role review --budget 360 --title
    "review-pr-<N>" "$(cat scripts/agent-review-prompt.md) Review PR <N>." &`),
+   adding `--skip <the PR's Model: footer value>` so the reviewer is a
+   different model than the author,
    then keep working and `wait` before merging. Review and CI run concurrently —
    never serialize reviews. If a reviewer subprocess dies (sandbox/permissions),
    perform the identical review inline yourself with the same checklist and post

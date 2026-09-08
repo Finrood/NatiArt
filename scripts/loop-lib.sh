@@ -42,6 +42,12 @@ reviewed_sha() { # $1 = verdict first line; prints the (reviewed <sha>) marker s
     grep -oE '\(reviewed [0-9a-f]{7,40}' <<<"$1" | grep -oE '[0-9a-f]{7,40}$' || true
 }
 
+author_model_of() { # reads a PR body on stdin; prints the compliance-footer's
+    # Model: value (cli:model_id[/think]) or empty when absent/unparseable.
+    # The reviewer passes it to run-agent.sh --skip so a different model reviews.
+    grep '^Model:' | tail -1 | sed 's/^Model: *//' || true
+}
+
 pr_mergeable() { # $1 = PR number; prints MERGEABLE|CONFLICTING|UNKNOWN (never fails)
     gh pr view "$1" --json mergeable --jq .mergeable 2>/dev/null || echo UNKNOWN
 }

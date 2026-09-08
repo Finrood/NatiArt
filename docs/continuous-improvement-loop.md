@@ -103,6 +103,10 @@ to the exact model that produced it — even after failover mid-cycle.
   simply re-probed each round/cycle. Stateless, like lens rotation.
 - **Which model won** is printed (`opencode-muse` / `cline-deepseek` / `cline-glm`)
   and exported as `NATIART_ACTIVE_MODEL` for the agent's cycle summary.
+- **Reviewer independence.** Review invocations pass `--skip <author's Model:
+  footer value>` (`run-agent.sh`, substring match, ignored if it would empty
+  the pool), so the reviewer is a different model than the author whenever the
+  pool allows — a fresh context in weights, not just in prompt.
 - **Buttons**: `--check-only` prints the priority list; `--simulate-quota-at N`
   fails the first N attempts synthetically (no tokens) to prove fallthrough;
   `--stall SEC` tunes the stall detector. The cline fallback needs the cline CLI
@@ -177,7 +181,10 @@ The instruction set is 13 files: root `AGENTS.md` (+ identical mirrors
 ## CI: fast and scoped (do not wait on irrelevant checks)
 
 Backend CI runs directory-service and product-service as parallel jobs (~half
-the wall time) with per-service failure reports. All workflows are
+the wall time) with per-service failure reports. JaCoCo (0.8.14, first release
+with official Java 25 support) is report-only: XML+HTML per service under
+`build/reports/jacoco/` (baselines 2026-09-08: ~63% instruction both services),
+no gates — an enforcing floor is a future ratchet, not this doc. All workflows are
 path-scoped; merge when every reported check is green AND every relevant
 workflow has reported:
 
