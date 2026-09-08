@@ -1137,4 +1137,57 @@ its redirect timer on destroy; `getTokenExpiration` fails closed
 (malformed token → 0 → treated expired); saved-redirect navigation uses
 router-internal `state.url` only (no open redirect). No new actionable
 items — no new sections appended.
+router-internal `state.url` only (no open redirect). No new actionable
+items — no new sections appended.
+
+## AX. Frontend auth flow re-hunt (Lens 9, 2026-09-08)
+
+Hunt method: re-read the token-lifecycle paths on current master
+(`jwt-interceptor.service.ts` `performRefresh`, `authentication.service.ts`
+`startTokenMonitoring` / `doRefreshToken` / `resetInactivityTimer`,
+`auth.guard.ts`) with a session-liveness lens: what happens when a background
+refresh fails, and whether any 401-handling path can wedge. Re-verified the AW
+batch (L3/AR1/AH3/C11 still OPEN; `getTokenExpiration` fails closed; no open
+redirect). Cleared as non-findings: concurrent refresh from two independent
+clients (`performRefresh` vs `doRefreshToken`) CAN double-fire, but directory
+`UserAuthenticationProvider.refreshToken`
+(`backend/directory-service/.../UserAuthenticationProvider.java:112-135`)
+does not rotate the refresh token — both hits succeed and return the same
+refresh token, so no reuse-rejection or session-takedown race. Two runner-ups
+below are new.
+
+### AX1. Interceptor refresh can wedge every later 401 retry: no timeout, in-flight subject never resets on hang — OPEN (Low)
+- `frontend/natiart-app/src/app/directory/interceptors/jwt-interceptor.service.ts:68-105`
+  `performRefresh` keeps one module-global `refreshInProgress$` and issues the
+  refresh POST without an HttpClient `timeout`. While it is in flight, every
+  other 401-triggered request subscribes to the SAME subject and waits on
+  `filter(token => token !== null), first()` (`:139-144`). If the underlying
+  connection hangs (never completes, never errors), the subject never emits
+  and is never reset — all later 401 retries await a value that will never
+  arrive, no new refresh is re-issued, and no error surfaces. Recovery
+  requires a full reload. (`AuthenticationService.doRefreshToken` makes the
+  same no-timeout call but as an independent subscriber, so it does not
+  inherit the wedge.) Found by Lens 9 hunt, 2026-09-08.
+- Fix: race the refresh with a bounded timeout (reset `refreshInProgress$` and
+  `subject.error` on expiry), or drop the global subject for a re-entrant
+  shared refresh. Spec: a never-completing refresh lets the retried request
+  fall through to a visible 401 error, and the NEXT 401 re-issues a fresh
+  refresh.
+
+### AX2. Background refresh treats any network error as session-terminating, contradicting the stated blip policy — OPEN (Low)
+- `frontend/natiart-app/src/app/directory/service/authentication.service.ts:158-160`
+  `doRefreshToken`'s `catchError` unconditionally calls
+  `resetAuthStateAndRedirect()` for EVERY error class (transport blip, 5xx,
+  rate-limit 429). The recorded sibling policy is the opposite —
+  `login.component.ts:84-89` documents that only 401/403 may clear stored
+  credentials and "any other failure (network blip, 5xx) must not wipe stored
+  credentials — the session stays intact for a retry". Because the 1-minute
+  token monitor (`startTokenMonitoring`, `authentication.service.ts:202-215`)
+  and the 15-minute inactivity timer (`:51-69`) invoke `doRefreshToken` on
+  background ticks, one transient network error mid-session force-logs an
+  otherwise-valid user out. Found by Lens 9 hunt, 2026-09-08.
+- Fix: in `doRefreshToken`'s `catchError`, distinguish 401/refresh-rejected
+  from transport/5xx/429 — only rejections should reset; transient failures
+  keep both tokens for the next monitor tick to retry. Spec: refresh failing
+  with a 5xx leaves `accessToken`/`refreshToken` intact and the user logged in.
 
