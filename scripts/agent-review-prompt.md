@@ -36,6 +36,11 @@ which is exactly why you catch what it missed. Work in the repo root. Obey
    away and recreating that same dir). Never fall back to `/tmp`. If any step
    tries to reach outside the worktree/branch state, stop and report
    REQUEST_CHANGES. Never leave anything behind — the trap prunes worktrees
+1b. Report build + merge state (machine-readable, drives next cycle's repair).
+   Run `gh pr checks $N` and `gh pr view $N --json mergeable --jq .mergeable`
+   yourself — never trust the invocation's status lines blindly. `UNKNOWN`
+   mergeable means GitHub hasn't computed yet: say `Merge: UNKNOWN`, keep
+   reviewing code, never force the verdict on it.
 2. Review against (blocking first): correctness and security (auth, ownership,
    validation, money math, traversal, secret handling); test adequacy (missing
    edge cases on money/security paths); convention compliance (thin
@@ -60,10 +65,16 @@ which is exactly why you catch what it missed. Work in the repo root. Obey
    identity, and GitHub rejects self-approvals — so the verdict lives in the
    comment body, not the review state): `gh pr review $N --comment -b "<full
    findings with file:line>"`, opening the body with `VERDICT: APPROVE` or
-   `VERDICT: REQUEST_CHANGES`, then the reviewer model on the SECOND line:
+   `VERDICT: REQUEST_CHANGES`, then on the next lines:
    `Model: <value of $NATIART_MODEL>` (read it with `echo "$NATIART_MODEL"`;
-   e.g. body starts `VERDICT: APPROVE` newline `Model: cline:zai/glm-5.3-flash/medium`).
-   The loop machinery reads only the first line for the verdict, so the Model
+   e.g. body starts `VERDICT: APPROVE` newline `Model: cline:zai/glm-5.3-flash/medium`),
+   then `Build: PASS|FAIL|PENDING` (your step-1b result, plus failing job names)
+   and `Merge: MERGEABLE|CONFLICTING|UNKNOWN`.
+   Verdict rule: `APPROVE` only when build is green AND mergeable (or UNKNOWN
+   with no other blockers) AND zero blocking findings; red build or conflict
+   always forces `REQUEST_CHANGES` with the build log excerpt / conflicted
+   files first, then code findings. The loop machinery reads only the first
+   line for the verdict and parses `Build:`/`Merge:` for repair; the Model
    line never interferes. Pure nits without blockers still open with
    `VERDICT: APPROVE`.
 5. Print a final line: `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES`.

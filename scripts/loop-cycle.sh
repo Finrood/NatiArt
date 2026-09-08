@@ -182,6 +182,16 @@ verdict_bodies() { # $1 = PR number; prints comment AND review bodies (verdicts
     # travel via `gh pr review --comment` = review, or `gh pr comment` = comment)
     gh pr view "$1" --json comments,reviews --jq '[(.comments // [])[].body, (.reviews // [])[].body] | .[]' 2>/dev/null || true
 }
+pr_mergeable() { # $1 = PR number; prints MERGEABLE|CONFLICTING|UNKNOWN (never fails)
+    gh pr view "$1" --json mergeable --jq .mergeable 2>/dev/null || echo UNKNOWN
+}
+pr_checks_summary() { # $1 = PR number; prints FAIL|PASS|PENDING (never fails)
+    local checks
+    checks=$(gh_safe gh pr checks "$1")
+    if echo "$checks" | grep -Eq 'fail|cancel'; then echo "FAIL";
+    elif echo "$checks" | grep -qE 'pass|success'; then echo "PASS";
+    else echo "PENDING"; fi
+}
 CODE_PRS=""
 DOCS_PRS=""
 ALL_PRS=""
@@ -197,14 +207,19 @@ OPEN_PRS=$(echo "$CODE_PRS" | wc -w)
 log "Open code PRs: $OPEN_PRS"
 log "Open docs PRs:$DOCS_PRS"
 
-# Merge any healthy PRs (green CI + VERDICT: APPROVE comment). Code first, then
-# docs-only (docs report Guidelines as their CI signal). Bounded: at most 2
-# total per cycle; never merge loop-machinery touches (self-modification ban).
+# Merge any healthy PRs (green CI + VERDICT: APPROVE + mergeable). Code first,
+# then docs-only (docs report Guidelines as their CI signal). Bounded: at most
+# 2 total per cycle; never merge loop-machinery touches (self-modification ban)
+# or conflicting branches (they go to REPAIR MODE instead).
 merged=0
 for n in $CODE_PRS $DOCS_PRS; do
     [[ "$merged" -ge 2 ]] && { log "Merged 2 this cycle; handing the rest to the agent/next cycle."; break; }
     if gh pr view "$n" --json files --jq '.files[].path' 2>/dev/null | grep -qE '^(scripts/|agents/|AGENTS\.md|CLAUDE\.md|GEMINI\.md|\.cursorrules|docs/continuous-improvement-loop\.md|docs/loop-lenses\.md)'; then
         log "PR #$n touches loop machinery; leaving OPEN for human review (self-modification ban)."
+        continue
+    fi
+    if [[ "$(pr_mergeable "$n")" == "CONFLICTING" ]]; then
+        log "PR #$n is CONFLICTING with master; leaving open for REPAIR MODE."
         continue
     fi
     checks=$(gh_safe gh pr checks "$n")
@@ -220,7 +235,7 @@ for n in $CODE_PRS $DOCS_PRS; do
         log "PR #$n has no VERDICT: APPROVE yet; leaving open for review."
         continue
     fi
-    log "Merging healthy PR #$n (green + approved)."
+    log "Merging healthy PR #$n (green + approved + mergeable)."
     gh pr merge "$n" --merge --delete-branch 2>&1 | tail -2
     merged=$((merged + 1))
 done
@@ -230,21 +245,28 @@ if [[ "$merged" -ge 1 ]]; then
     git pull -q --ff-only origin master || log "ff pull after merge failed (next cycle retries)."
 fi
 
-# Never-idle invariant: PR state must never cause an idle exit. A failing code PR
-# switches the cycle to REPAIR MODE (fix in place, zero new branches) instead of
-# exiting — exiting here deadlocked the loop ~10h on PR #193 (spotless-only
-# failure) while green #191 starved for a verdict. Only infra aborts (auth,
-# disk, master ff) and --check-only may exit before the agent runs.
+# Never-idle invariant: PR state must never cause an idle exit. Failing checks
+# or merge conflicts switch the cycle to REPAIR MODE (fix in place, zero new
+# branches) instead of exiting — exiting here deadlocked the loop ~10h on PR
+# #193 (spotless-only failure) while green #191 starved for a verdict. Only
+# infra aborts (auth, disk, master ff) and --check-only may exit early.
+# Closed loop: the reviewer reports machine-readable Build:/Merge: lines, the
+# next cycle's agent parses them and fixes. UNKNOWN mergeable never blocks
+# (GitHub computes it lazily); only CONFLICTING triggers repair.
 FAILING=""
-for n in $CODE_PRS; do
+CONFLICTING=""
+for n in $ALL_PRS; do
     checks=$(gh_safe gh pr checks "$n")
     if echo "$checks" | grep -Eq 'fail|cancel'; then FAILING="$FAILING $n"; fi
+    if [[ "$(pr_mergeable "$n")" == "CONFLICTING" ]]; then CONFLICTING="$CONFLICTING $n"; fi
 done
-REPAIR_PRS="$(echo "$FAILING" | xargs || true)"
+FAILING="$(echo "$FAILING" | xargs || true)"
+CONFLICTING="$(echo "$CONFLICTING" | xargs || true)"
+REPAIR_PRS="$(echo "$FAILING $CONFLICTING" | xargs -n1 2>/dev/null | sort -u | xargs || true)"
 if [[ -n "$REPAIR_PRS" ]]; then
-    log "REPAIR MODE ON for failing PR(s):$REPAIR_PRS — agent fixes in place, no new branches."
+    log "REPAIR MODE ON — build-failing:$FAILING conflicting:$CONFLICTING — agent fixes in place, no new branches."
 else
-    log "No failing code PRs; normal mode."
+    log "No failing/conflicting PRs; normal mode."
 fi
 
 # 5. Stale-branch hygiene: prune local branches whose remote is gone.
@@ -263,14 +285,14 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
 fi
 
 # 5a. Mechanical verdict production. Runs every cycle, including REPAIR MODE —
-# a green PR with no verdict would otherwise stall (PR #142 waited 4 cycles;
-# PR #191 starved 20 cycles behind red #193). ONE bounded reviewer per cycle;
-# the next cycle's self-heal merge picks up the verdict. Covers code + docs.
+# and reviews RED PRs too: the reviewer is the one who reports machine-readable
+# Build:/Merge: lines, so the next cycle's agent knows what to fix. ONE bounded
+# reviewer per cycle; the next cycle's self-heal merge picks up APPROVEs and the
+# agent picks up REQUEST_CHANGES. Covers code + docs.
 REVIEW_PID=""
 for n in $ALL_PRS; do
-    checks=$(gh_safe gh pr checks "$n")
-    echo "$checks" | grep -Eq 'fail|cancel' && continue
-    echo "$checks" | grep -qE 'pass|success' || continue
+    BUILD_STATUS=$(pr_checks_summary "$n")
+    MERGE_STATUS=$(pr_mergeable "$n")
     # Address-and-re-review rounds (docs/continuous-improvement-loop.md): a
     # REQUEST_CHANGES verdict must not be a dead end. First verdicts carry no
     # marker, so an unmarked REQUEST_CHANGES triggers re-review round 1; the
@@ -287,7 +309,8 @@ for n in $ALL_PRS; do
             continue
         fi
     fi
-    log "No verdict on green PR #$n; spawning mechanical reviewer (1 per cycle)."
+    log "Spawning mechanical reviewer for PR #$n (build $BUILD_STATUS, merge $MERGE_STATUS, 1 per cycle)."
+    STATUS_NOTE=" Known loop status — Build: $BUILD_STATUS, Merge: $MERGE_STATUS. Re-verify both yourself with 'gh pr checks $n' and 'gh pr view $n --json mergeable', report them as 'Build: ...' and 'Merge: ...' lines per the review prompt, and let them drive the verdict: red build or conflict forces REQUEST_CHANGES."
     if [[ -n "$LAST_RC" ]]; then
         log "PR #$n changed since REQUEST_CHANGES (verdict@$LAST_RC -> head $RC_HEAD); spawning re-reviewer (next round)."
         RC_NOTE=" This is a RE-REVIEW after the author addressed the earlier REQUEST_CHANGES (that verdict was against $LAST_RC; head is now $RC_HEAD): focus on whether the blocking findings are resolved. If blockers remain, first line 'VERDICT: REQUEST_CHANGES (re-reviewed $RC_HEAD ...)'; if resolved, first line exactly 'VERDICT: APPROVE'."
@@ -303,7 +326,7 @@ for n in $ALL_PRS; do
 Review PR $n. You have 10 minutes; the review typically takes ~4. Non-negotiable
 finish condition: before the timebox ends, post the verdict comment on the PR
 with 'gh pr review $n --comment' and a body starting 'VERDICT: APPROVE'
-or 'VERDICT: REQUEST_CHANGES'.${RC_NOTE} Posting the verdict is the deliverable; a review
+or 'VERDICT: REQUEST_CHANGES'.${RC_NOTE}${STATUS_NOTE} Posting the verdict is the deliverable; a review
 that ends without the comment posted is a failed run." &
     REVIEW_PID=$!
     break
@@ -368,7 +391,7 @@ if [[ -n "$ROT_LINES" ]]; then
     CYCLE_MSG="$CYCLE_MSG $ROT_LINES"
 fi
 if [[ -n "$REPAIR_PRS" ]]; then
-    CYCLE_MSG="$CYCLE_MSG REPAIR MODE ON for PR(s):$REPAIR_PRS. Follow the REPAIR MODE section in the cycle prompt: fix those branches in place first, push to the same branches, open zero new fix branches until they are green."
+    CYCLE_MSG="$CYCLE_MSG REPAIR MODE ON — build-failing:$FAILING conflicting:$CONFLICTING (union:$REPAIR_PRS). Follow the REPAIR MODE section: resolve conflicts first (merge origin/master, never rebase/force-push), then fix red checks, then address the latest VERDICT findings (read them via 'gh pr view <n> --json comments,reviews'). Push to the same branches; open zero new fix branches until all are green + mergeable."
 fi
 if (( SLOT % 480 == 0 )); then
     log "Red-team cadence due: adversarial cycle."
