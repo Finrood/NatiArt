@@ -69,6 +69,24 @@ class ControllerAdviceTest {
     }
 
     @Test
+    void handleNumberFormatException_returns400WithStaticBodyHidingParsingArtifacts() {
+        final ResponseEntity<Object> result =
+                advice.handleNumberFormatException(new NumberFormatException("For input string: \"abc\""));
+
+        assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
+        assertEquals("Invalid request", result.getBody());
+    }
+
+    @Test
+    void handleArgumentException_returns400WithTheDeliberateValidationMessage() {
+        final ResponseEntity<Object> result =
+                advice.handleArgumentException(new IllegalArgumentException("Username cannot be empty"));
+
+        assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
+        assertEquals("Username cannot be empty", result.getBody());
+    }
+
+    @Test
     void handleNotReadableBody_unwrapsGuardFailureTo400WithItsMessage() {
         final HttpMessageNotReadableException unreadable = new HttpMessageNotReadableException(
                 "JSON parse error", new IllegalArgumentException("Billing type is required"));

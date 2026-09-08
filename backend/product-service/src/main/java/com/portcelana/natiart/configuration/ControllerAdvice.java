@@ -32,6 +32,20 @@ public class ControllerAdvice {
         return new ResponseEntity<>("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    /**
+     * Machine-generated {@code IllegalArgumentException}s -- a
+     * {@code NumberFormatException} for non-numeric request input, an
+     * {@code Enum.valueOf} miss echoing the enum's constant list -- carry
+     * server-side parsing artifacts, not client-facing validation messages.
+     * This more specific handler answers them with a static body; deliberate
+     * validation messages stay on the {@code IllegalArgumentException} handler.
+     */
+    @ExceptionHandler(NumberFormatException.class)
+    public ResponseEntity<Object> handleNumberFormatException(NumberFormatException e) {
+        LOGGER.debug("Rejected non-numeric request input: {}", e.getMessage());
+        return new ResponseEntity<>("Invalid request", HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Object> handleArgumentException(IllegalArgumentException e) {
         LOGGER.debug("Exception caught in controller: ", e);
