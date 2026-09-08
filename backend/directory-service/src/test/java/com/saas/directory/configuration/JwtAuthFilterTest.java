@@ -72,6 +72,10 @@ class JwtAuthFilterTest {
         filter.doFilter(request("GET", "/users/current"), response, chain);
 
         assertEquals(401, response.getStatus());
+        assertEquals(
+                ControllerAdvice.INVALID_TOKEN_MESSAGE,
+                response.getContentAsString(),
+                "the filter denial must carry the same static body as the advice handler");
         assertNull(chain.getRequest(), "the chain must NOT continue after a 401");
         assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
