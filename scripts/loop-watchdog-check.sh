@@ -13,6 +13,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/loop-lib.sh"
 
 IDLE_TITLE_PREFIX="[Watchdog] Loop idle"
+# Loop branch prefixes — keep in sync with is_loop_branch() in loop-lib.sh
+# (bash regex there, jq test() here; same language by construction).
 LOOP_PREFIXES='^(fix|perf|chore|docs|feature|salvage)/'
 
 with_retry() { # $1 tries, then command...: transient gh API blips must not flip the signal
@@ -38,8 +40,8 @@ fetch_prs() {
 
 loop_active_count() { # $1 = cutoff ISO; prints count of loop PRs updated after it
     local cutoff="$1"
-    jq --arg cutoff "$cutoff" \
-        '[.[] | select(.headRefName | test("^(fix|perf|chore|docs|feature|salvage)/"))
+    jq --arg cutoff "$cutoff" --arg pre "$LOOP_PREFIXES" \
+        '[.[] | select(.headRefName | test($pre))
           | select(.updatedAt > $cutoff)] | length' <<<"$pr_json"
 }
 

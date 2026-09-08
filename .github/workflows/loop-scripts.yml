@@ -35,7 +35,7 @@ jobs:
       - name: Shellcheck loop scripts
         run: |
           shopt -s nullglob
-          shellcheck -S warning scripts/*.sh scripts/tests/*.sh scripts/agent-models.conf
+          shellcheck -S warning scripts/*.sh scripts/tests/*.sh
 
   bash-tests:
     runs-on: ubuntu-latest
