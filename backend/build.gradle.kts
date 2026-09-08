@@ -1,3 +1,5 @@
+import org.gradle.testing.jacoco.plugins.JacocoPluginExtension
+
 buildscript {
     repositories {
         mavenCentral()
@@ -42,6 +44,7 @@ subprojects {
     apply(plugin = "org.springframework.boot")
     apply(plugin = "io.spring.dependency-management")
     apply(plugin = "com.diffplug.spotless")
+    apply(plugin = "jacoco")
 
     java {
         toolchain {
@@ -81,5 +84,19 @@ subprojects {
 
     tasks.withType<Test> {
         useJUnitPlatform()
+    }
+
+    // JaCoCo (report-only: no coverage gates yet, so `check`/`build` semantics
+    // are unchanged). toolVersion pinned: 0.8.14 is the first release with
+    // official Java 25 support; older agents break on class file v69.
+    // Reports land in <service>/build/reports/jacoco/ (xml for tooling).
+    configure<JacocoPluginExtension> {
+        toolVersion = "0.8.14"
+    }
+    tasks.withType<org.gradle.testing.jacoco.tasks.JacocoReport> {
+        reports {
+            xml.required.set(true)
+            html.required.set(true)
+        }
     }
 }

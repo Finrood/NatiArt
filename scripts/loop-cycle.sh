@@ -3,24 +3,21 @@
 # See docs/continuous-improvement-loop.md. Supports --check-only (no agent run).
 set -euo pipefail
 
-REPO="/home/finrod/Documents/Programming/Java/Personal/NatiArt"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOCK="/tmp/natiart-improvement-loop.lock"
 LOG_DIR="$REPO/logs"
 CHECK_ONLY=0
 [[ "${1:-}" == "--check-only" ]] && CHECK_ONLY=1
 
-log() { echo "[$(date -Is)] $*"; }
+# Shared helpers (also sourced by scripts/tests/* with a stubbed gh).
+# shellcheck source=scripts/loop-lib.sh
+source "$REPO/scripts/loop-lib.sh"
 
 # Forensics: with `set -e`, any unguarded command failure kills the cycle
 # silently (seen 2026-09-06 19:05: a transient gh API error exited the cycle
 # 1s after the last log line, with no trace in the log). Trap it: always log
 # where and why before systemd records the exit.
 trap 'log "FATAL: cycle aborted by error at line $LINENO (exit $?)"; exit 1' ERR
-gh_safe() { # gh calls that may fail transiently: log and continue with empty
-    local out
-    out=$("$@" 2>&1) || { log "WARN: '$*' failed transiently; treating as empty."; return 0; }
-    printf '%s\n' "$out"
-}
 
 exec 9>"$LOCK"
 if ! flock -n 9; then
@@ -59,7 +56,8 @@ fi
 #    later), then continue from a pristine master. (2026-09-06: two cycles
 #    wedged overnight on dirty master; dirty-master now salvages + resets.)
 salvage_wip() { # $1 = source branch label; salvages dirt to origin/salvage/*
-    local B="salvage/$(date +%Y%m%d-%H%M%S)"
+    local B
+    B="salvage/$(date +%Y%m%d-%H%M%S)"
     if git checkout -q -b "$B" && git add -A && git commit -qm "[WIP] Salvaged interrupted-cycle WIP from $1 (auto-salvage)" && git push -q origin "$B"; then
         git checkout -q master
         git reset -q --hard origin/master
@@ -87,9 +85,12 @@ if [[ -n "$(git status --porcelain)" ]]; then
             else
                 exit 1
             fi
-        elif salvage_wip "$CUR_BRANCH"; then
-            log "Dirty tree on $CUR_BRANCH (no open PR): WIP salvaged; continuing."
+        elif is_loop_branch "$CUR_BRANCH" && salvage_wip "$CUR_BRANCH"; then
+            log "Dirty tree on loop branch $CUR_BRANCH (no open PR): WIP salvaged; continuing."
+        elif is_loop_branch "$CUR_BRANCH"; then
+            exit 1
         else
+            log "Dirty tree on non-loop branch $CUR_BRANCH with no open PR: suspected human WIP; aborting (nothing salvaged, nothing reset)."
             exit 1
         fi
     elif salvage_wip "master"; then
@@ -173,30 +174,35 @@ fi
 #    behind a pickup that the agent (already rate-limited / quota-exhausted)
 #    can never reach. Only fully-green PRs with a VERDICT: APPROVE reviewer
 #    comment are auto-merged; anything red or awaiting review stays open.
-is_docs_only() { # $1 = PR number; true iff every changed file is under docs/
-    local files
-    files=$(gh pr view "$1" --json files --jq '.files[].path' 2>/dev/null) || return 1
-    [[ -n "$files" ]] && ! grep -qvE '^docs/' <<<"$files"
-}
-verdict_bodies() { # $1 = PR number; prints comment AND review bodies (verdicts
-    # travel via `gh pr review --comment` = review, or `gh pr comment` = comment)
-    gh pr view "$1" --json comments,reviews --jq '[(.comments // [])[].body, (.reviews // [])[].body] | .[]' 2>/dev/null || true
-}
+# PR classification helpers live in scripts/loop-lib.sh (shared with tests).
 CODE_PRS=""
+DOCS_PRS=""
+ALL_PRS=""
 while read -r n; do
-    if ! is_docs_only "$n"; then
+    ALL_PRS="$ALL_PRS $n"
+    if is_docs_only "$n"; then
+        DOCS_PRS="$DOCS_PRS $n"
+    else
         CODE_PRS="$CODE_PRS $n"
     fi
 done < <(gh_safe gh pr list --state open --json number,headRefName --jq '.[] | select(.headRefName | startswith("dependabot/") | not) | .number')
 OPEN_PRS=$(echo "$CODE_PRS" | wc -w)
 log "Open code PRs: $OPEN_PRS"
+log "Open docs PRs:$DOCS_PRS"
 
-# Merge any healthy code PRs (green CI + VERDICT: APPROVE comment). Bounded: at
-# most 2 per cycle; only branches whose head is exactly their PR head.
+# Merge any healthy PRs (green CI + latest VERDICT: APPROVE bound to the current
+# head + mergeable). Code first, then docs-only (docs report Guidelines as their
+# CI signal). Bounded: at most 2 total per cycle; never merge loop-machinery
+# touches (self-modification ban) or conflicting branches (REPAIR MODE instead).
 merged=0
-for n in $CODE_PRS; do
+for n in $CODE_PRS $DOCS_PRS; do
+    [[ "$merged" -ge 2 ]] && { log "Merged 2 this cycle; handing the rest to the agent/next cycle."; break; }
     if gh pr view "$n" --json files --jq '.files[].path' 2>/dev/null | grep -qE '^(scripts/|agents/|AGENTS\.md|CLAUDE\.md|GEMINI\.md|\.cursorrules|docs/continuous-improvement-loop\.md|docs/loop-lenses\.md)'; then
         log "PR #$n touches loop machinery; leaving OPEN for human review (self-modification ban)."
+        continue
+    fi
+    if [[ "$(pr_mergeable "$n")" == "CONFLICTING" ]]; then
+        log "PR #$n is CONFLICTING with master; leaving open for REPAIR MODE."
         continue
     fi
     checks=$(gh_safe gh pr checks "$n")
@@ -208,32 +214,86 @@ for n in $CODE_PRS; do
         log "PR #$n has no reported green checks yet; leaving open."
         continue
     fi
-    if ! verdict_bodies "$n" | grep -q 'VERDICT: APPROVE'; then
-        log "PR #$n has no VERDICT: APPROVE yet; leaving open for review."
+    LATEST_V="$(latest_verdict "$n")"
+    if ! grep -q '^VERDICT: APPROVE' <<<"$LATEST_V"; then
+        log "PR #$n latest verdict is not APPROVE; leaving open for review."
         continue
     fi
-    log "Merging healthy PR #$n (green + approved)."
+    RV_SHA="$(reviewed_sha "$LATEST_V")"
+    HEAD_SHA="$(gh pr view "$n" --json headRefOid --jq .headRefOid 2>/dev/null || true)"
+    if [[ -z "$RV_SHA" ]]; then
+        log "PR #$n APPROVE predates head-binding; leaving open for one binding re-review."
+        continue
+    fi
+    if [[ "$HEAD_SHA" != "$RV_SHA"* ]]; then
+        log "PR #$n APPROVE is for $RV_SHA but head is ${HEAD_SHA:0:8}; leaving open for re-review."
+        continue
+    fi
+    log "Merging healthy PR #$n (green + latest APPROVE for current head + mergeable)."
     gh pr merge "$n" --merge --delete-branch 2>&1 | tail -2
     merged=$((merged + 1))
-    [[ "$merged" -ge 2 ]] && { log "Merged 2 this cycle; handing the rest to the agent/next cycle."; break; }
 done
-# Refresh the list after any merges (branches below are deleted by the merge).
+
+# Dependabot aging policy: green + patch/minor + older than 48h merges WITHOUT
+# a verdict (routine bumps; the agent's Lens-16 routine and the human own the
+# rest). Majors, group bumps (unparseable semver), young, and red PRs stay
+# open. Shares the max-2 merge budget above. Never pushes to their branches.
+while IFS=$'\t' read -r dn dcreated dtitle; do
+    [[ -z "$dn" ]] && continue
+    [[ "$merged" -ge 2 ]] && { log "Merged 2 this cycle; dependabot #$dn waits for next cycle."; break; }
+    bump="$(semver_bump "$dtitle")"
+    if [[ "$bump" != "patch" && "$bump" != "minor" ]]; then
+        log "Dependabot #$dn left open ($bump scope needs agent/human)."
+        continue
+    fi
+    created_s=$(date -d "$dcreated" +%s 2>/dev/null || echo 0)
+    now_s=$(date +%s)
+    if [[ "$created_s" -le 0 || $(( (now_s - created_s) / 3600 )) -lt 48 ]]; then
+        log "Dependabot #$dn left open ($bump but younger than 48h)."
+        continue
+    fi
+    dchecks=$(gh_safe gh pr checks "$dn")
+    if echo "$dchecks" | grep -Eq 'fail|cancel'; then
+        log "Dependabot #$dn has failing checks; leaving open."
+        continue
+    fi
+    if ! echo "$dchecks" | grep -qE 'pass|success'; then
+        log "Dependabot #$dn has no green checks yet; leaving open."
+        continue
+    fi
+    log "Merging aged green dependabot #$dn ($bump, >48h)."
+    gh pr merge "$dn" --merge --delete-branch 2>&1 | tail -2
+    merged=$((merged + 1))
+done < <(gh_safe gh pr list --state open --json number,headRefName,createdAt,title \
+    --jq '.[] | select(.headRefName | startswith("dependabot/")) | "\(.number)\t\(.createdAt)\t\(.title)"')
+# Refresh once if anything merged above (branches may be deleted by the merge).
 if [[ "$merged" -ge 1 ]]; then
     git fetch -q --prune origin
     git pull -q --ff-only origin master || log "ff pull after merge failed (next cycle retries)."
 fi
 
-# Pile guard (after self-heal): a still-crowded loop holds back new work only
-# if something needs attention; one healthy pending PR is fine — the agent will
-# pick it up in Phase 0.
+# Never-idle invariant: PR state must never cause an idle exit. Failing checks
+# or merge conflicts switch the cycle to REPAIR MODE (fix in place, zero new
+# branches) instead of exiting — exiting here deadlocked the loop ~10h on PR
+# #193 (spotless-only failure) while green #191 starved for a verdict. Only
+# infra aborts (auth, disk, master ff) and --check-only may exit early.
+# Closed loop: the reviewer reports machine-readable Build:/Merge: lines, the
+# next cycle's agent parses them and fixes. UNKNOWN mergeable never blocks
+# (GitHub computes it lazily); only CONFLICTING triggers repair.
 FAILING=""
-for n in $CODE_PRS; do
+CONFLICTING=""
+for n in $ALL_PRS; do
     checks=$(gh_safe gh pr checks "$n")
     if echo "$checks" | grep -Eq 'fail|cancel'; then FAILING="$FAILING $n"; fi
+    if [[ "$(pr_mergeable "$n")" == "CONFLICTING" ]]; then CONFLICTING="$CONFLICTING $n"; fi
 done
-if [[ -n "$FAILING" ]]; then
-    log "Open PR(s) with failing checks:$FAILING; not starting new work."
-    exit 0
+FAILING="$(echo "$FAILING" | xargs || true)"
+CONFLICTING="$(echo "$CONFLICTING" | xargs || true)"
+REPAIR_PRS="$(echo "$FAILING $CONFLICTING" | xargs -n1 2>/dev/null | sort -u | xargs || true)"
+if [[ -n "$REPAIR_PRS" ]]; then
+    log "REPAIR MODE ON — build-failing:$FAILING conflicting:$CONFLICTING — agent fixes in place, no new branches."
+else
+    log "No failing/conflicting PRs; normal mode."
 fi
 
 # 5. Stale-branch hygiene: prune local branches whose remote is gone.
@@ -251,16 +311,15 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
     exit 0
 fi
 
-# 5a. Mechanical verdict production. A green code PR with no verdict would
-# otherwise stall until the author agent volunteers a review on its own (it can
-# defer indefinitely — PR #142 waited 4 cycles). The loop itself spawns ONE
-# bounded reviewer per cycle; the next cycle's self-heal merge picks up the
-# verdict. PRs with a REQUEST_CHANGES verdict are left to the author agent.
+# 5a. Mechanical verdict production. Runs every cycle, including REPAIR MODE —
+# and reviews RED PRs too: the reviewer is the one who reports machine-readable
+# Build:/Merge: lines, so the next cycle's agent knows what to fix. ONE bounded
+# reviewer per cycle; the next cycle's self-heal merge picks up APPROVEs and the
+# agent picks up REQUEST_CHANGES. Covers code + docs.
 REVIEW_PID=""
-for n in $CODE_PRS; do
-    checks=$(gh_safe gh pr checks "$n")
-    echo "$checks" | grep -Eq 'fail|cancel' && continue
-    echo "$checks" | grep -qE 'pass|success' || continue
+for n in $ALL_PRS; do
+    BUILD_STATUS=$(pr_checks_summary "$n")
+    MERGE_STATUS=$(pr_mergeable "$n")
     # Address-and-re-review rounds (docs/continuous-improvement-loop.md): a
     # REQUEST_CHANGES verdict must not be a dead end. First verdicts carry no
     # marker, so an unmarked REQUEST_CHANGES triggers re-review round 1; the
@@ -270,32 +329,50 @@ for n in $CODE_PRS; do
     RC_HEAD=$(git rev-parse --short=8 origin/"$(gh pr view "$n" --json headRefName --jq .headRefName)" 2>/dev/null || true)
     LAST_RC=$(verdict_bodies "$n" | grep -oE 'VERDICT: REQUEST_CHANGES \(re-reviewed [0-9a-f]{8}' | tail -1 | grep -oE '[0-9a-f]{8}$' || true)
     VERDICTS=$(verdict_bodies "$n" | grep -c '^VERDICT:' || true)
-    if [[ "${VERDICTS:-0}" -ge 1 ]]; then
-        if verdict_bodies "$n" | grep -q '^VERDICT: APPROVE' \
-            || [[ -n "$LAST_RC" && "$LAST_RC" == "$RC_HEAD" ]] \
-            || [[ -z "$RC_HEAD" ]]; then
+    LATEST_V="$(latest_verdict "$n")"
+    if [[ -z "$RC_HEAD" ]]; then
+        log "PR #$n branch head unresolvable; skipping reviewer this cycle."
+        continue
+    fi
+    if grep -q '^VERDICT: APPROVE' <<<"$LATEST_V"; then
+        RV_SHA="$(reviewed_sha "$LATEST_V")"
+        if [[ -n "$RV_SHA" && "$RV_SHA" == "$RC_HEAD" ]]; then
             continue
         fi
+        log "PR #$n APPROVE is stale (approved ${RV_SHA:-unbound} vs head $RC_HEAD); spawning binding re-review."
+    elif [[ -n "$LAST_RC" && "$LAST_RC" == "$RC_HEAD" ]]; then
+        continue
     fi
-    log "No verdict on green PR #$n; spawning mechanical reviewer (1 per cycle)."
-    if [[ -n "$LAST_RC" ]]; then
+    AUTHOR_SKIP="$(gh pr view "$n" --json body --jq .body 2>/dev/null | author_model_of || true)"
+    if [[ -n "$AUTHOR_SKIP" ]]; then
+        log "PR #$n author model is $AUTHOR_SKIP; reviewer will prefer a different model."
+    fi
+    log "Spawning mechanical reviewer for PR #$n (build $BUILD_STATUS, merge $MERGE_STATUS, 1 per cycle)."
+    STATUS_NOTE=" Known loop status — Build: $BUILD_STATUS, Merge: $MERGE_STATUS. Re-verify both yourself with 'gh pr checks $n' and 'gh pr view $n --json mergeable', report them as 'Build: ...' and 'Merge: ...' lines per the review prompt, and let them drive the verdict: red build or conflict forces REQUEST_CHANGES."
+    if grep -q '^VERDICT: APPROVE' <<<"$LATEST_V"; then
+        log "PR #$n binding re-review: prior APPROVE does not cover head $RC_HEAD."
+        RC_NOTE=" This is a BINDING re-review: a prior APPROVE exists but does not cover the current head ($RC_HEAD) — do a full fresh review of the current head. If clean, first line exactly 'VERDICT: APPROVE (reviewed $RC_HEAD)'; else 'VERDICT: REQUEST_CHANGES (re-reviewed $RC_HEAD ...)'."
+    elif [[ -n "$LAST_RC" ]]; then
         log "PR #$n changed since REQUEST_CHANGES (verdict@$LAST_RC -> head $RC_HEAD); spawning re-reviewer (next round)."
-        RC_NOTE=" This is a RE-REVIEW after the author addressed the earlier REQUEST_CHANGES (that verdict was against $LAST_RC; head is now $RC_HEAD): focus on whether the blocking findings are resolved. If blockers remain, first line 'VERDICT: REQUEST_CHANGES (re-reviewed $RC_HEAD ...)'; if resolved, first line exactly 'VERDICT: APPROVE'."
+        RC_NOTE=" This is a RE-REVIEW after the author addressed the earlier REQUEST_CHANGES (that verdict was against $LAST_RC; head is now $RC_HEAD): focus on whether the blocking findings are resolved. If blockers remain, first line 'VERDICT: REQUEST_CHANGES (re-reviewed $RC_HEAD ...)'; if resolved, first line exactly 'VERDICT: APPROVE (reviewed $RC_HEAD)'."
     elif [[ "${VERDICTS:-0}" -ge 1 ]]; then
         log "PR #$n has an unmarked REQUEST_CHANGES; spawning re-reviewer (round 1)."
-        RC_NOTE=" This is a RE-REVIEW round 1: an earlier REQUEST_CHANGES verdict predated re-review marking. Focus on whether its blockers are resolved in the current head ($RC_HEAD). If blockers remain, first line 'VERDICT: REQUEST_CHANGES (re-reviewed $RC_HEAD ...)'; if resolved, first line exactly 'VERDICT: APPROVE'."
+        RC_NOTE=" This is a RE-REVIEW round 1: an earlier REQUEST_CHANGES verdict predated re-review marking. Focus on whether its blockers are resolved in the current head ($RC_HEAD). If blockers remain, first line 'VERDICT: REQUEST_CHANGES (re-reviewed $RC_HEAD ...)'; if resolved, first line exactly 'VERDICT: APPROVE (reviewed $RC_HEAD)'."
     else
         RC_NOTE=""
     fi
     timeout 660 scripts/run-agent.sh --role review --budget 600 --title "review-pr-$n" \
+        ${AUTHOR_SKIP:+--skip "$AUTHOR_SKIP"} \
         "$(cat scripts/agent-review-prompt.md)
 ---
 Review PR $n. You have 10 minutes; the review typically takes ~4. Non-negotiable
 finish condition: before the timebox ends, post the verdict comment on the PR
 with 'gh pr review $n --comment' and a body starting 'VERDICT: APPROVE'
-or 'VERDICT: REQUEST_CHANGES'.${RC_NOTE} Posting the verdict is the deliverable; a review
+or 'VERDICT: REQUEST_CHANGES'.${RC_NOTE}${STATUS_NOTE} Posting the verdict is the deliverable; a review
 that ends without the comment posted is a failed run." &
     REVIEW_PID=$!
+    REVIEW_PR="$n"
+    REVIEW_BEFORE="${VERDICTS:-0}"
     break
 done
 
@@ -357,6 +434,9 @@ fi
 if [[ -n "$ROT_LINES" ]]; then
     CYCLE_MSG="$CYCLE_MSG $ROT_LINES"
 fi
+if [[ -n "$REPAIR_PRS" ]]; then
+    CYCLE_MSG="$CYCLE_MSG REPAIR MODE ON — build-failing:$FAILING conflicting:$CONFLICTING (union:$REPAIR_PRS). Follow the REPAIR MODE section: resolve conflicts first (merge origin/master, never rebase/force-push), then fix red checks, then address the latest VERDICT findings (read them via 'gh pr view <n> --json comments,reviews'). Push to the same branches; open zero new fix branches until all are green + mergeable."
+fi
 if (( SLOT % 480 == 0 )); then
     log "Red-team cadence due: adversarial cycle."
     CYCLE_MSG="$CYCLE_MSG
@@ -383,11 +463,20 @@ if [[ -n "${REVIEW_PID:-}" ]]; then
     else
         log "Mechanical reviewer finished without APPROVE (next cycle retries)."
     fi
-    # Verdict presence is the real deliverable; exit code alone lies (a model can
-    # exit 0 without posting). Record the miss so the next cycle re-spawns.
-    if ! verdict_bodies "$n" | grep -q '^VERDICT:'; then
-        log "Mechanical reviewer produced NO verdict comment on PR #$n; next cycle will retry."
+    # A new verdict is the real deliverable; exit code alone lies (a model can
+    # exit 0 without posting). Count before/after so a pre-existing verdict is
+    # not mistaken for this reviewer's output. Record the miss for next cycle.
+    REVIEW_AFTER=$(verdict_bodies "$REVIEW_PR" | grep -c '^VERDICT:' || true)
+    if [[ "${REVIEW_AFTER:-0}" -le "${REVIEW_BEFORE:-0}" ]]; then
+        log "Mechanical reviewer posted NO new verdict on PR #$REVIEW_PR; next cycle will retry."
+    else
+        log "Mechanical reviewer posted verdict on PR #$REVIEW_PR (latest: $(latest_verdict "$REVIEW_PR"))."
     fi
 fi
 log "Agent cycle finished with status $STATUS."
+# Health row (gitignored logs/health.csv): one line per cycle for trends and
+# post-mortems — grep it for merged counts, repair frequency, idle stretches.
+HEALTH="$LOG_DIR/health.csv"
+[[ -f "$HEALTH" ]] || echo "timestamp,slot,open_code,open_docs,repair_prs,merged,reviewed_pr,exit_status" > "$HEALTH"
+echo "$(date -Is),${SLOT:-?},${OPEN_PRS:-?},$(echo "${DOCS_PRS:-}" | wc -w),\"${REPAIR_PRS:-}\",${merged:-0},${REVIEW_PR:-none},$STATUS" >> "$HEALTH"
 exit "$STATUS"
