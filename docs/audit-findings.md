@@ -1237,3 +1237,42 @@ below are new.
   keep both tokens for the next monitor tick to retry. Spec: refresh failing
   with a 5xx leaves `accessToken`/`refreshToken` intact and the user logged in.
 
+## AY. Frontend resource hygiene re-hunt (Lens 11, 2026-09-08)
+
+Hunt method: re-ran the Lens 11 greps on current master
+(`createObjectURL`/`revokeObjectURL`, `setInterval`/`setTimeout`,
+`interval(`/`timer(`) and re-read every owner for revoke parity and destroy
+cleanup. Re-verified: cart `errorDismissTimer`
+(`cart.component.ts:226-232`, cleared in `ngOnDestroy` at `:78-79`) and
+top-menu `cartHoverCloseTimer` (`top-menu.component.ts:26`, cleared at
+`:41-42`) are now handle-tracked with destroy cleanup; the checkout
+fire-and-forget timer cited in AG is gone (no `setTimeout`/`setInterval`
+remains in `checkout.component.ts`); `authentication.service.ts` timers stay
+`takeUntil(destroy$)`-guarded; pix-payment polling and top-banner interval
+stay capped with destroy teardown. Two runner-ups below are new.
+
+### AY1. Alert auto-dismiss timers are untracked and outlive the component — OPEN (Low)
+- `frontend/natiart-app/src/app/shared/components/alert-message/alert-message.component.ts:32-36`:
+  every `showAlert` spawns a bare `setTimeout(() => this.dismissAlert(alert), timeout)`
+  with no handle, and the component implements no `OnDestroy`. Navigating away
+  before the timeout fires leaves one live timer per shown alert; each then
+  mutates a destroyed component's `alertMessages` array (stale write, leaked
+  timer). Manually-dismissed alerts likewise leave their timers pending —
+  benign today only because `dismissAlert`'s `indexOf` guard turns the late
+  fire into a no-op. Found by Lens 11 hunt, 2026-09-08.
+- Fix: track each timer (e.g. `Map<AlertMessage, ReturnType<typeof setTimeout>>`),
+  `clearTimeout` on manual dismiss, clear all in `ngOnDestroy`. Spec: pending
+  alerts + destroy → no post-destroy mutation; dismiss-then-fire stays a no-op.
+
+### AY2. Admin `dragEnded` defers a state write on a bare zero-delay timer — OPEN (Low)
+- `frontend/natiart-app/src/app/product/components/admin/admin-product-management/admin-product-management.component.ts:417-419`:
+  `dragEnded()` sets `isDragging = false` inside an untracked `setTimeout(..., 0)`
+  while the sibling `pendingAlertsTimer` (`:62`, `:123-128`) is handle-tracked
+  and cleared in `ngOnDestroy` (`:114-117`). The window is a single macrotask so
+  the stale-write-after-destroy risk is minimal, but a destroy inside that tick
+  writes to a destroyed component and leaks the timer. Found by Lens 11 hunt,
+  2026-09-08.
+- Fix: track the handle and clear it in `ngOnDestroy` (same pattern as
+  `pendingAlertsTimer`), or set the flag synchronously if change detection
+  allows. Spec: destroy within the tick → no post-destroy write.
+
