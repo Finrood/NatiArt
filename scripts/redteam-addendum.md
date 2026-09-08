@@ -1,4 +1,5 @@
-# RED-TEAM CYCLE (overrides normal procedure steps 2-6)
+# RED-TEAM CYCLE (overrides Phases 1-2 of scripts/agent-cycle-prompt.md — hunt
+# and fix — only; pickup, review, merge gates, DELIVERY CONTRACT still apply)
 
 This is an adversarial cycle: build nothing, break things on paper. Local
 read-only probing only — never exfiltrate data, never attack anything outside
@@ -15,4 +16,5 @@ this repo, never run destructive commands.
    merge failing tests. If a hole is trivially fixable inside the timebox, fix
    it normally instead (with regression tests) and note the kill in the PR body.
 4. If no hole is found, document the threat model compactly in the PR body
-   anyway: a recorded negative result is the asset. Merge only on green CI.
+   anyway: a recorded negative result is the asset. Merge only on green CI
+   plus mergeable plus `VERDICT: APPROVE` bound to head, per the normal gates.

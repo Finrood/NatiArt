@@ -3,7 +3,8 @@ name: Loop Watchdog
 # Cloud-side dead-man's switch for the laptop-run improvement loop: the loop's
 # own logs never leave the machine and its exits read as success, so a stall
 # (like the ~10h pile-guard deadlock on PR #193) is invisible without this.
-# Fires when no non-dependabot PR was opened, updated, or merged in 24h.
+# All logic lives in scripts/loop-watchdog-check.sh (unit-tested); this file
+# is only schedule + permissions.
 on:
   schedule:
     - cron: "17 */6 * * *"
@@ -15,9 +16,11 @@ permissions:
   pull-requests: read
   issues: write
 
+# No cancellation: a 5-minute check on a 6-hour cadence never self-overlaps,
+# and a schedule firing mid-manual-dispatch must not eat the debug run.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   watchdog:
@@ -25,31 +28,10 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: Check for loop activity in the last 24h
-        id: activity
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # NOTE: --jq --arg is unsupported by older gh versions; the cutoff is
-          # machine-generated ISO-8601 (no spaces/quotes), so interpolation is safe.
-          cutoff=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)
-          echo "cutoff=$cutoff"
-          active=$(gh pr list --state all --limit 30 \
-            --json headRefName,updatedAt,mergedAt \
-            --jq "[.[] | select(.headRefName | startswith(\"dependabot/\") | not) | select(.updatedAt > \"$cutoff\" or ((.mergedAt // \"\") > \"$cutoff\"))] | length")
-          echo "active_prs=$active"
-          echo "active=$active" >> "$GITHUB_OUTPUT"
+      - name: Checkout code
+        uses: actions/checkout@v7
 
-      - name: Open an alert issue when the loop looks idle
-        if: steps.activity.outputs.active == '0'
+      - name: Check for loop activity in the last 24h
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if gh issue list --state open --limit 50 --json title \
-            --jq '.[].title' | grep -q '^\[Watchdog\] Loop idle'; then
-            echo "Alert issue already open; not duplicating."
-            exit 0
-          fi
-          gh issue create \
-            --title "[Watchdog] Loop idle: no loop PR activity in 24h" \
-            --body "No non-dependabot PR was opened, updated, or merged in the last 24h. Possible causes: timer stopped (\`systemctl --user status natiart-improvement-loop.timer\`), auth/disk abort, quota exhaustion on all models, or a guard exiting early — check the latest \`logs/loop-*.log\` and \`journalctl --user -u natiart-improvement-loop.service\`. Close this issue once the loop is producing again."
+        run: bash scripts/loop-watchdog-check.sh

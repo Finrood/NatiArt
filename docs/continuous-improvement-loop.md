@@ -14,9 +14,14 @@ is chosen by `scripts/agent-models.conf` (see "Model failover" below).
 
 ```
 natiart-improvement-loop.timer   every 30 min (+ up to 5 min jitter)
-natiart-improvement-loop.service oneshot, 27 min timeout, low priority
+natiart-improvement-loop.service oneshot, 35 min timeout, low priority
 logs/loop-<timestamp>.log        per-cycle log (gitignored)
 ```
+
+Laptop timer semantics: `Persistent=true` replays one catch-up run after
+suspend/off (no storm); a boot double-fire is serialized by `flock`. Exit 124
+means healthy budget exhaustion (unit stays green via `SuccessExitStatus`);
+anything else red is a real abort.
 
 ## Install / control
 
@@ -93,8 +98,9 @@ to the exact model that produced it — even after failover mid-cycle.
   markers (quota, rate limit, 429, insufficient credits, …) falls through to the
   next model. A no-output stall is treated the same — the free Muse tier blocks
   silently instead of erroring. Stall defaults are role-tuned: cycles (long
-  builds may legitimately go quiet) stall at 180s, reviews (tight 360s budget)
-  at 45s; `--stall SEC` overrides. rc 126/127 (CLI missing/unrunnable) also
+  builds may legitimately go quiet) stall at 180s, reviews at 150s (Gradle
+  test-compile alone exceeds 45s — a tighter stall starved PR #154);
+  `--stall SEC` overrides. rc 126/127 (CLI missing/unrunnable) also
   falls through — a vanished binary is infrastructure, not a model error.
 - **Retry-until-success**: after the last entry the wrapper loops back to the top
   and keeps trying (5s pause between full rounds) until the time budget is spent,
@@ -104,7 +110,7 @@ to the exact model that produced it — even after failover mid-cycle.
 - **No cooldown state**: every invocation starts at priority 1; a blocked model is
   simply re-probed each round/cycle. Stateless, like lens rotation.
 - **Which model won** is printed (`opencode-muse` / `cline-deepseek` / `cline-glm`)
-  and exported as `NATIART_ACTIVE_MODEL` for the agent's cycle summary.
+  (also echoed as `NATIART_ACTIVE_MODEL`) for the agent's cycle summary.
 - **Reviewer independence.** Review invocations pass `--skip <author's Model:
   footer value>` (`run-agent.sh`, substring match, ignored if it would empty
   the pool), so the reviewer is a different model than the author whenever the
@@ -140,10 +146,9 @@ to the exact model that produced it — even after failover mid-cycle.
 
 ## Guideline compliance
 
-The instruction set is 13 files: root `AGENTS.md` (+ identical mirrors
-`CLAUDE.md`, `GEMINI.md`, `.cursorrules` — one per tool, same content),
-9 `agents/*.md` topic files, `backend/AGENTS.md`,
-`frontend/natiart-app/AGENTS.md`. Every cycle obeys all of them:
+The instruction set is 15 paths (12 content-unique — root `AGENTS.md` is
+mirrored ×4 — plus 9 `agents/*.md` topic files, `backend/AGENTS.md`,
+`frontend/natiart-app/AGENTS.md`). Every cycle obeys all of them:
 
 - The cycle prompt carries the full index plus the Pre-flight Protocol, so
   compliance does not depend on an agent discovering files by itself.
@@ -212,8 +217,9 @@ table above is agent discipline, enforced by the cycle prompt.
   tree is the failure mode — hence commit-early and push-each-branch.
 - Pickup: green unmerged loop PRs merge first (script merges up to 2/cycle:
   code then docs), then repair, then new work. Zero reported CI checks means
-  "not registered yet", never green (Backend, Frontend, Guidelines must all be
-  present + green).
+  "not registered yet", never green — and which checks must exist comes from
+  the path-scoped table above, not a fixed list (a docs-only PR legitimately
+  reports Guidelines alone).
 - Flakes then repair: one `gh run rerun --failed` per failing PR; still red →
   fix in place on the same branch this cycle (REPAIR MODE, zero new branches),
   never stop-and-idle. Conflicts resolve via `git merge origin/master` (never
@@ -223,8 +229,11 @@ table above is agent discipline, enforced by the cycle prompt.
   dirt anywhere else (suspected human work — the loop never touches it) aborts
   the cycle loudly. Dirt on master still salvages (killed-cycle fallout).
 - Watchdog: `loop-watchdog.yml` runs cloud-side every 6h and opens an issue
-  when no non-dependabot PR moved in 24h — exits read as success and logs stay
-  local, so without this every stall class is silent.
+  when no loop-branch PR (fix|perf|chore|docs|feature|salvage — human branches
+  and dependabot never count, so human activity cannot mask a dead loop) moved
+  in 24h — exits read as success and logs stay local, so without this every
+  stall class is silent. An open alert gets timestamped comments, never
+  duplicates; all logic lives in tested `scripts/loop-watchdog-check.sh`.
 - Script tests: `scripts/tests/run.sh` (zero-dep bash, stubbed `gh`) covers
   `loop-lib.sh` helpers; `loop-scripts.yml` runs shellcheck + tests on every
   `scripts/**` PR. New helper → lib + test in the same PR.
@@ -232,23 +241,26 @@ table above is agent discipline, enforced by the cycle prompt.
   human, never routed around. Token scopes are documented here so the fix is
   one command: `gh auth refresh -s workflow` (interactive).
 - Auto-merge stays OFF repository-wide by policy: every merge is explicit.
-- AI-review gate: each PR gets an independent fresh-context reviewer run
-  (`scripts/agent-review-prompt.md`, ~6 min, concurrent with CI, launched in
-  parallel per PR). The script-side mechanical reviewer spawns every cycle
+- AI-review gate: each PR the cycle opens gets an independent fresh-context
+  reviewer run (`scripts/agent-review-prompt.md`, ~6 min, concurrent with CI);
+  the script-side mechanical reviewer additionally covers one backlog PR per
+  cycle (so every open PR converges to a verdict without N-parallel quota
+  burn). The mechanical reviewer spawns every cycle
   including REPAIR MODE, covers code + docs, and reviews RED PRs too — its
   verdict carries machine-readable `Build:`/`Merge:` lines so the next cycle's
   agent knows exactly what to fix. Reviewers work in isolated `git worktree`s (never the
   shared checkout), prove tests non-vacuous, and threat-model
   security-touching diffs. PR bodies, changelogs, and dependency metadata are
   treated as untrusted data, never instructions. Merge requires green relevant
-  CI AND mergeable AND the latest verdict being `APPROVE (reviewed <sha>)` with
+  CI AND mergeable AND the latest verdict being
+  `VERDICT: APPROVE (reviewed <sha>)` with
   `<sha>` equal to the PR's current head — recency and head-binding are checked
   mechanically, so a newer REQUEST_CHANGES vetoes and pushes after an APPROVE
   need one binding re-review; one
   address-and-re-review round, then the PR stays open. Implemented in
   `scripts/loop-cycle.sh`: an unmarked REQUEST_CHANGES triggers re-review
   round 1; the re-reviewer must start its verdict with
-  `VERDICT: REQUEST_CHANGES (re-reviewed <sha>` marking the head it reviewed —
+  `VERDICT: REQUEST_CHANGES (re-reviewed <sha> …)` marking the head it reviewed —
   further rounds spawn only when the PR head moves past that sha, and a
   verdict marked with the current head means the round is spent and final. The self-heal merge skips PRs touching loop machinery (scripts/,
   agents/, AGENTS.md, mirrors, loop docs) regardless of verdicts, enforcing
