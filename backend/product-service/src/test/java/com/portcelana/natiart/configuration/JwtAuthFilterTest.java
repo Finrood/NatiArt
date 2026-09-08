@@ -4,6 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -21,9 +27,12 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
 
 import com.portcelana.natiart.dto.AuthenticationResponseDto;
+
+import reactor.core.publisher.Mono;
 
 /**
  * Regression for the token->SecurityContext contract of {@link JwtAuthFilter} against a real
@@ -199,5 +208,34 @@ class JwtAuthFilterTest {
         assertEquals(503, response.getStatus(), "a hung validation call must time out into 503");
         assertNull(chain.getRequest());
         assertTrue(elapsed < 7_000, "5s timeout must fire before the 7s handler responds, took " + elapsed + "ms");
+    }
+
+    @Test
+    void reusesASingleWebClientAcrossRequests() throws Exception {
+        final WebClient.RequestBodyUriSpec uriSpec = mock(WebClient.RequestBodyUriSpec.class);
+        final WebClient.RequestBodySpec bodySpec = mock(WebClient.RequestBodySpec.class);
+        final WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
+        final AuthenticationResponseDto dto =
+                new ObjectMapper().readValue(VALID_AUTH_JSON, AuthenticationResponseDto.class);
+
+        final WebClient.Builder builder = mock(WebClient.Builder.class);
+        final WebClient webClient = mock(WebClient.class);
+        when(builder.build()).thenReturn(webClient);
+        when(webClient.post()).thenReturn(uriSpec);
+        when(uriSpec.uri(anyString())).thenReturn(bodySpec);
+        when(bodySpec.header(anyString(), any())).thenReturn(bodySpec);
+        when(bodySpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(AuthenticationResponseDto.class)).thenReturn(Mono.just(dto));
+
+        final JwtAuthFilter filter = new JwtAuthFilter(builder, "http://localhost:1");
+        for (int i = 0; i < 2; i++) {
+            final MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(requestWithToken(), response, new MockFilterChain());
+            assertEquals(200, response.getStatus());
+            assertNotNull(SecurityContextHolder.getContext().getAuthentication());
+            SecurityContextHolder.clearContext();
+        }
+
+        verify(builder, times(1)).build();
     }
 }

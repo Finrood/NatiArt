@@ -292,13 +292,6 @@ loop doc (match `scripts/systemd/` + `scripts/loop-cycle.sh:176`).
 Instruction-file fixes go in a human-review PR per the self-modification ban
 — tracked here, not silently fixed.
 
-### U1. Loop doc says "16 audit lenses", 17 exist — IN REVIEW (PR #199)
-- `docs/continuous-improvement-loop.md:62` claims "16 audit lenses" but
-  `docs/loop-lenses.md` carries 17 `## Lens` headers (Lens 17 added later;
-  line 99 of the same doc already references "Lens 17").
-- Fix: "16 audit lenses" → "17 audit lenses". Human-review PR (touches loop
-  machinery docs).
-
 ### U2. Frontend guide still prescribes bare `ng test`, CI uses npm scripts — OPEN (Low)
 - `frontend/natiart-app/AGENTS.md:46` (bare `ng test`) vs reality:
   `.github/workflows/frontend_workflow.yml:53` runs
@@ -1125,4 +1118,32 @@ with static messages); login with missing/blank credentials resolves to 401 via
 
 ### AU1. Bulk clearCart bypasses the Personalization cascade and orphans rows — OPEN (High)
 `CartItem.personalization` is `@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)` (`backend/product-service/src/main/java/com/portcelana/natiart/model/CartItem.java:26-29`), so removing a line via `EntityManager.remove` also deletes the line's `Personalization` row and its `@ElementCollection` options. `CartManagerImpl.clearCart` (plus `CartItemRepository.deleteByUsername`) was switched to a Spring Data **derived bulk DELETE**, which does not honor JPA cascade/orphanRemoval — every cleared personalized cart line now leaks an orphaned `Personalization` row carrying user-supplied option text (and its option rows). Personal data is retained after a deletion intent, and rows accumulate per clear. The same orphaning already exists on the pre-PR `deleteByUsernameAndProduct` path. Found as the BLOCKER in the mechanical review of PR #182; resolution per that review's option (b): tracked here instead of silently fixed — a follow-up fix must restore cascade semantics (targeted JPQL deletes for now-unreferenced personalizations, FK order respected) and cover both delete paths.
+
+## AW. Frontend auth flow re-hunt (Lens 9, 2026-09-08)
+
+Hunt method: re-read the auth flow on current master
+(`authentication.service.ts`, `token.service.ts`,
+`jwt-interceptor.service.ts`, `auth.guard.ts`, `admin.guard.ts`,
+`login.component.ts`, `logout.component.ts`, `signup.component.ts`,
+`redirect.service.ts`, `app.routes.ts`, `app.config.ts`) against the AR
+baseline. Re-verified this cycle: L3 still OPEN (`app.routes.ts:37` still
+guards `/checkout` with `authGuard` while `checkout.component.ts:237-289`
+keeps its guest branch — needs the product decision, unchanged), AR1 still
+OPEN (`jwt-interceptor.service.ts:96-101,128-134` still call
+`tokenService.clearTokens()` with no notification to
+`AuthenticationService.stateSubject`), AH3 still OPEN
+(`login.component.ts` `doLoginUser` still has no in-flight guard —
+double-click fires duplicate login POSTs), C11 still OPEN
+(`app.config.ts:20` still returns a root-scope `Subscription` from the
+`APP_INITIALIZER` factory). Cleared as non-findings: post-registration
+explicit-login choice (intentional, cleared in AA); `adminGuard`
+`isAdmin` snapshot (same `stateSubject` the guard just consumed);
+`RedirectService` consume-on-read (single reader, `LoginComponent`);
+`doRefreshToken` inner `fetchCurrentUser().subscribe()` without error
+callback (failures route through that method's own 401-reset, AA);
+`logout.component.ts` subscribes (no cold-observable no-op) and clears
+its redirect timer on destroy; `getTokenExpiration` fails closed
+(malformed token → 0 → treated expired); saved-redirect navigation uses
+router-internal `state.url` only (no open redirect). No new actionable
+items — no new sections appended.
 

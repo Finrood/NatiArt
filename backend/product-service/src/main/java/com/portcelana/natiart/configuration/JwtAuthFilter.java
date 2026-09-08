@@ -23,12 +23,19 @@ import com.portcelana.natiart.dto.AuthenticationResponseDto;
 public class JwtAuthFilter extends OncePerRequestFilter {
     private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(JwtAuthFilter.class);
 
-    private final WebClient.Builder webClientBuilder;
+    /**
+     * Built once in the constructor: the old per-request {@code webClientBuilder.build()}
+     * churned a fresh WebClient (and its underlying connection infrastructure) on every
+     * authenticated request. The validation timeout still applies per call via
+     * {@code Mono#timeout} in {@link #doFilterInternal}.
+     */
+    private final WebClient webClient;
+
     private final String directoryServiceUrl;
 
     public JwtAuthFilter(
             WebClient.Builder webClientBuilder, @Value("${directory.service.url}") String directoryServiceUrl) {
-        this.webClientBuilder = webClientBuilder;
+        this.webClient = webClientBuilder.build();
         this.directoryServiceUrl = directoryServiceUrl;
     }
 
@@ -38,8 +45,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         final String token = extractToken(request);
         if (token != null) {
             try {
-                final AuthenticationResponseDto authenticationResponse = webClientBuilder
-                        .build()
+                final AuthenticationResponseDto authenticationResponse = webClient
                         .post()
                         .uri(directoryServiceUrl + "/validate-token")
                         .header("Authorization", "Bearer " + token)
