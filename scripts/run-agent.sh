@@ -198,6 +198,8 @@ launch_attempt() { # $1=cli $2=model_id $3=think; spawns child bg, sets $PID
     # Tell the agent which model it is running as (PR footers / review verdicts
     # name it; agents read it via `echo "$NATIART_MODEL"` in their bash tool).
     export NATIART_MODEL="$cli:$model_id${think:+/$think}"
+    # Repo root for prompts that reference $REPO_ROOT (review worktrees).
+    export REPO_ROOT="$REPO"
     case "$cli" in
         opencode)
             (cd "$REPO" && exec opencode run "$PROMPT" --dir "$REPO" --title "$TITLE" -m "$model_id") \
