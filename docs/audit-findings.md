@@ -1107,8 +1107,54 @@ with static messages); login with missing/blank credentials resolves to 401 via
   Found by Lens 1 hunt, 2026-09-07.
   Tracked, not silently fixed.
 
-### AU1. Bulk clearCart bypasses the Personalization cascade and orphans rows — INVALID (re-verified 2026-09-07 with an executable spec)
-`CartItem.personalization` is `@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)` (`backend/product-service/src/main/java/com/portcelana/natiart/model/CartItem.java:27-28`). Original claim (PR #182 mechanical review): the Spring Data derived `deleteByUsername` bulk-deletes cart rows without honoring the cascade, orphaning Personalization rows. Disproven empirically this cycle: a `@DataJpaTest` (`repository/CartItemCascadeSemanticsTest`) on current master shows `deleteByUsername` runs load-then-remove — the cascade fires and the Personalization row and its option rows are deleted with the cart lines. Void derived deletes honor JPA cascade; only `@Modifying`/InBatch deletes bypass it. The re-verification spec instead caught a real adjacent bug, fixed in flight this cycle: `deleteByUsernameAndProduct` declared with a `long` return threw `ClassCastException` inside the Spring Data proxy on every invocation, so the production path `CartManagerImpl.decreaseCartItemQuantity` (removing a line's last unit) 500ed. Fixed by declaring the method `void` (cascade-honoring load-then-remove) and pinned by the same spec (red on master, green with the fix).
+### AU1. Bulk clearCart bypasses the Personalization cascade and orphans rows — INVALID (re-verified 2026-09-07 with an executable spec, PR #191)
+`CartItem.personalization` is `@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)` (`backend/product-service/src/main/java/com/portcelana/natiart/model/CartItem.java:27-28`). Original claim (PR #182 mechanical review): the Spring Data derived `deleteByUsername` bulk-deletes cart rows without honoring the cascade, orphaning Personalization rows. Disproven empirically (PR #191): a `@DataJpaTest` (`repository/CartItemCascadeSemanticsTest`) shows void derived deletes run load-then-remove — the cascade fires and the Personalization row and its option rows are deleted with the cart lines on BOTH delete paths. Only `@Modifying`/`@Modifying(clearAutomatically)` bulk deletes bypass the persistence context. The re-verification spec instead caught a real adjacent bug, fixed in PR #191: `deleteByUsernameAndProduct` declared with a `long` return threw `ClassCastException` inside the Spring Data proxy on every invocation, so the production path `CartManagerImpl.decreaseCartItemQuantity` (removing a line's last unit) 500ed. Fixed by declaring the method `void` and pinned by the same spec (red on unpatched master, green with the fix).
+
+### AV1. Base profile arms the credential-seeding `data.sql`; tutorial bcrypt hash on the seeded admin — OPEN (Low)
+- Directory base `application.properties` sets no `spring.sql.init.mode`
+  (default `embedded`), and H2 is a `runtimeOnly` dependency
+  (`backend/directory-service/build.gradle.kts:20`), so any unprofiled boot
+  resolves an embedded datasource and executes
+  `backend/directory-service/src/main/resources/data.sql` — which seeds
+  `admin@gmail.com` with the ADMIN role using bcrypt hash
+  `$2a$10$xXUJ6rhpG39.C7mXYhdXB.oq2DLVgbAIvcp2chu3uQlGj20i9E.Iq`
+  (`data.sql:19-33`), a hash that appears verbatim in public Spring tutorials
+  (well-known plaintext). Empirically verified 2026-09-07 (Lens 3): the
+  unprofiled boot currently CRASHES (`ScriptStatementFailedException`, table
+  ROLE not found) because script init runs before Hibernate DDL without
+  `defer-datasource-initialization` — so today it is a startup trap, not a
+  live backdoor; but the safety depends on the production profile's
+  `spring.sql.init.mode=never` being loaded, and the seed credential is a
+  public constant. Product-service base properties have the same armed
+  `data.sql` (non-credential seed data).
+- Fix: set `spring.sql.init.mode=never` in both base `application.properties`
+  and `spring.sql.init.mode=always` in `application-local-h2.properties`
+  (opt-in seeding), and replace the tutorial hash with a locally generated
+  one. Severity Low: local-only blast radius today.
+
+### AV2. JWT-expiration comment drift: "2 minutes" documented, 24 hours configured — OPEN (Low)
+- `backend/directory-service/src/main/resources/application.properties:7-11`:
+  the comment block says "Access Token expiration time in milliseconds (here,
+  2 minutes)" while `saas.security.jwt.expiration=86400000` (24 hours;
+  refresh is 7 days and matches its comment). A reviewer auditing token
+  lifetime reads the comment and signs off on a 2-minute access token that is
+  actually 24h. Found by Lens 3 hunt, 2026-09-07.
+- Fix: correct the comment (and record the actual lifetime choice); severity
+  Low, config-doc drift only.
+
+### AV3. `UserAuthenticationProvider` uses field `@Value` injection and a `@PostConstruct` blank-secret guard — OPEN (Low)
+- `backend/directory-service/src/main/java/com/saas/directory/configuration/UserAuthenticationProvider.java:47-56`:
+  three config fields (`secretKey`, both expirations) are field-injected with
+  `@Value`, and the blank-JWT-secret fail-fast runs in `@PostConstruct init()`
+  instead of the constructor. `agents/java-spring.md` mandates setter
+  injection with `@Value` for config values ("field injection is not used in
+  production code") and the sibling precedents (`ShippingService`,
+  `AsaasPaymentService`, `AsaasUserManager`) fail fast in the constructor.
+  Field injection also hides the blank-secret guard from plain unit
+  construction. Found by Lens 3 hunt, 2026-09-07.
+- Fix: move the three `@Value`s to constructor parameters, make the fields
+  `final`, derive/validate in the constructor; keep the `@PostConstruct`-free
+   fail-fast semantics. Tests: blank secret → constructor throws.
 
 ## AW. Frontend auth flow re-hunt (Lens 9, 2026-09-08)
 
@@ -1190,4 +1236,43 @@ below are new.
   from transport/5xx/429 — only rejections should reset; transient failures
   keep both tokens for the next monitor tick to retry. Spec: refresh failing
   with a 5xx leaves `accessToken`/`refreshToken` intact and the user logged in.
+
+## AY. Frontend resource hygiene re-hunt (Lens 11, 2026-09-08)
+
+Hunt method: re-ran the Lens 11 greps on current master
+(`createObjectURL`/`revokeObjectURL`, `setInterval`/`setTimeout`,
+`interval(`/`timer(`) and re-read every owner for revoke parity and destroy
+cleanup. Re-verified: cart `errorDismissTimer`
+(`cart.component.ts:226-232`, cleared in `ngOnDestroy` at `:78-79`) and
+top-menu `cartHoverCloseTimer` (`top-menu.component.ts:26`, cleared at
+`:41-42`) are now handle-tracked with destroy cleanup; the checkout
+fire-and-forget timer cited in AG is gone (no `setTimeout`/`setInterval`
+remains in `checkout.component.ts`); `authentication.service.ts` timers stay
+`takeUntil(destroy$)`-guarded; pix-payment polling and top-banner interval
+stay capped with destroy teardown. Two runner-ups below are new.
+
+### AY1. Alert auto-dismiss timers are untracked and outlive the component — OPEN (Low)
+- `frontend/natiart-app/src/app/shared/components/alert-message/alert-message.component.ts:32-36`:
+  every `showAlert` spawns a bare `setTimeout(() => this.dismissAlert(alert), timeout)`
+  with no handle, and the component implements no `OnDestroy`. Navigating away
+  before the timeout fires leaves one live timer per shown alert; each then
+  mutates a destroyed component's `alertMessages` array (stale write, leaked
+  timer). Manually-dismissed alerts likewise leave their timers pending —
+  benign today only because `dismissAlert`'s `indexOf` guard turns the late
+  fire into a no-op. Found by Lens 11 hunt, 2026-09-08.
+- Fix: track each timer (e.g. `Map<AlertMessage, ReturnType<typeof setTimeout>>`),
+  `clearTimeout` on manual dismiss, clear all in `ngOnDestroy`. Spec: pending
+  alerts + destroy → no post-destroy mutation; dismiss-then-fire stays a no-op.
+
+### AY2. Admin `dragEnded` defers a state write on a bare zero-delay timer — OPEN (Low)
+- `frontend/natiart-app/src/app/product/components/admin/admin-product-management/admin-product-management.component.ts:417-419`:
+  `dragEnded()` sets `isDragging = false` inside an untracked `setTimeout(..., 0)`
+  while the sibling `pendingAlertsTimer` (`:62`, `:123-128`) is handle-tracked
+  and cleared in `ngOnDestroy` (`:114-117`). The window is a single macrotask so
+  the stale-write-after-destroy risk is minimal, but a destroy inside that tick
+  writes to a destroyed component and leaks the timer. Found by Lens 11 hunt,
+  2026-09-08.
+- Fix: track the handle and clear it in `ngOnDestroy` (same pattern as
+  `pendingAlertsTimer`), or set the flag synchronously if change detection
+  allows. Spec: destroy within the tick → no post-destroy write.
 
