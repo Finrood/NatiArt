@@ -16,7 +16,6 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Executors;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,11 +26,13 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
 
 import com.portcelana.natiart.dto.AuthenticationResponseDto;
+
+import reactor.core.publisher.Mono;
 
 /**
  * Regression for the token->SecurityContext contract of {@link JwtAuthFilter} against a real
@@ -214,8 +215,8 @@ class JwtAuthFilterTest {
         final WebClient.RequestBodyUriSpec uriSpec = mock(WebClient.RequestBodyUriSpec.class);
         final WebClient.RequestBodySpec bodySpec = mock(WebClient.RequestBodySpec.class);
         final WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
-        final AuthenticationResponseDto dto = new ObjectMapper()
-                .readValue(VALID_AUTH_JSON, AuthenticationResponseDto.class);
+        final AuthenticationResponseDto dto =
+                new ObjectMapper().readValue(VALID_AUTH_JSON, AuthenticationResponseDto.class);
 
         final WebClient.Builder builder = mock(WebClient.Builder.class);
         final WebClient webClient = mock(WebClient.class);

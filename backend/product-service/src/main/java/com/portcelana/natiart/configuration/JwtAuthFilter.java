@@ -30,6 +30,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
      * {@code Mono#timeout} in {@link #doFilterInternal}.
      */
     private final WebClient webClient;
+
     private final String directoryServiceUrl;
 
     public JwtAuthFilter(
