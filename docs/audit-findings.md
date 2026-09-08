@@ -1276,3 +1276,43 @@ stay capped with destroy teardown. Two runner-ups below are new.
   `pendingAlertsTimer`), or set the flag synchronously if change detection
   allows. Spec: destroy within the tick → no post-destroy write.
 
+## AZ. Instruction drift (Lens 17 hunt, 2026-09-08)
+
+Hunt method: re-read the four root mirrors, all `agents/*.md`, `backend/AGENTS.md`
+and `frontend/natiart-app/AGENTS.md` and diffed their commands/paths/class names
+against current `master`. Mirrors still byte-identical (`md5sum`), all
+`agents/*.md` carry `meta` frontmatter, 17 `## Lens` headers parse, versions hold
+(Spring Boot `3.5.6`, Angular `^20.3.30`, Tailwind `^4.1.13`). Re-verified: U2
+still OPEN (`frontend/natiart-app/AGENTS.md:46` bare `ng test`), U4 still OPEN
+("7 files done" vs 9 `inject(` + 14 ctor-DI files), U1 FIXED (PR #199). Three
+new items below.
+
+### L17.1. Modules guide lists `:frontend:natiart-app` as a Gradle subproject — OPEN (Medium)
+- `agents/java-modules-and-packages.md:63-64` — "The Gradle build is
+  multi-project: `:backend:directory-service`, `:backend:product-service`,
+  `:frontend:natiart-app`." But `backend/settings.gradle.kts` includes only
+  `directory-service` and `product-service`; `./gradlew projects` shows exactly
+  two subprojects. `./gradlew :frontend:natiart-app:test` fails with "project
+  not found". The frontend is the standalone Angular app at
+  `frontend/natiart-app`, built with npm. Found by Lens 17 hunt, 2026-09-08.
+- Fix: drop `:frontend:natiart-app` from the Gradle project list and point at
+  the npm/`frontend/natiart-app/AGENTS.md` build instead.
+
+### L17.2. `java-general.md` OrDie example names a non-existent repository method — OPEN (Low)
+- `agents/java-general.md:64` — `userRepository.findByUsername(username)`. The
+  real repository method is `findUserByUsernameIgnoreCase(String)` (grep shows
+  no `findByUsername` anywhere in `backend/`). The `OrDie` convention itself is
+  live (`UserManager.getUserOrDie`, both services), only the sample call is
+  stale — a model copying it would fail to compile. Found by Lens 17 hunt,
+  2026-09-08.
+- Fix: change the example to `userRepository.findUserByUsernameIgnoreCase(username)`.
+
+### L17.3. `git-workflow.md` established commit-type list omits `[Docs]`/`[Backend]`/`[Perf]`/`[Loop]` — OPEN (Low)
+- `agents/git-workflow.md:20-21` lists `[Bugfix]`, `[Security]`, `[Tests]`,
+  `[CI]`, `[Chore]`, `[Frontend]`, `[Feature]`, but `git log` on master shows
+  `[Docs]` (~100), `[Backend]` (28), `[Perf]` (7, matching the `perf/` branch
+  prefix already documented) and `[Loop]` (2) as established, used types —
+  `[CI]` has a single use while `[Docs]`/`[Backend]` are everyday. Found by
+  Lens 17 hunt, 2026-09-08.
+- Fix: add `[Docs]`, `[Backend]`, `[Perf]`, `[Loop]` to the established types.
+

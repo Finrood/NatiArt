@@ -24,7 +24,7 @@ building blocks go in `shared/`. Keep `app.component` a thin shell.
   dependencies in the `imports: []` array.
 - **Control flow**: `@if` / `@for`. Never `*ngIf` / `*ngFor` (already 100% migrated).
 - **DI**: `private readonly _x = inject(X)` for new code; convert constructor
-  injections when touching (in progress — 7 files done).
+  injections when touching (in progress — 14 files remaining).
 - **Signals**: adopt `signal()`/`computed()` for new component state; prefix with
   `$` (e.g. `$user`). RxJS `BehaviorSubject`/streams remain acceptable for
   streaming flows (chat, polling); do not rewrite working RxJS code unprompted.
@@ -43,9 +43,9 @@ building blocks go in `shared/`. Keep `app.component` a thin shell.
 
 ## Testing
 
-- Runner: **Karma + Jasmine** (`ng test`, ChromeHeadless in CI —
+- Runner: **Karma + Jasmine** (ChromeHeadless in CI via `npm test` —
   `.github/workflows/frontend_workflow.yml`).
-- ~55 specs. Policy: **test complex logic** (services, pipes, state handling);
+- ~56 specs. Policy: **test complex logic** (services, pipes, state handling);
   obvious markup needs no spec. Boilerplate "should create" specs must keep passing
   (they run in CI).
 - When adding a component with real logic, add a spec next to it.
