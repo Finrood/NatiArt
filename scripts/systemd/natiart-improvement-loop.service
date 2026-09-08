@@ -7,7 +7,15 @@ After=network-online.target
 Type=oneshot
 WorkingDirectory=/home/finrod/Documents/Programming/Java/Personal/NatiArt
 ExecStart=/home/finrod/Documents/Programming/Java/Personal/NatiArt/scripts/loop-cycle.sh
-TimeoutStartSec=27min
+# Timeout math: 1500s agent budget + ~300s pre/post scans and hygiene.
+# 27min SIGTERMed healthy cycles in the tail (reviewer wait, health row).
+TimeoutStartSec=35min
+# 124 is run-agent's healthy budget-exhaustion signal ("state persists, next
+# cycle retries"), not a failure — keep the unit green so real aborts stand out.
+SuccessExitStatus=124
+# Pin PATH: --user units do not inherit interactive shell dotfiles; without
+# these, which gh/opencode/cline (/usr/bin today) fails at the auth gate.
+Environment="PATH=/usr/local/bin:/usr/bin:/bin:/home/finrod/.local/bin"
 Nice=10
 
 [Install]

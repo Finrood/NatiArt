@@ -5,14 +5,14 @@ on:
     branches: [ "master" ]
     paths:
       - "scripts/**"
-      - ".github/workflows/loop-scripts.yml"
-      - ".github/workflows/loop-watchdog.yml"
+      - ".github/workflows/**"
+      - ".github/dependabot.yml"
   pull_request:
     branches: [ "master" ]
     paths:
       - "scripts/**"
-      - ".github/workflows/loop-scripts.yml"
-      - ".github/workflows/loop-watchdog.yml"
+      - ".github/workflows/**"
+      - ".github/dependabot.yml"
 
 # Least privilege: the checks only read the repo.
 permissions:
@@ -33,7 +33,9 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Shellcheck loop scripts
-        run: shellcheck -S warning scripts/*.sh scripts/tests/*.sh
+        run: |
+          shopt -s nullglob
+          shellcheck -S warning scripts/*.sh scripts/tests/*.sh scripts/agent-models.conf
 
   bash-tests:
     runs-on: ubuntu-latest
@@ -44,7 +46,9 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Bash syntax check
-        run: bash -n scripts/loop-cycle.sh && bash -n scripts/run-agent.sh && bash -n scripts/loop-lib.sh
+        run: |
+          shopt -s nullglob
+          for f in scripts/*.sh scripts/tests/*.sh; do bash -n "$f"; done
 
       - name: Loop helper tests (offline, stubbed gh)
         run: bash scripts/tests/run.sh

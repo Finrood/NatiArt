@@ -81,3 +81,12 @@ jobs:
           report "@ResponseStatus on exceptions (backend AGENTS.md)" "$(grep -rn '@ResponseStatus' backend/*/src/main 2>/dev/null || true)"
           [ "$fail" -eq 0 ] && echo "All convention bans clean."
           exit $fail
+
+      - name: Audit-findings schema smoke (the loop parses this file)
+        run: |
+          # loop-cycle.sh counts "— OPEN" (em-dash U+2014) and parses
+          # "IN REVIEW (PR #n)": an editor normalizing dashes silently breaks it.
+          grep -q '— OPEN' docs/audit-findings.md || { echo "audit-findings.md: no '— OPEN' items (em-dash schema broken?)"; exit 1; }
+          grep -q '^### ' docs/audit-findings.md || { echo "audit-findings.md: no ### finding sections"; exit 1; }
+          grep -q '^Status legend:' docs/audit-findings.md || { echo "audit-findings.md: missing status legend"; exit 1; }
+          echo "Audit-findings schema OK."

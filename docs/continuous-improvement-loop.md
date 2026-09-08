@@ -14,9 +14,14 @@ is chosen by `scripts/agent-models.conf` (see "Model failover" below).
 
 ```
 natiart-improvement-loop.timer   every 30 min (+ up to 5 min jitter)
-natiart-improvement-loop.service oneshot, 27 min timeout, low priority
+natiart-improvement-loop.service oneshot, 35 min timeout, low priority
 logs/loop-<timestamp>.log        per-cycle log (gitignored)
 ```
+
+Laptop timer semantics: `Persistent=true` replays one catch-up run after
+suspend/off (no storm); a boot double-fire is serialized by `flock`. Exit 124
+means healthy budget exhaustion (unit stays green via `SuccessExitStatus`);
+anything else red is a real abort.
 
 ## Install / control
 
@@ -224,8 +229,11 @@ table above is agent discipline, enforced by the cycle prompt.
   dirt anywhere else (suspected human work — the loop never touches it) aborts
   the cycle loudly. Dirt on master still salvages (killed-cycle fallout).
 - Watchdog: `loop-watchdog.yml` runs cloud-side every 6h and opens an issue
-  when no non-dependabot PR moved in 24h — exits read as success and logs stay
-  local, so without this every stall class is silent.
+  when no loop-branch PR (fix|perf|chore|docs|feature|salvage — human branches
+  and dependabot never count, so human activity cannot mask a dead loop) moved
+  in 24h — exits read as success and logs stay local, so without this every
+  stall class is silent. An open alert gets timestamped comments, never
+  duplicates; all logic lives in tested `scripts/loop-watchdog-check.sh`.
 - Script tests: `scripts/tests/run.sh` (zero-dep bash, stubbed `gh`) covers
   `loop-lib.sh` helpers; `loop-scripts.yml` runs shellcheck + tests on every
   `scripts/**` PR. New helper → lib + test in the same PR.
