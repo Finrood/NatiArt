@@ -7,7 +7,6 @@ import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
 
-import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.slf4j.Logger;
@@ -43,31 +42,28 @@ public class UserAuthenticationProvider {
     private final TokenRepository tokenRepository;
     private final ExternalUserRepository externalUserRepository;
     private final UserManager userManager;
-
-    @Value("${saas.security.jwt.key.secret}")
-    private String secretKey;
-
-    @Value("${saas.security.jwt.expiration}")
-    private Long accessTokenExpiration;
-
-    @Value("${saas.security.jwt.refresh.expiration}")
-    private Long refreshTokenExpiration;
+    private final String secretKey;
+    private final Long accessTokenExpiration;
+    private final Long refreshTokenExpiration;
 
     public UserAuthenticationProvider(
-            TokenRepository tokenRepository, ExternalUserRepository externalUserRepository, UserManager userManager) {
+            TokenRepository tokenRepository,
+            ExternalUserRepository externalUserRepository,
+            UserManager userManager,
+            @Value("${saas.security.jwt.key.secret}") String secretKey,
+            @Value("${saas.security.jwt.expiration}") Long accessTokenExpiration,
+            @Value("${saas.security.jwt.refresh.expiration}") Long refreshTokenExpiration) {
         this.tokenRepository = tokenRepository;
         this.externalUserRepository = externalUserRepository;
         this.userManager = userManager;
-    }
-
-    @PostConstruct
-    protected void init() {
         if (secretKey == null || secretKey.isBlank()) {
             throw new IllegalStateException(
                     "saas.security.jwt.key.secret is blank: set the SAAS_SECURITY_JWT_KEY_SECRET environment variable "
                             + "(a strong secret is required to sign authentication tokens)");
         }
-        secretKey = Base64.getEncoder().encodeToString(secretKey.getBytes());
+        this.secretKey = Base64.getEncoder().encodeToString(secretKey.getBytes());
+        this.accessTokenExpiration = accessTokenExpiration;
+        this.refreshTokenExpiration = refreshTokenExpiration;
     }
 
     @Transactional

@@ -10,7 +10,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.lang.reflect.Constructor;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
@@ -46,13 +45,14 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 
 /**
- * Constructor-agnostic on purpose: the provider's constructor signature changes across
- * the stacked security PRs (e.g. ExternalUserRepository is added later), so the tests
- * instantiate the class reflectively (null dependencies are fine, the constructor only
- * assigns fields) and inject the secret via reflection.
+ * The provider takes its configuration via constructor injection and fails fast on
+ * a blank secret, so the tests construct it directly with real config values.
  */
 @ExtendWith(MockitoExtension.class)
 class UserAuthenticationProviderTest {
+
+    private static final long DEFAULT_ACCESS_EXPIRATION_MILLIS = 3_600_000L;
+    private static final long DEFAULT_REFRESH_EXPIRATION_MILLIS = 604_800_000L;
 
     @Mock
     private TokenRepository tokenRepository;
@@ -63,27 +63,30 @@ class UserAuthenticationProviderTest {
     @Mock
     private UserManager userManager;
 
-    private UserAuthenticationProvider providerWithSecret(String secret) throws ReflectiveOperationException {
-        final Constructor<?> ctor = UserAuthenticationProvider.class.getDeclaredConstructors()[0];
-        ctor.setAccessible(true);
-        final UserAuthenticationProvider provider =
-                (UserAuthenticationProvider) ctor.newInstance(new Object[ctor.getParameterCount()]);
-        ReflectionTestUtils.setField(provider, "secretKey", secret);
-        return provider;
+    private UserAuthenticationProvider providerWithSecret(String secret) {
+        return new UserAuthenticationProvider(
+                tokenRepository,
+                externalUserRepository,
+                userManager,
+                secret,
+                DEFAULT_ACCESS_EXPIRATION_MILLIS,
+                DEFAULT_REFRESH_EXPIRATION_MILLIS);
     }
 
     @Test
-    void initFailsFastOnBlankSecretInsteadOfSilentlySigningWithEmptyKey() throws ReflectiveOperationException {
-        assertThrows(IllegalStateException.class, () -> providerWithSecret("").init());
-        assertThrows(
-                IllegalStateException.class, () -> providerWithSecret("   ").init());
-        assertThrows(IllegalStateException.class, () -> providerWithSecret(null).init());
+    void constructorFailsFastOnBlankSecretInsteadOfSilentlySigningWithEmptyKey() {
+        assertThrows(IllegalStateException.class, () -> providerWithSecret(""));
+        assertThrows(IllegalStateException.class, () -> providerWithSecret("   "));
+        assertThrows(IllegalStateException.class, () -> providerWithSecret(null));
     }
 
     @Test
-    void initEncodesNonBlankSecret() throws ReflectiveOperationException {
-        final String encoded = "real-secret-from-environment";
-        assertDoesNotThrow(() -> providerWithSecret(encoded).init());
+    void constructorEncodesNonBlankSecret() {
+        final String secret = "real-secret-from-environment";
+        final UserAuthenticationProvider provider = assertDoesNotThrow(() -> providerWithSecret(secret));
+        assertEquals(
+                Base64.getEncoder().encodeToString(secret.getBytes()),
+                ReflectionTestUtils.getField(provider, "secretKey"));
     }
 
     @Test
@@ -123,7 +126,7 @@ class UserAuthenticationProviderTest {
     }
 
     @Test
-    void invalidateToken_bogusToken_logsBelowError() throws ReflectiveOperationException {
+    void invalidateToken_bogusToken_logsBelowError() {
         final UserAuthenticationProvider provider = providerWithSecret("bogus-token-test-secret");
         final Logger logger = (Logger) LoggerFactory.getLogger(UserAuthenticationProvider.class);
         final ListAppender<ILoggingEvent> appender = new ListAppender<>();
@@ -181,8 +184,7 @@ class UserAuthenticationProviderTest {
     @Test
     void refreshToken_validBearer_returnsFreshAccessTokenPreservingTheRefreshToken() {
         final String secret = "refresh-contract-secret";
-        final UserAuthenticationProvider provider = providerWithMocks(secret);
-        ReflectionTestUtils.setField(provider, "accessTokenExpiration", 600_000L);
+        final UserAuthenticationProvider provider = providerWithMocks(secret, 600_000L);
         final String jti = UUID.randomUUID().toString();
         final String refreshToken = signedToken(secret, jti, "alice");
         final User user = new User("alice", "s3cr3t-password").setRole(new Role(RoleName.USER));
@@ -201,11 +203,17 @@ class UserAuthenticationProviderTest {
     }
 
     private UserAuthenticationProvider providerWithMocks(String secret) {
-        final UserAuthenticationProvider provider =
-                new UserAuthenticationProvider(tokenRepository, externalUserRepository, userManager);
-        ReflectionTestUtils.setField(provider, "secretKey", secret);
-        provider.init();
-        return provider;
+        return providerWithMocks(secret, DEFAULT_ACCESS_EXPIRATION_MILLIS);
+    }
+
+    private UserAuthenticationProvider providerWithMocks(String secret, long accessTokenExpirationMillis) {
+        return new UserAuthenticationProvider(
+                tokenRepository,
+                externalUserRepository,
+                userManager,
+                secret,
+                accessTokenExpirationMillis,
+                DEFAULT_REFRESH_EXPIRATION_MILLIS);
     }
 
     private String signedToken(String secret, String jti, String issuer) {
