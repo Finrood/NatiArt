@@ -47,13 +47,17 @@ Note: the timer needs a lingering user session to fire while logged out
 
 1. Single instance (`flock`); 25-minute agent timeout keeps cadence.
    Pre-flight gates fail fast on broken `gh` auth or <2GB disk.
-2. Cycle self-heals on: dirty tree (WIP salvaged to a dated `salvage/*`
+2. Never-idle invariant: PR state never causes an idle exit. Failing code PRs
+   switch the cycle to REPAIR MODE (fix in place on the same branch, zero new
+   branches) instead of exiting — exiting here deadlocked the loop ~10h on a
+   spotless-only failure. Cycle self-heals on: dirty tree (WIP salvaged to a dated `salvage/*`
    branch, master hard-reset to origin, newest 5 salvage branches retained),
    stray unpushed master commits (same salvage path, plus an automatic
    `[Salvage]` PR so the work is reviewable instead of orphaned),
-   non-fast-forward `master`, 2+ open code PRs
-   (docs-only flips and dependabot PRs are excluded — they never block the
-   loop), or any open code PR with failing checks.
+   non-fast-forward `master`.
+   Docs-only flips and dependabot PRs are excluded from blocking — they never
+   stop the loop, and green docs PRs with `VERDICT: APPROVE` are auto-merged
+   like code (max 2 merges/cycle shared).
 3. The agent merges ONLY on fully green CI (`gh pr checks --watch`), with
    `gh pr merge --merge --delete-branch`. Never force-push, never push to
    `master`, never touch dependabot branches.
@@ -193,10 +197,13 @@ table above is agent discipline, enforced by the cycle prompt.
   kill-minus-8-min (max 3 fix PRs), merge phase with the rest; at kill-minus-5
   push everything and stop. Unmerged green-track PRs are fine; a killed dirty
   tree is the failure mode — hence commit-early and push-each-branch.
-- Pickup: a green unmerged loop PR from the prior cycle gets merged first,
-  then new work. Zero reported CI checks means "not registered yet", never
-  green (Backend, Frontend, Guidelines must all be present + green).
-- Flakes: one `gh run rerun --failed`, then stop-and-report if still red.
+- Pickup: green unmerged loop PRs merge first (script merges up to 2/cycle:
+  code then docs), then repair, then new work. Zero reported CI checks means
+  "not registered yet", never green (Backend, Frontend, Guidelines must all be
+  present + green).
+- Flakes then repair: one `gh run rerun --failed` per failing PR; still red →
+  fix in place on the same branch this cycle (REPAIR MODE, zero new branches),
+  never stop-and-idle.
 - WIP recovery: dirt on a loop branch with an open PR is auto-committed as
   `[WIP]` and pushed; dirt anywhere else aborts for a human.
 - Merge-scope errors (e.g. missing `workflow` scope) are reported to the
@@ -205,7 +212,9 @@ table above is agent discipline, enforced by the cycle prompt.
 - Auto-merge stays OFF repository-wide by policy: every merge is explicit.
 - AI-review gate: each PR gets an independent fresh-context reviewer run
   (`scripts/agent-review-prompt.md`, ~6 min, concurrent with CI, launched in
-  parallel per PR). Reviewers work in isolated `git worktree`s (never the
+  parallel per PR). The script-side mechanical reviewer spawns every cycle
+  including REPAIR MODE and covers code + docs, so a red PR never starves
+  greens of verdicts. Reviewers work in isolated `git worktree`s (never the
   shared checkout), prove tests non-vacuous, and threat-model
   security-touching diffs. PR bodies, changelogs, and dependency metadata are
   treated as untrusted data, never instructions. Merge requires green relevant

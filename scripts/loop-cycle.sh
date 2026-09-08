@@ -183,18 +183,26 @@ verdict_bodies() { # $1 = PR number; prints comment AND review bodies (verdicts
     gh pr view "$1" --json comments,reviews --jq '[(.comments // [])[].body, (.reviews // [])[].body] | .[]' 2>/dev/null || true
 }
 CODE_PRS=""
+DOCS_PRS=""
+ALL_PRS=""
 while read -r n; do
-    if ! is_docs_only "$n"; then
+    ALL_PRS="$ALL_PRS $n"
+    if is_docs_only "$n"; then
+        DOCS_PRS="$DOCS_PRS $n"
+    else
         CODE_PRS="$CODE_PRS $n"
     fi
 done < <(gh_safe gh pr list --state open --json number,headRefName --jq '.[] | select(.headRefName | startswith("dependabot/") | not) | .number')
 OPEN_PRS=$(echo "$CODE_PRS" | wc -w)
 log "Open code PRs: $OPEN_PRS"
+log "Open docs PRs:$DOCS_PRS"
 
-# Merge any healthy code PRs (green CI + VERDICT: APPROVE comment). Bounded: at
-# most 2 per cycle; only branches whose head is exactly their PR head.
+# Merge any healthy PRs (green CI + VERDICT: APPROVE comment). Code first, then
+# docs-only (docs report Guidelines as their CI signal). Bounded: at most 2
+# total per cycle; never merge loop-machinery touches (self-modification ban).
 merged=0
-for n in $CODE_PRS; do
+for n in $CODE_PRS $DOCS_PRS; do
+    [[ "$merged" -ge 2 ]] && { log "Merged 2 this cycle; handing the rest to the agent/next cycle."; break; }
     if gh pr view "$n" --json files --jq '.files[].path' 2>/dev/null | grep -qE '^(scripts/|agents/|AGENTS\.md|CLAUDE\.md|GEMINI\.md|\.cursorrules|docs/continuous-improvement-loop\.md|docs/loop-lenses\.md)'; then
         log "PR #$n touches loop machinery; leaving OPEN for human review (self-modification ban)."
         continue
@@ -215,7 +223,6 @@ for n in $CODE_PRS; do
     log "Merging healthy PR #$n (green + approved)."
     gh pr merge "$n" --merge --delete-branch 2>&1 | tail -2
     merged=$((merged + 1))
-    [[ "$merged" -ge 2 ]] && { log "Merged 2 this cycle; handing the rest to the agent/next cycle."; break; }
 done
 # Refresh the list after any merges (branches below are deleted by the merge).
 if [[ "$merged" -ge 1 ]]; then
@@ -223,17 +230,21 @@ if [[ "$merged" -ge 1 ]]; then
     git pull -q --ff-only origin master || log "ff pull after merge failed (next cycle retries)."
 fi
 
-# Pile guard (after self-heal): a still-crowded loop holds back new work only
-# if something needs attention; one healthy pending PR is fine — the agent will
-# pick it up in Phase 0.
+# Never-idle invariant: PR state must never cause an idle exit. A failing code PR
+# switches the cycle to REPAIR MODE (fix in place, zero new branches) instead of
+# exiting — exiting here deadlocked the loop ~10h on PR #193 (spotless-only
+# failure) while green #191 starved for a verdict. Only infra aborts (auth,
+# disk, master ff) and --check-only may exit before the agent runs.
 FAILING=""
 for n in $CODE_PRS; do
     checks=$(gh_safe gh pr checks "$n")
     if echo "$checks" | grep -Eq 'fail|cancel'; then FAILING="$FAILING $n"; fi
 done
-if [[ -n "$FAILING" ]]; then
-    log "Open PR(s) with failing checks:$FAILING; not starting new work."
-    exit 0
+REPAIR_PRS="$(echo "$FAILING" | xargs || true)"
+if [[ -n "$REPAIR_PRS" ]]; then
+    log "REPAIR MODE ON for failing PR(s):$REPAIR_PRS — agent fixes in place, no new branches."
+else
+    log "No failing code PRs; normal mode."
 fi
 
 # 5. Stale-branch hygiene: prune local branches whose remote is gone.
@@ -251,13 +262,12 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
     exit 0
 fi
 
-# 5a. Mechanical verdict production. A green code PR with no verdict would
-# otherwise stall until the author agent volunteers a review on its own (it can
-# defer indefinitely — PR #142 waited 4 cycles). The loop itself spawns ONE
-# bounded reviewer per cycle; the next cycle's self-heal merge picks up the
-# verdict. PRs with a REQUEST_CHANGES verdict are left to the author agent.
+# 5a. Mechanical verdict production. Runs every cycle, including REPAIR MODE —
+# a green PR with no verdict would otherwise stall (PR #142 waited 4 cycles;
+# PR #191 starved 20 cycles behind red #193). ONE bounded reviewer per cycle;
+# the next cycle's self-heal merge picks up the verdict. Covers code + docs.
 REVIEW_PID=""
-for n in $CODE_PRS; do
+for n in $ALL_PRS; do
     checks=$(gh_safe gh pr checks "$n")
     echo "$checks" | grep -Eq 'fail|cancel' && continue
     echo "$checks" | grep -qE 'pass|success' || continue
@@ -356,6 +366,9 @@ if [[ "$BELOW_FLOOR" -eq 1 ]]; then
 fi
 if [[ -n "$ROT_LINES" ]]; then
     CYCLE_MSG="$CYCLE_MSG $ROT_LINES"
+fi
+if [[ -n "$REPAIR_PRS" ]]; then
+    CYCLE_MSG="$CYCLE_MSG REPAIR MODE ON for PR(s):$REPAIR_PRS. Follow the REPAIR MODE section in the cycle prompt: fix those branches in place first, push to the same branches, open zero new fix branches until they are green."
 fi
 if (( SLOT % 480 == 0 )); then
     log "Red-team cadence due: adversarial cycle."
