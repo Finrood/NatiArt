@@ -126,10 +126,11 @@ to the exact model that produced it — even after failover mid-cycle.
   items, fix on the spot only if trivial.
 - **Boy-scout ledger**: every PR converts one discovered nit into a tracked
   backlog item instead of silently fixing or ignoring it.
-- **Health metrics** (read from `logs/`): PRs merged/week, backlog trend
-  (logged every cycle), no-work rate. Escalation is automatic: backlog under
-  floor → generator duty; repeated thin findings → the lens rotation and
-  ratchets widen the frontier without human input.
+- **Health metrics** (read from `logs/`): `health.csv` (one row/cycle: slot,
+  open counts, repair list, merged, reviewed PR, exit status), PRs merged/week,
+  backlog trend (logged every cycle), no-work rate. Escalation is automatic:
+  backlog under floor → generator duty; repeated thin findings → the lens
+  rotation and ratchets widen the frontier without human input.
 
 ## Guideline compliance
 
@@ -186,7 +187,7 @@ workflow has reported:
 | `frontend/**` | Frontend CI |
 | instruction files (`AGENTS.md`, mirrors, `agents/**`, module guides) | Guidelines |
 | `docs/**` (findings, lenses, loop docs) | Guidelines |
-| `scripts/**` | Guidelines |
+| `scripts/**` | Guidelines + Loop Scripts (shellcheck, helper tests) |
 | `backend/**`, `frontend/**` | Guidelines (convention bans) + respective CI |
 | `.github/workflows/<name>.yml` | that workflow + Guidelines |
 | anything else | all three |
@@ -209,7 +210,15 @@ table above is agent discipline, enforced by the cycle prompt.
   never stop-and-idle. Conflicts resolve via `git merge origin/master` (never
   rebase/force-push), then `!check`, then push.
 - WIP recovery: dirt on a loop branch with an open PR is auto-committed as
-  `[WIP]` and pushed; dirt anywhere else aborts for a human.
+  `[WIP]` and pushed; dirt on a loop-prefix branch with no PR is salvaged;
+  dirt anywhere else (suspected human work — the loop never touches it) aborts
+  the cycle loudly. Dirt on master still salvages (killed-cycle fallout).
+- Watchdog: `loop-watchdog.yml` runs cloud-side every 6h and opens an issue
+  when no non-dependabot PR moved in 24h — exits read as success and logs stay
+  local, so without this every stall class is silent.
+- Script tests: `scripts/tests/run.sh` (zero-dep bash, stubbed `gh`) covers
+  `loop-lib.sh` helpers; `loop-scripts.yml` runs shellcheck + tests on every
+  `scripts/**` PR. New helper → lib + test in the same PR.
 - Merge-scope errors (e.g. missing `workflow` scope) are reported to the
   human, never routed around. Token scopes are documented here so the fix is
   one command: `gh auth refresh -s workflow` (interactive).
