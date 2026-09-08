@@ -824,7 +824,7 @@ Cleared as non-findings: prod `npm audit` (clean); Spring Boot/TS majors
 - Fix: align all workflows on one major line and pin to full commit SHAs
   (or adopt tag-immutable pinning). Tracked, not silently fixed.
 
-### AL3. Gradle wrapper `9.1.0` → `9.7.1` minor buried behind the red Spring major — OPEN (Low)
+### AL3. Gradle wrapper `9.1.0` → `9.7.1` minor buried behind the red Spring major — IN REVIEW (Low; PR #205)
 - Dependabot PR #118 bundles a `9.1.0` → `9.7.1` Gradle wrapper minor
   (`backend/gradle/wrapper/gradle-wrapper.properties:4`) and a
   `ben-manes-versions` `0.52.0` → `0.61.0` bump behind the red Spring
@@ -833,6 +833,14 @@ Cleared as non-findings: prod `npm audit` (clean); Spring Boot/TS majors
 - Fix: our own `chore/` branch bumping the wrapper (and the versions
   plugin) alone, green CI proving separability — never push to the
   dependabot branch. Tracked, not silently fixed.
+- PR #205 (chore/gradle-wrapper-versions-bump): both root and
+  `backend/` wrappers regenerated to `9.7.1`; versions plugin bumped to
+  `0.61.0` including the plugin-ID migration to
+  `io.github.ben-manes.versions` (the `0.61.0` release deprecates the
+  `com.github.*` ID). Green `!check` (265/266 backend tests; the single
+  local failure is `ImageConversionServiceTest.convertsNormalImageToWebP`
+  loading an AMD64-only `.so` on this AARCH64 machine — passes on x86 CI),
+  Spotless clean, no functional code touched.
 
 ## AM. Data integrity and transactions (Lens 4 hunt, 2026-09-07)
 
