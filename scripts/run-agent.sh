@@ -137,9 +137,9 @@ print_tail() { # $1 = log file
 }
 
 kill_agent() { # $1 = pid; TERM first, escalate to KILL (opencode can ignore TERM)
-    local pid="$1" i
+    local pid="$1" _
     kill -TERM "$pid" 2>/dev/null || return 0
-    for i in 1 2 3; do
+    for _ in 1 2 3; do
         kill -0 "$pid" 2>/dev/null || return 0
         sleep 1
     done

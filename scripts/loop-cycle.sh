@@ -56,7 +56,8 @@ fi
 #    later), then continue from a pristine master. (2026-09-06: two cycles
 #    wedged overnight on dirty master; dirty-master now salvages + resets.)
 salvage_wip() { # $1 = source branch label; salvages dirt to origin/salvage/*
-    local B="salvage/$(date +%Y%m%d-%H%M%S)"
+    local B
+    B="salvage/$(date +%Y%m%d-%H%M%S)"
     if git checkout -q -b "$B" && git add -A && git commit -qm "[WIP] Salvaged interrupted-cycle WIP from $1 (auto-salvage)" && git push -q origin "$B"; then
         git checkout -q master
         git reset -q --hard origin/master
