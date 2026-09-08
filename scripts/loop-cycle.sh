@@ -9,18 +9,15 @@ LOG_DIR="$REPO/logs"
 CHECK_ONLY=0
 [[ "${1:-}" == "--check-only" ]] && CHECK_ONLY=1
 
-log() { echo "[$(date -Is)] $*"; }
+# Shared helpers (also sourced by scripts/tests/* with a stubbed gh).
+# shellcheck source=scripts/loop-lib.sh
+source "$REPO/scripts/loop-lib.sh"
 
 # Forensics: with `set -e`, any unguarded command failure kills the cycle
 # silently (seen 2026-09-06 19:05: a transient gh API error exited the cycle
 # 1s after the last log line, with no trace in the log). Trap it: always log
 # where and why before systemd records the exit.
 trap 'log "FATAL: cycle aborted by error at line $LINENO (exit $?)"; exit 1' ERR
-gh_safe() { # gh calls that may fail transiently: log and continue with empty
-    local out
-    out=$("$@" 2>&1) || { log "WARN: '$*' failed transiently; treating as empty."; return 0; }
-    printf '%s\n' "$out"
-}
 
 exec 9>"$LOCK"
 if ! flock -n 9; then
@@ -87,9 +84,12 @@ if [[ -n "$(git status --porcelain)" ]]; then
             else
                 exit 1
             fi
-        elif salvage_wip "$CUR_BRANCH"; then
-            log "Dirty tree on $CUR_BRANCH (no open PR): WIP salvaged; continuing."
+        elif is_loop_branch "$CUR_BRANCH" && salvage_wip "$CUR_BRANCH"; then
+            log "Dirty tree on loop branch $CUR_BRANCH (no open PR): WIP salvaged; continuing."
+        elif is_loop_branch "$CUR_BRANCH"; then
+            exit 1
         else
+            log "Dirty tree on non-loop branch $CUR_BRANCH with no open PR: suspected human WIP; aborting (nothing salvaged, nothing reset)."
             exit 1
         fi
     elif salvage_wip "master"; then
@@ -173,37 +173,7 @@ fi
 #    behind a pickup that the agent (already rate-limited / quota-exhausted)
 #    can never reach. Only fully-green PRs with a VERDICT: APPROVE reviewer
 #    comment are auto-merged; anything red or awaiting review stays open.
-is_docs_only() { # $1 = PR number; true iff every changed file is under docs/
-    local files
-    files=$(gh pr view "$1" --json files --jq '.files[].path' 2>/dev/null) || return 1
-    [[ -n "$files" ]] && ! grep -qvE '^docs/' <<<"$files"
-}
-verdict_bodies() { # $1 = PR number; prints comment AND review bodies (verdicts
-    # travel via `gh pr review --comment` = review, or `gh pr comment` = comment)
-    gh pr view "$1" --json comments,reviews --jq '[(.comments // [])[].body, (.reviews // [])[].body] | .[]' 2>/dev/null || true
-}
-latest_verdict() { # $1 = PR number; prints the FIRST LINE of the newest VERDICT
-    # comment/review (chronological by posted time), or empty when none exists.
-    # Merge and reviewer-round decisions must use this — never a presence grep —
-    # so a newer REQUEST_CHANGES always vetoes an older APPROVE.
-    gh pr view "$1" --json comments,reviews --jq -r '[((.comments // [])[] | {t: .createdAt, b: .body}),
-        ((.reviews // [])[] | {t: .submittedAt, b: .body})]
-        | map(select(.b | startswith("VERDICT:"))) | sort_by(.t) | last | .b // empty' \
-        2>/dev/null | grep -m1 '^VERDICT:' || true
-}
-reviewed_sha() { # $1 = verdict first line; prints the (reviewed <sha>) marker sha or empty
-    grep -oE '\(reviewed [0-9a-f]{7,40}' <<<"$1" | grep -oE '[0-9a-f]{7,40}$' || true
-}
-pr_mergeable() { # $1 = PR number; prints MERGEABLE|CONFLICTING|UNKNOWN (never fails)
-    gh pr view "$1" --json mergeable --jq .mergeable 2>/dev/null || echo UNKNOWN
-}
-pr_checks_summary() { # $1 = PR number; prints FAIL|PASS|PENDING (never fails)
-    local checks
-    checks=$(gh_safe gh pr checks "$1")
-    if echo "$checks" | grep -Eq 'fail|cancel'; then echo "FAIL";
-    elif echo "$checks" | grep -qE 'pass|success'; then echo "PASS";
-    else echo "PENDING"; fi
-}
+# PR classification helpers live in scripts/loop-lib.sh (shared with tests).
 CODE_PRS=""
 DOCS_PRS=""
 ALL_PRS=""
@@ -465,4 +435,9 @@ if [[ -n "${REVIEW_PID:-}" ]]; then
     fi
 fi
 log "Agent cycle finished with status $STATUS."
+# Health row (gitignored logs/health.csv): one line per cycle for trends and
+# post-mortems — grep it for merged counts, repair frequency, idle stretches.
+HEALTH="$LOG_DIR/health.csv"
+[[ -f "$HEALTH" ]] || echo "timestamp,slot,open_code,open_docs,repair_prs,merged,reviewed_pr,exit_status" > "$HEALTH"
+echo "$(date -Is),${SLOT:-?},${OPEN_PRS:-?},$(echo "${DOCS_PRS:-}" | wc -w),\"${REPAIR_PRS:-}\",${merged:-0},${REVIEW_PR:-none},$STATUS" >> "$HEALTH"
 exit "$STATUS"
