@@ -8,13 +8,13 @@ buildscript {
     dependencies {
         // Placed on the buildscript classpath so that `apply(plugin = ...)` and
         // `configure<SpotlessExtension>` resolve in Kotlin DSL.
-        classpath("com.diffplug.spotless:spotless-plugin-gradle:8.10.1")
+        classpath("com.diffplug.spotless:spotless-plugin-gradle:8.10.2")
     }
 }
 
 plugins {
     java
-    id("org.springframework.boot") version "3.5.6" apply false
+    id("org.springframework.boot") version "4.1.1" apply false
     id("io.spring.dependency-management") version "1.1.7" apply false
     id("io.github.ben-manes.versions") version "0.61.0" apply false
 }
