@@ -39,7 +39,9 @@ import com.portcelana.natiart.dto.payment.asaas.AsaasPaymentCreationResponse;
 import com.portcelana.natiart.dto.payment.helper.PaymentMethod;
 import com.portcelana.natiart.dto.payment.helper.PaymentProcessor;
 import com.portcelana.natiart.dto.payment.helper.PaymentStatus;
+import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.Payment;
+import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.PaymentRepository;
 
 import ch.qos.logback.classic.Level;
@@ -53,21 +55,32 @@ class AsaasPaymentServiceTest {
 
     private AsaasPaymentService newService() {
         return new AsaasPaymentService(
-                "test-api-key", PAYMENTS_URL, mock(RestTemplate.class), mock(PaymentRepository.class));
+                "test-api-key",
+                PAYMENTS_URL,
+                mock(RestTemplate.class),
+                mock(PaymentRepository.class),
+                mock(OrderRepository.class));
     }
 
     private AsaasPaymentService newService(RestTemplate restTemplate, PaymentRepository paymentRepository) {
-        return new AsaasPaymentService("test-api-key", PAYMENTS_URL, restTemplate, paymentRepository);
+        return newService(restTemplate, paymentRepository, mock(OrderRepository.class));
+    }
+
+    private AsaasPaymentService newService(
+            RestTemplate restTemplate, PaymentRepository paymentRepository, OrderRepository orderRepository) {
+        return new AsaasPaymentService("test-api-key", PAYMENTS_URL, restTemplate, paymentRepository, orderRepository);
     }
 
     @Test
     void constructor_rejectsBlankApiKey() {
         assertThrows(
                 IllegalStateException.class,
-                () -> new AsaasPaymentService("  ", PAYMENTS_URL, mock(PaymentRepository.class)));
+                () -> new AsaasPaymentService(
+                        "  ", PAYMENTS_URL, mock(PaymentRepository.class), mock(OrderRepository.class)));
         assertThrows(
                 IllegalStateException.class,
-                () -> new AsaasPaymentService(null, PAYMENTS_URL, mock(PaymentRepository.class)));
+                () -> new AsaasPaymentService(
+                        null, PAYMENTS_URL, mock(PaymentRepository.class), mock(OrderRepository.class)));
     }
 
     @Test
@@ -320,6 +333,95 @@ class AsaasPaymentServiceTest {
         verify(paymentRepository)
                 .save(argThat(
                         payment -> "pay-9".equals(payment.getId()) && "cus_MINE".equals(payment.getOwnerExternalId())));
+    }
+
+    @Test
+    void createPayment_orderLinked_rejectsValueMismatchWithoutUpstreamCharge() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final OrderRepository orderRepository = mock(OrderRepository.class);
+        when(orderRepository.findById("ord_1"))
+                .thenReturn(Optional.of(new CustomerOrder().setTotalAmount(new BigDecimal("500.00"))));
+
+        // Underpayment: the classic R$0.01-charge-against-a-R$500-order attack.
+        final PaymentCreationRequest underpaid = new PaymentCreationRequest(
+                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("0.01"), PaymentMethod.PIX);
+        final IllegalArgumentException underpaymentException = assertThrows(
+                IllegalArgumentException.class,
+                () -> newService(restTemplate, mock(PaymentRepository.class), orderRepository)
+                        .createPayment(orderLinked(underpaid), "cus_MINE"));
+        assertTrue(underpaymentException.getMessage().contains("does not match"));
+        verifyNoInteractions(restTemplate);
+
+        // Overpayment is equally rejected.
+        when(orderRepository.findById("ord_1"))
+                .thenReturn(Optional.of(new CustomerOrder().setTotalAmount(new BigDecimal("10.00"))));
+        final PaymentCreationRequest overpaid = new PaymentCreationRequest(
+                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.01"), PaymentMethod.PIX);
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> newService(restTemplate, mock(PaymentRepository.class), orderRepository)
+                        .createPayment(orderLinked(overpaid), "cus_MINE"));
+        verifyNoInteractions(restTemplate);
+    }
+
+    @Test
+    void createPayment_orderLinked_rejectsUnknownOrder() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final OrderRepository orderRepository = mock(OrderRepository.class);
+        when(orderRepository.findById("ord_missing")).thenReturn(Optional.empty());
+
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> newService(restTemplate, mock(PaymentRepository.class), orderRepository)
+                        .createPayment(
+                                orderLinked(new PaymentCreationRequest(
+                                        PaymentProcessor.ASAAS,
+                                        "cus_MINE",
+                                        new BigDecimal("10.00"),
+                                        PaymentMethod.PIX)),
+                                "cus_MINE"));
+        verifyNoInteractions(restTemplate);
+    }
+
+    @Test
+    void createPayment_orderLinked_exactTotalChargesUpstreamAndPersistsLink() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        final OrderRepository orderRepository = mock(OrderRepository.class);
+        when(orderRepository.findById("ord_1"))
+                .thenReturn(Optional.of(new CustomerOrder().setTotalAmount(new BigDecimal("10.00"))));
+        final AsaasPaymentCreationResponse upstream = mock(AsaasPaymentCreationResponse.class);
+        when(upstream.getId()).thenReturn("pay-10");
+        when(upstream.getDateCreated()).thenReturn(LocalDate.of(2026, 9, 8));
+        when(upstream.getCustomer()).thenReturn("cus_MINE");
+        when(upstream.getBillingType()).thenReturn("PIX");
+        when(upstream.getStatus()).thenReturn("PENDING");
+        when(upstream.getDueDate()).thenReturn(LocalDate.of(2026, 9, 9));
+        when(upstream.getInvoiceUrl()).thenReturn("http://invoice");
+        when(upstream.getInvoiceNumber()).thenReturn("002");
+        when(restTemplate.postForEntity(eq(PAYMENTS_URL), any(), eq(AsaasPaymentCreationResponse.class)))
+                .thenReturn(ResponseEntity.ok(upstream));
+
+        final PaymentCreationResponse response = newService(restTemplate, paymentRepository, orderRepository)
+                .createPayment(
+                        orderLinked(new PaymentCreationRequest(
+                                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX)),
+                        "cus_MINE");
+
+        assertEquals("pay-10", response.getPaymentId());
+        verify(paymentRepository)
+                .save(argThat(payment -> "ord_1".equals(payment.getOrderId())
+                        && "pay-10".equals(payment.getId())
+                        && "cus_MINE".equals(payment.getOwnerExternalId())));
+    }
+
+    private PaymentCreationRequest orderLinked(PaymentCreationRequest request) {
+        return new PaymentCreationRequest(
+                request.getPaymentProcessor(),
+                request.getCustomerId(),
+                request.getValue(),
+                request.getBillingType(),
+                "ord_1");
     }
 
     @Test

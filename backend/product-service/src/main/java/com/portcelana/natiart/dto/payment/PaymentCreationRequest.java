@@ -18,6 +18,7 @@ public class PaymentCreationRequest {
     private final String customerId;
     private final BigDecimal value;
     private final PaymentMethod billingType;
+    private final String orderId;
     private final LocalDate dueDate;
 
     @JsonCreator
@@ -25,7 +26,13 @@ public class PaymentCreationRequest {
             @JsonProperty("paymentProcessor") PaymentProcessor paymentProcessor,
             @JsonProperty("customerId") String customerId,
             @JsonProperty("value") BigDecimal value,
-            @JsonProperty("billingType") PaymentMethod billingType) {
+            @JsonProperty("billingType") PaymentMethod billingType,
+            @JsonProperty("orderId") String orderId) {
+        this(paymentProcessor, customerId, value, billingType, orderId, Clock.systemDefaultZone());
+    }
+
+    public PaymentCreationRequest(
+            PaymentProcessor paymentProcessor, String customerId, BigDecimal value, PaymentMethod billingType) {
         this(paymentProcessor, customerId, value, billingType, Clock.systemDefaultZone());
     }
 
@@ -35,6 +42,17 @@ public class PaymentCreationRequest {
             String customerId,
             BigDecimal value,
             PaymentMethod billingType,
+            Clock clock) {
+        this(paymentProcessor, customerId, value, billingType, null, clock);
+    }
+
+    @JsonIgnore
+    PaymentCreationRequest(
+            PaymentProcessor paymentProcessor,
+            String customerId,
+            BigDecimal value,
+            PaymentMethod billingType,
+            String orderId,
             Clock clock) {
         if (paymentProcessor == null) {
             throw new IllegalArgumentException("Payment processor is required");
@@ -53,6 +71,7 @@ public class PaymentCreationRequest {
         this.customerId = customerId;
         this.value = value;
         this.billingType = billingType;
+        this.orderId = orderId;
 
         final LocalTime minimumSwitchTime = LocalTime.of(21, 0);
         LocalDateTime now = LocalDateTime.now(clock);
@@ -76,6 +95,10 @@ public class PaymentCreationRequest {
 
     public PaymentMethod getBillingType() {
         return billingType;
+    }
+
+    public String getOrderId() {
+        return orderId;
     }
 
     public LocalDate getDueDate() {
