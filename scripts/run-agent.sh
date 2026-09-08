@@ -14,7 +14,7 @@
 # existing cycle semantics); any other non-zero = genuine non-quota failure.
 set -euo pipefail
 
-REPO="/home/finrod/Documents/Programming/Java/Personal/NatiArt"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP_ROOT="${TMPDIR:-/tmp}"   # override with TMPDIR for tests; attempt logs are removed after each run
 
 # --- overridables ----------------------------------------------------------

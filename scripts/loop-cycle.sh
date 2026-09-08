@@ -3,7 +3,7 @@
 # See docs/continuous-improvement-loop.md. Supports --check-only (no agent run).
 set -euo pipefail
 
-REPO="/home/finrod/Documents/Programming/Java/Personal/NatiArt"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOCK="/tmp/natiart-improvement-loop.lock"
 LOG_DIR="$REPO/logs"
 CHECK_ONLY=0
