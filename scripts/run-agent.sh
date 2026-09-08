@@ -25,6 +25,7 @@ STALL_SEC=120          # no-output stall detection per attempt (role default app
 STALL_EXPLICIT=""      # set when --stall is passed; skips role defaults
 SIMULATE_QUOTA_AT=0    # test harness: fail the first N attempts as synthetic quota
 CHECK_ONLY=0
+SKIP=()                # model substrings to deprioritize (repeatable --skip)
 ALLOWED_ARGS=()        # extra permission args passed to cline (e.g. --auto-approve true)
 
 usage() {
@@ -41,6 +42,9 @@ Options:
   --stall SEC             Kill an attempt that produces no output for SEC (default 120)
   --simulate-quota-at N   Test: fail the first N attempts with synthetic quota
   --allowed "ARGS"        Extra permission args passed to cline (e.g. "--auto-approve true")
+  --skip SUBSTR           Skip models whose cli:model_id or label contains SUBSTR
+                          (repeatable; loop reviewers skip the PR author's model
+                          for independence; skips are ignored if they empty the list)
   --check-only            Print the priority list + first model, invoke nothing
   -h, --help              Show this help
 EOF
@@ -59,6 +63,7 @@ while [[ $# -gt 0 ]]; do
         --stall) STALL_SEC="$2"; STALL_EXPLICIT=1; shift 2 ;;
         --simulate-quota-at) SIMULATE_QUOTA_AT="$2"; shift 2 ;;
         --allowed) ALLOWED_ARGS=("$2"); shift 2 ;;
+        --skip) SKIP+=("$2"); shift 2 ;;
         --check-only) CHECK_ONLY=1; shift ;;
         -h|--help) usage; exit 0 ;;
         --) shift; PROMPT_ARGS+=("$@"); break ;;
@@ -112,13 +117,34 @@ fi
 # output matches these is treated as quota and falls through to the next model.
 QUOTA_RE='quota|rate.?limit(ed)?|429|too many requests|insufficient|exceeded|(monthly|daily|usage|free tier) (quota|limit)|credits? (depleted|exhausted)|billing issu|out of (free )?usage'
 
+# Reviewer/author independence: drop skipped models up front (substring match on
+# cli:model_id or label). A skip list that empties the pool is ignored — never
+# idle when a model could run.
+EFFECTIVE=()
+for entry in "${PRIORITY[@]}"; do
+    IFS='|' read -r cli label model_id think <<< "$entry"
+    skip_hit=""
+    for s in ${SKIP[@]+"${SKIP[@]}"}; do
+        if [[ "$cli:$model_id" == *"$s"* || "$label" == *"$s"* ]]; then skip_hit="$s"; break; fi
+    done
+    if [[ -n "$skip_hit" ]]; then
+        log "Skipping $label ($model_id) for independence (matched --skip '$skip_hit')."
+    else
+        EFFECTIVE+=("$entry")
+    fi
+done
+if [[ "${#EFFECTIVE[@]}" -eq 0 && "${#SKIP[@]}" -gt 0 ]]; then
+    log "WARNING: --skip emptied the model pool; ignoring skips."
+    EFFECTIVE=("${PRIORITY[@]}")
+fi
+
 if [[ "$CHECK_ONLY" -eq 1 ]]; then
-    log "Check-only: priority list (first = preferred):"
-    for entry in "${PRIORITY[@]}"; do
+    log "Check-only: effective priority list (first = preferred):"
+    for entry in "${EFFECTIVE[@]}"; do
         IFS='|' read -r cli label model_id think <<< "$entry"
         log "  - [$cli] $label ($model_id${think:+, $think})"
     done
-    printf '%s\n' "$(echo "${PRIORITY[0]}" | cut -d'|' -f2)"
+    printf '%s\n' "$(echo "${EFFECTIVE[0]}" | cut -d'|' -f2)"
     exit 0
 fi
 
@@ -175,7 +201,7 @@ launch_attempt() { # $1=cli $2=model_id $3=think; spawns child bg, sets $PID
 DEADLINE=$(( $(date +%s) + BUDGET ))
 attempt=0
 while true; do
-    for entry in "${PRIORITY[@]}"; do
+    for entry in "${EFFECTIVE[@]}"; do
         IFS='|' read -r cli label model_id think <<< "$entry"
 
         remaining=$(( DEADLINE - $(date +%s) ))
@@ -310,6 +336,6 @@ while true; do
             exit "$rc"
         done
     done
-    log "All $PRIORITY_COUNT models blocked; sleeping 5s and retrying from the top."
+    log "All ${#EFFECTIVE[@]} effective models blocked; sleeping 5s and retrying from the top."
     sleep 5
 done

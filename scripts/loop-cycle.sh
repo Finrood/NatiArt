@@ -310,6 +310,10 @@ for n in $ALL_PRS; do
     elif [[ -n "$LAST_RC" && "$LAST_RC" == "$RC_HEAD" ]]; then
         continue
     fi
+    AUTHOR_SKIP="$(gh pr view "$n" --json body --jq .body 2>/dev/null | author_model_of || true)"
+    if [[ -n "$AUTHOR_SKIP" ]]; then
+        log "PR #$n author model is $AUTHOR_SKIP; reviewer will prefer a different model."
+    fi
     log "Spawning mechanical reviewer for PR #$n (build $BUILD_STATUS, merge $MERGE_STATUS, 1 per cycle)."
     STATUS_NOTE=" Known loop status — Build: $BUILD_STATUS, Merge: $MERGE_STATUS. Re-verify both yourself with 'gh pr checks $n' and 'gh pr view $n --json mergeable', report them as 'Build: ...' and 'Merge: ...' lines per the review prompt, and let them drive the verdict: red build or conflict forces REQUEST_CHANGES."
     if grep -q '^VERDICT: APPROVE' <<<"$LATEST_V"; then
@@ -325,6 +329,7 @@ for n in $ALL_PRS; do
         RC_NOTE=""
     fi
     timeout 660 scripts/run-agent.sh --role review --budget 600 --title "review-pr-$n" \
+        ${AUTHOR_SKIP:+--skip "$AUTHOR_SKIP"} \
         "$(cat scripts/agent-review-prompt.md)
 ---
 Review PR $n. You have 10 minutes; the review typically takes ~4. Non-negotiable
