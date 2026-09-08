@@ -43,7 +43,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
 - Fix (strategic, needs decision): shared store (Redis/DB) or gateway; trust
   `X-Forwarded-For` only from configured proxies. Short-term: document + bound.
 
-### B9. JWT filter flaws on both services — OPEN (Medium)
+### B9. JWT filter flaws on both services — OPEN (Medium; product half mostly fixed on master, remainder narrowed)
 - Directory `JwtAuthFilter.java:33-34,44-52`: `contains("/refresh-token")`
   over-matches; falls through to chain after 401 instead of returning.
   (Directory slice FIXED in PR #64: exact path+method match, return after 401.
@@ -53,6 +53,52 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
   request + `.block()` on servlet thread; any downstream failure → 503 outage.
 - Fix: return after 401; exact path+method match; singleton `WebClient` with
   timeouts, fail-closed, brief negative-validation cache.
+- Re-verified 2026-09-08 (Lens 2 cycle): the product `JwtAuthFilter` on master
+  already builds a singleton `WebClient` in its constructor with a 5s per-call
+  timeout and returns (never falls through) after both 401 and 503, so the
+  per-request-build claim is stale. Still real: `.block()` on the servlet
+  thread (every authenticated product request waits up to 5s on directory) and
+  any directory outage turning every authenticated product request into a 503.
+  The negative-validation cache remains the remaining worthwhile hardening.
+
+## AZ. AuthN and AuthZ boundaries (Lens 2 hunt, 2026-09-08)
+
+Hunt method: re-read both `JwtAuthFilter`s, both `SecurityConfig`s, both
+`ControllerAdvice`s, the directory `UserController`/`AuthenticationController`
+and the frontend `jwt-interceptor.service.ts` on current master; re-verified
+every prior Lens 2 item (S7 flipped INVALID — see its section; B9 narrowed —
+see its section; W1 still OPEN, fix blocked on the B8 strategic rate-limit
+decision; B4 still OPEN, owner column + server-side freight unfixed).
+Cleared as non-findings: directory `permitAll` set on
+login/register-ghost/validate-token (anonymous-entry design, unchanged);
+product `@PreAuthorize`-only enforcement with `anyRequest().permitAll()` is
+method-security-complete for mutating endpoints (`PaymentController`,
+`CartController`, admin controllers all carry `@PreAuthorize`); directory
+filter's exact `POST /refresh-token` match holds (tests lock it). One new
+finding below.
+
+### AZ1. Expired bearer token poisons public product-service reads and forces refresh churn on anonymous browsing — OPEN (Medium)
+- Product `JwtAuthFilter.java:45-79` validates ANY bearer token against
+  directory before the chain and short-circuits 401 on failure, while
+  `SecurityConfig.java:40` is `anyRequest().permitAll()` with enforcement only
+  via `@PreAuthorize` on mutating/admin endpoints. The frontend interceptor
+  (`jwt-interceptor.service.ts:119-123`) attaches the stored access token to
+  EVERY non-auth request, including public `GET /products`, `/categories`,
+  `/packages` reads. So a user whose access token expired while browsing the
+  public catalog gets 401s on every public read: each triggers the frontend
+  refresh flow (an extra directory round-trip), and if the refresh token is
+  also expired the user is bounced to `/login` mid-browsing — anonymous-public
+  content gated behind a dead session. Each public read also costs a
+  directory round-trip even when the token is valid.
+- Fix: skip remote validation (or treat validation failure as anonymous)
+  when the matched endpoint is publicly readable — e.g. validate only when
+  the request carries a token AND defer 401 short-circuit to method security
+  (set no authentication on invalid token and let `@PreAuthorize`/`authenticated`
+  rules decide; public reads then degrade to anonymous instead of erroring).
+  Careful: fail-closed for protected endpoints must be preserved (an invalid
+  token must never yield a privileged context). Tests: expired token on public
+  read → 200 anonymous content, not 401; expired token on protected write →
+  401/403. Found by Lens 2 hunt, 2026-09-08.
 
 ### B10. Logging/DI convention drift — OPEN (Low)
 - Public mutable loggers (`ProductController:32`, `CartController:17`,
@@ -242,13 +288,20 @@ not filed.
   error responses). Tests: id present in MDC during payment creation;
   forwarded header asserted on the egress mock.
 
-### S7. `GET /users/current` returns 200 + null body for anonymous callers — OPEN (Low-Medium)
+### S7. `GET /users/current` returns 200 + null body for anonymous callers — INVALID (re-verified 2026-09-08: unreachable on current master)
 - `backend/directory-service/.../controller/UserController.java:28-30`
   returns `ResponseEntity.ok(null)` when `@TargetUser` resolves empty, while
   every other per-user endpoint rejects with 401/403 (or 500s per B2). The
   frontend cannot distinguish "not logged in" from a broken null user.
 - Fix: reject with 401/403 instead of 200-null; align with the B2
   `@TargetUser` fix. Tests: anonymous hit → 401/403, never 200-null.
+- Re-verified 2026-09-08 and marked INVALID: `/users/current` sits under
+  `anyRequest().authenticated()` (directory `SecurityConfig.java:31-40`), so
+  anonymous requests are rejected 401 by `AuthorizationFilter` before argument
+  resolution — same reasoning as B2's invalidation. The 200-null branch in the
+  controller is dead code for anonymous callers; a null/empty principal name
+  cannot occur for an authenticated request (the provider builds the principal
+  from the validated token's issuer username).
 
 ## T. Dependency and supply chain (Lens 16 hunt, 2026-09-05)
 
@@ -782,7 +835,7 @@ siblings (`AuthenticationController.java`, `UserAuthenticationProvider.java`,
 both `JwtAuthFilter`s). B11/S6 merged as PR #173 this cycle, so the hunt
 re-verified the remaining contract surface instead of re-filing them.
 
-### AK1. Same auth denial is a bare 401, a 403 "Invalid or expired token", or a 403 "Access denied" depending on the layer — OPEN (Medium)
+### AK1. Same auth denial is a bare 401, a 403 "Invalid or expired token", or a 403 "Access denied" depending on the layer — IN REVIEW (Medium; PR pending)
 - Directory `JwtAuthFilter.java:46-49` clears the context and short-circuits
   with a bodyless 401 on `IllegalAccessException`; the same exception from
   `validateToken` (`AuthenticationController.java:61-65`) travels to the
@@ -795,7 +848,7 @@ re-verified the remaining contract surface instead of re-filing them.
   token via filter vs via `validateToken` assert the same status/body.
   Found by Lens 15 hunt, 2026-09-07.
 
-### AK4. `validateToken` returns a Spring `Authentication` instead of a DTO — OPEN (Low)
+### AK4. `validateToken` returns a Spring `Authentication` instead of a DTO — IN REVIEW (Low; PR pending)
 - `AuthenticationController.java:60-66` returns
   `ResponseEntity<Authentication>` — a framework internal, not a versioned
   contract type — while every sibling auth endpoint returns a DTO. The
