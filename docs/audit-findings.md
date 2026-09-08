@@ -813,6 +813,12 @@ Cleared as non-findings: prod `npm audit` (clean); Spring Boot/TS majors
 - Fix: `npm audit fix` for the nested bump or pick up the karma upgrade
   when the Angular 22 major (#124) lands for a human decision.
   Tracked, not silently fixed.
+- Re-verified 2026-09-08 (Lens 16): `npm audit fix --dry-run` is a no-op
+  on the advisory — it only churns `package-lock.json` with 109
+  platform-specific optional entries (lightningcss/rollup/tailwind oxide
+  binaries) and never touches `qs`/`body-parser`. The only real fix is the
+  karma major when #124 lands; the "npm audit fix" path in the fix line
+  above is inaccurate and should be dropped on next edit.
 
 ### AL2. Workflow action versions drift across workflows; all use mutable tags — OPEN (Low)
 - `.github/workflows/guidelines-consistency.yml:51` and
@@ -823,6 +829,12 @@ Cleared as non-findings: prod `npm audit` (clean); Spring Boot/TS majors
   compromised tag moves every build with no reviewable diff.
 - Fix: align all workflows on one major line and pin to full commit SHAs
   (or adopt tag-immutable pinning). Tracked, not silently fixed.
+- Re-verified 2026-09-08 (Lens 16): the drift half is FIXED in PR #204 —
+  `backend_workflow.yml` now pins `checkout@v7`/`setup-java@v6`/
+  `setup-gradle@v6`/`upload-artifact@v7`, the same major line as the
+  frontend/guidelines workflows. Remaining half is unchanged: every `uses:`
+  reference in all five workflows is still a mutable tag, never a full
+  commit SHA.
 
 ### AL3. Gradle wrapper `9.1.0` → `9.7.1` minor buried behind the red Spring major — IN REVIEW (Low; PR #205)
 - Dependabot PR #118 bundles a `9.1.0` → `9.7.1` Gradle wrapper minor
