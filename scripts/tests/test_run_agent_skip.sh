@@ -6,6 +6,14 @@ set -euo pipefail
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_AGENT="$TEST_DIR/../run-agent.sh"
 
+# Hermetic CLI presence: the preflight drops entries whose binary is missing,
+# and GH runners Ship neither opencode nor cline — so tests provide fakes.
+# (check-only never executes them; existence is all that is probed.)
+FAKEBIN="$(mktemp -d)"
+for _b in opencode cline; do printf '#!/bin/sh\nexit 0\n' > "$FAKEBIN/$_b"; chmod +x "$FAKEBIN/$_b"; done
+export PATH="$FAKEBIN:$PATH"
+trap 'rm -rf "$FAKEBIN"' EXIT
+
 ASSERT_FAILS=0
 check_only() { # runs run-agent --check-only, failing LOUDLY (output visible)
     local out rc=0
@@ -67,6 +75,15 @@ out=$(check_only --skip opencode --skip deepseek --skip glm) || out=""
 first=$(tail -1 <<<"$out")
 assert_eq "opencode-muse" "$first" "total skip -> fallback to full list"
 assert_contains "$out" "ignoring skips" "empty-pool fallback warned"
+
+# --- no runnable CLI anywhere: loud abort (exit 2), not a silent spin ---
+emptyd=$(mktemp -d)
+for _t in bash dirname date cut grep tail mktemp jq sed; do ln -s "$(command -v "$_t")" "$emptyd/$_t" 2>/dev/null || true; done
+nb_out=$(mktemp)
+if PATH="$emptyd" "$emptyd/bash" "$RUN_AGENT" --check-only dummy >"$nb_out" 2>&1; then nb_rc=0; else nb_rc=$?; fi
+assert_eq "2" "$nb_rc" "all CLIs missing -> exit 2"
+assert_contains "$(cat "$nb_out")" "No runnable models" "all CLIs missing -> loud, not silent"
+rm -rf "$emptyd" "$nb_out"
 
 if [[ "$ASSERT_FAILS" -gt 0 ]]; then
     echo "$ASSERT_FAILS assertion(s) failed" >&2
