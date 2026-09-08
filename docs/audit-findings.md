@@ -1146,52 +1146,6 @@ with static messages); login with missing/blank credentials resolves to 401 via
 ### AU1. Bulk clearCart bypasses the Personalization cascade and orphans rows — INVALID (re-verified 2026-09-07 with an executable spec, PR #191)
 `CartItem.personalization` is `@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)` (`backend/product-service/src/main/java/com/portcelana/natiart/model/CartItem.java:27-28`). Original claim (PR #182 mechanical review): the Spring Data derived `deleteByUsername` bulk-deletes cart rows without honoring the cascade, orphaning Personalization rows. Disproven empirically (PR #191): a `@DataJpaTest` (`repository/CartItemCascadeSemanticsTest`) shows void derived deletes run load-then-remove — the cascade fires and the Personalization row and its option rows are deleted with the cart lines on BOTH delete paths. Only `@Modifying`/`@Modifying(clearAutomatically)` bulk deletes bypass the persistence context. The re-verification spec instead caught a real adjacent bug, fixed in PR #191: `deleteByUsernameAndProduct` declared with a `long` return threw `ClassCastException` inside the Spring Data proxy on every invocation, so the production path `CartManagerImpl.decreaseCartItemQuantity` (removing a line's last unit) 500ed. Fixed by declaring the method `void` and pinned by the same spec (red on unpatched master, green with the fix).
 
-### AV1. Base profile arms the credential-seeding `data.sql`; tutorial bcrypt hash on the seeded admin — IN REVIEW (Low; PR fix/secrets-config-hardening)
-- Directory base `application.properties` sets no `spring.sql.init.mode`
-  (default `embedded`), and H2 is a `runtimeOnly` dependency
-  (`backend/directory-service/build.gradle.kts:20`), so any unprofiled boot
-  resolves an embedded datasource and executes
-  `backend/directory-service/src/main/resources/data.sql` — which seeds
-  `admin@gmail.com` with the ADMIN role using bcrypt hash
-  `$2a$10$xXUJ6rhpG39.C7mXYhdXB.oq2DLVgbAIvcp2chu3uQlGj20i9E.Iq`
-  (`data.sql:19-33`), a hash that appears verbatim in public Spring tutorials
-  (well-known plaintext). Empirically verified 2026-09-07 (Lens 3): the
-  unprofiled boot currently CRASHES (`ScriptStatementFailedException`, table
-  ROLE not found) because script init runs before Hibernate DDL without
-  `defer-datasource-initialization` — so today it is a startup trap, not a
-  live backdoor; but the safety depends on the production profile's
-  `spring.sql.init.mode=never` being loaded, and the seed credential is a
-  public constant. Product-service base properties have the same armed
-  `data.sql` (non-credential seed data).
-- Fix: set `spring.sql.init.mode=never` in both base `application.properties`
-  and `spring.sql.init.mode=always` in `application-local-h2.properties`
-  (opt-in seeding), and replace the tutorial hash with a locally generated
-  one. Severity Low: local-only blast radius today.
-
-### AV2. JWT-expiration comment drift: "2 minutes" documented, 24 hours configured — IN REVIEW (Low; PR fix/secrets-config-hardening)
-- `backend/directory-service/src/main/resources/application.properties:7-11`:
-  the comment block says "Access Token expiration time in milliseconds (here,
-  2 minutes)" while `saas.security.jwt.expiration=86400000` (24 hours;
-  refresh is 7 days and matches its comment). A reviewer auditing token
-  lifetime reads the comment and signs off on a 2-minute access token that is
-  actually 24h. Found by Lens 3 hunt, 2026-09-07.
-- Fix: correct the comment (and record the actual lifetime choice); severity
-  Low, config-doc drift only.
-
-### AV3. `UserAuthenticationProvider` uses field `@Value` injection and a `@PostConstruct` blank-secret guard — IN REVIEW (Low; PR fix/secrets-config-hardening)
-- `backend/directory-service/src/main/java/com/saas/directory/configuration/UserAuthenticationProvider.java:47-56`:
-  three config fields (`secretKey`, both expirations) are field-injected with
-  `@Value`, and the blank-JWT-secret fail-fast runs in `@PostConstruct init()`
-  instead of the constructor. `agents/java-spring.md` mandates setter
-  injection with `@Value` for config values ("field injection is not used in
-  production code") and the sibling precedents (`ShippingService`,
-  `AsaasPaymentService`, `AsaasUserManager`) fail fast in the constructor.
-  Field injection also hides the blank-secret guard from plain unit
-  construction. Found by Lens 3 hunt, 2026-09-07.
-- Fix: move the three `@Value`s to constructor parameters, make the fields
-  `final`, derive/validate in the constructor; keep the `@PostConstruct`-free
-   fail-fast semantics. Tests: blank secret → constructor throws.
-
 ## AW. Frontend auth flow re-hunt (Lens 9, 2026-09-08)
 
 Hunt method: re-read the auth flow on current master
@@ -1311,38 +1265,3 @@ stay capped with destroy teardown. Two runner-ups below are new.
 - Fix: track the handle and clear it in `ngOnDestroy` (same pattern as
   `pendingAlertsTimer`), or set the flag synchronously if change detection
   allows. Spec: destroy within the tick → no post-destroy write.
-
-## AZ. Secrets and configuration re-hunt (Lens 3, 2026-09-08)
-
-Hunt method: grepped both services' `application*.properties` for datasource
-credential defaults, token/secret-bearing log and console statements, bare
-`@Value` sites and `:-` defaults, `server.error.include*` exposure, git-tracked
-secret-ish files, non-ASCII in properties (ASCII rule), frontend
-`environment*.ts` drift. Fixed in flight this cycle: AV1 (base profiles armed
-`data.sql` + tutorial bcrypt hash), AV2 (JWT expiration comment drift), AV3
-(`UserAuthenticationProvider` field `@Value` + `@PostConstruct` guard).
-Re-verified as INVALID on current master: Y1 (baked CORS origins — both
-`WebConfig` constructors now take `@Value("${nati.cors.allowed-origins}")`,
-externalized to properties with `CORS_ALLOWED_ORIGINS` env override).
-Cleared as non-findings: datasource credentials in prod/dev profiles are
-env-var-only with no defaults (boot fails fast); `admin/admin` H2 creds live
-only in `application-local-h2.properties`; Melhor Envio blank-token default
-is rejected by `ShippingService` at construction; zero Authorization-header
-or token-bearing log statements; no `server.error.include` overrides (Boot 3
-defaults never leak messages on 500); properties files are pure ASCII.
-
-### AZ1. `ControllerAdvice` echoes raw `IllegalArgumentException` messages into 400 bodies — OPEN (Low)
-- `backend/directory-service/src/main/java/com/saas/directory/configuration/ControllerAdvice.java:46-49`
-  and
-  `backend/product-service/src/main/java/com/portcelana/natiart/configuration/ControllerAdvice.java:36-38`
-  return `e.getMessage()` verbatim for `IllegalArgumentException`. Those
-  messages are server-side artifacts, not client input: e.g. a
-  `NumberFormatException` reaches a client as `For input string: "abc"` and
-  `Enum.valueOf` failures leak the enum's constant list. Deliberate messages
-  (guard failures at `:62-64`/`:50-52`) are fine; the catch-all IAE mapping is
-  the leak. Found by Lens 3 hunt, 2026-09-08.
-- Fix: return a static "Invalid request" body for the catch-all IAE handler
-  (keep the deliberate guard-failure path); log the raw message server-side at
-  DEBUG with the correlation context. Tests: an IAE with an
-  internals-bearing message maps to a static body.
-
