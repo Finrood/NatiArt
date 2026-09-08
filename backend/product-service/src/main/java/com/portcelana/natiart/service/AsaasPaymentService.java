@@ -27,7 +27,9 @@ import com.portcelana.natiart.dto.payment.PaymentStatusResponse;
 import com.portcelana.natiart.dto.payment.asaas.*;
 import com.portcelana.natiart.dto.payment.helper.PaymentMethod;
 import com.portcelana.natiart.dto.payment.helper.PaymentStatus;
+import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.Payment;
+import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.PaymentRepository;
 
 @Service
@@ -37,6 +39,7 @@ public class AsaasPaymentService implements PaymentService {
     private final String asaasPaymentUrl;
     private final RestTemplate restTemplate;
     private final PaymentRepository paymentRepository;
+    private final OrderRepository orderRepository;
 
     private final String asaasApiKey;
 
@@ -45,7 +48,8 @@ public class AsaasPaymentService implements PaymentService {
             @Value("${natiart.payment.asaas.apikey}") String asaasApiKey,
             @Value("${natiart.payment.asaas.payments-url:https://sandbox.asaas.com/api/v3/payments}")
                     String asaasPaymentUrl,
-            PaymentRepository paymentRepository) {
+            PaymentRepository paymentRepository,
+            OrderRepository orderRepository) {
         if (asaasApiKey == null || asaasApiKey.isBlank()) {
             throw new IllegalStateException(
                     "natiart.payment.asaas.apikey is blank: set the NATIART_PAYMENT_ASAAS_APIKEY environment variable");
@@ -57,17 +61,20 @@ public class AsaasPaymentService implements PaymentService {
         factory.setReadTimeout(Duration.ofSeconds(15));
         this.restTemplate = new RestTemplate(factory);
         this.paymentRepository = paymentRepository;
+        this.orderRepository = orderRepository;
     }
 
     AsaasPaymentService(
             String asaasApiKey,
             String asaasPaymentUrl,
             RestTemplate restTemplate,
-            PaymentRepository paymentRepository) {
+            PaymentRepository paymentRepository,
+            OrderRepository orderRepository) {
         this.asaasApiKey = asaasApiKey;
         this.asaasPaymentUrl = asaasPaymentUrl;
         this.restTemplate = restTemplate;
         this.paymentRepository = paymentRepository;
+        this.orderRepository = orderRepository;
     }
 
     public PaymentCreationResponse createPayment(
@@ -81,6 +88,18 @@ public class AsaasPaymentService implements PaymentService {
         if (value == null || value.signum() <= 0 || value.scale() > 2) {
             throw new IllegalArgumentException(
                     "Payment value must be a positive amount with at most two fraction digits");
+        }
+        final String orderId = paymentCreationRequest.getOrderId();
+        if (orderId != null && !orderId.isBlank()) {
+            // Client-priced money is never trusted: an order-linked charge must
+            // match the server-computed order total exactly, or no upstream
+            // charge is created at all.
+            final CustomerOrder order = getOrderOrDie(orderId);
+            if (order.getTotalAmount() == null || order.getTotalAmount().compareTo(value) != 0) {
+                throw new IllegalArgumentException(String.format(
+                        "Payment value [%s] does not match the total [%s] of order [%s]",
+                        value, order.getTotalAmount(), orderId));
+            }
         }
         final HttpHeaders headers = getRequestHeaders();
 
@@ -99,7 +118,7 @@ public class AsaasPaymentService implements PaymentService {
                     Optional.ofNullable(response.getBody());
             return asaasPaymentCreationResponse
                     .map(responseBody -> {
-                        paymentRepository.save(new Payment(responseBody.getId(), requesterExternalId));
+                        paymentRepository.save(new Payment(responseBody.getId(), requesterExternalId, orderId));
                         return new PaymentCreationResponse(
                                 responseBody.getId(),
                                 responseBody.getDateCreated().atStartOfDay(),
@@ -201,6 +220,13 @@ public class AsaasPaymentService implements PaymentService {
                         new ResourceNotFoundException(String.format("Payment with id [%s] not found", paymentId)));
         requireOwnedPayment(payment.getOwnerExternalId(), requesterExternalId);
         return payment;
+    }
+
+    private CustomerOrder getOrderOrDie(String orderId) {
+        return orderRepository
+                .findById(orderId)
+                .orElseThrow(
+                        () -> new ResourceNotFoundException(String.format("Order with id [%s] not found", orderId)));
     }
 
     void requireOwnedPayment(String paymentOwnerCustomerId, String requesterExternalId) {
