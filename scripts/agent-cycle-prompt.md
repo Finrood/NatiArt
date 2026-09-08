@@ -23,7 +23,8 @@ Phase 0 — sync and pickup (~2 min):
    PR numbers). Flip your own batch to `IN REVIEW` inside the fix PR itself —
    never spawn one flip PR per item. Pending ones stay open; failing ones get
    one `gh run rerun --failed` for suspected flakes, then REPAIR in place (see
-   REPAIR MODE) — never stop the cycle for red checks. You may also merge
+   REPAIR MODE) — never stop the cycle for red checks. Conflicting ones go
+   straight to REPAIR MODE (merge `origin/master`, never rebase). You may also merge
    green, safe dependabot PRs (Lens-16 routine: check semver scope, require
    green CI, never push to their branches, skip majors/red ones, report
    scope-blocked ones to the human).
@@ -68,7 +69,8 @@ Phase 3 — review, then merge everything green:
    zero reported checks means CI has not registered yet — wait, never treat
    it as green. Workflows are path-scoped (table in the runbook): merge ONLY
    when every reported check is green AND every workflow relevant to the PR's
-   changed paths has reported AND the latest reviewer comment opens with
+   changed paths has reported AND the PR is mergeable (not `CONFLICTING` —
+   resolve first) AND the latest reviewer comment opens with
    `VERDICT: APPROVE` (verdicts travel by comment body — GitHub blocks
    self-approvals and all loop agents share one identity; re-check with
    `gh pr view --json reviews` — a newer `VERDICT: REQUEST_CHANGES` vetoes). Docs-only PRs (`docs/**`) report Guidelines —
@@ -89,11 +91,17 @@ Phase 3 — review, then merge everything green:
 
 ## REPAIR MODE (overrides Phase 2 branching when invocation says REPAIR MODE ON)
 
-Failing-PR list in the invocation is authoritative. Fix in place, zero new branches:
+Build-failing / conflicting lists in the invocation are authoritative. Fix in
+place, zero new branches, in this order per PR — conflicts, then build, then
+verdict findings (the reviewer already wrote machine-readable `Build:`/`Merge:`
+lines; read them via `gh pr view <n> --json comments,reviews` and treat them
+as the repair checklist):
 
-- Per PR: `gh pr view`, `gh pr checks`, `gh run view --log-failed`; `git fetch origin <branch> && git checkout <branch>`; fix checks (`./gradlew spotlessApply`, fix tests/lint); `!check` green; `git push origin <branch>`. Never rename, never new branch, never merge red.
-- Loop-machinery touches: fix checks but leave OPEN (self-mod ban still bans merge).
-- Dependabot branches: rerun only (`gh run rerun --failed`), never push; report if still red.
+- Conflicts first: `git fetch origin <branch> origin/master && git checkout <branch>`; `git merge origin/master` (never rebase, never force-push — history must stay mergeable); resolve keeping branch intent, run `!check`, push same branch. If `mergeable` was `UNKNOWN`, re-check after fetch — Github computes lazily.
+- Build next: `gh pr checks`, `gh run view --log-failed`; fix checks (`./gradlew spotlessApply`, fix tests/lint); `!check` green; push same branch. Never rename, never new branch, never merge red.
+- Verdict findings last: address every blocking `file:line` item from the latest `VERDICT: REQUEST_CHANGES` comment, push, re-run one reviewer per PR (Phase 3) — the re-reviewer marks `(re-reviewed <sha>)`.
+- Loop-machinery touches: fix checks + conflicts but leave OPEN (self-mod ban still bans merge).
+- Dependabot branches: rerun only (`gh run rerun --failed`), never push; report if still red (human owns the merge).
 - Hunt (Phase 1) still runs 5 min; append findings via commit on the repair branch, not a new branch.
 - Repair pushes satisfy the DELIVERY CONTRACT.
 

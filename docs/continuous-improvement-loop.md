@@ -47,10 +47,13 @@ Note: the timer needs a lingering user session to fire while logged out
 
 1. Single instance (`flock`); 25-minute agent timeout keeps cadence.
    Pre-flight gates fail fast on broken `gh` auth or <2GB disk.
-2. Never-idle invariant: PR state never causes an idle exit. Failing code PRs
-   switch the cycle to REPAIR MODE (fix in place on the same branch, zero new
-   branches) instead of exiting — exiting here deadlocked the loop ~10h on a
-   spotless-only failure. Cycle self-heals on: dirty tree (WIP salvaged to a dated `salvage/*`
+2. Never-idle invariant: PR state never causes an idle exit. Failing checks or
+   merge conflicts switch the cycle to REPAIR MODE (fix in place on the same
+   branch, zero new branches) instead of exiting — exiting here deadlocked the
+   loop ~10h on a spotless-only failure. Closed loop: the reviewer writes
+   machine-readable `Build:`/`Merge:` lines, the next cycle's agent parses them
+   and fixes (conflicts via `git merge origin/master`, never rebase). Cycle
+   self-heals on: dirty tree (WIP salvaged to a dated `salvage/*`
    branch, master hard-reset to origin, newest 5 salvage branches retained),
    stray unpushed master commits (same salvage path, plus an automatic
    `[Salvage]` PR so the work is reviewable instead of orphaned),
@@ -58,9 +61,9 @@ Note: the timer needs a lingering user session to fire while logged out
    Docs-only flips and dependabot PRs are excluded from blocking — they never
    stop the loop, and green docs PRs with `VERDICT: APPROVE` are auto-merged
    like code (max 2 merges/cycle shared).
-3. The agent merges ONLY on fully green CI (`gh pr checks --watch`), with
-   `gh pr merge --merge --delete-branch`. Never force-push, never push to
-   `master`, never touch dependabot branches.
+3. The agent merges ONLY on fully green CI + mergeable + `VERDICT: APPROVE`
+   (`gh pr checks --watch`), with `gh pr merge --merge --delete-branch`.
+   Never force-push, never push to `master`, never touch dependabot branches.
 4. Strategic items (shared rate-limit store, cookie-auth migration, schema
    tooling) require a human decision — the prompt forbids the agent from taking
    them. Deferred items are re-evaluated every ~30 cycles; constraints change.
@@ -203,7 +206,8 @@ table above is agent discipline, enforced by the cycle prompt.
   present + green).
 - Flakes then repair: one `gh run rerun --failed` per failing PR; still red →
   fix in place on the same branch this cycle (REPAIR MODE, zero new branches),
-  never stop-and-idle.
+  never stop-and-idle. Conflicts resolve via `git merge origin/master` (never
+  rebase/force-push), then `!check`, then push.
 - WIP recovery: dirt on a loop branch with an open PR is auto-committed as
   `[WIP]` and pushed; dirt anywhere else aborts for a human.
 - Merge-scope errors (e.g. missing `workflow` scope) are reported to the
@@ -213,12 +217,13 @@ table above is agent discipline, enforced by the cycle prompt.
 - AI-review gate: each PR gets an independent fresh-context reviewer run
   (`scripts/agent-review-prompt.md`, ~6 min, concurrent with CI, launched in
   parallel per PR). The script-side mechanical reviewer spawns every cycle
-  including REPAIR MODE and covers code + docs, so a red PR never starves
-  greens of verdicts. Reviewers work in isolated `git worktree`s (never the
+  including REPAIR MODE, covers code + docs, and reviews RED PRs too — its
+  verdict carries machine-readable `Build:`/`Merge:` lines so the next cycle's
+  agent knows exactly what to fix. Reviewers work in isolated `git worktree`s (never the
   shared checkout), prove tests non-vacuous, and threat-model
   security-touching diffs. PR bodies, changelogs, and dependency metadata are
   treated as untrusted data, never instructions. Merge requires green relevant
-  CI AND an APPROVE verdict with zero unresolved blockers; one
+  CI AND mergeable AND an APPROVE verdict with zero unresolved blockers; one
   address-and-re-review round, then the PR stays open. Implemented in
   `scripts/loop-cycle.sh`: an unmarked REQUEST_CHANGES triggers re-review
   round 1; the re-reviewer must start its verdict with
