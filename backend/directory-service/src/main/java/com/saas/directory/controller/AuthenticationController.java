@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.saas.directory.configuration.UserAuthenticationProvider;
 import com.saas.directory.dto.CredentialsDto;
+import com.saas.directory.dto.TokenValidationDto;
 import com.saas.directory.dto.UserAuthDto;
 import com.saas.directory.helper.TargetUser;
 import com.saas.directory.model.TokenType;
@@ -56,10 +57,10 @@ public class AuthenticationController {
     }
 
     @PostMapping("/validate-token")
-    public ResponseEntity<Authentication> validateToken(HttpServletRequest request) throws IllegalAccessException {
+    public ResponseEntity<TokenValidationDto> validateToken(HttpServletRequest request) throws IllegalAccessException {
         final String token = userAuthenticationProvider.extractToken(request);
         final Authentication authentication =
                 userAuthenticationProvider.authenticateWithToken(token, TokenType.AUTH_ACCESS);
-        return ResponseEntity.ok(authentication);
+        return ResponseEntity.ok(TokenValidationDto.from(authentication));
     }
 }

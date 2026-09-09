@@ -21,6 +21,15 @@ import com.saas.directory.service.AsaasApiException;
 public class ControllerAdvice {
     private static final Logger logger = LoggerFactory.getLogger(ControllerAdvice.class);
 
+    /**
+     * Static body for every invalid-token denial, shared by the filter
+     * ({@link JwtAuthFilter}) and this advice so one failure has one contract:
+     * 401 with this body. Authenticated-but-forbidden denials
+     * ({@code AccessDeniedException}) stay 403 "Access denied" — a different
+     * failure must not share a shape with an invalid credential.
+     */
+    public static final String INVALID_TOKEN_MESSAGE = "Invalid or expired token";
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Object> handleAccessDeniedException(AccessDeniedException e) {
         logger.debug("Access denied: ", e);
@@ -113,12 +122,19 @@ public class ControllerAdvice {
         return new ResponseEntity<>("Resource conflict", HttpStatus.CONFLICT);
     }
 
+    /**
+     * Invalid-token denials reaching a handler (e.g. {@code POST /refresh-token}
+     * with an expired or bogus refresh token) answer with the same contract as
+     * the filter-level denial ({@link JwtAuthFilter}): 401 + the static
+     * {@link #INVALID_TOKEN_MESSAGE} body — not 403, which is reserved for
+     * authenticated-but-forbidden callers.
+     */
     @ExceptionHandler(IllegalAccessException.class)
     public ResponseEntity<Object> illegalAccessException(IllegalAccessException e) {
         // Security: auth-decision messages historically echoed the presented JWT — return a static
         // body so bearer credentials never leak into responses.
         logger.debug("Access denied: ", e);
-        return new ResponseEntity<>("Invalid or expired token", HttpStatus.FORBIDDEN);
+        return new ResponseEntity<>(INVALID_TOKEN_MESSAGE, HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(Exception.class)

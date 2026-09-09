@@ -64,13 +64,13 @@ class ControllerAdviceTest {
     }
 
     @Test
-    void illegalAccessException_returnsStaticBodyWithoutLeakingTheToken() {
+    void illegalAccessException_returns401WithStaticBodyWithoutLeakingTheToken() {
         final String leaked = "eyJhbGciOiJIUzI1NiJ9.payload.signature";
         final ResponseEntity<Object> result = advice.illegalAccessException(
                 new IllegalAccessException("Authentication Token [" + leaked + "] is not valid"));
 
-        assertEquals(HttpStatus.FORBIDDEN, result.getStatusCode());
-        assertEquals("Invalid or expired token", result.getBody());
+        assertEquals(HttpStatus.UNAUTHORIZED, result.getStatusCode());
+        assertEquals(ControllerAdvice.INVALID_TOKEN_MESSAGE, result.getBody());
     }
 
     @Test
