@@ -1197,3 +1197,14 @@ camelCase, `PaymentController.java:38`) still OPEN on both sides
 - Fix: own `chore/` branch bumping the wrapper to `9.7.1` and the versions
   plugin to `0.61.0` (including the `io.github.ben-manes.versions` plugin-ID
   migration) alone. Merged 2026-09-08 (PR #205: chore/gradle-wrapper-versions-bump).
+
+
+### X4. `updateOrderStatus` accepts any transition, fulfillment path unwired — FIXED (PR #213, merged 2026-09-09)
+- `service/OrderManagerImpl.java:100-104` moves any status to any status
+  (`DELIVERED` → `PENDING`, `CANCELLED` → `PAID`) with no transition guard,
+  and neither it nor `getAllOrders`/`getById` has a controller endpoint
+  (`controller/OrderController.java:19-23` exposes only `POST /orders/create`)
+  — admin fulfillment is unreachable, so the missing guard is latent.
+- Fixed by PR #213: forward-only transition table in `updateOrderStatus` (terminal
+  states accept nothing, stages never rewind or skip); the admin endpoint stays
+  unwired. Residual check-then-update race tracked as BA2.

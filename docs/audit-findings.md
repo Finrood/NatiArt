@@ -380,15 +380,6 @@ rollback contract is covered (`OrderManagerImplTest:143`), cart increments are
 atomic (`CartManagerImpl:44`), and order item prices are server-computed
 (`OrderManagerImpl.java:84`) — not filed.
 
-### X4. `updateOrderStatus` accepts any transition, fulfillment path unwired — IN REVIEW (Low; PR fix/payment-order-lifecycle)
-- `service/OrderManagerImpl.java:100-104` moves any status to any status
-  (`DELIVERED` → `PENDING`, `CANCELLED` → `PAID`) with no transition guard,
-  and neither it nor `getAllOrders`/`getById` has a controller endpoint
-  (`controller/OrderController.java:19-23` exposes only `POST /orders/create`)
-  — admin fulfillment is unreachable, so the missing guard is latent.
-- Fix in flight: forward-only transition table in `updateOrderStatus` (terminal
-  states accept nothing, stages never rewind or skip); the admin endpoint stays
-  unwired. Residual check-then-update race tracked as BA2.
 
 ## V. Injection and validation, catalog follow-ups (Lens 1 hunt, 2026-09-05)
 
@@ -1553,6 +1544,57 @@ are the runner-ups.
   cleaned up. Tracked, not silently fixed.
   Found by Lens 7 hunt, 2026-09-09.
 
+## BF. Loading and error UX re-hunt (Lens 12, 2026-09-09)
+
+Hunt method: re-read the PIX payment-confirmation flow
+(`pix-payment-confirmation.component.ts`, `.html`), cart-line mutation
+(`cart.service.ts`, `cart-modal.component.ts`), add-to-cart
+(`add-to-cart-button.component.ts`, `personalization-modal.component.ts`)
+and re-verified the two standing Lens-12 items from the AH section on
+current master: AH2 still OPEN (`left-menu.component.ts:28-33` still
+`console.error`-only on `getCategories` failure), AH3 still OPEN
+(`login.component.ts:98-118` `doLoginUser` still issues
+`authenticationService.login` with no in-flight guard or button disable).
+Cleared as non-findings: `cart-modal` image fetch (`fetchImage`
+`cart-modal.component.ts:106-129` falls back to a placeholder on error and
+guards late resolutions); `cart.service.ts` add/update/remove are
+local-state mutations that only `console.warn` on impossible paths (stock
+clamp is user-visible via quantity re-render); `personalization-modal`
+submit-guard `console.warn` is an unreachable-UI branch. BF1-BF2 below are
+new.
+
+### BF1. PIX confirmation falls into an eternal spinner after a transient QR-load failure — OPEN (Low)
+- `frontend/natiart-app/src/app/product/components/customer/checkout/pix-payment-confirmation/pix-payment-confirmation.component.ts:57-62`
+  (`loadQrCode`) sets `paymentStatus = 'ERROR'` on a QR load failure but
+  leaves `qrCodeData` null and does NOT stop the status polling started in
+  `ngOnInit` (`:49`, `startPolling` `:72-122`). The poll's `next` handler
+  (`:92-105`) then overwrites `paymentStatus` with each successful status
+  response (back to `PENDING`/`PAID`), erasing the ERROR. In the template
+  (`pix-payment-confirmation.component.html:63-68`), with `qrCodeData`
+  still null the `@if (qrCodeData)` QR branch and the
+  `@else if (paymentStatus === 'ERROR')` error branch both miss, so the
+  `@else` "Loading payment details…" spinner (`:66-68`) renders forever —
+  the component never re-fetches the QR, and the 60-attempt poll merely
+  keeps status PENDING until the tab is closed. Degraded UX only (no data
+  loss; user can navigate back), but exactly the Lens-12 "spinner stuck on
+  failure" class on a payment page. Found by Lens 12 hunt, 2026-09-09.
+- Fix: in `loadQrCode`'s error handler call `stopPolling()` so ERROR is
+  terminal, or re-issue the QR fetch when polling reports a live status
+  while `qrCodeData` is missing. Spec: QR failure + successful status poll
+  never leaves the page on the spinner (either stays ERROR or re-fetches
+  the QR).
+
+### BF2. PIX payload "copy" button is silent on clipboard failure — OPEN (Low)
+- `pix-payment-confirmation.component.ts:130-134` (`copyToClipboard`) uses
+  the deprecated `document.execCommand('copy')` and ignores its boolean
+  result. Where the call fails or is blocked (older WebKit/Safari paths,
+  permission-restricted contexts), the user gets zero feedback and believes
+  the ~50-char PIX copy-paste payload was copied — checkout-adjacent
+  failure with no retry affordance. Found by Lens 12 hunt, 2026-09-09.
+- Fix: `navigator.clipboard.writeText` with a fallback and a visible
+  "Copied"/"Copy failed" state on the button. Spec: failed copy shows a
+  failure state; successful copy shows "Copied".
+
 ## BE. Loading and error UX re-hunt (Lens 12, 2026-09-09)
 
 Hunt method: re-read the checkout/login/signup/admin loading and error paths
@@ -1604,7 +1646,6 @@ BE1-BE2 below are the runner-ups.
   issues one request.
   Found by Lens 12 hunt, 2026-09-09.
 
-
 ## BK. API and contract consistency (Lens 15 hunt, 2026-09-09)
 
 Hunt method: enumerated every `@RequestMapping`-family annotation across both
@@ -1631,3 +1672,35 @@ with the documented `backend/AGENTS.md` convention.
 - Fix: type as `HttpErrorResponse` (or a narrow local error shape) and read
   `error.error` defensively. Specs: a non-JSON error body renders the generic
   message instead of crashing. Found by Lens 15 hunt, 2026-09-09.
+
+## BH. Observability and log hygiene (Lens 14 hunt, 2026-09-09)
+
+Hunt method: swept both services for `System.out`/`printStackTrace` (zero
+hits) and all `LOGGER.*`/`console.*` call sites, then focused on the
+payment/order money path and the hot read paths.
+
+### BH1. Payment and order flows are completely unlogged — OPEN (Medium)
+- `backend/product-service/src/main/java/com/portcelana/natiart/controller/PaymentController.java`
+  and `controller/OrderController.java` contain zero `LOGGER` statements
+  (grep count 0), and `service/OrderManagerImpl.java` none either — payment
+  creation, PIX QR issuance, and order status transitions leave no trace,
+  so a failed checkout cannot be reconstructed or correlated from logs
+  (`service/AsaasPaymentService.java` logs only warn-level API errors at
+  `:139`, `:292`). Every other controller (Cart, Product, Category) logs.
+- Fix: INFO log the payment/order lifecycle entry points with owner/payment
+  identifiers (never token or full request body); DEBUG for internals.
+  Spec: creating a payment produces one INFO line containing the Asaas
+  payment id; order transition logs old→new status.
+  Found by Lens 14 hunt, 2026-09-09.
+
+### BH2. Hot read paths log context-free INFO lines and echo user-controlled path — OPEN (Low)
+- `controller/ProductController.java:63` (`"Getting new products"`) and
+  `:74` (`"Getting featured products"`) log at INFO with zero context or
+  pagination parameters on every storefront page view; `:125` logs the
+  user-controlled image `path` at INFO (`"Getting image with path [{}]"`),
+  which is both noise and unvalidated-input echo into logs;
+  `controller/CartController.java:27,35,43,50` logs every cart read/clear
+  at INFO. Log volume with no correlation value.
+- Fix: drop or move hot-path read logging to DEBUG with parameters
+  (page/size), and stop echoing the raw image path at INFO.
+  Found by Lens 14 hunt, 2026-09-09.
