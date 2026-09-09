@@ -1605,7 +1605,7 @@ BE1-BE2 below are the runner-ups.
   Found by Lens 12 hunt, 2026-09-09.
 
 
-## BF. API and contract consistency (Lens 15 hunt, 2026-09-09)
+## BK. API and contract consistency (Lens 15 hunt, 2026-09-09)
 
 Hunt method: enumerated every `@RequestMapping`-family annotation across both
 services' controllers checking kebab-case/verb-sub-path drift and duplicate
@@ -1620,7 +1620,7 @@ product-service, so bean-validation errors cannot occur); verb sub-paths
 (`/orders/create`, `/categories/create`, `/cart/item/{id}/add`) consistent
 with the documented `backend/AGENTS.md` convention.
 
-### BF1. Untyped `error: any` callbacks hide HTTP error contract drift — OPEN (Low)
+### BK1. Untyped `error: any` callbacks hide HTTP error contract drift — OPEN (Low)
 - Five storefront error handlers type the error `any` instead of Angular's
   `HttpErrorResponse`, so a contract break (proxy HTML error page, string
   body, changed error envelope) compiles and fails at runtime:
