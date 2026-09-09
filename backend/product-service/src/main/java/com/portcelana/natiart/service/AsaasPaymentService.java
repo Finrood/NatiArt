@@ -100,6 +100,16 @@ public class AsaasPaymentService implements PaymentService {
                         "Payment value [%s] does not match the total [%s] of order [%s]",
                         value, order.getTotalAmount(), orderId));
             }
+            // Idempotency before egress: a retried POST for the same order
+            // (timeout then storefront "try again") replays the stored charge
+            // instead of creating a second upstream charge. The lookup is
+            // scoped to the requester so one customer can never replay
+            // another's ledger row.
+            final Optional<Payment> existing =
+                    paymentRepository.findByOrderIdAndOwnerExternalId(orderId, requesterExternalId);
+            if (existing.isPresent()) {
+                return toCreationResponse(fetchPaymentOrDie(existing.get().getId()));
+            }
         }
         final HttpHeaders headers = getRequestHeaders();
 
@@ -118,16 +128,22 @@ public class AsaasPaymentService implements PaymentService {
                     Optional.ofNullable(response.getBody());
             return asaasPaymentCreationResponse
                     .map(responseBody -> {
-                        paymentRepository.save(new Payment(responseBody.getId(), requesterExternalId, orderId));
-                        return new PaymentCreationResponse(
-                                responseBody.getId(),
-                                responseBody.getDateCreated().atStartOfDay(),
-                                responseBody.getCustomer(),
-                                parsePaymentMethod(responseBody.getBillingType()),
-                                parsePaymentStatus(responseBody.getStatus()),
-                                responseBody.getDueDate().atStartOfDay(),
-                                responseBody.getInvoiceUrl(),
-                                responseBody.getInvoiceNumber());
+                        // Charge-then-save is non-atomic by necessity (the
+                        // upstream id only exists after the charge): if the
+                        // local save fails, the orphan upstream charge is
+                        // logged with its id and owner so it can be reconciled
+                        // instead of vanishing silently.
+                        try {
+                            paymentRepository.save(new Payment(responseBody.getId(), requesterExternalId, orderId));
+                        } catch (RuntimeException e) {
+                            LOGGER.warn(
+                                    "Upstream charge [{}] for owner [{}] (order [{}]) has no local ledger row: save failed",
+                                    responseBody.getId(),
+                                    requesterExternalId,
+                                    orderId);
+                            throw e;
+                        }
+                        return toCreationResponse(responseBody);
                     })
                     .orElseThrow(() ->
                             new IllegalArgumentException("Received a null response body from " + asaasPaymentUrl));
@@ -136,6 +152,23 @@ public class AsaasPaymentService implements PaymentService {
         } else {
             throw new IllegalArgumentException("Bad request");
         }
+    }
+
+    /**
+     * Builds the versioned creation response from an upstream payment body.
+     * Shared by the fresh-charge path and the idempotent-replay path so a
+     * retried POST returns the same shape as the original charge.
+     */
+    private static PaymentCreationResponse toCreationResponse(AsaasPaymentCreationResponse responseBody) {
+        return new PaymentCreationResponse(
+                responseBody.getId(),
+                responseBody.getDateCreated().atStartOfDay(),
+                responseBody.getCustomer(),
+                parsePaymentMethod(responseBody.getBillingType()),
+                parsePaymentStatus(responseBody.getStatus()),
+                responseBody.getDueDate().atStartOfDay(),
+                responseBody.getInvoiceUrl(),
+                responseBody.getInvoiceNumber());
     }
 
     public PaymentPixQrCodeResponse getPixQrCode(String paymentId, String requesterExternalId) {
