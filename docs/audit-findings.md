@@ -1524,3 +1524,35 @@ are the runner-ups.
   read endpoint wires these methods. Tests: oversized set → 413, temp file
   cleaned up. Tracked, not silently fixed.
   Found by Lens 7 hunt, 2026-09-09.
+
+## BF. Frontend auth flow re-hunt (Lens 9, 2026-09-09)
+
+Hunt method: re-read the token-lifecycle paths on current master
+(`authentication.service.ts` `fetchCurrentUser`/`handleError`,
+`jwt-interceptor.service.ts` refresh/retry, `auth.guard.ts`,
+`admin.guard.ts`, `token.service.ts`) against the Lens 9 checklist
+(guard bypasses, token lifecycle edges, cold-observable no-ops, premature
+redirects, login-state races). Re-verified the AW/AX batch by code read:
+L3, AR1, AH3, C11, AX1, AX2 all still OPEN (no code change on the branch —
+docs-only). Cleared as non-findings: retry path keeps single-retry
+semantics (`RETRY_HEADER`, `jwt-interceptor.service.ts:66,117-123,127`);
+stale-token retry clones carry the fresh token (`:142-144`); no-refresh-token
+401 navigates without minting (`:135-138`); `login()`'s `handleError` call
+passes 'Login failed', correctly skipping the second reset (`:260` includes
+check). One runner-up below is new.
+
+### BF1. `fetchCurrentUser` 401 triggers two sequential auth-resets — OPEN (Low)
+- `frontend/natiart-app/src/app/directory/service/authentication.service.ts:128-133`:
+  the `catchError` calls `resetAuthStateAndRedirect()` on 401 (`:130`), then
+  returns `this.handleError(error, 'Failed to fetch user')` (`:132`) — and
+  `handleError` (`:258-263`) calls `resetAuthStateAndRedirect()` AGAIN for
+  every 401 whose message lacks 'login failed' (`:260-262`; 'Failed to fetch
+  user' lacks it). A single 401 therefore runs `clearTokens()` plus
+  `router.navigate(['/login'])` twice in sequence. Harmless today (idempotent
+  clear; the pathname guard at `:253` skips the second navigate when already
+  on `/login`), but any future non-idempotent step added to the reset path
+  would run twice per failure. Found by Lens 9 hunt, 2026-09-09.
+- Fix: single reset per 401 — return `throwError` directly after the `:130`
+  reset instead of routing through `handleError`'s reset branch. Tests: 401
+  in `fetchCurrentUser` → `router.navigate` called exactly once, tokens
+  cleared once. Tracked, not silently fixed.
