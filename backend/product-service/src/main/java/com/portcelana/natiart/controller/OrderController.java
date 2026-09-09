@@ -1,12 +1,13 @@
 package com.portcelana.natiart.controller;
 
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.portcelana.natiart.dto.AuthenticationResponseDto;
 import com.portcelana.natiart.dto.OrderDto;
-import com.portcelana.natiart.helper.TargetUser;
 import com.portcelana.natiart.service.OrderManager;
 
 @RestController
@@ -19,7 +20,8 @@ public class OrderController {
 
     @PostMapping("/orders/create")
     @PreAuthorize("isFullyAuthenticated()")
-    public OrderDto createOrder(@RequestBody OrderDto orderDto, @TargetUser String username) {
-        return OrderDto.from(orderManager.createOrder(orderDto, username));
+    public OrderDto createOrder(
+            @RequestBody OrderDto orderDto, @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
+        return OrderDto.from(orderManager.createOrder(orderDto, principal != null ? principal.getExternalId() : null));
     }
 }

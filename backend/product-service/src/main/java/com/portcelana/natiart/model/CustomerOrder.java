@@ -59,7 +59,7 @@ public class CustomerOrder {
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
 
-    @Column
+    @Column(nullable = false)
     private String ownerExternalId;
 
     public CustomerOrder() {

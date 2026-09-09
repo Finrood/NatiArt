@@ -13,8 +13,11 @@ public interface OrderManager {
 
     /**
      * Persists a new order owned by the authenticated user. The owner is never
-     * taken from the request body — the controller passes the resolved
-     * principal so one user cannot create orders on another user's behalf.
+     * taken from the request body — the controller passes the principal's
+     * external id (same identifier domain as
+     * {@code Payment.ownerExternalId}, e.g. {@code cus_MINE}) so one user
+     * cannot create orders on another user's behalf and a future
+     * order-linked payment check can compare within one domain.
      */
     CustomerOrder createOrder(OrderDto order, String ownerExternalId);
 
