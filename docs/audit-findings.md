@@ -1368,3 +1368,86 @@ the runner-up.
   transaction (the DTO holds the live persistent map reference — the fix PR
   should pin whether that is N selects or a `LazyInitializationException`
   with `open-in-view=false`). Tracked, not silently fixed.
+
+## BD. HTTP integration robustness (Lens 6 hunt, 2026-09-09)
+
+Hunt method: re-read every upstream-egress call site on current master
+(`AsaasPaymentService` 3 egresses, `ShippingService` 1 egress, product
+`JwtAuthFilter` directory validation) against the Lens 6 checklist
+(timeouts/retries, dead status-code branches, upstream-body leaks,
+caller-controlled URLs). Cleared as non-findings: connect/read timeouts are
+set on all three egresses (5s/15s); upstream error bodies are logged
+server-side only, never embedded in exception messages (static bodies via the
+product advice, which itself renders a static 500 body); egress URLs and ids
+are hardened (`paymentResourceUrl` allow-lists + encodes the payment id, base
+URLs are server config, never caller input); the directory-validation
+`WebClient` is a constructed singleton with a 5s timeout. Three runner-ups
+below are new, plus one repair-time doc-rot note (BD4).
+
+### BD1. Provider transport failures and unmapped upstream statuses collapse to 500 — OPEN (Low)
+- `service/AsaasPaymentService.java:109-114,149-156,192-200` and
+  `service/ShippingService.java:63-71` catch only `HttpStatusCodeException`.
+  A `ResourceAccessException` (connect/read timeout firing on the configured
+  5s/15s budgets, DNS failure, refused connection) propagates to the
+  catch-all `Exception` handler
+  (`configuration/ControllerAdvice.java:29-33`) → 500 "Internal server
+  error". Likewise `mapAsaasError:267` / `mapShippingError:126` rethrow the
+  raw exception for every unmapped status: an Asaas/Melhor Envio 429 or 5xx
+  also becomes a 500, with no `Retry-After` honor and no backoff. No egress
+  retries anywhere (correct for the POST charge — retrying a charge risks a
+  double upstream authorization — but the idempotent GETs and the shipping
+  estimate have no bounded retry either). Found by Lens 6 hunt, 2026-09-09.
+- Fix: map transport failures to 503/504 with a static body; map upstream
+  429 to 429/503 preserving `Retry-After`, upstream 5xx to 502; add bounded
+  retry with backoff on the idempotent GETs (`fetchPaymentOrDie`,
+  `getPixQrCode`, shipping estimate) only — never on `createPayment`.
+  Tests: timeout on shipping estimate → 503, not 500; Asaas 429 → 429/503
+  with the header forwarded. Tracked, not silently fixed.
+
+### BD2. Upstream-controlled date fields dereferenced/parsed without guards — OPEN (Low)
+- `service/AsaasPaymentService.java:124,128` call
+  `responseBody.getDateCreated().atStartOfDay()` /
+  `responseBody.getDueDate().atStartOfDay()` on nullable deserialized fields
+  (`dto/payment/asaas/AsaasPaymentCreationResponse.java:9,20` — absent JSON
+  members deserialize to null): an upstream omission NPEs into a 500.
+  `getPixQrCode` (`:166-168`) runs `LocalDateTime.parse` with a fixed
+  `"yyyy-MM-dd HH:mm:ss"` pattern on the upstream `expirationDate` string —
+  a format drift throws `DateTimeParseException` (not an IAE, so past the
+  static-body IAE handlers) into the catch-all 500. Found by Lens 6 hunt,
+  2026-09-09.
+- Fix: null/format-guard upstream date fields and fail closed with a static
+  502 "invalid upstream response" (log the raw value server-side at DEBUG).
+  Tests: null `dateCreated` → 502, not 500; malformed `expirationDate` →
+  502. Tracked, not silently fixed.
+
+### BD3. `createPayment` success branch accepts only 200; error branches are dead code — OPEN (Low)
+- `service/AsaasPaymentService.java:116-138`: the default RestTemplate
+  error handler throws on any non-2xx, so the `UNAUTHORIZED` (`:134-135`)
+  and catch-all `else` (`:136-138`) branches are unreachable for errors
+  (those arrive via `mapAsaasError`) — dead-code confusion of exactly the
+  kind the `mapAsaasError` JavaDoc (`:248-257`) warns about. Worse, a
+  non-200 2xx (e.g. 201 CREATED) falls into `else` → `IAE("Bad request")`
+  AFTER the upstream charge exists, without saving the ledger row — the
+  orphan the AM1 fix logs for, and a client retry then creates a second
+  upstream charge (the AM1 order-linked dedupe keys on a ledger row that was
+  never written). `fetchPaymentOrDie:201-204` has the same dead-`NOT_FOUND`
+  shape (harmless: `mapAsaasError` maps 404 to the same
+  `ResourceNotFoundException`). Asaas documents 200 for POST /payments, so
+  the 201 path is latent, not live. Found by Lens 6 hunt, 2026-09-09.
+- Fix: treat any 2xx as success in `createPayment` (save the ledger row
+  before branching on status details); delete the dead branches, relying on
+  `mapAsaasError` for error statuses. Test: stubbed 201 → ledger saved +
+  success response. Tracked, not silently fixed.
+
+### BD4. `AZ`/`AZ1` labels now denote two different findings (repair-time doc-rot) — OPEN (Low)
+- Repairing PR #212 (2026-09-09) surfaced a label collision: findings holds
+  `## AZ. AuthN and AuthZ boundaries (Lens 2)` with `### AZ1. Expired bearer
+  token poisons public product-service reads` (Medium, OPEN) while the
+  archive holds `## AZ. Secrets and configuration re-hunt (Lens 3)` with
+  `### AZ1. ControllerAdvice echoes raw IllegalArgumentException` (FIXED,
+  PR #211). A later Lens 2 cycle reused the `AZ` label while the Lens 3
+  section still stood. No data lost (distinct titles/dates/files), but
+  `AZ1` is now ambiguous across the working file and the archive.
+- Fix: rename the newer Lens 2 section to the next free label (or renumber
+  its item) and leave a pointer line; do it in a docs-only commit when no
+  AZ-referencing PR is in flight. Tracked, not silently fixed.
