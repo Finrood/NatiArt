@@ -1351,13 +1351,16 @@ master (flip pending in PR #214), AE3/AE4 still OPEN and latent (no read
 endpoint wires them), BA1 still OPEN (no caller moves a paid order out of
 PENDING), BA2 still OPEN and latent (guard races only when the admin endpoint
 is wired). B4 owner half fixed in flight this cycle (`fix/order-owner`:
-`ownerExternalId` persisted from `@TargetUser`, blank owners rejected);
+`ownerExternalId` persisted from the `@AuthenticationPrincipal` principal's
+`getExternalId()` — the same identifier domain as `Payment.ownerExternalId`
+— blank owners rejected, column `nullable = false`);
 B4 remainder narrowed to server-side freight below. Cleared as non-findings:
 whole-order rollback contract (covered), atomic cart increments with line cap,
 server-computed order item prices, row-atomic stock decrements,
-`OrderDto.ownerExternalId` client-settability (the controller overwrites it
-with the resolved principal before delegating, so a forged body owner is
-ignored by construction).
+`OrderDto.ownerExternalId` client-settability (the manager takes the owner as
+a separate `ownerExternalId` parameter sourced from the resolved principal
+and never reads `orderDto.getOwnerExternalId()`, so a forged body owner is
+ignored by construction — pinned by `createOrderIgnoresClientSuppliedOwnerInBody`).
 
 ### BA3. Order-linked payments accept any user's order id; owner check now unblocked — OPEN (Medium)
 - `service/AsaasPaymentService.java:92-103` loads the linked order via
