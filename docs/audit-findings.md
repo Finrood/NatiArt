@@ -1315,22 +1315,6 @@ a separate `ownerExternalId` parameter sourced from the resolved principal
 and never reads `orderDto.getOwnerExternalId()`, so a forged body owner is
 ignored by construction — pinned by `createOrderIgnoresClientSuppliedOwnerInBody`).
 
-### BA3. Order-linked payments accept any user's order id; owner check now unblocked — IN REVIEW (Medium; PR fix/payment-order-owner #220)
-- `service/AsaasPaymentService.java:92-103` loads the linked order via
-  `getOrderOrDie(orderId)` with no owner check, so any authenticated user can
-  reference another user's order id: the value must match the victim order's
-  total, but the resulting `Payment` row carries the attacker's
-  `ownerExternalId` against the victim's order. Once BA1 lands (completed
-  payment flips the linked order `PENDING` → `PAID`), that flip would mark the
-  victim's order paid from the attacker's payment. Unblocked by the B4 owner
-  half in flight this cycle (`CustomerOrder.ownerExternalId` now persisted).
-  Found by Lens 4 hunt, 2026-09-09.
-- Fix: require `order.getOwnerExternalId().equals(requesterExternalId)` before
-  any upstream egress (403 otherwise, no Asaas call); keep ignoring the
-  body-supplied `OrderDto.ownerExternalId`. Tests: foreign orderId → 403 with
-  zero upstream egress (mock `RestTemplate` never hit); own orderId flows.
-  Stacked on `fix/order-owner` (PR #215), which persists the owner column.
-
 ### BA4. `getOrderById`/`getAllOrders` still owner-unaware — OPEN (Low)
 - `service/OrderManagerImpl.java:43-54` reads by id / full-table with no owner
   scope, and `dto/OrderDto.java` now round-trips `ownerExternalId`. Latent

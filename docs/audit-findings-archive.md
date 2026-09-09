@@ -1268,3 +1268,17 @@ re-verified INVALID (CORS origins already property-externalized on master).
 - Fixed by PR #213: forward-only transition table in `updateOrderStatus` (terminal
   states accept nothing, stages never rewind or skip); the admin endpoint stays
   unwired. Residual check-then-update race tracked as BA2.
+
+### BA3. Order-linked payments accept any user's order id; owner check now unblocked — FIXED (PR #220, merged 2026-09-09)
+- `service/AsaasPaymentService.java:92-103` loaded the linked order via
+  `getOrderOrDie(orderId)` with no owner check, so any authenticated user could
+  reference another user's order id: the value had to match the victim order's
+  total, but the resulting `Payment` row carried the attacker's
+  `ownerExternalId` against the victim's order. Found by Lens 4 hunt,
+  2026-09-09.
+- Fixed by PR #220 (fix/payment-order-owner): order-linked payments require
+  `order.getOwnerExternalId().equals(requesterExternalId)` before any upstream
+  egress (403 otherwise, zero Asaas calls); the body-supplied
+  `OrderDto.ownerExternalId` stays ignored. Tests pin foreign-orderId → 403
+  with the mocked upstream never hit, and the own-order happy flow.
+
