@@ -1502,7 +1502,6 @@ are the runner-ups.
   cleaned up. Tracked, not silently fixed.
   Found by Lens 7 hunt, 2026-09-09.
 
-<<<<<<< HEAD
 ## BF. Loading and error UX re-hunt (Lens 12, 2026-09-09)
 
 Hunt method: re-read the PIX payment-confirmation flow
@@ -1553,7 +1552,7 @@ new.
 - Fix: `navigator.clipboard.writeText` with a fallback and a visible
   "Copied"/"Copy failed" state on the button. Spec: failed copy shows a
   failure state; successful copy shows "Copied".
-=======
+
 ## BE. Loading and error UX re-hunt (Lens 12, 2026-09-09)
 
 Hunt method: re-read the checkout/login/signup/admin loading and error paths
@@ -1604,8 +1603,3 @@ BE1-BE2 below are the runner-ups.
   paths (mirror the checkout `isSubmitting` pattern). Spec: double submit
   issues one request.
   Found by Lens 12 hunt, 2026-09-09.
-<<<<<<< HEAD
-
->>>>>>> origin/master
-=======
->>>>>>> origin/master
