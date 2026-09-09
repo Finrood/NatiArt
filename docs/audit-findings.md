@@ -1454,3 +1454,53 @@ ignored by construction).
   order creation vs a quoted-freight token), so it stays tracked, not silently
   fixed.
 
+## BC. N+1 queries and pagination (Lens 5 hunt, 2026-09-09)
+
+Hunt method: re-ran the Lens 5 enumeration on current master (every
+repository query, every `findAll`/derived-query call site, page/size caps on
+all four listing controllers, every DTO `from()` touch against association
+fetch types with `open-in-view=false`). Re-verified this cycle: AE1 FIXED on
+master (batched `getProductsOrDie` via `findAllById`,
+`service/ProductManagerImpl.java:82-85,94` — flip to FIXED pending in
+PR #214), AE2 FIXED on master (bulk `deleteByUsername`,
+`service/CartManagerImpl.java:88-89` — flip pending in PR #214), AE3 still
+OPEN and latent (`getAllOrders` unbounded `findAll`,
+`service/OrderManagerImpl.java:52-53`; `controller/OrderController.java`
+still exposes only `POST /orders/create`), AE4 still OPEN and latent
+(`getOrderById` plain `findById` + LAZY `items` + EAGER `product` per line).
+Cleared as non-findings: product listings (id-page plus
+`findAllWithImagesByIds` fetching images + category + packaging;
+`ProductDto.from` touches only fetched state — category/packaging ids read
+off uninitialized proxies without triggering selects,
+tags/availablePersonalizations are converted basics); category/package
+listings (`findAll(pageable)` plus scalar-only DTOs, no association touch);
+cart product/images/personalization-entity fetch (pinned by
+`CartItemRepositoryFetchTest`); directory-service (single-row lookups only —
+`/users/current`, `/login`, `/refresh-token`, `/signout`, `/validate-token`,
+`/register-*` — no listing endpoint, no `findAll`); storefront
+`getProducts*` (no page/size params, so backend defaults page 0 / size 20
+apply, clamped to 100 server-side — bounded by construction). BC1 below is
+the runner-up.
+
+### BC1. Cart listing fetch join misses the personalization options map — OPEN (Low)
+- `repository/CartItemRepository.java:23-25` fetch-joins `c.product`,
+  `p.images` and `c.personalization`, but not
+  `Personalization.personalizationOptions`, an `@ElementCollection` (LAZY by
+  default, `model/Personalization.java:16`).
+  `dto/PersonalizationDto.java:17` hands the live persistent map to the DTO
+  by reference, so the in-`@Transactional` mapping
+  (`dto/CartItemDto.java:10-15` via `service/CartManagerImpl.java:31-35`)
+  never initializes it — the cost lands per personalized line at
+  serialization time. The pinning spec
+  (`repository/CartItemRepositoryFetchTest.java:105-107`) explicitly tolerates
+  the extra select but covers only ONE personalized line (`<= 2` queries), so
+  an N-line personalized cart fans out to N extra selects undetected.
+  Found by Lens 5 hunt, 2026-09-09.
+- Fix: extend the pinning spec to N personalized lines with a bounded query
+  count, then batch the collection (`@BatchSize`) or add a second fetch
+  join — mind `MultipleBagFetchException` (`images` is already a fetched
+  bag). Also assert serialization of a personalized line outside the
+  transaction (the DTO holds the live persistent map reference — the fix PR
+  should pin whether that is N selects or a `LazyInitializationException`
+  with `open-in-view=false`). Tracked, not silently fixed.
+
