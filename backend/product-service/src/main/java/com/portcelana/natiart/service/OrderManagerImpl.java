@@ -55,14 +55,18 @@ public class OrderManagerImpl implements OrderManager {
 
     @Override
     @Transactional
-    public CustomerOrder createOrder(OrderDto orderDto) {
+    public CustomerOrder createOrder(OrderDto orderDto, String ownerExternalId) {
         validateItems(orderDto.getItems());
         requireNonNegativeAmount(orderDto.getDeliveryAmount(), "delivery amount");
+        if (ownerExternalId == null || ownerExternalId.isBlank()) {
+            throw new IllegalArgumentException("An order must have an owner");
+        }
 
         final CustomerOrder customerOrder = new CustomerOrder();
         customerOrder
                 .setOrderDate(Instant.now())
                 .setStatus(OrderStatus.PENDING)
+                .setOwnerExternalId(ownerExternalId)
                 .setFirstname(orderDto.getFirstname())
                 .setLastname(orderDto.getLastname())
                 .setEmail(orderDto.getEmail())

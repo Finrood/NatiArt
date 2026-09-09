@@ -11,7 +11,12 @@ public interface OrderManager {
 
     List<CustomerOrder> getAllOrders();
 
-    CustomerOrder createOrder(OrderDto order);
+    /**
+     * Persists a new order owned by the authenticated user. The owner is never
+     * taken from the request body — the controller passes the resolved
+     * principal so one user cannot create orders on another user's behalf.
+     */
+    CustomerOrder createOrder(OrderDto order, String ownerExternalId);
 
     CustomerOrder updateOrderStatus(String orderId, OrderStatus status);
 }

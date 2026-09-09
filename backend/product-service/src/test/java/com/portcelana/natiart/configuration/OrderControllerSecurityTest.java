@@ -2,6 +2,8 @@ package com.portcelana.natiart.configuration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -40,7 +42,7 @@ class OrderControllerSecurityTest {
 
     @Test
     void createOrderRequiresFullAuthenticationLikeCartAndPayment() throws Exception {
-        final Method createOrder = OrderController.class.getMethod("createOrder", OrderDto.class);
+        final Method createOrder = OrderController.class.getMethod("createOrder", OrderDto.class, String.class);
         final PreAuthorize preAuthorize = createOrder.getAnnotation(PreAuthorize.class);
 
         assertEquals("isFullyAuthenticated()", preAuthorize.value());
@@ -63,11 +65,24 @@ class OrderControllerSecurityTest {
     @Test
     @WithMockUser(username = "jane")
     void authenticatedUserCanCreateOrder() throws Exception {
-        when(orderManager.createOrder(any(OrderDto.class))).thenReturn(new CustomerOrder().setItems(List.of()));
+        when(orderManager.createOrder(any(OrderDto.class), any())).thenReturn(new CustomerOrder().setItems(List.of()));
 
         mockMvc.perform(post("/orders/create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "jane")
+    void createOrderPassesAuthenticatedPrincipalAsOwner() throws Exception {
+        when(orderManager.createOrder(any(OrderDto.class), any())).thenReturn(new CustomerOrder().setItems(List.of()));
+
+        mockMvc.perform(post("/orders/create")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk());
+
+        verify(orderManager).createOrder(any(OrderDto.class), eq("jane"));
     }
 }

@@ -26,6 +26,7 @@ public class OrderDto {
     private BigDecimal deliveryAmount;
     private BigDecimal totalAmount;
     private OrderStatus status;
+    private String ownerExternalId;
 
     public OrderDto() {}
 
@@ -49,7 +50,8 @@ public class OrderDto {
                         .toList())
                 .setDeliveryAmount(customerOrder.getDeliveryAmount())
                 .setTotalAmount(customerOrder.getTotalAmount())
-                .setStatus(customerOrder.getStatus());
+                .setStatus(customerOrder.getStatus())
+                .setOwnerExternalId(customerOrder.getOwnerExternalId());
     }
 
     public String getId() {
@@ -202,6 +204,15 @@ public class OrderDto {
 
     public OrderDto setStatus(OrderStatus status) {
         this.status = status;
+        return this;
+    }
+
+    public String getOwnerExternalId() {
+        return ownerExternalId;
+    }
+
+    public OrderDto setOwnerExternalId(String ownerExternalId) {
+        this.ownerExternalId = ownerExternalId;
         return this;
     }
 }

@@ -64,7 +64,7 @@ class OrderManagerImplTest {
 
         OrderDto dto = new OrderDto().setDeliveryAmount(new BigDecimal("5.00")).setItems(List.of(item("p1", 2)));
 
-        CustomerOrder saved = orderManager.createOrder(dto);
+        CustomerOrder saved = orderManager.createOrder(dto, "user-1");
 
         assertEquals(new BigDecimal("31.00"), saved.getTotalAmount());
         assertEquals(1, saved.getItems().size());
@@ -79,7 +79,7 @@ class OrderManagerImplTest {
     void createOrderRejectsNonPositiveQuantity() {
         OrderDto dto = new OrderDto().setDeliveryAmount(BigDecimal.ONE).setItems(List.of(item("p1", -3)));
 
-        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto));
+        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
         verify(productRepository, never()).decreaseStockIfAvailable(any(), anyInt());
         verify(orderRepository, never()).save(any());
     }
@@ -88,7 +88,7 @@ class OrderManagerImplTest {
     void createOrderRejectsNegativeDeliveryAmount() {
         OrderDto dto = new OrderDto().setDeliveryAmount(new BigDecimal("-1")).setItems(List.of(item("p1", 1)));
 
-        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto));
+        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
         verify(orderRepository, never()).save(any());
     }
 
@@ -100,7 +100,7 @@ class OrderManagerImplTest {
 
         OrderDto dto = new OrderDto().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p2", 50)));
 
-        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto));
+        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
         verify(orderRepository, never()).save(any());
     }
 
@@ -113,7 +113,7 @@ class OrderManagerImplTest {
 
         OrderDto dto = new OrderDto().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p3", 1)));
 
-        CustomerOrder saved = orderManager.createOrder(dto);
+        CustomerOrder saved = orderManager.createOrder(dto, "user-1");
         ArgumentCaptor<CustomerOrder> captor = ArgumentCaptor.forClass(CustomerOrder.class);
         verify(orderRepository).save(captor.capture());
         assertEquals(
@@ -125,7 +125,7 @@ class OrderManagerImplTest {
     void createOrderRejectsQuantityAboveCap() {
         OrderDto dto = new OrderDto().setDeliveryAmount(BigDecimal.ONE).setItems(List.of(item("p1", 101)));
 
-        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto));
+        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
         verify(productRepository, never()).decreaseStockIfAvailable(any(), anyInt());
         verify(orderRepository, never()).save(any());
     }
@@ -138,7 +138,7 @@ class OrderManagerImplTest {
         }
         OrderDto dto = new OrderDto().setDeliveryAmount(BigDecimal.ONE).setItems(items);
 
-        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto));
+        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
         verify(productRepository, never()).decreaseStockIfAvailable(anyString(), anyInt());
         verify(orderRepository, never()).save(any());
     }
@@ -151,7 +151,7 @@ class OrderManagerImplTest {
 
         OrderDto dto = new OrderDto().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p4", 1)));
 
-        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto));
+        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
         verify(productRepository, never()).decreaseStockIfAvailable(any(), anyInt());
         verify(orderRepository, never()).save(any());
     }
@@ -170,7 +170,7 @@ class OrderManagerImplTest {
         OrderDto dto =
                 new OrderDto().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p1", 1), item("p2", 50)));
 
-        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto));
+        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
         // Stock was attempted for both lines (the first decrements, the second is refused)...
         verify(productRepository, times(2)).decreaseStockIfAvailable(anyString(), anyInt());
         // ...but nothing was persisted: the @Transactional boundary rolls the whole order back.
@@ -191,7 +191,7 @@ class OrderManagerImplTest {
                 .setDeliveryAmount(BigDecimal.ZERO)
                 .setItems(List.of(item("p1", 1), item("p2", 1), item("p3", 1)));
 
-        CustomerOrder saved = orderManager.createOrder(dto);
+        CustomerOrder saved = orderManager.createOrder(dto, "user-1");
 
         assertEquals(3, saved.getItems().size());
         verify(productManager, times(1)).getProductsOrDie(List.of("p1", "p2", "p3"));
@@ -206,8 +206,43 @@ class OrderManagerImplTest {
 
         OrderDto dto = new OrderDto().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("missing", 1)));
 
-        assertThrows(ResourceNotFoundException.class, () -> orderManager.createOrder(dto));
+        assertThrows(ResourceNotFoundException.class, () -> orderManager.createOrder(dto, "user-1"));
         verify(productRepository, never()).decreaseStockIfAvailable(anyString(), anyInt());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void createOrderPersistsOwnerFromAuthenticatedPrincipal() {
+        Product plate = product("p1", "Plate", new BigDecimal("15.00"), new BigDecimal("13.00"), 100);
+        when(productManager.getProductsOrDie(List.of("p1"))).thenReturn(Map.of("p1", plate));
+        when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1);
+        when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        OrderDto dto = new OrderDto().setDeliveryAmount(new BigDecimal("5.00")).setItems(List.of(item("p1", 2)));
+
+        CustomerOrder saved = orderManager.createOrder(dto, "user-1");
+
+        assertEquals("user-1", saved.getOwnerExternalId());
+        ArgumentCaptor<CustomerOrder> captor = ArgumentCaptor.forClass(CustomerOrder.class);
+        verify(orderRepository).save(captor.capture());
+        assertEquals("user-1", captor.getValue().getOwnerExternalId());
+    }
+
+    @Test
+    void createOrderRejectsBlankOwnerWithoutTouchingStock() {
+        OrderDto dto = new OrderDto().setDeliveryAmount(BigDecimal.ONE).setItems(List.of(item("p1", 1)));
+
+        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "  "));
+        verify(productRepository, never()).decreaseStockIfAvailable(any(), anyInt());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void createOrderRejectsNullOwnerWithoutTouchingStock() {
+        OrderDto dto = new OrderDto().setDeliveryAmount(BigDecimal.ONE).setItems(List.of(item("p1", 1)));
+
+        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, null));
+        verify(productRepository, never()).decreaseStockIfAvailable(any(), anyInt());
         verify(orderRepository, never()).save(any());
     }
 
