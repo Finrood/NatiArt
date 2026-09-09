@@ -1347,7 +1347,6 @@ defaults never leak messages on 500); properties files are pure ASCII.
   DEBUG with the correlation context. Tests: an IAE with an
   internals-bearing message maps to a static body.
 
-<<<<<<< HEAD
 ## BB. Data integrity and transactions (Lens 4 hunt, 2026-09-09)
 
 Hunt method: re-verified the Lens 4 backlog against current `master`
@@ -1405,21 +1404,6 @@ ignored by construction — pinned by `createOrderIgnoresClientSuppliedOwnerInBo
   freight half needs a product decision (reprice via `ShippingService` inside
   order creation vs a quoted-freight token), so it stays tracked, not silently
   fixed.
-=======
-## BA. Data integrity and transactions (Lens 4 hunt, 2026-09-08)
-
-Hunt method: re-verified the Lens 4 backlog against current `master`
-(`OrderManagerImpl`, `CartManagerImpl`, `AsaasPaymentService`,
-`PaymentController`, `Payment`/`CustomerOrder` mappings). AE1 FIXED on master
-(batched `getProductsOrDie`, PR #182 — flip pending), AE2 FIXED on master
-(bulk `deleteByUsername`, PR #182 — flip pending), B4 still OPEN
-(client-priced `deliveryAmount`, no owner column), G1 backend half merged
-(PR #207; storefront still charges the client snapshot), X4 guard + AM1
-order-linked dedupe in flight this cycle, AE3/AE4 still OPEN and latent
-(no read endpoint wires them). Cleared as non-findings: whole-order rollback
-contract (covered), atomic cart increments with line cap, server-computed
-order item prices, row-atomic stock decrements. BA1-BA2 below are new.
-
 ### BA1. Successful payment never moves the order out of PENDING — OPEN (Medium)
 - `service/OrderManager.java:16` declares `updateOrderStatus` but nothing calls
   it: repo-wide grep for `updateOrderStatus|OrderStatus.PAID|setStatus` in
@@ -1446,7 +1430,6 @@ order item prices, row-atomic stock decrements. BA1-BA2 below are new.
   only a true race interleaves. Found by Lens 4 hunt, 2026-09-08.
 - Fix: re-check affected rows / version-guard when the admin endpoint is wired
   (with X4); until then tracked, not silently fixed.
->>>>>>> origin/master
 
 ## BC. N+1 queries and pagination (Lens 5 hunt, 2026-09-09)
 
