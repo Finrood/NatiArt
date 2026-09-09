@@ -7,9 +7,11 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -413,6 +415,74 @@ class AsaasPaymentServiceTest {
                 .save(argThat(payment -> "ord_1".equals(payment.getOrderId())
                         && "pay-10".equals(payment.getId())
                         && "cus_MINE".equals(payment.getOwnerExternalId())));
+    }
+
+    @Test
+    void createPayment_orderLinked_retryReplaysStoredChargeWithoutSecondEgress() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        final OrderRepository orderRepository = mock(OrderRepository.class);
+        when(orderRepository.findById("ord_1"))
+                .thenReturn(Optional.of(new CustomerOrder().setTotalAmount(new BigDecimal("10.00"))));
+        when(paymentRepository.findByOrderIdAndOwnerExternalId("ord_1", "cus_MINE"))
+                .thenReturn(Optional.of(new Payment("pay-10", "cus_MINE", "ord_1")));
+        final AsaasPaymentCreationResponse upstream = mock(AsaasPaymentCreationResponse.class);
+        when(upstream.getId()).thenReturn("pay-10");
+        when(upstream.getDateCreated()).thenReturn(LocalDate.of(2026, 9, 8));
+        when(upstream.getCustomer()).thenReturn("cus_MINE");
+        when(upstream.getBillingType()).thenReturn("PIX");
+        when(upstream.getStatus()).thenReturn("PENDING");
+        when(upstream.getDueDate()).thenReturn(LocalDate.of(2026, 9, 9));
+        when(upstream.getInvoiceUrl()).thenReturn("http://invoice");
+        when(upstream.getInvoiceNumber()).thenReturn("002");
+        when(restTemplate.exchange(
+                        eq(PAYMENTS_URL + "/pay-10"),
+                        eq(HttpMethod.GET),
+                        any(),
+                        eq(AsaasPaymentCreationResponse.class)))
+                .thenReturn(ResponseEntity.ok(upstream));
+
+        final PaymentCreationResponse response = newService(restTemplate, paymentRepository, orderRepository)
+                .createPayment(
+                        orderLinked(new PaymentCreationRequest(
+                                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX)),
+                        "cus_MINE");
+
+        assertEquals("pay-10", response.getPaymentId());
+        verify(restTemplate, never()).postForEntity(anyString(), any(), eq(AsaasPaymentCreationResponse.class));
+        verify(paymentRepository, never()).save(any(Payment.class));
+    }
+
+    @Test
+    void createPayment_saveFailure_logsOrphanUpstreamIdAndRethrows() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        final OrderRepository orderRepository = mock(OrderRepository.class);
+        when(orderRepository.findById("ord_1"))
+                .thenReturn(Optional.of(new CustomerOrder().setTotalAmount(new BigDecimal("10.00"))));
+        final AsaasPaymentCreationResponse upstream = mock(AsaasPaymentCreationResponse.class);
+        when(upstream.getId()).thenReturn("pay-orphan");
+        when(upstream.getDateCreated()).thenReturn(LocalDate.of(2026, 9, 8));
+        when(upstream.getCustomer()).thenReturn("cus_MINE");
+        when(upstream.getBillingType()).thenReturn("PIX");
+        when(upstream.getStatus()).thenReturn("PENDING");
+        when(upstream.getDueDate()).thenReturn(LocalDate.of(2026, 9, 9));
+        when(upstream.getInvoiceUrl()).thenReturn("http://invoice");
+        when(upstream.getInvoiceNumber()).thenReturn("002");
+        when(restTemplate.postForEntity(eq(PAYMENTS_URL), any(), eq(AsaasPaymentCreationResponse.class)))
+                .thenReturn(ResponseEntity.ok(upstream));
+        when(paymentRepository.save(any(Payment.class))).thenThrow(new RuntimeException("db down"));
+
+        final AsaasPaymentService service = newService(restTemplate, paymentRepository, orderRepository);
+        final PaymentCreationRequest request = orderLinked(new PaymentCreationRequest(
+                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX));
+        final List<ILoggingEvent> events = captureLogEvents(
+                AsaasPaymentService.class,
+                () -> assertThrows(RuntimeException.class, () -> service.createPayment(request, "cus_MINE")));
+
+        assertTrue(events.stream()
+                .anyMatch(event -> event.getLevel() == Level.WARN
+                        && event.getFormattedMessage().contains("pay-orphan")));
     }
 
     private PaymentCreationRequest orderLinked(PaymentCreationRequest request) {
