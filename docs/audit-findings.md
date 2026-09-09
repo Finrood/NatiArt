@@ -380,15 +380,6 @@ rollback contract is covered (`OrderManagerImplTest:143`), cart increments are
 atomic (`CartManagerImpl:44`), and order item prices are server-computed
 (`OrderManagerImpl.java:84`) — not filed.
 
-### X4. `updateOrderStatus` accepts any transition, fulfillment path unwired — IN REVIEW (Low; PR fix/payment-order-lifecycle)
-- `service/OrderManagerImpl.java:100-104` moves any status to any status
-  (`DELIVERED` → `PENDING`, `CANCELLED` → `PAID`) with no transition guard,
-  and neither it nor `getAllOrders`/`getById` has a controller endpoint
-  (`controller/OrderController.java:19-23` exposes only `POST /orders/create`)
-  — admin fulfillment is unreachable, so the missing guard is latent.
-- Fix in flight: forward-only transition table in `updateOrderStatus` (terminal
-  states accept nothing, stages never rewind or skip); the admin endpoint stays
-  unwired. Residual check-then-update race tracked as BA2.
 
 ## V. Injection and validation, catalog follow-ups (Lens 1 hunt, 2026-09-05)
 
@@ -1561,4 +1552,3 @@ BE1-BE2 below are the runner-ups.
   paths (mirror the checkout `isSubmitting` pattern). Spec: double submit
   issues one request.
   Found by Lens 12 hunt, 2026-09-09.
-
