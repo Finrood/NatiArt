@@ -1511,3 +1511,54 @@ are the runner-ups.
   cleaned up. Tracked, not silently fixed.
   Found by Lens 7 hunt, 2026-09-09.
 
+## BE. Loading and error UX re-hunt (Lens 12, 2026-09-09)
+
+Hunt method: re-read the checkout/login/signup/admin loading and error paths
+on current master (`checkout.component.ts:59-66,323-372`,
+`login.component.ts:98-118`, `signup.component.ts:77-103`,
+`admin-product-management.component.ts:166-290,332-367`,
+`left-menu.component.ts:28-33`,
+`signup-profile.component.ts:39-89`) for stuck spinners, success-only
+resets, swallowed errors and unhandled rejections. Re-verified this cycle:
+AH2 still OPEN (left-menu `getCategories` failure still console-only, no
+retry affordance), AH3 still OPEN (`doLoginUser` still has no in-flight
+guard — double submit fires duplicate login POSTs), C11 still OPEN
+(`app.config.ts` still returns a root-scope `Subscription` from the
+`APP_INITIALIZER` factory), AR1 still OPEN (interceptor-side token wipe
+still notifies no one), AX1/AX2 still OPEN (refresh wedge + blip-as-logout
+unchanged). Cleared as non-findings: checkout `isSubmitting` reset
+(`finally` at `checkout.component.ts:368-370` covers the `EmptyError` early
+return at `:340-341` and the `!user` return at `:345`); signup-profile CEP
+lookup (`finalize` resets `isLoadingAddress` on both paths); admin
+add/update/delete/getProducts/getCategories/getPackages (all `showAlert` on
+both paths, `isSubmitting` reset on both paths — O2 admin half FIXED on
+master); admin `fetchImagePreview` error path (`showAlert`, `:365-367`).
+BE1-BE2 below are the runner-ups.
+
+### BE1. Checkout card-payment path writes an info message it clears in the same tick — OPEN (Low)
+- `frontend/natiart-app/src/app/product/components/customer/checkout/checkout.component.ts:354-359`:
+  `setInfoMessage('Processing card payment...')` is followed synchronously by
+  `setErrorMessage('Card payment is not yet implemented.')` and
+  `clearInfoMessage()` — the "Processing..." text never paints (same-tick
+  clear), so the buyer sees only the not-implemented error with no prior
+  feedback. Dead UI update, not a state bug (`isSubmitting` still resets in
+  `finally`).
+- Fix: drop the info write (or keep it until the card flow exists) so the
+  path shows exactly one message. Spec: card-method submit asserts the info
+  slot stays empty and the error reads not-implemented.
+  Found by Lens 12 hunt, 2026-09-09.
+
+### BE2. Signup submit has no in-flight guard, the AH3 twin — OPEN (Low)
+- `frontend/natiart-app/src/app/directory/components/auth/signup/signup.component.ts:77-103`
+  (`doRegisterUser`) fires `signupService.registerUser` with no disabling
+  flag and no loading feedback: rapid double submit issues two registration
+  POSTs (ghost/user creation is server-side idempotent only per-email via
+  409, so the second POST still costs a full egress + surfaces a confusing
+  "already exists" error on the user's own just-created account); a slow
+  failure leaves no loading feedback. Same class as AH3
+  (`login.component.ts:98-118`), which stays OPEN alongside.
+- Fix: `isRegistering` flag disabling the submit button, reset on both
+  paths (mirror the checkout `isSubmitting` pattern). Spec: double submit
+  issues one request.
+  Found by Lens 12 hunt, 2026-09-09.
+
