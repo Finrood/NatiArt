@@ -224,6 +224,7 @@ launch_attempt() { # $1=cli $2=model_id $3=think; spawns child bg, sets $PID
 # --- main loop: walk the priority list until one model works or budget dies -
 DEADLINE=$(( $(date +%s) + BUDGET ))
 attempt=0
+BLOCKED_ROUNDS=0 # consecutive full-pool blocked rounds (drives backoff below)
 while true; do
     for entry in "${EFFECTIVE[@]}"; do
         IFS='|' read -r cli label model_id think <<< "$entry"
@@ -287,6 +288,7 @@ while true; do
                 rm -f "$ATT_LOG"
                 echo "NATIART_ACTIVE_MODEL=$label"
                 echo "$label"
+                BLOCKED_ROUNDS=0
                 exit 0
             fi
 
@@ -361,6 +363,15 @@ while true; do
             exit "$rc"
         done
     done
-    log "All ${#EFFECTIVE[@]} effective models blocked; sleeping 5s and retrying from the top."
-    sleep 5
+    BLOCKED_ROUNDS=$((BLOCKED_ROUNDS + 1))
+    # All-pipes-dry backoff: quotas reset on hour scales (DeepSeek ~13h, GLM
+    # ~17-22h), so tight 5s loops only burn CPU and quota probes. Sleep grows
+    # per consecutive fully-blocked round, capped at 15 minutes; a success
+    # resets the counter and exits above, so backoff only bites during true
+    # all-pipes-dry stretches.
+    BLOCKED_SLEEP=$(( BLOCKED_ROUNDS * 60 ))
+    (( BLOCKED_SLEEP > 900 )) && BLOCKED_SLEEP=900
+    (( BLOCKED_SLEEP < 5 )) && BLOCKED_SLEEP=5
+    log "All ${#EFFECTIVE[@]} effective models blocked (round $BLOCKED_ROUNDS); sleeping ${BLOCKED_SLEEP}s before retrying from the top."
+    sleep "$BLOCKED_SLEEP"
 done

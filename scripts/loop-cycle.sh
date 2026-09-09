@@ -25,6 +25,18 @@ if ! flock -n 9; then
     exit 0
 fi
 
+# Self-modification guard: bash parses a running script incrementally, so a
+# merge that rewrites this file mid-run kills the cycle with a syntax error
+# (2026-09-09: our own PR #226 merge shifted lines under the 08:57 cycle ->
+# `line 507: syntax error near (`, exit 2, no health row). Re-exec from a
+# stable snapshot so on-disk merges can no longer move code under us.
+if [[ -z "${NATIART_LOOP_SNAPSHOTTED:-}" ]]; then
+    SNAP="$(mktemp /tmp/natiart-loop-cycle-XXXXXX.sh)"
+    cp "$REPO/scripts/loop-cycle.sh" "$SNAP"
+    export NATIART_LOOP_SNAPSHOTTED=1
+    exec bash "$SNAP" "$@"
+fi
+
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/loop-$(date +%Y%m%d-%H%M%S).log"
 exec > >(tee -a "$LOG_FILE") 2>&1
