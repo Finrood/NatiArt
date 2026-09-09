@@ -1399,3 +1399,58 @@ defaults never leak messages on 500); properties files are pure ASCII.
   DEBUG with the correlation context. Tests: an IAE with an
   internals-bearing message maps to a static body.
 
+## BB. Data integrity and transactions (Lens 4 hunt, 2026-09-09)
+
+Hunt method: re-verified the Lens 4 backlog against current `master`
+(`OrderManagerImpl.createOrder`, `CustomerOrder` mapping, `OrderController`,
+`AsaasPaymentService.createPayment`, `PaymentController`) plus the BA batch
+from PR #213 (X4 guard + AM1 order-linked dedupe in flight, BA1-BA2 tracked).
+Re-verified this cycle: G1 backend half merged (order-linked value
+reconciliation present, `AsaasPaymentService.java:92-103`), AE1/AE2 FIXED on
+master (flip pending in PR #214), AE3/AE4 still OPEN and latent (no read
+endpoint wires them), BA1 still OPEN (no caller moves a paid order out of
+PENDING), BA2 still OPEN and latent (guard races only when the admin endpoint
+is wired). B4 owner half fixed in flight this cycle (`fix/order-owner`:
+`ownerExternalId` persisted from `@TargetUser`, blank owners rejected);
+B4 remainder narrowed to server-side freight below. Cleared as non-findings:
+whole-order rollback contract (covered), atomic cart increments with line cap,
+server-computed order item prices, row-atomic stock decrements,
+`OrderDto.ownerExternalId` client-settability (the controller overwrites it
+with the resolved principal before delegating, so a forged body owner is
+ignored by construction).
+
+### BA3. Order-linked payments accept any user's order id; owner check now unblocked — OPEN (Medium)
+- `service/AsaasPaymentService.java:92-103` loads the linked order via
+  `getOrderOrDie(orderId)` with no owner check, so any authenticated user can
+  reference another user's order id: the value must match the victim order's
+  total, but the resulting `Payment` row carries the attacker's
+  `ownerExternalId` against the victim's order. Once BA1 lands (completed
+  payment flips the linked order `PENDING` → `PAID`), that flip would mark the
+  victim's order paid from the attacker's payment. Unblocked by the B4 owner
+  half in flight this cycle (`CustomerOrder.ownerExternalId` now persisted).
+  Found by Lens 4 hunt, 2026-09-09.
+- Fix: require `order.getOwnerExternalId().equals(requesterExternalId)` before
+  any upstream egress (403 otherwise, no Asaas call); keep ignoring the
+  body-supplied `OrderDto.ownerExternalId`. Tests: foreign orderId → 403 with
+  zero upstream egress (mock `RestTemplate` never hit); own orderId flows.
+  Tracked, not silently fixed (touches `AsaasPaymentService.createPayment`,
+  owned this cycle by PR #213 — take after it merges to avoid conflicts).
+
+### BA4. `getOrderById`/`getAllOrders` still owner-unaware — OPEN (Low)
+- `service/OrderManagerImpl.java:43-54` reads by id / full-table with no owner
+  scope, and `dto/OrderDto.java` now round-trips `ownerExternalId`. Latent
+  today: `controller/OrderController.java:19-23` exposes only
+  `POST /orders/create`, so no read endpoint triggers it (same reason AE3/AE4
+  and X4 stay tracked). Found by Lens 4 hunt, 2026-09-09.
+- Fix: when the admin/single-order read endpoint is wired (with X4/AE3),
+  scope reads to the requester's `ownerExternalId` (admin role bypass).
+  Tests: user A cannot read user B's order. Tracked, not silently fixed.
+
+### B4 remainder narrowed to server-side freight (2026-09-09)
+- B4 stays OPEN: `OrderManagerImpl.java:60,77,105` still trusts client
+  `deliveryAmount` (only non-negativity checked) — send `0` for free shipping.
+  The owner half is fixed in flight this cycle (`fix/order-owner`); the
+  freight half needs a product decision (reprice via `ShippingService` inside
+  order creation vs a quoted-freight token), so it stays tracked, not silently
+  fixed.
+
