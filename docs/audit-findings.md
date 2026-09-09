@@ -1315,7 +1315,7 @@ a separate `ownerExternalId` parameter sourced from the resolved principal
 and never reads `orderDto.getOwnerExternalId()`, so a forged body owner is
 ignored by construction — pinned by `createOrderIgnoresClientSuppliedOwnerInBody`).
 
-### BA3. Order-linked payments accept any user's order id; owner check now unblocked — OPEN (Medium)
+### BA3. Order-linked payments accept any user's order id; owner check now unblocked — IN REVIEW (Medium; PR fix/payment-order-owner #220)
 - `service/AsaasPaymentService.java:92-103` loads the linked order via
   `getOrderOrDie(orderId)` with no owner check, so any authenticated user can
   reference another user's order id: the value must match the victim order's
@@ -1329,8 +1329,7 @@ ignored by construction — pinned by `createOrderIgnoresClientSuppliedOwnerInBo
   any upstream egress (403 otherwise, no Asaas call); keep ignoring the
   body-supplied `OrderDto.ownerExternalId`. Tests: foreign orderId → 403 with
   zero upstream egress (mock `RestTemplate` never hit); own orderId flows.
-  Tracked, not silently fixed (touches `AsaasPaymentService.createPayment`,
-  owned this cycle by PR #213 — take after it merges to avoid conflicts).
+  Stacked on `fix/order-owner` (PR #215), which persists the owner column.
 
 ### BA4. `getOrderById`/`getAllOrders` still owner-unaware — OPEN (Low)
 - `service/OrderManagerImpl.java:43-54` reads by id / full-table with no owner
@@ -1765,6 +1764,32 @@ race. Two runner-ups below are new.
   listing) at confirm time; refuse lines whose product vanished. Spec:
   confirm after a price change adds the current price, not the modal-open
   one. Found by Lens 10 hunt, 2026-09-09.
+## BK. API and contract consistency (Lens 15 hunt, 2026-09-09)
+
+Hunt method: enumerated every `@RequestMapping`-family annotation across both
+services' controllers checking kebab-case/verb-sub-path drift and duplicate
+route aliases; diffed the two `ControllerAdvice` exception tables for the same
+failure mapping to different status codes; grepped the storefront for untyped
+`any` in service responses and error callbacks. Cleared as non-findings:
+`/api/payment/*` dual paths on `PaymentController` (documented deprecated
+aliases, frontend uses canonical `/payments/*` only); product-service
+`ControllerAdvice` lacking a `MethodArgumentNotValidException` handler while
+directory has one (no `@Valid`/`@Validated` usage anywhere in
+product-service, so bean-validation errors cannot occur); verb sub-paths
+(`/orders/create`, `/categories/create`, `/cart/item/{id}/add`) consistent
+with the documented `backend/AGENTS.md` convention.
+
+### BK1. Untyped `error: any` callbacks hide HTTP error contract drift — OPEN (Low)
+- Five storefront error handlers type the error `any` instead of Angular's
+  `HttpErrorResponse`, so a contract break (proxy HTML error page, string
+  body, changed error envelope) compiles and fails at runtime:
+  `shipping-estimation.component.ts:115` (`private handleError(error: any)`),
+  `admin-package-management.component.ts:113`,
+  `admin-category-management.component.ts:102`, `login.component.ts:113`,
+  `signup.component.ts:98`.
+- Fix: type as `HttpErrorResponse` (or a narrow local error shape) and read
+  `error.error` defensively. Specs: a non-JSON error body renders the generic
+  message instead of crashing. Found by Lens 15 hunt, 2026-09-09.
 
 ## BH. Observability and log hygiene (Lens 14 hunt, 2026-09-09)
 

@@ -95,6 +95,10 @@ public class AsaasPaymentService implements PaymentService {
             // match the server-computed order total exactly, or no upstream
             // charge is created at all.
             final CustomerOrder order = getOrderOrDie(orderId);
+            // Order-linked charges are authorization-checked before anything
+            // else: an order owned by another customer must fail closed (403,
+            // no upstream egress) even when the quoted value would match.
+            requireOwnedOrder(order.getOwnerExternalId(), requesterExternalId);
             if (order.getTotalAmount() == null || order.getTotalAmount().compareTo(value) != 0) {
                 throw new IllegalArgumentException(String.format(
                         "Payment value [%s] does not match the total [%s] of order [%s]",
@@ -267,6 +271,14 @@ public class AsaasPaymentService implements PaymentService {
                 || paymentOwnerCustomerId == null
                 || !paymentOwnerCustomerId.equals(requesterExternalId)) {
             throw new UserNotAllowedException("The authenticated user does not own this payment");
+        }
+    }
+
+    private void requireOwnedOrder(String orderOwnerExternalId, String requesterExternalId) {
+        if (requesterExternalId == null
+                || orderOwnerExternalId == null
+                || !orderOwnerExternalId.equals(requesterExternalId)) {
+            throw new UserNotAllowedException("The authenticated user does not own this order");
         }
     }
 

@@ -342,7 +342,9 @@ class AsaasPaymentServiceTest {
         final RestTemplate restTemplate = mock(RestTemplate.class);
         final OrderRepository orderRepository = mock(OrderRepository.class);
         when(orderRepository.findById("ord_1"))
-                .thenReturn(Optional.of(new CustomerOrder().setTotalAmount(new BigDecimal("500.00"))));
+                .thenReturn(Optional.of(new CustomerOrder()
+                        .setTotalAmount(new BigDecimal("500.00"))
+                        .setOwnerExternalId("cus_MINE")));
 
         // Underpayment: the classic R$0.01-charge-against-a-R$500-order attack.
         final PaymentCreationRequest underpaid = new PaymentCreationRequest(
@@ -356,7 +358,9 @@ class AsaasPaymentServiceTest {
 
         // Overpayment is equally rejected.
         when(orderRepository.findById("ord_1"))
-                .thenReturn(Optional.of(new CustomerOrder().setTotalAmount(new BigDecimal("10.00"))));
+                .thenReturn(Optional.of(new CustomerOrder()
+                        .setTotalAmount(new BigDecimal("10.00"))
+                        .setOwnerExternalId("cus_MINE")));
         final PaymentCreationRequest overpaid = new PaymentCreationRequest(
                 PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.01"), PaymentMethod.PIX);
         assertThrows(
@@ -386,12 +390,62 @@ class AsaasPaymentServiceTest {
     }
 
     @Test
-    void createPayment_orderLinked_exactTotalChargesUpstreamAndPersistsLink() {
+    void createPayment_orderLinked_foreignOrder_403WithoutUpstreamEgress() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        final OrderRepository orderRepository = mock(OrderRepository.class);
+        // Owner check runs before the value comparison: even an exactly-matching
+        // charge against a foreign order must fail closed with zero egress.
+        when(orderRepository.findById("ord_1"))
+                .thenReturn(Optional.of(new CustomerOrder()
+                        .setTotalAmount(new BigDecimal("10.00"))
+                        .setOwnerExternalId("cus_OTHER")));
+
+        assertThrows(
+                UserNotAllowedException.class,
+                () -> newService(restTemplate, paymentRepository, orderRepository)
+                        .createPayment(
+                                orderLinked(new PaymentCreationRequest(
+                                        PaymentProcessor.ASAAS,
+                                        "cus_MINE",
+                                        new BigDecimal("10.00"),
+                                        PaymentMethod.PIX)),
+                                "cus_MINE"));
+        verifyNoInteractions(restTemplate);
+        verifyNoInteractions(paymentRepository);
+    }
+
+    @Test
+    void createPayment_orderLinked_ownerlessOrder_failsClosedWithoutUpstreamEgress() {
         final RestTemplate restTemplate = mock(RestTemplate.class);
         final PaymentRepository paymentRepository = mock(PaymentRepository.class);
         final OrderRepository orderRepository = mock(OrderRepository.class);
         when(orderRepository.findById("ord_1"))
                 .thenReturn(Optional.of(new CustomerOrder().setTotalAmount(new BigDecimal("10.00"))));
+
+        assertThrows(
+                UserNotAllowedException.class,
+                () -> newService(restTemplate, paymentRepository, orderRepository)
+                        .createPayment(
+                                orderLinked(new PaymentCreationRequest(
+                                        PaymentProcessor.ASAAS,
+                                        "cus_MINE",
+                                        new BigDecimal("10.00"),
+                                        PaymentMethod.PIX)),
+                                "cus_MINE"));
+        verifyNoInteractions(restTemplate);
+        verifyNoInteractions(paymentRepository);
+    }
+
+    @Test
+    void createPayment_orderLinked_exactTotalChargesUpstreamAndPersistsLink() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        final OrderRepository orderRepository = mock(OrderRepository.class);
+        when(orderRepository.findById("ord_1"))
+                .thenReturn(Optional.of(new CustomerOrder()
+                        .setTotalAmount(new BigDecimal("10.00"))
+                        .setOwnerExternalId("cus_MINE")));
         final AsaasPaymentCreationResponse upstream = mock(AsaasPaymentCreationResponse.class);
         when(upstream.getId()).thenReturn("pay-10");
         when(upstream.getDateCreated()).thenReturn(LocalDate.of(2026, 9, 8));
@@ -423,7 +477,9 @@ class AsaasPaymentServiceTest {
         final PaymentRepository paymentRepository = mock(PaymentRepository.class);
         final OrderRepository orderRepository = mock(OrderRepository.class);
         when(orderRepository.findById("ord_1"))
-                .thenReturn(Optional.of(new CustomerOrder().setTotalAmount(new BigDecimal("10.00"))));
+                .thenReturn(Optional.of(new CustomerOrder()
+                        .setTotalAmount(new BigDecimal("10.00"))
+                        .setOwnerExternalId("cus_MINE")));
         when(paymentRepository.findByOrderIdAndOwnerExternalId("ord_1", "cus_MINE"))
                 .thenReturn(Optional.of(new Payment("pay-10", "cus_MINE", "ord_1")));
         final AsaasPaymentCreationResponse upstream = mock(AsaasPaymentCreationResponse.class);
@@ -459,7 +515,9 @@ class AsaasPaymentServiceTest {
         final PaymentRepository paymentRepository = mock(PaymentRepository.class);
         final OrderRepository orderRepository = mock(OrderRepository.class);
         when(orderRepository.findById("ord_1"))
-                .thenReturn(Optional.of(new CustomerOrder().setTotalAmount(new BigDecimal("10.00"))));
+                .thenReturn(Optional.of(new CustomerOrder()
+                        .setTotalAmount(new BigDecimal("10.00"))
+                        .setOwnerExternalId("cus_MINE")));
         final AsaasPaymentCreationResponse upstream = mock(AsaasPaymentCreationResponse.class);
         when(upstream.getId()).thenReturn("pay-orphan");
         when(upstream.getDateCreated()).thenReturn(LocalDate.of(2026, 9, 8));
