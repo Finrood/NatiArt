@@ -1369,7 +1369,7 @@ the runner-up.
   should pin whether that is N selects or a `LazyInitializationException`
   with `open-in-view=false`). Tracked, not silently fixed.
 
-## BD. HTTP integration robustness (Lens 6 hunt, 2026-09-09)
+## BE. HTTP integration robustness (Lens 6 hunt, 2026-09-09)
 
 Hunt method: re-read every upstream-egress call site on current master
 (`AsaasPaymentService` 3 egresses, `ShippingService` 1 egress, product
@@ -1382,9 +1382,9 @@ product advice, which itself renders a static 500 body); egress URLs and ids
 are hardened (`paymentResourceUrl` allow-lists + encodes the payment id, base
 URLs are server config, never caller input); the directory-validation
 `WebClient` is a constructed singleton with a 5s timeout. Three runner-ups
-below are new, plus one repair-time doc-rot note (BD4).
+below are new, plus one repair-time doc-rot note (BE4).
 
-### BD1. Provider transport failures and unmapped upstream statuses collapse to 500 — OPEN (Low)
+### BE1. Provider transport failures and unmapped upstream statuses collapse to 500 — OPEN (Low)
 - `service/AsaasPaymentService.java:109-114,149-156,192-200` and
   `service/ShippingService.java:63-71` catch only `HttpStatusCodeException`.
   A `ResourceAccessException` (connect/read timeout firing on the configured
@@ -1404,7 +1404,7 @@ below are new, plus one repair-time doc-rot note (BD4).
   Tests: timeout on shipping estimate → 503, not 500; Asaas 429 → 429/503
   with the header forwarded. Tracked, not silently fixed.
 
-### BD2. Upstream-controlled date fields dereferenced/parsed without guards — OPEN (Low)
+### BE2. Upstream-controlled date fields dereferenced/parsed without guards — OPEN (Low)
 - `service/AsaasPaymentService.java:124,128` call
   `responseBody.getDateCreated().atStartOfDay()` /
   `responseBody.getDueDate().atStartOfDay()` on nullable deserialized fields
@@ -1420,7 +1420,7 @@ below are new, plus one repair-time doc-rot note (BD4).
   Tests: null `dateCreated` → 502, not 500; malformed `expirationDate` →
   502. Tracked, not silently fixed.
 
-### BD3. `createPayment` success branch accepts only 200; error branches are dead code — OPEN (Low)
+### BE3. `createPayment` success branch accepts only 200; error branches are dead code — OPEN (Low)
 - `service/AsaasPaymentService.java:116-138`: the default RestTemplate
   error handler throws on any non-2xx, so the `UNAUTHORIZED` (`:134-135`)
   and catch-all `else` (`:136-138`) branches are unreachable for errors
@@ -1439,7 +1439,7 @@ below are new, plus one repair-time doc-rot note (BD4).
   `mapAsaasError` for error statuses. Test: stubbed 201 → ledger saved +
   success response. Tracked, not silently fixed.
 
-### BD4. `AZ`/`AZ1` labels now denote two different findings (repair-time doc-rot) — OPEN (Low)
+### BE4. `AZ`/`AZ1` labels now denote two different findings (repair-time doc-rot) — OPEN (Low)
 - Repairing PR #212 (2026-09-09) surfaced a label collision: findings holds
   `## AZ. AuthN and AuthZ boundaries (Lens 2)` with `### AZ1. Expired bearer
   token poisons public product-service reads` (Medium, OPEN) while the
@@ -1451,3 +1451,76 @@ below are new, plus one repair-time doc-rot note (BD4).
 - Fix: rename the newer Lens 2 section to the next free label (or renumber
   its item) and leave a pointer line; do it in a docs-only commit when no
   AZ-referencing PR is in flight. Tracked, not silently fixed.
+
+## BD. File and storage safety (Lens 7 hunt, 2026-09-09)
+
+Hunt method: re-read the full storage surface on current master
+(`storage/StorageFileSystem.java`, `storage/StorageServiceImpl.java`,
+`storage/StorageService.java`, `storage/Storage.java`,
+`storage/InputFile.java`, `service/ImageConversionService.java`,
+`service/ProductManagerImpl.java:220-266`,
+`controller/ProductController.java:81-155`,
+`application.properties:18-21` multipart/storage caps) against the Lens 7
+checklist (write-path confinement, MIME/extension validation, decompression
+limits, symlink and zip-slip handling). Re-verified as fixed/cleared on
+master: write-path confinement mirrors the read path
+(`resolveAllowedWriteFile`, `StorageFileSystem.java:111-130`, pinned by
+`StorageFileSystemTest` traversal/absolute/outside-root specs);
+read-path canonical confinement (`resolveAllowedFile`, `:62-79`); symlink
+skip in recursive zipping (`zipFileRecursively`, `:189-194`); zip entry
+collision disambiguation (`uniqueZipEntryName`, `:154-168`); image
+dimension/pixel caps (`ImageConversionService.java:20-21,73-96`, pinned by
+`ImageConversionServiceTest`); undecodable-bytes fail-closed to 400
+(`:40-44`); framework byte caps (`spring.servlet.multipart.max-file-size=10MB`,
+`max-request-size=100MB`, `application.properties:20-21`); no unzip path
+exists, so zip-slip on extraction is N/A (zip creation only). BD1-BD3 below
+are the runner-ups.
+
+### BD1. No per-request image count cap on product create/update — OPEN (Low)
+- `controller/ProductController.java:140-154` (`processImages`) forwards an
+  unbounded `List<MultipartFile>` to
+  `service/ImageConversionService.java:23-33` (`convertToWebP`), which decodes
+  each entry to a full `BufferedImage` (up to `MAX_PIXELS = 24_000_000`,
+  ~96MB heap each) via `parallelStream` in
+  `service/ProductManagerImpl.java:255-262` (`processImages`). Byte caps bound
+  the request (10MB/file, 100MB/request,
+  `application.properties:20-21`), but nothing caps the image COUNT: a
+  100MB request can carry ~10 max-size images decoded concurrently.
+  Blast radius is admin-only (`POST /products/create` and
+  `PUT /products/{productId}` both carry `@PreAuthorize("hasRole('ADMIN')")`,
+  `ProductController.java:82,98`), hence Low.
+- Fix: cap the image count per request (e.g. `MAX_IMAGES`) in `processImages`,
+  rejecting over-count with 400; consider sequential conversion or a bounded
+  pool. Tests: 11th image → 400, store untouched.
+  Found by Lens 7 hunt, 2026-09-09.
+
+### BD2. Non-file URI scheme on `GET /images` maps to 500 instead of 400/404 — OPEN (Low)
+- `service/ProductManagerImpl.java:220-230` (`getProductImage`) builds
+  `new URI(path)` from the raw `path` request param and calls
+  `storageService.openFile(uri)`, which dispatches by scheme in
+  `storage/StorageServiceImpl.java:63-69` (`getStorage(URI)`). Any
+  non-`file` scheme (e.g. `gcs://bucket/x`) matches no registered `Storage`
+  and throws `IllegalStateException("There is no manager handling the uri")`,
+  which `configuration/ControllerAdvice.java:29-33` (catch-all) renders as
+  500 "Internal server error". A client-controlled scheme choice is a 400/404,
+  not a server failure (same class of contract drift as AZ1 in the Lens 3
+  section).
+- Fix: reject unsupported schemes with 400/404 at the manager or advice
+  layer (e.g. map the no-manager case to `IllegalArgumentException` /
+  `ResourceNotFoundException`). Tests: `GET /images?path=gcs://x` → 400/404,
+  never 500; `file:` outside allowed roots stays 404.
+  Found by Lens 7 hunt, 2026-09-09.
+
+### BD3. `downloadFiles`/`downloadDirectory` zip unbounded input with no caps — OPEN (Low)
+- `storage/StorageFileSystem.java:133-147` (`downloadFiles`) zips an
+  unbounded `Set<URI>` and `:171-187` (`downloadDirectory`) zips a whole
+  directory tree recursively, both via uncaped `TempFile` staging and with no
+  entry-count / total-byte guard. A large set (or a directory planted with
+  many admin-uploaded images) stages an arbitrarily large zip on server disk
+  and CPU. Latent today: repo-wide grep shows zero controller callers — both
+  methods are reachable only via `StorageService` programmatic use, so no
+  request path triggers them yet (same latent status as AE3/AE4/X4).
+- Fix: cap entry count and total staged bytes (fail with 400/413) when a
+  read endpoint wires these methods. Tests: oversized set → 413, temp file
+  cleaned up. Tracked, not silently fixed.
+  Found by Lens 7 hunt, 2026-09-09.
