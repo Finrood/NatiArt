@@ -31,6 +31,7 @@ dto/                 DTOs (+ dto/<domain>/ sub-packages)
 helper/              Cross-layer helpers
 event/, listener/    Application events (directory-service)
 storage/             File storage abstraction (product-service)
+support/             JPA attribute converters (product-service)
 ```
 
 ## Class Naming Conventions
