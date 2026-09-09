@@ -1603,3 +1603,35 @@ BE1-BE2 below are the runner-ups.
   paths (mirror the checkout `isSubmitting` pattern). Spec: double submit
   issues one request.
   Found by Lens 12 hunt, 2026-09-09.
+
+## BH. Observability and log hygiene (Lens 14 hunt, 2026-09-09)
+
+Hunt method: swept both services for `System.out`/`printStackTrace` (zero
+hits) and all `LOGGER.*`/`console.*` call sites, then focused on the
+payment/order money path and the hot read paths.
+
+### BH1. Payment and order flows are completely unlogged — OPEN (Medium)
+- `backend/product-service/src/main/java/com/portcelana/natiart/controller/PaymentController.java`
+  and `controller/OrderController.java` contain zero `LOGGER` statements
+  (grep count 0), and `service/OrderManagerImpl.java` none either — payment
+  creation, PIX QR issuance, and order status transitions leave no trace,
+  so a failed checkout cannot be reconstructed or correlated from logs
+  (`service/AsaasPaymentService.java` logs only warn-level API errors at
+  `:139`, `:292`). Every other controller (Cart, Product, Category) logs.
+- Fix: INFO log the payment/order lifecycle entry points with owner/payment
+  identifiers (never token or full request body); DEBUG for internals.
+  Spec: creating a payment produces one INFO line containing the Asaas
+  payment id; order transition logs old→new status.
+  Found by Lens 14 hunt, 2026-09-09.
+
+### BH2. Hot read paths log context-free INFO lines and echo user-controlled path — OPEN (Low)
+- `controller/ProductController.java:63` (`"Getting new products"`) and
+  `:74` (`"Getting featured products"`) log at INFO with zero context or
+  pagination parameters on every storefront page view; `:125` logs the
+  user-controlled image `path` at INFO (`"Getting image with path [{}]"`),
+  which is both noise and unvalidated-input echo into logs;
+  `controller/CartController.java:27,35,43,50` logs every cart read/clear
+  at INFO. Log volume with no correlation value.
+- Fix: drop or move hot-path read logging to DEBUG with parameters
+  (page/size), and stop echoing the raw image path at INFO.
+  Found by Lens 14 hunt, 2026-09-09.
