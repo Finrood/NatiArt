@@ -212,10 +212,10 @@ class OrderManagerImplTest {
     }
 
     @Test
-    void updateOrderStatus_existingOrder_updatesDirectlyWithoutReadModifyWrite() {
-        final CustomerOrder order = new CustomerOrder();
-        when(orderRepository.updateStatusById(order.getId(), OrderStatus.PAID)).thenReturn(1);
+    void updateOrderStatus_allowedTransition_updatesWithoutEntitySave() {
+        final CustomerOrder order = new CustomerOrder().setStatus(OrderStatus.PENDING);
         when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(orderRepository.updateStatusById(order.getId(), OrderStatus.PAID)).thenReturn(1);
 
         final CustomerOrder updated = orderManager.updateOrderStatus(order.getId(), OrderStatus.PAID);
 
@@ -225,12 +225,38 @@ class OrderManagerImplTest {
     }
 
     @Test
+    void updateOrderStatus_terminalTransition_throwsWithoutUpdate() {
+        final CustomerOrder order = new CustomerOrder().setStatus(OrderStatus.DELIVERED);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        assertThrows(
+                IllegalArgumentException.class, () -> orderManager.updateOrderStatus(order.getId(), OrderStatus.PAID));
+
+        verify(orderRepository, never()).updateStatusById(anyString(), any());
+        verify(orderRepository, never()).save(any(CustomerOrder.class));
+    }
+
+    @Test
+    void updateOrderStatus_skippedStage_throwsWithoutUpdate() {
+        final CustomerOrder order = new CustomerOrder().setStatus(OrderStatus.PENDING);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> orderManager.updateOrderStatus(order.getId(), OrderStatus.SHIPPED));
+
+        verify(orderRepository, never()).updateStatusById(anyString(), any());
+        verify(orderRepository, never()).save(any(CustomerOrder.class));
+    }
+
+    @Test
     void updateOrderStatus_missingOrder_throwsNotFound() {
-        when(orderRepository.updateStatusById("missing", OrderStatus.PAID)).thenReturn(0);
+        when(orderRepository.findById("missing")).thenReturn(Optional.empty());
 
         assertThrows(
                 ResourceNotFoundException.class, () -> orderManager.updateOrderStatus("missing", OrderStatus.PAID));
 
+        verify(orderRepository, never()).updateStatusById(anyString(), any());
         verify(orderRepository, never()).save(any(CustomerOrder.class));
     }
 }
