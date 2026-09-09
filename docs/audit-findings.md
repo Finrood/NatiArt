@@ -380,14 +380,15 @@ rollback contract is covered (`OrderManagerImplTest:143`), cart increments are
 atomic (`CartManagerImpl:44`), and order item prices are server-computed
 (`OrderManagerImpl.java:84`) — not filed.
 
-### X4. `updateOrderStatus` accepts any transition, fulfillment path unwired — OPEN (Low)
+### X4. `updateOrderStatus` accepts any transition, fulfillment path unwired — IN REVIEW (Low; PR fix/payment-order-lifecycle)
 - `service/OrderManagerImpl.java:100-104` moves any status to any status
   (`DELIVERED` → `PENDING`, `CANCELLED` → `PAID`) with no transition guard,
   and neither it nor `getAllOrders`/`getById` has a controller endpoint
   (`controller/OrderController.java:19-23` exposes only `POST /orders/create`)
   — admin fulfillment is unreachable, so the missing guard is latent.
-- Fix: forward-only transition table when the admin endpoint is wired; until
-  then tracked, not silently fixed.
+- Fix in flight: forward-only transition table in `updateOrderStatus` (terminal
+  states accept nothing, stages never rewind or skip); the admin endpoint stays
+  unwired. Residual check-then-update race tracked as BA2.
 
 ## V. Injection and validation, catalog follow-ups (Lens 1 hunt, 2026-09-05)
 
@@ -961,6 +962,13 @@ by `from()`, upstream optionals only).
   egress, reconcile orphans. Tests: same-key double POST issues one upstream
   charge; save-failure leaves no unreconciled charge.
   Tracked, not silently fixed.
+- Narrowed 2026-09-08 (Lens 4; fix in flight on `fix/payment-order-lifecycle`):
+  order-linked retries now dedupe against the ledger before egress (one
+  upstream charge per order) with a unique constraint on `Payment.orderId` as
+  the race backstop, and save failures log the orphan upstream id + owner.
+  Residual: order-less charges (no `orderId`) are still charge-then-save, and
+  a concurrent same-order double POST can still double-charge before the
+  unique constraint fails the second save loud.
 
 ## AN. N+1 queries and pagination (Lens 5 hunt, 2026-09-07)
 
@@ -1398,4 +1406,45 @@ defaults never leak messages on 500); properties files are pure ASCII.
   (keep the deliberate guard-failure path); log the raw message server-side at
   DEBUG with the correlation context. Tests: an IAE with an
   internals-bearing message maps to a static body.
+
+## BA. Data integrity and transactions (Lens 4 hunt, 2026-09-08)
+
+Hunt method: re-verified the Lens 4 backlog against current `master`
+(`OrderManagerImpl`, `CartManagerImpl`, `AsaasPaymentService`,
+`PaymentController`, `Payment`/`CustomerOrder` mappings). AE1 FIXED on master
+(batched `getProductsOrDie`, PR #182 — flip pending), AE2 FIXED on master
+(bulk `deleteByUsername`, PR #182 — flip pending), B4 still OPEN
+(client-priced `deliveryAmount`, no owner column), G1 backend half merged
+(PR #207; storefront still charges the client snapshot), X4 guard + AM1
+order-linked dedupe in flight this cycle, AE3/AE4 still OPEN and latent
+(no read endpoint wires them). Cleared as non-findings: whole-order rollback
+contract (covered), atomic cart increments with line cap, server-computed
+order item prices, row-atomic stock decrements. BA1-BA2 below are new.
+
+### BA1. Successful payment never moves the order out of PENDING — OPEN (Medium)
+- `service/OrderManager.java:16` declares `updateOrderStatus` but nothing calls
+  it: repo-wide grep for `updateOrderStatus|OrderStatus.PAID|setStatus` in
+  `backend/product-service/src/main` hits only the declaration, the
+  implementation (`service/OrderManagerImpl.java:111`) and DTO/entity setters.
+  `service/AsaasPaymentService.java:80-139` (`createPayment`) never touches
+  order status, and `controller/OrderController.java:19-23` exposes only
+  `POST /orders/create`. Every paid order stays `PENDING` forever — fulfillment
+  has no signal to work from, and a cancelled-then-paid order is
+  indistinguishable from an unpaid one. Found by Lens 4 hunt, 2026-09-08.
+- Fix: on confirmed payment (creation for PIX-paid flows, status webhook/poll
+  transition to completed), transition the linked order `PENDING` → `PAID`
+  through the guarded `updateOrderStatus`; needs a product decision on which
+  payment event counts as paid. Tests: completed payment flips the linked
+  order; failed payment leaves it `PENDING`.
+  Tracked, not silently fixed.
+
+### BA2. Status guard check-then-update can interleave under concurrency — OPEN (Low)
+- `service/OrderManagerImpl.java:111-127` (X4 guard, in flight this cycle)
+  reads the current status via `getOrderById`, validates against
+  `ALLOWED_TRANSITIONS`, then fires the bulk `updateStatusById`: two racing
+  transitions (e.g. `PENDING` → `PAID` vs `PENDING` → `CANCELLED`) both pass
+  the guard and the last write wins. Single-threaded misuse is impossible;
+  only a true race interleaves. Found by Lens 4 hunt, 2026-09-08.
+- Fix: re-check affected rows / version-guard when the admin endpoint is wired
+  (with X4); until then tracked, not silently fixed.
 
