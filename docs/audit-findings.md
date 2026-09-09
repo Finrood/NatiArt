@@ -618,24 +618,6 @@ listing uses a fetch join. Cleared as non-findings: `findAllIds*` id-page querie
 directory `findByUser`/`findByJti*` single-row lookups (no fan-out). AE1-AE3
 below are runner-ups.
 
-### AE1. `createOrder` loads one product per order line with no batching — OPEN (Medium)
-- `service/OrderManagerImpl.java:79-96` calls
-  `productManager.getProductOrDie(item.getProductId())` (one `findById` select)
-  plus `productRepository.decreaseStockIfAvailable` (one update) per line, up to
-  `MAX_ORDER_LINES = 50` lines per request — a 50-line checkout costs 100+
-  round trips inside one transaction. The per-line stock decrement is
-  intentionally row-atomic and stays; only the product reads can batch.
-- Fix: single `findAllById` for the distinct line product ids, then map by id;
-  keep the per-line active/stock checks. Tests: 3-line order issues 1 product
-  select (Hibernate statistics), unknown id still 404s.
-
-### AE2. `clearCart` loads every line entity to delete them one by one — OPEN (Low)
-- `service/CartManagerImpl.java:88-90` runs `findCartItemsByUsername` (1 select
-  + per-line association fetches) then `deleteAll` (N deletes) to empty a cart
-  whose rows are never read — pure overhead on the checkout path.
-- Fix: bulk delete query (`deleteByUsername`, one statement) in
-  `CartItemRepository`. Tests: clearing a 3-line cart issues 1 delete, lines gone.
-
 ### AE3. `getAllOrders` unbounded `findAll` will N+1 on items when wired — OPEN (Low)
 - `service/OrderManagerImpl.java:51-53` returns `orderRepository.findAll()`
   with no pagination; `CustomerOrder.items` is LAZY (`model/CustomerOrder.java:50-51`)
@@ -835,30 +817,6 @@ siblings (`AuthenticationController.java`, `UserAuthenticationProvider.java`,
 both `JwtAuthFilter`s). B11/S6 merged as PR #173 this cycle, so the hunt
 re-verified the remaining contract surface instead of re-filing them.
 
-### AK1. Same auth denial is a bare 401, a 403 "Invalid or expired token", or a 403 "Access denied" depending on the layer — IN REVIEW (Medium; PR pending)
-- Directory `JwtAuthFilter.java:46-49` clears the context and short-circuits
-  with a bodyless 401 on `IllegalAccessException`; the same exception from
-  `validateToken` (`AuthenticationController.java:61-65`) travels to the
-  directory advice (`ControllerAdvice.java:41-47`) and becomes 403
-  "Invalid or expired token"; product-service `@PreAuthorize` denials become
-  403 "Access denied" (`product-service .../configuration/ControllerAdvice.java:19-23`).
-  One failure, three contracts — the storefront cannot match denials uniformly.
-- Fix: single denial shape per service at minimum (status + static body),
-  aligned across services; document it next to the advices. Tests: invalid
-  token via filter vs via `validateToken` assert the same status/body.
-  Found by Lens 15 hunt, 2026-09-07.
-
-### AK4. `validateToken` returns a Spring `Authentication` instead of a DTO — IN REVIEW (Low; PR pending)
-- `AuthenticationController.java:60-66` returns
-  `ResponseEntity<Authentication>` — a framework internal, not a versioned
-  contract type — while every sibling auth endpoint returns a DTO. The
-  serialized shape can shift with Spring upgrades and may carry principal
-  internals; no storefront caller references the endpoint.
-- Fix: return a narrow DTO (valid flag + username/expiry) or document the
-  endpoint as service-internal. Tests: response shape asserted, no
-  `Authentication` internals serialized.
-  Found by Lens 15 hunt, 2026-09-07.
-
 ## AL. Dependency and supply chain (Lens 16 hunt, 2026-09-07)
 
 Hunt method: `npm audit --omit=dev` (0 vulns) and full `npm audit`
@@ -904,24 +862,6 @@ Cleared as non-findings: prod `npm audit` (clean); Spring Boot/TS majors
   frontend/guidelines workflows. Remaining half is unchanged: every `uses:`
   reference in all five workflows is still a mutable tag, never a full
   commit SHA.
-
-### AL3. Gradle wrapper `9.1.0` → `9.7.1` minor buried behind the red Spring major — IN REVIEW (Low; PR #205)
-- Dependabot PR #118 bundles a `9.1.0` → `9.7.1` Gradle wrapper minor
-  (`backend/gradle/wrapper/gradle-wrapper.properties:4`) and a
-  `ben-manes-versions` `0.52.0` → `0.61.0` bump behind the red Spring
-  Boot `3.5.6` → `4.1.1` major, so the safe minors cannot land until a
-  human resolves the major.
-- Fix: our own `chore/` branch bumping the wrapper (and the versions
-  plugin) alone, green CI proving separability — never push to the
-  dependabot branch. Tracked, not silently fixed.
-- PR #205 (chore/gradle-wrapper-versions-bump): both root and
-  `backend/` wrappers regenerated to `9.7.1`; versions plugin bumped to
-  `0.61.0` including the plugin-ID migration to
-  `io.github.ben-manes.versions` (the `0.61.0` release deprecates the
-  `com.github.*` ID). Green `!check` (265/266 backend tests; the single
-  local failure is `ImageConversionServiceTest.convertsNormalImageToWebP`
-  loading an AMD64-only `.so` on this AARCH64 machine — passes on x86 CI),
-  Spotless clean, no functional code touched.
 
 ## AM. Data integrity and transactions (Lens 4 hunt, 2026-09-07)
 

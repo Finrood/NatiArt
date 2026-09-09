@@ -1157,3 +1157,43 @@ camelCase, `PaymentController.java:38`) still OPEN on both sides
 - Fix: "16 audit lenses" → "17 audit lenses". Merged 2026-09-08 (PR #199:
   dependabot aging policy + loop-doc drift fixes); status corrected by the
   Lens 9 cycle (doc-rot: item referenced a MERGED PR).
+
+### AE1. `createOrder` loads one product per order line with no batching — FIXED (PR #182)
+- `service/OrderManagerImpl.java:79-96` called
+  `productManager.getProductOrDie(item.getProductId())` (one `findById` select)
+  plus `productRepository.decreaseStockIfAvailable` (one update) per line, up to
+  `MAX_ORDER_LINES = 50` lines per request. Found by Lens 5 hunt, 2026-09-06.
+- Fix: single batched `getProductsOrDie` read for the distinct line product
+  ids, per-line active/stock checks kept. Merged 2026-09-07 (PR #182:
+  perf/order-cart-query-batching); verified on master 2026-09-08
+  (`OrderManagerImpl.java:80-85` batched read, per-line atomic decrements kept).
+
+### AE2. `clearCart` loads every line entity to delete them one by one — FIXED (PR #182)
+- `service/CartManagerImpl.java:88-90` ran `findCartItemsByUsername` then
+  `deleteAll` (N deletes) to empty a cart whose rows are never read. Found by
+  Lens 5 hunt, 2026-09-06.
+- Fix: bulk `deleteByUsername` in one statement. Merged 2026-09-07 (PR #182);
+  verified on master 2026-09-08 (`CartManagerImpl.java:88-90`). Cascade
+  semantics proven by PR #191 (void derived deletes honor the
+  Personalization orphanRemoval cascade).
+
+### AK1. Same auth denial is a bare 401, a 403 "Invalid or expired token", or a 403 "Access denied" depending on the layer — FIXED (PR #209)
+- Directory `JwtAuthFilter` short-circuited bodyless 401, `validateToken`
+  mapped to 403 "Invalid or expired token", product `@PreAuthorize` denials
+  became 403 "Access denied" — one failure, three contracts. Found by Lens 15
+  hunt, 2026-09-07.
+- Fix: unified invalid-token denial to 401 with one static body. Merged
+  2026-09-08 (PR #209: fix/auth-denial-contract).
+
+### AK4. `validateToken` returns a Spring `Authentication` instead of a DTO — FIXED (PR #209)
+- `AuthenticationController.java:60-66` returned `ResponseEntity<Authentication>`
+  — a framework internal, not a versioned contract type. Found by Lens 15
+  hunt, 2026-09-07.
+- Fix: narrow DTO (valid flag + username/expiry). Merged 2026-09-08 (PR #209).
+
+### AL3. Gradle wrapper `9.1.0` → `9.7.1` minor buried behind the red Spring major — FIXED (PR #205)
+- Dependabot PR #118 bundled the wrapper minor and versions-plugin bump behind
+  the red Spring Boot `3.5.6` → `4.1.1` major. Found by Lens 16 hunt, 2026-09-07.
+- Fix: own `chore/` branch bumping the wrapper to `9.7.1` and the versions
+  plugin to `0.61.0` (including the `io.github.ben-manes.versions` plugin-ID
+  migration) alone. Merged 2026-09-08 (PR #205: chore/gradle-wrapper-versions-bump).
