@@ -1258,20 +1258,97 @@ stay capped with destroy teardown. Two runner-ups below are new.
   `pendingAlertsTimer`), or set the flag synchronously if change detection
   allows. Spec: destroy within the tick → no post-destroy write.
 
-## BA. Data integrity and transactions (Lens 4 hunt, 2026-09-08)
+## AZ. Secrets and configuration re-hunt (Lens 3, 2026-09-08)
+
+Hunt method: grepped both services' `application*.properties` for datasource
+credential defaults, token/secret-bearing log and console statements, bare
+`@Value` sites and `:-` defaults, `server.error.include*` exposure, git-tracked
+secret-ish files, non-ASCII in properties (ASCII rule), frontend
+`environment*.ts` drift. Fixed in flight this cycle: AV1 (base profiles armed
+`data.sql` + tutorial bcrypt hash), AV2 (JWT expiration comment drift), AV3
+(`UserAuthenticationProvider` field `@Value` + `@PostConstruct` guard).
+Re-verified as INVALID on current master: Y1 (baked CORS origins — both
+`WebConfig` constructors now take `@Value("${nati.cors.allowed-origins}")`,
+externalized to properties with `CORS_ALLOWED_ORIGINS` env override).
+Cleared as non-findings: datasource credentials in prod/dev profiles are
+env-var-only with no defaults (boot fails fast); `admin/admin` H2 creds live
+only in `application-local-h2.properties`; Melhor Envio blank-token default
+is rejected by `ShippingService` at construction; zero Authorization-header
+or token-bearing log statements; no `server.error.include` overrides (Boot 3
+defaults never leak messages on 500); properties files are pure ASCII.
+
+### AZ1. `ControllerAdvice` echoes raw `IllegalArgumentException` messages into 400 bodies — OPEN (Low)
+- `backend/directory-service/src/main/java/com/saas/directory/configuration/ControllerAdvice.java:46-49`
+  and
+  `backend/product-service/src/main/java/com/portcelana/natiart/configuration/ControllerAdvice.java:36-38`
+  return `e.getMessage()` verbatim for `IllegalArgumentException`. Those
+  messages are server-side artifacts, not client input: e.g. a
+  `NumberFormatException` reaches a client as `For input string: "abc"` and
+  `Enum.valueOf` failures leak the enum's constant list. Deliberate messages
+  (guard failures at `:62-64`/`:50-52`) are fine; the catch-all IAE mapping is
+  the leak. Found by Lens 3 hunt, 2026-09-08.
+- Fix: return a static "Invalid request" body for the catch-all IAE handler
+  (keep the deliberate guard-failure path); log the raw message server-side at
+  DEBUG with the correlation context. Tests: an IAE with an
+  internals-bearing message maps to a static body.
+
+## BB. Data integrity and transactions (Lens 4 hunt, 2026-09-09)
 
 Hunt method: re-verified the Lens 4 backlog against current `master`
-(`OrderManagerImpl`, `CartManagerImpl`, `AsaasPaymentService`,
-`PaymentController`, `Payment`/`CustomerOrder` mappings). AE1 FIXED on master
-(batched `getProductsOrDie`, PR #182 — flip pending), AE2 FIXED on master
-(bulk `deleteByUsername`, PR #182 — flip pending), B4 still OPEN
-(client-priced `deliveryAmount`, no owner column), G1 backend half merged
-(PR #207; storefront still charges the client snapshot), X4 guard + AM1
-order-linked dedupe in flight this cycle, AE3/AE4 still OPEN and latent
-(no read endpoint wires them). Cleared as non-findings: whole-order rollback
-contract (covered), atomic cart increments with line cap, server-computed
-order item prices, row-atomic stock decrements. BA1-BA2 below are new.
+(`OrderManagerImpl.createOrder`, `CustomerOrder` mapping, `OrderController`,
+`AsaasPaymentService.createPayment`, `PaymentController`) plus the BA batch
+from PR #213 (X4 guard + AM1 order-linked dedupe in flight, BA1-BA2 tracked).
+Re-verified this cycle: G1 backend half merged (order-linked value
+reconciliation present, `AsaasPaymentService.java:92-103`), AE1/AE2 FIXED on
+master (flip pending in PR #214), AE3/AE4 still OPEN and latent (no read
+endpoint wires them), BA1 still OPEN (no caller moves a paid order out of
+PENDING), BA2 still OPEN and latent (guard races only when the admin endpoint
+is wired). B4 owner half fixed in flight this cycle (`fix/order-owner`:
+`ownerExternalId` persisted from the `@AuthenticationPrincipal` principal's
+`getExternalId()` — the same identifier domain as `Payment.ownerExternalId`
+— blank owners rejected, column `nullable = false`);
+B4 remainder narrowed to server-side freight below. Cleared as non-findings:
+whole-order rollback contract (covered), atomic cart increments with line cap,
+server-computed order item prices, row-atomic stock decrements,
+`OrderDto.ownerExternalId` client-settability (the manager takes the owner as
+a separate `ownerExternalId` parameter sourced from the resolved principal
+and never reads `orderDto.getOwnerExternalId()`, so a forged body owner is
+ignored by construction — pinned by `createOrderIgnoresClientSuppliedOwnerInBody`).
 
+### BA3. Order-linked payments accept any user's order id; owner check now unblocked — OPEN (Medium)
+- `service/AsaasPaymentService.java:92-103` loads the linked order via
+  `getOrderOrDie(orderId)` with no owner check, so any authenticated user can
+  reference another user's order id: the value must match the victim order's
+  total, but the resulting `Payment` row carries the attacker's
+  `ownerExternalId` against the victim's order. Once BA1 lands (completed
+  payment flips the linked order `PENDING` → `PAID`), that flip would mark the
+  victim's order paid from the attacker's payment. Unblocked by the B4 owner
+  half in flight this cycle (`CustomerOrder.ownerExternalId` now persisted).
+  Found by Lens 4 hunt, 2026-09-09.
+- Fix: require `order.getOwnerExternalId().equals(requesterExternalId)` before
+  any upstream egress (403 otherwise, no Asaas call); keep ignoring the
+  body-supplied `OrderDto.ownerExternalId`. Tests: foreign orderId → 403 with
+  zero upstream egress (mock `RestTemplate` never hit); own orderId flows.
+  Tracked, not silently fixed (touches `AsaasPaymentService.createPayment`,
+  owned this cycle by PR #213 — take after it merges to avoid conflicts).
+
+### BA4. `getOrderById`/`getAllOrders` still owner-unaware — OPEN (Low)
+- `service/OrderManagerImpl.java:43-54` reads by id / full-table with no owner
+  scope, and `dto/OrderDto.java` now round-trips `ownerExternalId`. Latent
+  today: `controller/OrderController.java:19-23` exposes only
+  `POST /orders/create`, so no read endpoint triggers it (same reason AE3/AE4
+  and X4 stay tracked). Found by Lens 4 hunt, 2026-09-09.
+- Fix: when the admin/single-order read endpoint is wired (with X4/AE3),
+  scope reads to the requester's `ownerExternalId` (admin role bypass).
+  Tests: user A cannot read user B's order. Tracked, not silently fixed.
+
+### B4 remainder narrowed to server-side freight (2026-09-09)
+- B4 stays OPEN: `OrderManagerImpl.java:60,77,105` still trusts client
+  `deliveryAmount` (only non-negativity checked) — send `0` for free shipping.
+  The owner half is fixed in flight this cycle (`fix/order-owner`); the
+  freight half needs a product decision (reprice via `ShippingService` inside
+  order creation vs a quoted-freight token), so it stays tracked, not silently
+  fixed.
 ### BA1. Successful payment never moves the order out of PENDING — OPEN (Medium)
 - `service/OrderManager.java:16` declares `updateOrderStatus` but nothing calls
   it: repo-wide grep for `updateOrderStatus|OrderStatus.PAID|setStatus` in
@@ -1349,7 +1426,7 @@ the runner-up.
   should pin whether that is N selects or a `LazyInitializationException`
   with `open-in-view=false`). Tracked, not silently fixed.
 
-## BH. HTTP integration robustness (Lens 6 hunt, 2026-09-09)
+## BI. HTTP integration robustness (Lens 6 hunt, 2026-09-09)
 
 Hunt method: re-read every upstream-egress call site on current master
 (`AsaasPaymentService` 3 egresses, `ShippingService` 1 egress, product
@@ -1364,7 +1441,7 @@ URLs are server config, never caller input); the directory-validation
 `WebClient` is a constructed singleton with a 5s timeout. Three runner-ups
 below are new, plus one repair-time doc-rot note (BE4).
 
-### BH1. Provider transport failures and unmapped upstream statuses collapse to 500 — OPEN (Low)
+### BI1. Provider transport failures and unmapped upstream statuses collapse to 500 — OPEN (Low)
 - `service/AsaasPaymentService.java:109-114,149-156,192-200` and
   `service/ShippingService.java:63-71` catch only `HttpStatusCodeException`.
   A `ResourceAccessException` (connect/read timeout firing on the configured
@@ -1384,7 +1461,7 @@ below are new, plus one repair-time doc-rot note (BE4).
   Tests: timeout on shipping estimate → 503, not 500; Asaas 429 → 429/503
   with the header forwarded. Tracked, not silently fixed.
 
-### BH2. Upstream-controlled date fields dereferenced/parsed without guards — OPEN (Low)
+### BI2. Upstream-controlled date fields dereferenced/parsed without guards — OPEN (Low)
 - `service/AsaasPaymentService.java:124,128` call
   `responseBody.getDateCreated().atStartOfDay()` /
   `responseBody.getDueDate().atStartOfDay()` on nullable deserialized fields
@@ -1400,7 +1477,7 @@ below are new, plus one repair-time doc-rot note (BE4).
   Tests: null `dateCreated` → 502, not 500; malformed `expirationDate` →
   502. Tracked, not silently fixed.
 
-### BH3. `createPayment` success branch accepts only 200; error branches are dead code — OPEN (Low)
+### BI3. `createPayment` success branch accepts only 200; error branches are dead code — OPEN (Low)
 - `service/AsaasPaymentService.java:116-138`: the default RestTemplate
   error handler throws on any non-2xx, so the `UNAUTHORIZED` (`:134-135`)
   and catch-all `else` (`:136-138`) branches are unreachable for errors
@@ -1419,7 +1496,7 @@ below are new, plus one repair-time doc-rot note (BE4).
   `mapAsaasError` for error statuses. Test: stubbed 201 → ledger saved +
   success response. Tracked, not silently fixed.
 
-### BH4. `AZ`/`AZ1` labels now denote two different findings (repair-time doc-rot) — OPEN (Low)
+### BI4. `AZ`/`AZ1` labels now denote two different findings (repair-time doc-rot) — OPEN (Low)
 - Repairing PR #212 (2026-09-09) surfaced a label collision: findings holds
   `## AZ. AuthN and AuthZ boundaries (Lens 2)` with `### AZ1. Expired bearer
   token poisons public product-service reads` (Medium, OPEN) while the
@@ -1505,6 +1582,57 @@ are the runner-ups.
   cleaned up. Tracked, not silently fixed.
   Found by Lens 7 hunt, 2026-09-09.
 
+## BF. Loading and error UX re-hunt (Lens 12, 2026-09-09)
+
+Hunt method: re-read the PIX payment-confirmation flow
+(`pix-payment-confirmation.component.ts`, `.html`), cart-line mutation
+(`cart.service.ts`, `cart-modal.component.ts`), add-to-cart
+(`add-to-cart-button.component.ts`, `personalization-modal.component.ts`)
+and re-verified the two standing Lens-12 items from the AH section on
+current master: AH2 still OPEN (`left-menu.component.ts:28-33` still
+`console.error`-only on `getCategories` failure), AH3 still OPEN
+(`login.component.ts:98-118` `doLoginUser` still issues
+`authenticationService.login` with no in-flight guard or button disable).
+Cleared as non-findings: `cart-modal` image fetch (`fetchImage`
+`cart-modal.component.ts:106-129` falls back to a placeholder on error and
+guards late resolutions); `cart.service.ts` add/update/remove are
+local-state mutations that only `console.warn` on impossible paths (stock
+clamp is user-visible via quantity re-render); `personalization-modal`
+submit-guard `console.warn` is an unreachable-UI branch. BF1-BF2 below are
+new.
+
+### BF1. PIX confirmation falls into an eternal spinner after a transient QR-load failure — OPEN (Low)
+- `frontend/natiart-app/src/app/product/components/customer/checkout/pix-payment-confirmation/pix-payment-confirmation.component.ts:57-62`
+  (`loadQrCode`) sets `paymentStatus = 'ERROR'` on a QR load failure but
+  leaves `qrCodeData` null and does NOT stop the status polling started in
+  `ngOnInit` (`:49`, `startPolling` `:72-122`). The poll's `next` handler
+  (`:92-105`) then overwrites `paymentStatus` with each successful status
+  response (back to `PENDING`/`PAID`), erasing the ERROR. In the template
+  (`pix-payment-confirmation.component.html:63-68`), with `qrCodeData`
+  still null the `@if (qrCodeData)` QR branch and the
+  `@else if (paymentStatus === 'ERROR')` error branch both miss, so the
+  `@else` "Loading payment details…" spinner (`:66-68`) renders forever —
+  the component never re-fetches the QR, and the 60-attempt poll merely
+  keeps status PENDING until the tab is closed. Degraded UX only (no data
+  loss; user can navigate back), but exactly the Lens-12 "spinner stuck on
+  failure" class on a payment page. Found by Lens 12 hunt, 2026-09-09.
+- Fix: in `loadQrCode`'s error handler call `stopPolling()` so ERROR is
+  terminal, or re-issue the QR fetch when polling reports a live status
+  while `qrCodeData` is missing. Spec: QR failure + successful status poll
+  never leaves the page on the spinner (either stays ERROR or re-fetches
+  the QR).
+
+### BF2. PIX payload "copy" button is silent on clipboard failure — OPEN (Low)
+- `pix-payment-confirmation.component.ts:130-134` (`copyToClipboard`) uses
+  the deprecated `document.execCommand('copy')` and ignores its boolean
+  result. Where the call fails or is blocked (older WebKit/Safari paths,
+  permission-restricted contexts), the user gets zero feedback and believes
+  the ~50-char PIX copy-paste payload was copied — checkout-adjacent
+  failure with no retry affordance. Found by Lens 12 hunt, 2026-09-09.
+- Fix: `navigator.clipboard.writeText` with a fallback and a visible
+  "Copied"/"Copy failed" state on the button. Spec: failed copy shows a
+  failure state; successful copy shows "Copied".
+
 ## BE. Loading and error UX re-hunt (Lens 12, 2026-09-09)
 
 Hunt method: re-read the checkout/login/signup/admin loading and error paths
@@ -1556,8 +1684,7 @@ BE1-BE2 below are the runner-ups.
   issues one request.
   Found by Lens 12 hunt, 2026-09-09.
 
-
-## BF. Frontend auth flow re-hunt (Lens 9, 2026-09-09)
+## BJ. Frontend auth flow re-hunt (Lens 9, 2026-09-09)
 
 Hunt method: re-read the token-lifecycle paths on current master
 (`authentication.service.ts` `fetchCurrentUser`/`handleError`,
@@ -1573,7 +1700,7 @@ stale-token retry clones carry the fresh token (`:142-144`); no-refresh-token
 passes 'Login failed', correctly skipping the second reset (`:260` includes
 check). One runner-up below is new.
 
-### BF1. `fetchCurrentUser` 401 triggers two sequential auth-resets — OPEN (Low)
+### BJ1. `fetchCurrentUser` 401 triggers two sequential auth-resets — OPEN (Low)
 - `frontend/natiart-app/src/app/directory/service/authentication.service.ts:128-133`:
   the `catchError` calls `resetAuthStateAndRedirect()` on 401 (`:130`), then
   returns `this.handleError(error, 'Failed to fetch user')` (`:132`) — and
@@ -1638,3 +1765,35 @@ race. Two runner-ups below are new.
   listing) at confirm time; refuse lines whose product vanished. Spec:
   confirm after a price change adds the current price, not the modal-open
   one. Found by Lens 10 hunt, 2026-09-09.
+
+## BH. Observability and log hygiene (Lens 14 hunt, 2026-09-09)
+
+Hunt method: swept both services for `System.out`/`printStackTrace` (zero
+hits) and all `LOGGER.*`/`console.*` call sites, then focused on the
+payment/order money path and the hot read paths.
+
+### BH1. Payment and order flows are completely unlogged — OPEN (Medium)
+- `backend/product-service/src/main/java/com/portcelana/natiart/controller/PaymentController.java`
+  and `controller/OrderController.java` contain zero `LOGGER` statements
+  (grep count 0), and `service/OrderManagerImpl.java` none either — payment
+  creation, PIX QR issuance, and order status transitions leave no trace,
+  so a failed checkout cannot be reconstructed or correlated from logs
+  (`service/AsaasPaymentService.java` logs only warn-level API errors at
+  `:139`, `:292`). Every other controller (Cart, Product, Category) logs.
+- Fix: INFO log the payment/order lifecycle entry points with owner/payment
+  identifiers (never token or full request body); DEBUG for internals.
+  Spec: creating a payment produces one INFO line containing the Asaas
+  payment id; order transition logs old→new status.
+  Found by Lens 14 hunt, 2026-09-09.
+
+### BH2. Hot read paths log context-free INFO lines and echo user-controlled path — OPEN (Low)
+- `controller/ProductController.java:63` (`"Getting new products"`) and
+  `:74` (`"Getting featured products"`) log at INFO with zero context or
+  pagination parameters on every storefront page view; `:125` logs the
+  user-controlled image `path` at INFO (`"Getting image with path [{}]"`),
+  which is both noise and unvalidated-input echo into logs;
+  `controller/CartController.java:27,35,43,50` logs every cart read/clear
+  at INFO. Log volume with no correlation value.
+- Fix: drop or move hot-path read logging to DEBUG with parameters
+  (page/size), and stop echoing the raw image path at INFO.
+  Found by Lens 14 hunt, 2026-09-09.
