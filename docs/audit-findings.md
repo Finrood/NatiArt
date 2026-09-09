@@ -1806,3 +1806,26 @@ payment/order money path and the hot read paths.
 - Fix: drop or move hot-path read logging to DEBUG with parameters
   (page/size), and stop echoing the raw image path at INFO.
   Found by Lens 14 hunt, 2026-09-09.
+
+## BL. Instruction drift re-hunt (Lens 17, 2026-09-09)
+
+Hunt method: re-verified the four root mirrors byte-identical (`md5sum`), all
+`agents/*.md` frontmatter, workflow filenames (`backend_workflow.yml` JDK 25,
+`frontend_workflow.yml`), Spring Boot `3.5.6`, cart-route examples vs
+`CartController.java:24-47`, `event/`+`listener/` (directory),
+`helper/`/`storage/`/`service/support/` packages, `open-in-view=false` and
+`ddl-auto=update` properties, the `RateLimitFilter(int, Clock)` precedent,
+spec count 56 ("~55" holds), Angular 20 / Tailwind 4 / Adyen claims, and the
+`*ngIf`/`*ngFor`-free claim (grep hits were `*Form` substring false
+positives). U1 already FIXED (PR #199). U2 and U4 re-verified still OPEN and
+fixed in flight this cycle. One new finding appended.
+
+### BL1. Package-layout guide omits product-service's top-level support/ — IN REVIEW (Low)
+- `agents/java-modules-and-packages.md:24-34` layered-structure block lists
+  `service/support/` but not the top-level `support/` package
+  (`backend/product-service/src/main/java/com/portcelana/natiart/support/`,
+  five JPA attribute converters: `JsonJpaConverter`,
+  `ListStringJpaConverter`, `MapStringStringJpaConverter`,
+  `SetPersonalizationOptionJpaConverter`, `SetStringJpaConverter`).
+- Fix: add a `support/` line to the layout block.
+  Found by Lens 17 hunt, 2026-09-09.
