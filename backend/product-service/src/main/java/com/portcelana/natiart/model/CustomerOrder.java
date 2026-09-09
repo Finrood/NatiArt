@@ -59,6 +59,9 @@ public class CustomerOrder {
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
 
+    @Column(nullable = false)
+    private String ownerExternalId;
+
     public CustomerOrder() {
         this.id = UUID.randomUUID().toString();
     }
@@ -217,6 +220,15 @@ public class CustomerOrder {
 
     public CustomerOrder setStatus(OrderStatus status) {
         this.status = status;
+        return this;
+    }
+
+    public String getOwnerExternalId() {
+        return ownerExternalId;
+    }
+
+    public CustomerOrder setOwnerExternalId(String ownerExternalId) {
+        this.ownerExternalId = ownerExternalId;
         return this;
     }
 

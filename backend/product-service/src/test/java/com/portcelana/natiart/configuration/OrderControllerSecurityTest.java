@@ -2,6 +2,9 @@ package com.portcelana.natiart.configuration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -16,11 +19,14 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithAnonymousUser;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.portcelana.natiart.controller.OrderController;
+import com.portcelana.natiart.dto.AuthenticationResponseDto;
 import com.portcelana.natiart.dto.OrderDto;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.service.OrderManager;
@@ -40,7 +46,8 @@ class OrderControllerSecurityTest {
 
     @Test
     void createOrderRequiresFullAuthenticationLikeCartAndPayment() throws Exception {
-        final Method createOrder = OrderController.class.getMethod("createOrder", OrderDto.class);
+        final Method createOrder = OrderController.class.getMethod(
+                "createOrder", OrderDto.class, AuthenticationResponseDto.Principal.class);
         final PreAuthorize preAuthorize = createOrder.getAnnotation(PreAuthorize.class);
 
         assertEquals("isFullyAuthenticated()", preAuthorize.value());
@@ -61,13 +68,63 @@ class OrderControllerSecurityTest {
     }
 
     @Test
-    @WithMockUser(username = "jane")
     void authenticatedUserCanCreateOrder() throws Exception {
-        when(orderManager.createOrder(any(OrderDto.class))).thenReturn(new CustomerOrder().setItems(List.of()));
+        final AuthenticationResponseDto.Principal principal = mock(AuthenticationResponseDto.Principal.class);
+        when(principal.getExternalId()).thenReturn("cus_MINE");
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(
+                        principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+        when(orderManager.createOrder(any(OrderDto.class), any())).thenReturn(new CustomerOrder().setItems(List.of()));
 
-        mockMvc.perform(post("/orders/create")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
-                .andExpect(status().isOk());
+        try {
+            mockMvc.perform(post("/orders/create")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isOk());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void createOrderPassesAuthenticatedPrincipalExternalIdAsOwner() throws Exception {
+        final AuthenticationResponseDto.Principal principal = mock(AuthenticationResponseDto.Principal.class);
+        when(principal.getExternalId()).thenReturn("cus_MINE");
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(
+                        principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+        when(orderManager.createOrder(any(OrderDto.class), any())).thenReturn(new CustomerOrder().setItems(List.of()));
+
+        try {
+            mockMvc.perform(post("/orders/create")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isOk());
+
+            verify(orderManager).createOrder(any(OrderDto.class), eq("cus_MINE"));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void createOrderIgnoresClientSuppliedOwnerInBody() throws Exception {
+        final AuthenticationResponseDto.Principal principal = mock(AuthenticationResponseDto.Principal.class);
+        when(principal.getExternalId()).thenReturn("cus_MINE");
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(
+                        principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+        when(orderManager.createOrder(any(OrderDto.class), any())).thenReturn(new CustomerOrder().setItems(List.of()));
+
+        try {
+            mockMvc.perform(post("/orders/create")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"ownerExternalId\":\"mallory\"}"))
+                    .andExpect(status().isOk());
+
+            verify(orderManager).createOrder(any(OrderDto.class), eq("cus_MINE"));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 }
