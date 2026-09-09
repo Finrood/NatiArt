@@ -78,7 +78,7 @@ which is exactly why you catch what it missed. Work in the repo root. Obey
    `Model: <value of $NATIART_MODEL>` (own line at column 0, exactly
    `Model: <literal value>` — no bullet, no indent, no bold; read the value
    with `echo "$NATIART_MODEL"`;
-   e.g. second line `Model: cline:zai/glm-5.3-flash/medium`),
+   e.g. second line `Model: cline:zai/glm-5.3-flash/xhigh`),
    then `Build: PASS|FAIL|PENDING` (your step-1b result, plus failing job names)
    and `Merge: MERGEABLE|CONFLICTING|UNKNOWN`.
    Verdict rule: `APPROVE` only when build is green AND mergeable (or UNKNOWN

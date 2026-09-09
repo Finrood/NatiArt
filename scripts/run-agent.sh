@@ -202,7 +202,9 @@ launch_attempt() { # $1=cli $2=model_id $3=think; spawns child bg, sets $PID
     export REPO_ROOT="$REPO"
     case "$cli" in
         opencode)
-            (cd "$REPO" && exec opencode run "$PROMPT" --dir "$REPO" --title "$TITLE" -m "$model_id") \
+            local variant_arg=()
+            [[ -n "$think" ]] && variant_arg=(--variant "$think")
+            (cd "$REPO" && exec opencode run "$PROMPT" --dir "$REPO" --title "$TITLE" -m "$model_id" "${variant_arg[@]}") \
                 >"$ATT_LOG" 2>&1 &
             ;;
         cline)

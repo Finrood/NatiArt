@@ -48,13 +48,14 @@ assert_contains() { # $1 haystack, $2 needle, $3 name
 out=$(check_only) || out=""
 first=$(tail -1 <<<"$out")
 assert_eq "opencode-muse" "$first" "no skip -> preferred model first"
+assert_contains "$out" "cline-muse" "no skip -> cline Muse listed"
 assert_contains "$out" "cline-deepseek" "no skip -> fallback listed"
 assert_contains "$out" "cline-glm" "no skip -> second fallback listed"
 
 # --- skip author model: reviewer starts at next model ---
 out=$(check_only --skip opencode-muse) || out=""
 first=$(tail -1 <<<"$out")
-assert_eq "cline-deepseek" "$first" "skip author -> next model first"
+assert_eq "cline-muse" "$first" "skip author -> next model first"
 assert_contains "$out" "Skipping opencode-muse" "skip logged"
 
 # --- skip by model_id substring (footer values are cli:model_id) ---
@@ -64,14 +65,20 @@ assert_eq "opencode-muse" "$first" "non-first skip keeps preferred first"
 assert_contains "$out" "Skipping cline-deepseek" "model_id substring matches"
 
 # --- full footer value incl. /think suffix still skips (reviewer independence) ---
-out=$(check_only --skip cline:zai/glm-5.3-flash/medium --skip cline:deepseek/deepseek-v4-flash/xhigh) || out=""
+out=$(check_only --skip cline:zai/glm-5.3-flash/xhigh --skip cline:deepseek/deepseek-v4-flash/xhigh) || out=""
 first=$(tail -1 <<<"$out")
 assert_eq "opencode-muse" "$first" "think-suffixed footers skip both cline entries"
 assert_contains "$out" "Skipping cline-glm" "think-suffixed glm skipped"
 assert_contains "$out" "Skipping cline-deepseek" "think-suffixed deepseek skipped"
 
+# --- skip both Muse pipes: reviewer falls to deepseek (different weights) ---
+out=$(check_only --skip opencode-muse --skip cline-muse) || out=""
+first=$(tail -1 <<<"$out")
+assert_eq "cline-deepseek" "$first" "skip both Muse pipes -> deepseek first"
+assert_contains "$out" "Skipping cline-muse" "cline Muse skip logged"
+
 # --- skips that empty the pool are ignored, never idle ---
-out=$(check_only --skip opencode --skip deepseek --skip glm) || out=""
+out=$(check_only --skip opencode --skip muse --skip deepseek --skip glm) || out=""
 first=$(tail -1 <<<"$out")
 assert_eq "opencode-muse" "$first" "total skip -> fallback to full list"
 assert_contains "$out" "ignoring skips" "empty-pool fallback warned"

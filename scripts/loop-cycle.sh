@@ -484,7 +484,8 @@ $(cat scripts/redteam-addendum.md)"
 fi
 log "Invoking agent for one cycle item."
 # Model failover: run-agent.sh walks the priority list from
-# scripts/agent-models.conf (opencode Muse free -> cline DeepSeek -> cline GLM),
+# scripts/agent-models.conf (opencode Muse free -> cline Muse -> cline DeepSeek
+# -> cline GLM),
 # falls through on quota/stall blocks and keeps retrying until the budget is up —
 # the loop must never be blocked by one model's quota. See
 # docs/continuous-improvement-loop.md (Model failover).
