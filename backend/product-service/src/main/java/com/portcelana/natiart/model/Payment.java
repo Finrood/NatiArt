@@ -21,7 +21,10 @@ public class Payment {
     // Unique (nullable: order-less charges stay null) so a retried POST for
     // the same order fails loud on a second insert instead of persisting a
     // duplicate ledger row -- the service dedupes before egress, this is the
-    // backstop for a check-then-insert race.
+    // backstop for a check-then-insert race. Applies to freshly created
+    // schemas only: with ddl-auto=update Hibernate does not add unique
+    // constraints to pre-existing tables, so deployments created before this
+    // change need a manual migration to gain the backstop.
     @Column(unique = true)
     private String orderId;
 
