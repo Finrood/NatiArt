@@ -84,15 +84,19 @@ is the single entry point for every agent invocation (cycle + in-cycle reviewers
 it walks the priority list in `scripts/agent-models.conf`:
 
 **Model attribution.** The wrapper exports `NATIART_MODEL` (e.g.
-`opencode:opencode/muse-spark-1.3-contributor-free` or
-`cline:zai/glm-5.3-flash/medium`) to every agent invocation. Agents name it
+`opencode:opencode/muse-spark-1.3-contributor-free/xhigh` or
+`cline:zai/glm-5.3-flash/xhigh`) to every agent invocation. Agents name it
 in PR compliance footers (`Model: …`) and review verdicts (second line of
 the verdict comment), so every change and review on GitHub is attributable
 to the exact model that produced it — even after failover mid-cycle.
 
-1. `opencode` + Muse Spark 1.3 free — `opencode/muse-spark-1.3-contributor-free`
+1. `opencode` + Muse Spark 1.3 free (xhigh) — `opencode/muse-spark-1.3-contributor-free`
 2. `cline` + DeepSeek V4 Flash (xhigh) — `deepseek/deepseek-v4-flash` via the cline gateway
-3. `cline` + GLM-5.3-flash — `zai/glm-5.3-flash` via the cline gateway
+3. `cline` + GLM-5.3-flash (xhigh) — `zai/glm-5.3-flash` via the cline gateway
+
+Policy: every entry runs at the highest reasoning available (`xhigh`):
+cline passes `--thinking xhigh`, opencode passes `--variant xhigh`.
+Never leave the level empty (provider default).
 
 - **Quota detection**: a failed attempt (`rc != 0`) whose output matches quota
   markers (quota, rate limit, 429, insufficient credits, …) falls through to the

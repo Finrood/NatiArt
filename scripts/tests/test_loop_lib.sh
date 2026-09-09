@@ -150,7 +150,7 @@ done
 
 # --- author_model_of: footer Model line parsed for reviewer --skip ---
 assert_eq "opencode:opencode/muse-spark-1.3-contributor-free" "$(printf '## Summary\nstuff\n- Model: should-not-match\n- x\nModel: opencode:opencode/muse-spark-1.3-contributor-free\n' | author_model_of)" "last Model: line wins"
-assert_eq "cline:zai/glm-5.3-flash/medium" "$(printf 'body\nModel: cline:zai/glm-5.3-flash/medium\n' | author_model_of)" "cline model value passes through"
+assert_eq "cline:zai/glm-5.3-flash/xhigh" "$(printf 'body\nModel: cline:zai/glm-5.3-flash/xhigh\n' | author_model_of)" "cline model value passes through"
 assert_eq "" "$(printf 'no footer here\n' | author_model_of)" "missing footer -> empty (no skip)"
 assert_eq "opencode:opencode/muse-spark-1.3-contributor-free" "$(printf 'body\n  **Model:** opencode:opencode/muse-spark-1.3-contributor-free\n' | author_model_of)" "indented bold footer tolerated"
 
