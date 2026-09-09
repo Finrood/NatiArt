@@ -360,7 +360,7 @@ Instruction-file fixes go in a human-review PR per the self-modification ban
   (~10 days)" and `scripts/loop-cycle.sh:196` implements `SLOT % 480` →
   480 × 30 min = ~10 days. Doc and code agree; no drift remains.
 
-### U4. Frontend guide "7 files done" DI-migration count is stale — OPEN (Low)
+### U4. Frontend guide "7 files done" DI-migration count is stale — IN REVIEW (Low)
 - `frontend/natiart-app/AGENTS.md:27` claims the `inject()` migration is
   "in progress — 7 files done", but current master has 9 files using
   `= inject(` and 14 files still on constructor param-property DI

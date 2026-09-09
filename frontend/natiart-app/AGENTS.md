@@ -24,7 +24,7 @@ building blocks go in `shared/`. Keep `app.component` a thin shell.
   dependencies in the `imports: []` array.
 - **Control flow**: `@if` / `@for`. Never `*ngIf` / `*ngFor` (already 100% migrated).
 - **DI**: `private readonly _x = inject(X)` for new code; convert constructor
-  injections when touching (in progress — 7 files done).
+  injections when touching (in progress — 9 files converted, 14 remaining).
 - **Signals**: adopt `signal()`/`computed()` for new component state; prefix with
   `$` (e.g. `$user`). RxJS `BehaviorSubject`/streams remain acceptable for
   streaming flows (chat, polling); do not rewrite working RxJS code unprompted.
