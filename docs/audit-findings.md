@@ -380,14 +380,15 @@ rollback contract is covered (`OrderManagerImplTest:143`), cart increments are
 atomic (`CartManagerImpl:44`), and order item prices are server-computed
 (`OrderManagerImpl.java:84`) — not filed.
 
-### X4. `updateOrderStatus` accepts any transition, fulfillment path unwired — OPEN (Low)
+### X4. `updateOrderStatus` accepts any transition, fulfillment path unwired — IN REVIEW (Low; PR fix/payment-order-lifecycle)
 - `service/OrderManagerImpl.java:100-104` moves any status to any status
   (`DELIVERED` → `PENDING`, `CANCELLED` → `PAID`) with no transition guard,
   and neither it nor `getAllOrders`/`getById` has a controller endpoint
   (`controller/OrderController.java:19-23` exposes only `POST /orders/create`)
   — admin fulfillment is unreachable, so the missing guard is latent.
-- Fix: forward-only transition table when the admin endpoint is wired; until
-  then tracked, not silently fixed.
+- Fix in flight: forward-only transition table in `updateOrderStatus` (terminal
+  states accept nothing, stages never rewind or skip); the admin endpoint stays
+  unwired. Residual check-then-update race tracked as BA2.
 
 ## V. Injection and validation, catalog follow-ups (Lens 1 hunt, 2026-09-05)
 
@@ -901,6 +902,13 @@ by `from()`, upstream optionals only).
   egress, reconcile orphans. Tests: same-key double POST issues one upstream
   charge; save-failure leaves no unreconciled charge.
   Tracked, not silently fixed.
+- Narrowed 2026-09-08 (Lens 4; fix in flight on `fix/payment-order-lifecycle`):
+  order-linked retries now dedupe against the ledger before egress (one
+  upstream charge per order) with a unique constraint on `Payment.orderId` as
+  the race backstop, and save failures log the orphan upstream id + owner.
+  Residual: order-less charges (no `orderId`) are still charge-then-save, and
+  a concurrent same-order double POST can still double-charge before the
+  unique constraint fails the second save loud.
 
 ## AN. N+1 queries and pagination (Lens 5 hunt, 2026-09-07)
 
@@ -1259,6 +1267,47 @@ stay capped with destroy teardown. Two runner-ups below are new.
   `pendingAlertsTimer`), or set the flag synchronously if change detection
   allows. Spec: destroy within the tick → no post-destroy write.
 
+## BA. Data integrity and transactions (Lens 4 hunt, 2026-09-08)
+
+Hunt method: re-verified the Lens 4 backlog against current `master`
+(`OrderManagerImpl`, `CartManagerImpl`, `AsaasPaymentService`,
+`PaymentController`, `Payment`/`CustomerOrder` mappings). AE1 FIXED on master
+(batched `getProductsOrDie`, PR #182 — flip pending), AE2 FIXED on master
+(bulk `deleteByUsername`, PR #182 — flip pending), B4 still OPEN
+(client-priced `deliveryAmount`, no owner column), G1 backend half merged
+(PR #207; storefront still charges the client snapshot), X4 guard + AM1
+order-linked dedupe in flight this cycle, AE3/AE4 still OPEN and latent
+(no read endpoint wires them). Cleared as non-findings: whole-order rollback
+contract (covered), atomic cart increments with line cap, server-computed
+order item prices, row-atomic stock decrements. BA1-BA2 below are new.
+
+### BA1. Successful payment never moves the order out of PENDING — OPEN (Medium)
+- `service/OrderManager.java:16` declares `updateOrderStatus` but nothing calls
+  it: repo-wide grep for `updateOrderStatus|OrderStatus.PAID|setStatus` in
+  `backend/product-service/src/main` hits only the declaration, the
+  implementation (`service/OrderManagerImpl.java:111`) and DTO/entity setters.
+  `service/AsaasPaymentService.java:80-139` (`createPayment`) never touches
+  order status, and `controller/OrderController.java:19-23` exposes only
+  `POST /orders/create`. Every paid order stays `PENDING` forever — fulfillment
+  has no signal to work from, and a cancelled-then-paid order is
+  indistinguishable from an unpaid one. Found by Lens 4 hunt, 2026-09-08.
+- Fix: on confirmed payment (creation for PIX-paid flows, status webhook/poll
+  transition to completed), transition the linked order `PENDING` → `PAID`
+  through the guarded `updateOrderStatus`; needs a product decision on which
+  payment event counts as paid. Tests: completed payment flips the linked
+  order; failed payment leaves it `PENDING`.
+  Tracked, not silently fixed.
+
+### BA2. Status guard check-then-update can interleave under concurrency — OPEN (Low)
+- `service/OrderManagerImpl.java:111-127` (X4 guard, in flight this cycle)
+  reads the current status via `getOrderById`, validates against
+  `ALLOWED_TRANSITIONS`, then fires the bulk `updateStatusById`: two racing
+  transitions (e.g. `PENDING` → `PAID` vs `PENDING` → `CANCELLED`) both pass
+  the guard and the last write wins. Single-threaded misuse is impossible;
+  only a true race interleaves. Found by Lens 4 hunt, 2026-09-08.
+- Fix: re-check affected rows / version-guard when the admin endpoint is wired
+  (with X4); until then tracked, not silently fixed.
+
 ## BC. N+1 queries and pagination (Lens 5 hunt, 2026-09-09)
 
 Hunt method: re-ran the Lens 5 enumeration on current master (every
@@ -1309,7 +1358,7 @@ the runner-up.
   should pin whether that is N selects or a `LazyInitializationException`
   with `open-in-view=false`). Tracked, not silently fixed.
 
-## BE. HTTP integration robustness (Lens 6 hunt, 2026-09-09)
+## BH. HTTP integration robustness (Lens 6 hunt, 2026-09-09)
 
 Hunt method: re-read every upstream-egress call site on current master
 (`AsaasPaymentService` 3 egresses, `ShippingService` 1 egress, product
@@ -1324,7 +1373,7 @@ URLs are server config, never caller input); the directory-validation
 `WebClient` is a constructed singleton with a 5s timeout. Three runner-ups
 below are new, plus one repair-time doc-rot note (BE4).
 
-### BE1. Provider transport failures and unmapped upstream statuses collapse to 500 — OPEN (Low)
+### BH1. Provider transport failures and unmapped upstream statuses collapse to 500 — OPEN (Low)
 - `service/AsaasPaymentService.java:109-114,149-156,192-200` and
   `service/ShippingService.java:63-71` catch only `HttpStatusCodeException`.
   A `ResourceAccessException` (connect/read timeout firing on the configured
@@ -1344,7 +1393,7 @@ below are new, plus one repair-time doc-rot note (BE4).
   Tests: timeout on shipping estimate → 503, not 500; Asaas 429 → 429/503
   with the header forwarded. Tracked, not silently fixed.
 
-### BE2. Upstream-controlled date fields dereferenced/parsed without guards — OPEN (Low)
+### BH2. Upstream-controlled date fields dereferenced/parsed without guards — OPEN (Low)
 - `service/AsaasPaymentService.java:124,128` call
   `responseBody.getDateCreated().atStartOfDay()` /
   `responseBody.getDueDate().atStartOfDay()` on nullable deserialized fields
@@ -1360,7 +1409,7 @@ below are new, plus one repair-time doc-rot note (BE4).
   Tests: null `dateCreated` → 502, not 500; malformed `expirationDate` →
   502. Tracked, not silently fixed.
 
-### BE3. `createPayment` success branch accepts only 200; error branches are dead code — OPEN (Low)
+### BH3. `createPayment` success branch accepts only 200; error branches are dead code — OPEN (Low)
 - `service/AsaasPaymentService.java:116-138`: the default RestTemplate
   error handler throws on any non-2xx, so the `UNAUTHORIZED` (`:134-135`)
   and catch-all `else` (`:136-138`) branches are unreachable for errors
@@ -1379,7 +1428,7 @@ below are new, plus one repair-time doc-rot note (BE4).
   `mapAsaasError` for error statuses. Test: stubbed 201 → ledger saved +
   success response. Tracked, not silently fixed.
 
-### BE4. `AZ`/`AZ1` labels now denote two different findings (repair-time doc-rot) — OPEN (Low)
+### BH4. `AZ`/`AZ1` labels now denote two different findings (repair-time doc-rot) — OPEN (Low)
 - Repairing PR #212 (2026-09-09) surfaced a label collision: findings holds
   `## AZ. AuthN and AuthZ boundaries (Lens 2)` with `### AZ1. Expired bearer
   token poisons public product-service reads` (Medium, OPEN) while the
@@ -1464,6 +1513,58 @@ are the runner-ups.
   read endpoint wires these methods. Tests: oversized set → 413, temp file
   cleaned up. Tracked, not silently fixed.
   Found by Lens 7 hunt, 2026-09-09.
+
+## BE. Loading and error UX re-hunt (Lens 12, 2026-09-09)
+
+Hunt method: re-read the checkout/login/signup/admin loading and error paths
+on current master (`checkout.component.ts:59-66,323-372`,
+`login.component.ts:98-118`, `signup.component.ts:77-103`,
+`admin-product-management.component.ts:166-290,332-367`,
+`left-menu.component.ts:28-33`,
+`signup-profile.component.ts:39-89`) for stuck spinners, success-only
+resets, swallowed errors and unhandled rejections. Re-verified this cycle:
+AH2 still OPEN (left-menu `getCategories` failure still console-only, no
+retry affordance), AH3 still OPEN (`doLoginUser` still has no in-flight
+guard — double submit fires duplicate login POSTs), C11 still OPEN
+(`app.config.ts` still returns a root-scope `Subscription` from the
+`APP_INITIALIZER` factory), AR1 still OPEN (interceptor-side token wipe
+still notifies no one), AX1/AX2 still OPEN (refresh wedge + blip-as-logout
+unchanged). Cleared as non-findings: checkout `isSubmitting` reset
+(`finally` at `checkout.component.ts:368-370` covers the `EmptyError` early
+return at `:340-341` and the `!user` return at `:345`); signup-profile CEP
+lookup (`finalize` resets `isLoadingAddress` on both paths); admin
+add/update/delete/getProducts/getCategories/getPackages (all `showAlert` on
+both paths, `isSubmitting` reset on both paths — O2 admin half FIXED on
+master); admin `fetchImagePreview` error path (`showAlert`, `:365-367`).
+BE1-BE2 below are the runner-ups.
+
+### BE1. Checkout card-payment path writes an info message it clears in the same tick — OPEN (Low)
+- `frontend/natiart-app/src/app/product/components/customer/checkout/checkout.component.ts:354-359`:
+  `setInfoMessage('Processing card payment...')` is followed synchronously by
+  `setErrorMessage('Card payment is not yet implemented.')` and
+  `clearInfoMessage()` — the "Processing..." text never paints (same-tick
+  clear), so the buyer sees only the not-implemented error with no prior
+  feedback. Dead UI update, not a state bug (`isSubmitting` still resets in
+  `finally`).
+- Fix: drop the info write (or keep it until the card flow exists) so the
+  path shows exactly one message. Spec: card-method submit asserts the info
+  slot stays empty and the error reads not-implemented.
+  Found by Lens 12 hunt, 2026-09-09.
+
+### BE2. Signup submit has no in-flight guard, the AH3 twin — OPEN (Low)
+- `frontend/natiart-app/src/app/directory/components/auth/signup/signup.component.ts:77-103`
+  (`doRegisterUser`) fires `signupService.registerUser` with no disabling
+  flag and no loading feedback: rapid double submit issues two registration
+  POSTs (ghost/user creation is server-side idempotent only per-email via
+  409, so the second POST still costs a full egress + surfaces a confusing
+  "already exists" error on the user's own just-created account); a slow
+  failure leaves no loading feedback. Same class as AH3
+  (`login.component.ts:98-118`), which stays OPEN alongside.
+- Fix: `isRegistering` flag disabling the submit button, reset on both
+  paths (mirror the checkout `isSubmitting` pattern). Spec: double submit
+  issues one request.
+  Found by Lens 12 hunt, 2026-09-09.
+
 
 ## BF. Frontend auth flow re-hunt (Lens 9, 2026-09-09)
 
