@@ -343,7 +343,7 @@ loop doc (match `scripts/systemd/` + `scripts/loop-cycle.sh:176`).
 Instruction-file fixes go in a human-review PR per the self-modification ban
 — tracked here, not silently fixed.
 
-### U2. Frontend guide still prescribes bare `ng test`, CI uses npm scripts — OPEN (Low)
+### U2. Frontend guide still prescribes bare `ng test`, CI uses npm scripts — IN REVIEW (Low)
 - `frontend/natiart-app/AGENTS.md:46` (bare `ng test`) vs reality:
   `.github/workflows/frontend_workflow.yml:53` runs
   `npm test -- --watch=false --browsers=ChromeHeadless`, and the cycle prompt
