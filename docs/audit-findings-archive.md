@@ -1156,7 +1156,67 @@ camelCase, `PaymentController.java:38`) still OPEN on both sides
   `docs/loop-lenses.md` carried 17 `## Lens` headers (Lens 17 added later).
 - Fix: "16 audit lenses" → "17 audit lenses". Merged 2026-09-08 (PR #199:
   dependabot aging policy + loop-doc drift fixes); status corrected by the
-  Lens 9 cycle (doc-rot: item referenced a MERGED PR).
+     Lens 9 cycle (doc-rot: item referenced a MERGED PR).
+
+### AV1. Base profile arms the credential-seeding `data.sql`; tutorial bcrypt hash on the seeded admin — FIXED (PR #210)
+- Directory base `application.properties` set no `spring.sql.init.mode`
+  (default `embedded`), and H2 is a `runtimeOnly` dependency, so any
+  unprofiled boot resolved an embedded datasource and executed
+  `backend/directory-service/src/main/resources/data.sql` — which seeded
+  `admin@gmail.com` with the ADMIN role using a bcrypt hash that appears
+  verbatim in public Spring tutorials (well-known plaintext). Verified
+  2026-09-07 (Lens 3): the unprofiled boot crashed on missing tables (script
+  init before Hibernate DDL), so it was a startup trap, not a live backdoor.
+- Fixed 2026-09-08 (PR #210): `spring.sql.init.mode=never` in both base
+  `application.properties`, `spring.sql.init.mode=always` in both
+  `application-local-h2.properties` (opt-in seeding), and the tutorial hash
+  replaced with a locally generated hash of a throwaway local password
+  documented in `data.sql`.
+
+### AV2. JWT-expiration comment drift: "2 minutes" documented, 24 hours configured — FIXED (PR #210)
+- `backend/directory-service/src/main/resources/application.properties:7-11`:
+  the comment block said "Access Token expiration time in milliseconds (here,
+  2 minutes)" while `saas.security.jwt.expiration=86400000` (24 hours).
+- Fixed 2026-09-08 (PR #210): comment corrected to the actual 24-hour
+  lifetime choice; refresh comment already matched its 7-day value.
+
+### AV3. `UserAuthenticationProvider` uses field `@Value` injection and a `@PostConstruct` blank-secret guard — FIXED (PR #210)
+- `backend/directory-service/src/main/java/com/saas/directory/configuration/UserAuthenticationProvider.java`:
+  three config fields (`secretKey`, both expirations) were field-injected
+  with `@Value`, and the blank-JWT-secret fail-fast ran in
+  `@PostConstruct init()` instead of the constructor, hiding it from plain
+  unit construction (agents/java-spring.md mandates constructor/setter
+  injection for config values).
+- Fixed 2026-09-08 (PR #210): the three `@Value`s moved to constructor
+  parameters, fields `final`, Base64 key derivation and blank-secret
+  fail-fast in the constructor; tests rewritten to direct construction with
+  a real encoding assertion (red on unpatched master, green at head).
+
+## AZ. Secrets and configuration re-hunt (Lens 3, 2026-09-08)
+
+Hunt method: grepped both services' `application*.properties` for datasource
+credential defaults, token/secret-bearing log and console statements, bare
+`@Value` sites and `:-` defaults, `server.error.include*` exposure,
+git-tracked secret-ish files, non-ASCII in properties, frontend
+`environment*.ts` drift. Cleared as non-findings: datasource credentials in
+prod/dev profiles are env-var-only with no defaults (boot fails fast);
+`admin/admin` H2 creds live only in `application-local-h2.properties`;
+Melhor Envio blank-token default is rejected by `ShippingService` at
+construction; zero Authorization-header or token-bearing log statements; no
+`server.error.include` overrides; properties files are pure ASCII. Y1
+re-verified INVALID (CORS origins already property-externalized on master).
+
+### AZ1. `ControllerAdvice` echoes raw `IllegalArgumentException` messages into 400 bodies — FIXED (PR #211)
+- Both services' `ControllerAdvice` returned `e.getMessage()` verbatim for
+  the catch-all `IllegalArgumentException` handler. Machine-generated IAEs
+  (a `NumberFormatException`'s `For input string: ...`, an `Enum.valueOf`
+  constant list) are server-side parsing artifacts, not client-facing
+  validation messages. Found by Lens 3 hunt, 2026-09-08.
+- Fixed 2026-09-08 (PR #211): a more specific `@ExceptionHandler(NumberFormatException.class)`
+  in both advices answers with a static "Invalid request" body, logging the
+  raw message at DEBUG; deliberate validation messages on the IAE handler
+  unchanged and pinned by tests in both services (red on unpatched master,
+   green at head).
 
 ### AE1. `createOrder` loads one product per order line with no batching — FIXED (PR #182)
 - `service/OrderManagerImpl.java:79-96` called

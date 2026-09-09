@@ -1138,52 +1138,6 @@ with static messages); login with missing/blank credentials resolves to 401 via
 ### AU1. Bulk clearCart bypasses the Personalization cascade and orphans rows — INVALID (re-verified 2026-09-07 with an executable spec, PR #191)
 `CartItem.personalization` is `@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)` (`backend/product-service/src/main/java/com/portcelana/natiart/model/CartItem.java:27-28`). Original claim (PR #182 mechanical review): the Spring Data derived `deleteByUsername` bulk-deletes cart rows without honoring the cascade, orphaning Personalization rows. Disproven empirically (PR #191): a `@DataJpaTest` (`repository/CartItemCascadeSemanticsTest`) shows void derived deletes run load-then-remove — the cascade fires and the Personalization row and its option rows are deleted with the cart lines on BOTH delete paths. Only `@Modifying`/`@Modifying(clearAutomatically)` bulk deletes bypass the persistence context. The re-verification spec instead caught a real adjacent bug, fixed in PR #191: `deleteByUsernameAndProduct` declared with a `long` return threw `ClassCastException` inside the Spring Data proxy on every invocation, so the production path `CartManagerImpl.decreaseCartItemQuantity` (removing a line's last unit) 500ed. Fixed by declaring the method `void` and pinned by the same spec (red on unpatched master, green with the fix).
 
-### AV1. Base profile arms the credential-seeding `data.sql`; tutorial bcrypt hash on the seeded admin — IN REVIEW (Low; PR fix/secrets-config-hardening)
-- Directory base `application.properties` sets no `spring.sql.init.mode`
-  (default `embedded`), and H2 is a `runtimeOnly` dependency
-  (`backend/directory-service/build.gradle.kts:20`), so any unprofiled boot
-  resolves an embedded datasource and executes
-  `backend/directory-service/src/main/resources/data.sql` — which seeds
-  `admin@gmail.com` with the ADMIN role using bcrypt hash
-  `$2a$10$xXUJ6rhpG39.C7mXYhdXB.oq2DLVgbAIvcp2chu3uQlGj20i9E.Iq`
-  (`data.sql:19-33`), a hash that appears verbatim in public Spring tutorials
-  (well-known plaintext). Empirically verified 2026-09-07 (Lens 3): the
-  unprofiled boot currently CRASHES (`ScriptStatementFailedException`, table
-  ROLE not found) because script init runs before Hibernate DDL without
-  `defer-datasource-initialization` — so today it is a startup trap, not a
-  live backdoor; but the safety depends on the production profile's
-  `spring.sql.init.mode=never` being loaded, and the seed credential is a
-  public constant. Product-service base properties have the same armed
-  `data.sql` (non-credential seed data).
-- Fix: set `spring.sql.init.mode=never` in both base `application.properties`
-  and `spring.sql.init.mode=always` in `application-local-h2.properties`
-  (opt-in seeding), and replace the tutorial hash with a locally generated
-  one. Severity Low: local-only blast radius today.
-
-### AV2. JWT-expiration comment drift: "2 minutes" documented, 24 hours configured — IN REVIEW (Low; PR fix/secrets-config-hardening)
-- `backend/directory-service/src/main/resources/application.properties:7-11`:
-  the comment block says "Access Token expiration time in milliseconds (here,
-  2 minutes)" while `saas.security.jwt.expiration=86400000` (24 hours;
-  refresh is 7 days and matches its comment). A reviewer auditing token
-  lifetime reads the comment and signs off on a 2-minute access token that is
-  actually 24h. Found by Lens 3 hunt, 2026-09-07.
-- Fix: correct the comment (and record the actual lifetime choice); severity
-  Low, config-doc drift only.
-
-### AV3. `UserAuthenticationProvider` uses field `@Value` injection and a `@PostConstruct` blank-secret guard — IN REVIEW (Low; PR fix/secrets-config-hardening)
-- `backend/directory-service/src/main/java/com/saas/directory/configuration/UserAuthenticationProvider.java:47-56`:
-  three config fields (`secretKey`, both expirations) are field-injected with
-  `@Value`, and the blank-JWT-secret fail-fast runs in `@PostConstruct init()`
-  instead of the constructor. `agents/java-spring.md` mandates setter
-  injection with `@Value` for config values ("field injection is not used in
-  production code") and the sibling precedents (`ShippingService`,
-  `AsaasPaymentService`, `AsaasUserManager`) fail fast in the constructor.
-  Field injection also hides the blank-secret guard from plain unit
-  construction. Found by Lens 3 hunt, 2026-09-07.
-- Fix: move the three `@Value`s to constructor parameters, make the fields
-  `final`, derive/validate in the constructor; keep the `@PostConstruct`-free
-   fail-fast semantics. Tests: blank secret → constructor throws.
-
 ## AW. Frontend auth flow re-hunt (Lens 9, 2026-09-08)
 
 Hunt method: re-read the auth flow on current master
@@ -1471,6 +1425,89 @@ the runner-up.
   should pin whether that is N selects or a `LazyInitializationException`
   with `open-in-view=false`). Tracked, not silently fixed.
 
+## BI. HTTP integration robustness (Lens 6 hunt, 2026-09-09)
+
+Hunt method: re-read every upstream-egress call site on current master
+(`AsaasPaymentService` 3 egresses, `ShippingService` 1 egress, product
+`JwtAuthFilter` directory validation) against the Lens 6 checklist
+(timeouts/retries, dead status-code branches, upstream-body leaks,
+caller-controlled URLs). Cleared as non-findings: connect/read timeouts are
+set on all three egresses (5s/15s); upstream error bodies are logged
+server-side only, never embedded in exception messages (static bodies via the
+product advice, which itself renders a static 500 body); egress URLs and ids
+are hardened (`paymentResourceUrl` allow-lists + encodes the payment id, base
+URLs are server config, never caller input); the directory-validation
+`WebClient` is a constructed singleton with a 5s timeout. Three runner-ups
+below are new, plus one repair-time doc-rot note (BE4).
+
+### BI1. Provider transport failures and unmapped upstream statuses collapse to 500 — OPEN (Low)
+- `service/AsaasPaymentService.java:109-114,149-156,192-200` and
+  `service/ShippingService.java:63-71` catch only `HttpStatusCodeException`.
+  A `ResourceAccessException` (connect/read timeout firing on the configured
+  5s/15s budgets, DNS failure, refused connection) propagates to the
+  catch-all `Exception` handler
+  (`configuration/ControllerAdvice.java:29-33`) → 500 "Internal server
+  error". Likewise `mapAsaasError:267` / `mapShippingError:126` rethrow the
+  raw exception for every unmapped status: an Asaas/Melhor Envio 429 or 5xx
+  also becomes a 500, with no `Retry-After` honor and no backoff. No egress
+  retries anywhere (correct for the POST charge — retrying a charge risks a
+  double upstream authorization — but the idempotent GETs and the shipping
+  estimate have no bounded retry either). Found by Lens 6 hunt, 2026-09-09.
+- Fix: map transport failures to 503/504 with a static body; map upstream
+  429 to 429/503 preserving `Retry-After`, upstream 5xx to 502; add bounded
+  retry with backoff on the idempotent GETs (`fetchPaymentOrDie`,
+  `getPixQrCode`, shipping estimate) only — never on `createPayment`.
+  Tests: timeout on shipping estimate → 503, not 500; Asaas 429 → 429/503
+  with the header forwarded. Tracked, not silently fixed.
+
+### BI2. Upstream-controlled date fields dereferenced/parsed without guards — OPEN (Low)
+- `service/AsaasPaymentService.java:124,128` call
+  `responseBody.getDateCreated().atStartOfDay()` /
+  `responseBody.getDueDate().atStartOfDay()` on nullable deserialized fields
+  (`dto/payment/asaas/AsaasPaymentCreationResponse.java:9,20` — absent JSON
+  members deserialize to null): an upstream omission NPEs into a 500.
+  `getPixQrCode` (`:166-168`) runs `LocalDateTime.parse` with a fixed
+  `"yyyy-MM-dd HH:mm:ss"` pattern on the upstream `expirationDate` string —
+  a format drift throws `DateTimeParseException` (not an IAE, so past the
+  static-body IAE handlers) into the catch-all 500. Found by Lens 6 hunt,
+  2026-09-09.
+- Fix: null/format-guard upstream date fields and fail closed with a static
+  502 "invalid upstream response" (log the raw value server-side at DEBUG).
+  Tests: null `dateCreated` → 502, not 500; malformed `expirationDate` →
+  502. Tracked, not silently fixed.
+
+### BI3. `createPayment` success branch accepts only 200; error branches are dead code — OPEN (Low)
+- `service/AsaasPaymentService.java:116-138`: the default RestTemplate
+  error handler throws on any non-2xx, so the `UNAUTHORIZED` (`:134-135`)
+  and catch-all `else` (`:136-138`) branches are unreachable for errors
+  (those arrive via `mapAsaasError`) — dead-code confusion of exactly the
+  kind the `mapAsaasError` JavaDoc (`:248-257`) warns about. Worse, a
+  non-200 2xx (e.g. 201 CREATED) falls into `else` → `IAE("Bad request")`
+  AFTER the upstream charge exists, without saving the ledger row — the
+  orphan the AM1 fix logs for, and a client retry then creates a second
+  upstream charge (the AM1 order-linked dedupe keys on a ledger row that was
+  never written). `fetchPaymentOrDie:201-204` has the same dead-`NOT_FOUND`
+  shape (harmless: `mapAsaasError` maps 404 to the same
+  `ResourceNotFoundException`). Asaas documents 200 for POST /payments, so
+  the 201 path is latent, not live. Found by Lens 6 hunt, 2026-09-09.
+- Fix: treat any 2xx as success in `createPayment` (save the ledger row
+  before branching on status details); delete the dead branches, relying on
+  `mapAsaasError` for error statuses. Test: stubbed 201 → ledger saved +
+  success response. Tracked, not silently fixed.
+
+### BI4. `AZ`/`AZ1` labels now denote two different findings (repair-time doc-rot) — OPEN (Low)
+- Repairing PR #212 (2026-09-09) surfaced a label collision: findings holds
+  `## AZ. AuthN and AuthZ boundaries (Lens 2)` with `### AZ1. Expired bearer
+  token poisons public product-service reads` (Medium, OPEN) while the
+  archive holds `## AZ. Secrets and configuration re-hunt (Lens 3)` with
+  `### AZ1. ControllerAdvice echoes raw IllegalArgumentException` (FIXED,
+  PR #211). A later Lens 2 cycle reused the `AZ` label while the Lens 3
+  section still stood. No data lost (distinct titles/dates/files), but
+  `AZ1` is now ambiguous across the working file and the archive.
+- Fix: rename the newer Lens 2 section to the next free label (or renumber
+  its item) and leave a pointer line; do it in a docs-only commit when no
+  AZ-referencing PR is in flight. Tracked, not silently fixed.
+
 ## BD. File and storage safety (Lens 7 hunt, 2026-09-09)
 
 Hunt method: re-read the full storage surface on current master
@@ -1646,6 +1683,87 @@ BE1-BE2 below are the runner-ups.
   issues one request.
   Found by Lens 12 hunt, 2026-09-09.
 
+## BJ. Frontend auth flow re-hunt (Lens 9, 2026-09-09)
+
+Hunt method: re-read the token-lifecycle paths on current master
+(`authentication.service.ts` `fetchCurrentUser`/`handleError`,
+`jwt-interceptor.service.ts` refresh/retry, `auth.guard.ts`,
+`admin.guard.ts`, `token.service.ts`) against the Lens 9 checklist
+(guard bypasses, token lifecycle edges, cold-observable no-ops, premature
+redirects, login-state races). Re-verified the AW/AX batch by code read:
+L3, AR1, AH3, C11, AX1, AX2 all still OPEN (no code change on the branch —
+docs-only). Cleared as non-findings: retry path keeps single-retry
+semantics (`RETRY_HEADER`, `jwt-interceptor.service.ts:66,117-123,127`);
+stale-token retry clones carry the fresh token (`:142-144`); no-refresh-token
+401 navigates without minting (`:135-138`); `login()`'s `handleError` call
+passes 'Login failed', correctly skipping the second reset (`:260` includes
+check). One runner-up below is new.
+
+### BJ1. `fetchCurrentUser` 401 triggers two sequential auth-resets — OPEN (Low)
+- `frontend/natiart-app/src/app/directory/service/authentication.service.ts:128-133`:
+  the `catchError` calls `resetAuthStateAndRedirect()` on 401 (`:130`), then
+  returns `this.handleError(error, 'Failed to fetch user')` (`:132`) — and
+  `handleError` (`:258-263`) calls `resetAuthStateAndRedirect()` AGAIN for
+  every 401 whose message lacks 'login failed' (`:260-262`; 'Failed to fetch
+  user' lacks it). A single 401 therefore runs `clearTokens()` plus
+  `router.navigate(['/login'])` twice in sequence. Harmless today (idempotent
+  clear; the pathname guard at `:253` skips the second navigate when already
+  on `/login`), but any future non-idempotent step added to the reset path
+  would run twice per failure. Found by Lens 9 hunt, 2026-09-09.
+- Fix: single reset per 401 — return `throwError` directly after the `:130`
+  reset instead of routing through `handleError`'s reset branch. Tests: 401
+  in `fetchCurrentUser` → `router.navigate` called exactly once, tokens
+  cleared once. Tracked, not silently fixed.
+
+## BG. Frontend data identity re-hunt (Lens 10, 2026-09-09)
+
+Hunt method: re-read the cart/product identity paths on the repaired branch
+(`cart.service.ts:1-163`, `add-to-cart-button.component.ts:33-88`,
+`personalization-modal.component.ts:17-66`, `cart.component.ts:42-223`,
+`cart-modal.component.ts:26-118`, `order-summary.component.ts:25-100`,
+`checkout.component.ts:235-321`) against the AS baseline. Re-verified:
+AS1 still OPEN (`loadCartFromLocalStorage` `:147-162` still `JSON.parse`s
+with no shape check); AS2 still OPEN (product-list image map still has no
+removal pass). Cleared as non-findings: cart/cart-modal/order-summary all
+key image maps by `cartItemId` with liveness guards
+(`cart.component.ts:222-223`, `cart-modal.component.ts:112`,
+`order-summary.component.ts:99-100`); update/remove paths take
+`cartItemId` everywhere (`cart.component.ts:91,99`,
+`cart-modal.component.ts:55,60`); ghost-checkout `switchMap(() =>
+this.currentUser$)` (`checkout.component.ts:267`) resolves the fresh user
+synchronously from the `BehaviorSubject` that `setAuthTokensAndUser`'
+s inner `fetchCurrentUser` already populated via `tap` — no stale-user
+race. Two runner-ups below are new.
+
+### BG1. Multi-tab carts silently clobber each other, no `storage`-event sync — OPEN (Low)
+- `frontend/natiart-app/src/app/product/service/cart.service.ts:18-22,133-162`:
+  the cart lives in a memory array mirrored to `localStorage` (`natiart-cart`)
+  on every mutation, and `loadCartFromLocalStorage` runs once in the
+  constructor. No `storage`-event listener exists anywhere under
+  `frontend/natiart-app/src/` (verified by grep), so two tabs each hold a
+  private array: tab B's next `updateCart` overwrites tab A's lines
+  (last-write-wins), and neither tab ever sees the other's lines. Removed
+  or re-quantitied lines resurrect or vanish depending on which tab writes
+  last — concurrent writers with no identity reconciliation.
+- Fix: listen to the `storage` event for the cart key and re-load (or merge
+  by `cartItemId`), or warn that carts are per-tab. Spec: write in tab B →
+  tab A emits the merged lines. Found by Lens 10 hunt, 2026-09-09.
+
+### BG2. Personalization modal adds a stale product snapshot after an unbounded deliberation gap — OPEN (Low)
+- `frontend/natiart-app/src/app/product/components/customer/add-to-cart-button/add-to-cart-button.component.ts:64-66,73-84`:
+  `openPersonalizationModal` captures the listing's `product` object, and
+  `onPersonalizationComplete` passes that same reference to
+  `cartService.addToCart` whenever the user eventually confirms — minutes
+  later, after listing refreshes may have changed `markedPrice` /
+  `stockQuantity` or removed the product. `addToCart`'s merge guard
+  (`cart.service.ts:41-49`) and stock clamp (`:49,53-55`) both trust the
+  passed-in snapshot, and the cart total (`:122`) prices from
+  `item.product.markedPrice`, so a stale price flows into the PIX `value`
+  snapshot (`checkout.component.ts:301`). Same stale-closure family as M1.
+- Fix: re-fetch (or re-validate price/stock/availability against the cached
+  listing) at confirm time; refuse lines whose product vanished. Spec:
+  confirm after a price change adds the current price, not the modal-open
+  one. Found by Lens 10 hunt, 2026-09-09.
 ## BK. API and contract consistency (Lens 15 hunt, 2026-09-09)
 
 Hunt method: enumerated every `@RequestMapping`-family annotation across both
