@@ -212,7 +212,6 @@ class OrderManagerImplTest {
     }
 
     @Test
-<<<<<<< HEAD
     void createOrderPersistsOwnerFromAuthenticatedPrincipal() {
         Product plate = product("p1", "Plate", new BigDecimal("15.00"), new BigDecimal("13.00"), 100);
         when(productManager.getProductsOrDie(List.of("p1"))).thenReturn(Map.of("p1", plate));
@@ -248,10 +247,6 @@ class OrderManagerImplTest {
     }
 
     @Test
-    void updateOrderStatus_existingOrder_updatesDirectlyWithoutReadModifyWrite() {
-        final CustomerOrder order = new CustomerOrder();
-        when(orderRepository.updateStatusById(order.getId(), OrderStatus.PAID)).thenReturn(1);
-=======
     void updateOrderStatus_allowedTransition_updatesWithoutEntitySave() {
         final CustomerOrder order = new CustomerOrder().setStatus(OrderStatus.PENDING);
         final String orderId = order.getId();
@@ -275,7 +270,6 @@ class OrderManagerImplTest {
     @Test
     void updateOrderStatus_terminalTransition_throwsWithoutUpdate() {
         final CustomerOrder order = new CustomerOrder().setStatus(OrderStatus.DELIVERED);
->>>>>>> origin/master
         when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
 
         assertThrows(
