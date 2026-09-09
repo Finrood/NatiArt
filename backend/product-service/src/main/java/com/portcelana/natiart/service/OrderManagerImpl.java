@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,17 @@ public class OrderManagerImpl implements OrderManager {
     // insert inside one transaction, so an unbounded line list can time the
     // transaction out or blow up the database from a single POST.
     private static final int MAX_ORDER_LINES = 50;
+
+    // Forward-only lifecycle: terminal states accept nothing, stages never
+    // rewind or skip, so a stale retry cannot resurrect a delivered order or
+    // rewind a paid one.
+    private static final Map<OrderStatus, Set<OrderStatus>> ALLOWED_TRANSITIONS = Map.of(
+            OrderStatus.PENDING, Set.of(OrderStatus.PAID, OrderStatus.CANCELLED),
+            OrderStatus.PAID, Set.of(OrderStatus.PROCESSING, OrderStatus.CANCELLED),
+            OrderStatus.PROCESSING, Set.of(OrderStatus.SHIPPED, OrderStatus.CANCELLED),
+            OrderStatus.SHIPPED, Set.of(OrderStatus.DELIVERED),
+            OrderStatus.DELIVERED, Set.of(),
+            OrderStatus.CANCELLED, Set.of());
 
     private final OrderRepository orderRepository;
     private final ProductManager productManager;
@@ -111,7 +123,17 @@ public class OrderManagerImpl implements OrderManager {
     public CustomerOrder updateOrderStatus(String orderId, OrderStatus status) {
         // Direct update by id: concurrent status writes serialize in the
         // database instead of colliding on @Version and surfacing
-        // OptimisticLockException as a generic 500.
+        // OptimisticLockException as a generic 500. The guard reads current
+        // state first, so two racing transitions can still interleave with
+        // last-write-wins -- accepted while no endpoint drives this path.
+        final CustomerOrder current = getOrderById(orderId);
+        if (current.getStatus() == null
+                || !ALLOWED_TRANSITIONS
+                        .getOrDefault(current.getStatus(), Set.of())
+                        .contains(status)) {
+            throw new IllegalArgumentException("Order [" + orderId + "] must not transition from ["
+                    + current.getStatus() + "] to [" + status + "]");
+        }
         if (orderRepository.updateStatusById(orderId, status) == 0) {
             throw new ResourceNotFoundException("CustomerOrder with id " + orderId + " not found");
         }
