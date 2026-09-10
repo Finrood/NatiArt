@@ -24,6 +24,16 @@ public interface CartItemRepository extends JpaRepository<CartItem, String> {
             "SELECT DISTINCT c FROM CartItem c LEFT JOIN FETCH c.product p LEFT JOIN FETCH p.images LEFT JOIN FETCH c.personalization WHERE c.username = :username")
     List<CartItem> findCartItemsByUsername(@Param("username") String username);
 
+    /**
+     * Loads one cart line with the associations touched by its add response.
+     * The add path runs inside a transaction, but the DTO still otherwise
+     * triggers separate lazy selects for product details and images.
+     */
+    @Query(
+            "SELECT DISTINCT c FROM CartItem c LEFT JOIN FETCH c.product p LEFT JOIN FETCH p.images LEFT JOIN FETCH p.category LEFT JOIN FETCH p.packaging LEFT JOIN FETCH c.personalization WHERE c.username = :username AND p.id = :productId")
+    Optional<CartItem> findCartItemByUsernameAndProductWithDetails(
+            @Param("username") String username, @Param("productId") String productId);
+
     Optional<CartItem> findCartItemByUsernameAndProduct(String username, Product product);
 
     /**

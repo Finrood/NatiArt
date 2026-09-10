@@ -80,7 +80,7 @@ class CartManagerImplTest {
         existing.increaseQuantity();
         when(productManager.getProductOrDie("p1")).thenReturn(product);
         when(cartItemRepository.incrementQuantityIfBelowCap("jane", "p1", 100)).thenReturn(1);
-        when(cartItemRepository.findCartItemByUsernameAndProduct("jane", product))
+        when(cartItemRepository.findCartItemByUsernameAndProductWithDetails("jane", "p1"))
                 .thenReturn(Optional.of(existing));
 
         final CartItemDto result = cartManager.createCartItem("jane", "p1");
