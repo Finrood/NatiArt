@@ -1,7 +1,7 @@
 import {TestBed} from '@angular/core/testing';
 import {provideHttpClient} from '@angular/common/http';
 import {HttpTestingController, provideHttpClientTesting, TestRequest} from '@angular/common/http/testing';
-import {provideRouter} from '@angular/router';
+import {Router, provideRouter} from '@angular/router';
 import {fakeAsync, tick} from '@angular/core/testing';
 
 import {AuthenticationService} from './authentication.service';
@@ -77,6 +77,24 @@ describe('authenticationService', () => {
 
     const tokenService: TokenService = TestBed.inject(TokenService);
     expect(tokenService.accessToken).toBe(newAccess);
+    TestBed.inject(HttpTestingController).verify();
+    service.ngOnDestroy();
+  }));
+
+  it('resets auth state only once when fetching the current user returns 401', fakeAsync(() => {
+    spyOn(Router.prototype, 'navigate').and.returnValue(Promise.resolve(true));
+    const service: AuthenticationService = TestBed.inject(AuthenticationService);
+    const resetSpy: jasmine.Spy = spyOn(service, 'resetAuthStateAndRedirect').and.callThrough();
+    let error: unknown;
+
+    service.fetchCurrentUser().subscribe({error: (currentError: unknown) => (error = currentError)});
+
+    const currentUserRequest: TestRequest = TestBed.inject(HttpTestingController).expectOne(CURRENT_USER_URL);
+    currentUserRequest.flush('', {status: 401, statusText: 'Unauthorized'});
+    tick();
+
+    expect(resetSpy).toHaveBeenCalledTimes(1);
+    expect(error).toBeTruthy();
     TestBed.inject(HttpTestingController).verify();
     service.ngOnDestroy();
   }));

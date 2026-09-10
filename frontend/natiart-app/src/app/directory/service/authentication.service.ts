@@ -125,12 +125,7 @@ export class AuthenticationService implements OnDestroy {
       tap(user => {
         this.updateState(user);
       }),
-      catchError(error => {
-        if (error.status === 401) {
-          this.resetAuthStateAndRedirect();
-        }
-        return this.handleError(error, 'Failed to fetch user');
-      })
+      catchError(error => this.handleError(error, 'Failed to fetch user'))
     );
   }
 
