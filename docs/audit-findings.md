@@ -1444,7 +1444,7 @@ below are new, plus one repair-time doc-rot note (BE4).
   Tests: timeout on shipping estimate → 503, not 500; Asaas 429 → 429/503
   with the header forwarded. Tracked, not silently fixed.
 
-### BI2. Upstream-controlled date fields dereferenced/parsed without guards — OPEN (Low)
+### BI2. Upstream-controlled date fields dereferenced/parsed without guards — IN REVIEW (Low)
 - `service/AsaasPaymentService.java:124,128` call
   `responseBody.getDateCreated().atStartOfDay()` /
   `responseBody.getDueDate().atStartOfDay()` on nullable deserialized fields
@@ -1460,7 +1460,7 @@ below are new, plus one repair-time doc-rot note (BE4).
   Tests: null `dateCreated` → 502, not 500; malformed `expirationDate` →
   502. Tracked, not silently fixed.
 
-### BI3. `createPayment` success branch accepts only 200; error branches are dead code — OPEN (Low)
+### BI3. `createPayment` success branch accepts only 200; error branches are dead code — IN REVIEW (Low)
 - `service/AsaasPaymentService.java:116-138`: the default RestTemplate
   error handler throws on any non-2xx, so the `UNAUTHORIZED` (`:134-135`)
   and catch-all `else` (`:136-138`) branches are unreachable for errors
@@ -1534,7 +1534,7 @@ are the runner-ups.
   pool. Tests: 11th image → 400, store untouched.
   Found by Lens 7 hunt, 2026-09-09.
 
-### BD2. Non-file URI scheme on `GET /images` maps to 500 instead of 400/404 — OPEN (Low)
+### BD2. Non-file URI scheme on `GET /images` maps to 500 instead of 400/404 — IN REVIEW (Low)
 - `service/ProductManagerImpl.java:220-230` (`getProductImage`) builds
   `new URI(path)` from the raw `path` request param and calls
   `storageService.openFile(uri)`, which dispatches by scheme in
@@ -1806,3 +1806,22 @@ payment/order money path and the hot read paths.
 - Fix: drop or move hot-path read logging to DEBUG with parameters
   (page/size), and stop echoing the raw image path at INFO.
   Found by Lens 14 hunt, 2026-09-09.
+
+## BL. Injection and validation re-hunt (Lens 1, 2026-09-09)
+
+Hunt method: re-read the Lens 1 surface on current master against the AI
+baseline — grepped `backend/` for `.trim()` on client-bound fields (all
+guarded: directory `ProfileManager.required:44-49`,
+`Category/Package/ProductManagerImpl.requireNonBlankLabel`, `UserManager`
+post-validation trims), `valueOf` on user-controlled strings (only numeric
+`String.valueOf` on validated primitives plus the fail-closed
+`parseAsaasStatus`/`parsePaymentMethod`/`parsePaymentStatus`), and audited
+order creation (`OrderManagerImpl.validateItems:147-166` null-guards
+productId/quantity/caps; `ShippingEstimateRequest` constructor validates;
+`CartManagerImpl.decreaseCartItemQuantity:66-74` isEmpty-guarded;
+`StorageFileSystem.allowedRoots:32-40` defaults non-empty).
+Re-verified this cycle: BI2, BI3, BD2 still OPEN (taken IN REVIEW in the
+`fix/upstream-response-validation` batch); AI4 still OPEN
+(`CredentialsDto` is still an unconstrained `record(String, String)` —
+directory-service, left for a follow-up batch). No new actionable items —
+no new `###` sections appended.
