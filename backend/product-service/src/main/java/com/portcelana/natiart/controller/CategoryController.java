@@ -16,7 +16,7 @@ import com.portcelana.natiart.service.CategoryManager;
 
 @RestController
 public class CategoryController {
-    public static Logger LOGGER = LoggerFactory.getLogger(CategoryController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(CategoryController.class);
     private static final int MAX_PAGE_SIZE = 100;
 
     private final CategoryManager categoryManager;

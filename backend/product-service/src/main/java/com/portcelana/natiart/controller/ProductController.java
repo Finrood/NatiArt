@@ -27,7 +27,7 @@ import com.portcelana.natiart.storage.InputFile;
 
 @RestController
 public class ProductController {
-    public static Logger LOGGER = LoggerFactory.getLogger(ProductController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProductController.class);
     private static final int MAX_PAGE_SIZE = 100;
 
     private final ProductManager productManager;

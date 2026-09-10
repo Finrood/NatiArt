@@ -34,7 +34,7 @@ import com.portcelana.natiart.storage.StorageService;
 
 @Service
 public class ProductManagerImpl implements ProductManager {
-    public static Logger LOGGER = LoggerFactory.getLogger(ProductController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProductManagerImpl.class);
     private static final String IMAGE_BASE_PATH = "product-images/";
 
     private final ProductRepository productRepository;
