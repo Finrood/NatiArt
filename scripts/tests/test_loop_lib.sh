@@ -123,6 +123,16 @@ GH_FIXTURE_DIR="$d"
 assert_eq "PENDING" "$(pr_checks_summary 1)" "empty checks -> PENDING"
 rm -rf "$d"
 
+all_checks=$'guidelines\tpass\t1s\turl\ndirectory-service\tpass\t1s\turl\nproduct-service\tpass\t1s\turl\nbuild-and-test\tpass\t1s\turl\nbash-tests\tpass\t1s\turl\nshellcheck\tpass\t1s\turl'
+if required_checks_passed $'backend/a.java' "$all_checks"; then got=yes; else got=no; fi
+assert_eq "yes" "$got" "backend paths require backend checks"
+if required_checks_passed $'backend/a.java\nunknown.cfg' "$all_checks"; then got=yes; else got=no; fi
+assert_eq "yes" "$got" "mixed known and unknown paths require all checks"
+if required_checks_passed $'frontend/a.ts' "$all_checks"; then got=yes; else got=no; fi
+assert_eq "yes" "$got" "frontend paths require frontend checks"
+if required_checks_passed $'backend/a.java' $'guidelines\tpass\t1s\turl'; then got=yes; else got=no; fi
+assert_eq "no" "$got" "missing required check blocks merge"
+
 # --- is_docs_only ---
 d=$(mkfixture docsonly)
 echo '{"files": [{"path": "docs/audit-findings.md"}, {"path": "docs/other.md"}]}' > "$d/files.json"

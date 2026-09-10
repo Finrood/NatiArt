@@ -120,6 +120,50 @@ checks_passed() { # reads `gh pr checks` text on stdin; true iff every check pas
         NF >= 2 { seen=1; if ($2 !~ /^(pass|success)$/) { bad=1 } }
         END { exit !(seen && !bad) }'
 }
+required_checks_passed() { # $1=changed files, $2=gh pr checks output
+    local files="$1" checks="$2" expected="guidelines" name unknown=0
+    if grep -qE '^backend/' <<<"$files"; then
+        expected+=$'\ndirectory-service\nproduct-service'
+    fi
+    if grep -qE '^\.github/workflows/backend_workflow\.yml$' <<<"$files"; then
+        expected+=$'\ndirectory-service\nproduct-service'
+    fi
+    if grep -qE '^frontend/' <<<"$files"; then
+        expected+=$'\nbuild-and-test'
+    fi
+    if grep -qE '^\.github/workflows/frontend_workflow\.yml$' <<<"$files"; then
+        expected+=$'\nbuild-and-test'
+    fi
+    if grep -qE '^(scripts/|\.github/workflows/loop-scripts\.yml)' <<<"$files"; then
+        expected+=$'\nbash-tests\nshellcheck'
+    fi
+    if grep -qE '^\.github/dependabot\.yml$' <<<"$files"; then
+        expected+=$'\nbash-tests\nshellcheck'
+    fi
+    if grep -qE '^\.github/workflows/' <<<"$files" && \
+       ! grep -qE '^\.github/workflows/(backend_workflow|frontend_workflow|guidelines-consistency|loop-scripts|loop-watchdog)\.yml$' <<<"$files"; then
+        expected+=$'\ndirectory-service\nproduct-service\nbuild-and-test\nbash-tests\nshellcheck'
+    fi
+    # Classify every path. A mixed known+unknown change must use the
+    # conservative all-workflow policy rather than silently accepting a partial
+    # check suite.
+    while IFS= read -r path; do
+        [[ -z "$path" ]] && continue
+        case "$path" in
+            backend/*|frontend/*|scripts/*|docs/*|agents/*|AGENTS.md|CLAUDE.md|GEMINI.md|.cursorrules|.github/dependabot.yml|.github/workflows/backend_workflow.yml|.github/workflows/frontend_workflow.yml|.github/workflows/guidelines-consistency.yml|.github/workflows/loop-scripts.yml|.github/workflows/loop-watchdog.yml) ;;
+            *) unknown=1 ;;
+        esac
+    done <<<"$files"
+    if [[ "$unknown" -eq 1 ]]; then
+        expected+=$'\ndirectory-service\nproduct-service\nbuild-and-test\nbash-tests\nshellcheck'
+    fi
+    while IFS= read -r name; do
+        [[ -z "$name" ]] && continue
+        if ! awk -F'\t' -v expected="$name" '$1 == expected && $2 ~ /^(pass|success)$/ { found=1; exit } END { exit !found }' <<<"$checks"; then
+            return 1
+        fi
+    done <<<"$expected"
+}
 pr_checks_summary() { # $1 = PR number; prints FAIL|PASS|PENDING (never fails)
     local checks
     checks=$(gh_safe gh pr checks "$1")
