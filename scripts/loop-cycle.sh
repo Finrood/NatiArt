@@ -244,8 +244,9 @@ for n in $CODE_PRS $DOCS_PRS; do
         log "PR #$n touches loop machinery; leaving OPEN for human review (self-modification ban)."
         continue
     fi
-    if [[ "$(pr_mergeable "$n")" == "CONFLICTING" ]]; then
-        log "PR #$n is CONFLICTING with master; leaving open for REPAIR MODE."
+    MERGEABLE_STATE="$(pr_mergeable "$n")"
+    if [[ "$MERGEABLE_STATE" != "MERGEABLE" ]]; then
+        log "PR #$n mergeability is $MERGEABLE_STATE; leaving open until GitHub confirms MERGEABLE."
         continue
     fi
     checks=$(gh_safe gh pr checks "$n")
