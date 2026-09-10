@@ -568,7 +568,10 @@ class AsaasPaymentServiceTest {
 
         assertEquals(HttpStatus.BAD_GATEWAY, thrown.getHttpStatus());
         assertEquals("Invalid payment provider response", thrown.getMessage());
-        verify(paymentRepository, never()).save(any(Payment.class));
+        verify(paymentRepository)
+                .save(argThat(payment ->
+                        "pay-nodate".equals(payment.getId())
+                                && "cus_MINE".equals(payment.getOwnerExternalId())));
     }
 
     @Test
@@ -594,7 +597,9 @@ class AsaasPaymentServiceTest {
                                 "cus_MINE"));
 
         assertEquals(HttpStatus.BAD_GATEWAY, thrown.getHttpStatus());
-        verify(paymentRepository, never()).save(any(Payment.class));
+        verify(paymentRepository)
+                .save(argThat(payment ->
+                        "pay-nodue".equals(payment.getId()) && "cus_MINE".equals(payment.getOwnerExternalId())));
     }
 
     @Test
