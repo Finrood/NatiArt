@@ -11,6 +11,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.mock.http.MockHttpInputMessage;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.MapBindingResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -94,7 +95,9 @@ class ControllerAdviceTest {
     @Test
     void handleNotReadableBody_unwrapsGuardFailureTo400WithItsMessage() {
         final HttpMessageNotReadableException unreadable = new HttpMessageNotReadableException(
-                "JSON parse error", new IllegalArgumentException("Username is required"));
+                "JSON parse error",
+                new IllegalArgumentException("Username is required"),
+                new MockHttpInputMessage(new byte[0]));
 
         final ResponseEntity<Object> result = advice.handleNotReadableBody(unreadable);
 
@@ -104,7 +107,8 @@ class ControllerAdviceTest {
 
     @Test
     void handleNotReadableBody_mapsUnrelatedParseErrorsToGeneric400() {
-        final HttpMessageNotReadableException unreadable = new HttpMessageNotReadableException("JSON parse error");
+        final HttpMessageNotReadableException unreadable =
+                new HttpMessageNotReadableException("JSON parse error", new MockHttpInputMessage(new byte[0]));
 
         final ResponseEntity<Object> result = advice.handleNotReadableBody(unreadable);
 

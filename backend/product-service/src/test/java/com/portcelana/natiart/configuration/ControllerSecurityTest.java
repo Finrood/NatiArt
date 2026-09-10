@@ -3,6 +3,7 @@ package com.portcelana.natiart.configuration;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -12,18 +13,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.RequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.portcelana.natiart.service.CartManager;
@@ -46,25 +50,35 @@ class ControllerSecurityTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @Autowired
+    private WebApplicationContext webApplicationContext;
+
+    @BeforeEach
+    void setUpMockMvc() {
+        mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
+                .apply(springSecurity())
+                .build();
+    }
+
+    @MockitoBean
     private ProductManager productManager;
 
-    @MockBean
+    @MockitoBean
     private ImageConversionService imageConversionService;
 
-    @MockBean
+    @MockitoBean
     private CategoryManager categoryManager;
 
-    @MockBean
+    @MockitoBean
     private PackageManager packageManager;
 
-    @MockBean
+    @MockitoBean
     private CartManager cartManager;
 
-    @MockBean
+    @MockitoBean
     private WebClient.Builder webClientBuilder;
 
-    private void expectForbiddenButNotAuthenticated(MockHttpServletRequestBuilder request) throws Exception {
+    private void expectForbiddenButNotAuthenticated(RequestBuilder request) throws Exception {
         mockMvc.perform(request).andExpect(result -> {
             int s = result.getResponse().getStatus();
             if (s != 401 && s != 403) {
@@ -73,7 +87,7 @@ class ControllerSecurityTest {
         });
     }
 
-    private void expectPassesSecurity(MockHttpServletRequestBuilder request) throws Exception {
+    private void expectPassesSecurity(RequestBuilder request) throws Exception {
         mockMvc.perform(request).andExpect(result -> {
             int s = result.getResponse().getStatus();
             if (s == 401 || s == 403) {
@@ -91,7 +105,7 @@ class ControllerSecurityTest {
         expectForbiddenButNotAuthenticated(multipartPost());
     }
 
-    private MockHttpServletRequestBuilder multipartPost() {
+    private RequestBuilder multipartPost() {
         MockMultipartFile productDto = new MockMultipartFile(
                 "productDto", "productDto.json", "application/json", "{\"label\":\"x\"}".getBytes());
         return MockMvcRequestBuilders.multipart("/products/create").file(productDto);

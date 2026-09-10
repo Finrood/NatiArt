@@ -355,7 +355,7 @@ public class AsaasPaymentService implements PaymentService {
         final String[] segments = new String[extraPathSegments.length + 1];
         segments[0] = paymentId;
         System.arraycopy(extraPathSegments, 0, segments, 1, extraPathSegments.length);
-        return UriComponentsBuilder.fromHttpUrl(baseUrl)
+        return UriComponentsBuilder.fromUriString(baseUrl)
                 .pathSegment(segments)
                 .encode()
                 .toUriString();
