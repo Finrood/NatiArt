@@ -95,5 +95,51 @@ describe('CartService', () => {
     expect(restored.getCartTotalSnapshot()).toBe(0);
     expect(localStorage.getItem('natiart-cart')).toBeNull();
   });
+
+  it('restoresOnlyWellFormedLinesWhenPersistedIdentityIsTampered (AS1)', () => {
+    const validLine = {cartItemId: 'keep-1', product: product({id: 'p1'}), quantity: 2};
+    localStorage.setItem('natiart-cart', JSON.stringify([
+      validLine,
+      {cartItemId: '', product: product({id: 'p2'}), quantity: 1},
+      {cartItemId: 'no-product', product: null, quantity: 1},
+      {cartItemId: 'no-quantity', product: product({id: 'p3'}), quantity: 0},
+    ]));
+
+    const restored = new CartService();
+    const items: CartItem[] = restored.getCartItemsSnapshot();
+
+    expect(items.length).toBe(1);
+    expect(items[0].cartItemId).toBe('keep-1');
+    expect(items[0].product.id).toBe('p1');
+    expect(restored.getCartTotalSnapshot()).toBe(160);
+  });
+
+  it('regeneratesCollidingRestoredIdsSoKeyedOpsStayOneToOne (AS1)', () => {
+    localStorage.setItem('natiart-cart', JSON.stringify([
+      {cartItemId: 'dup', product: product({id: 'p1'}), quantity: 1},
+      {cartItemId: 'dup', product: product({id: 'p2'}), quantity: 1},
+    ]));
+
+    const restored = new CartService();
+    const items: CartItem[] = restored.getCartItemsSnapshot();
+
+    expect(items.length).toBe(2);
+    expect(items[0].cartItemId).not.toBe(items[1].cartItemId);
+
+    restored.removeFromCart(items[0].cartItemId).subscribe();
+    expect(restored.getCartItemsSnapshot().length).toBe(1);
+  });
+
+  it('updateItemQuantity_floorsAtOneAndLeavesRemovalToRemoveFromCart (BW1)', () => {
+    service.addToCart(product(), 1).subscribe();
+    const cartItemId = service.getCartItemsSnapshot()[0].cartItemId;
+
+    service.updateItemQuantity(cartItemId, 0).subscribe();
+    expect(service.getCartItemsSnapshot().length).toBe(1);
+    expect(service.getCartItemsSnapshot()[0].quantity).toBe(1);
+
+    service.removeFromCart(cartItemId).subscribe();
+    expect(service.getCartItemsSnapshot()).toEqual([]);
+  });
 });
 

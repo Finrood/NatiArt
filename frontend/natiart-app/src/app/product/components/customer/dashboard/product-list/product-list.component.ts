@@ -25,6 +25,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
   imageUrls: { [productId: string]: SafeUrl | null } = {};
   private subscriptions: Subscription[] = [];
   private objectUrls: string[] = [];
+  private rawObjectUrlById: Map<string, string> = new Map<string, string>();
 
   // Personalization modal
   showPersonalizationModal = false;
@@ -44,7 +45,8 @@ export class ProductListComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.subscriptions.forEach(sub => sub.unsubscribe());
-    this.objectUrls.forEach(url => URL.revokeObjectURL(url));
+    this.rawObjectUrlById.forEach((rawUrl: string): void => URL.revokeObjectURL(rawUrl));
+    this.rawObjectUrlById.clear();
     this.objectUrls = [];
   }
 
@@ -63,6 +65,20 @@ export class ProductListComponent implements OnInit, OnDestroy {
   }
 
   private updateProductImages(products: Product[]): void {
+    // AS2: prune ids that left the listing — without a removal pass a
+    // refreshed listing that drops a product keeps its blob URL until teardown.
+    const liveIds: Set<string> = new Set<string>();
+    products.forEach((product: Product): void => {
+      if (product.id) {
+        liveIds.add(product.id);
+      }
+    });
+    Object.keys(this.imageUrls).forEach((productId: string): void => {
+      if (!liveIds.has(productId)) {
+        this.revokeObjectUrl(productId);
+        delete this.imageUrls[productId];
+      }
+    });
     products.forEach(product => {
       if (!product.id) {
         return;
@@ -80,15 +96,32 @@ export class ProductListComponent implements OnInit, OnDestroy {
     });
   }
 
+  private revokeObjectUrl(productId: string): void {
+    const rawUrl: string | undefined = this.rawObjectUrlById.get(productId);
+    if (rawUrl) {
+      URL.revokeObjectURL(rawUrl);
+      this.rawObjectUrlById.delete(productId);
+      const index: number = this.objectUrls.indexOf(rawUrl);
+      if (index > -1) {
+        this.objectUrls.splice(index, 1);
+      }
+    }
+  }
+
   private fetchImage(productId: string, imagePath: string): void {
     const sub = this.productService.getImage(imagePath).subscribe({
       next: (blob: Blob): void => {
+        // AS2 twin: revoke-before-overwrite so a re-fetch for the same id
+        // frees the previous blob instead of orphaning it.
+        this.revokeObjectUrl(productId);
         const objectUrl: string = URL.createObjectURL(blob);
         this.objectUrls.push(objectUrl);
+        this.rawObjectUrlById.set(productId, objectUrl);
         this.imageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
         this.products.next([...this.products.value]);
       },
       error: (): void => {
+        this.revokeObjectUrl(productId);
         this.imageUrls[productId] = 'assets/img/placeholder.png';
         this.products.next([...this.products.value]);
       }

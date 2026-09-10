@@ -79,15 +79,12 @@ export class CartService {
     const itemIndex = this.cartItems.findIndex(item => item.cartItemId === cartItemId);
     if (itemIndex > -1) {
       const item = this.cartItems[itemIndex];
-      const newQuantity = Math.max(1, Math.min(quantity, item.product.stockQuantity));
-
-      if (newQuantity <= 0) {
-        this.removeFromCart(cartItemId);
-      } else {
-        item.quantity = newQuantity;
-        this.cartItems[itemIndex] = item;
-        this.updateCart();
-      }
+      // Removal is removeFromCart's job: quantities floor at 1 so a 0 update
+      // can never silently mean delete (BW1 dead-branch fix).
+      const newQuantity: number = Math.max(1, Math.min(quantity, item.product.stockQuantity));
+      item.quantity = newQuantity;
+      this.cartItems[itemIndex] = item;
+      this.updateCart();
     } else {
       console.warn(`Item with cartItemId ${cartItemId} not found for quantity update.`);
     }
@@ -148,7 +145,12 @@ export class CartService {
     try {
       const savedCart = localStorage.getItem(this.localStorageKey);
       if (savedCart) {
-        this.cartItems = JSON.parse(savedCart);
+        const parsed: unknown = JSON.parse(savedCart);
+        // AS1: drop corrupt-but-parseable shape before emit — a missing or
+        // duplicate cartItemId collapses map keys so remove/quantity ops hit
+        // every line at once or none, and a null product NPEs the total.
+        const restored: CartItem[] = this.sanitizeRestoredCart(parsed);
+        this.cartItems = restored;
         this.cartItemsSubject.next([...this.cartItems]);
         this.calculateAndEmitTotal(); // Calculate total after loading
       }
@@ -159,5 +161,46 @@ export class CartService {
       this.cartItemsSubject.next([]);
       this.calculateAndEmitTotal(); // Emit 0 total
     }
+  }
+
+  private sanitizeRestoredCart(parsed: unknown): CartItem[] {
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    const seenIds: Set<string> = new Set<string>();
+    const valid: CartItem[] = [];
+    for (const entry of parsed) {
+      if (!this.isRestorableCartLine(entry)) {
+        continue;
+      }
+      const line: CartItem = entry as CartItem;
+      if (seenIds.has(line.cartItemId)) {
+        // Duplicate identity: mint a fresh id so keyed ops stay 1:1.
+        line.cartItemId = this.generateUniqueCartItemId();
+      }
+      seenIds.add(line.cartItemId);
+      valid.push(line);
+    }
+    return valid;
+  }
+
+  private isRestorableCartLine(entry: unknown): entry is CartItem {
+    if (typeof entry !== 'object' || entry === null) {
+      return false;
+    }
+    const line = entry as Partial<CartItem>;
+    if (typeof line.cartItemId !== 'string' || line.cartItemId.trim().length === 0) {
+      return false;
+    }
+    if (typeof line.product !== 'object' || line.product === null) {
+      return false;
+    }
+    if (typeof line.product.id !== 'string' || line.product.id.trim().length === 0) {
+      return false;
+    }
+    if (typeof line.quantity !== 'number' || !Number.isInteger(line.quantity) || line.quantity < 1) {
+      return false;
+    }
+    return true;
   }
 }
