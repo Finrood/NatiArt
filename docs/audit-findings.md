@@ -100,17 +100,21 @@ finding below.
   read → 200 anonymous content, not 401; expired token on protected write →
   401/403. Found by Lens 2 hunt, 2026-09-08.
 
-### B10. Logging/DI convention drift — OPEN (Low)
+### B10. Logging/DI convention drift — IN REVIEW (Low, PR #235 — product half)
 - Public mutable loggers (`ProductController:32`, `CartController:17`,
   `CategoryController:19`, `AuthenticationController:25`), wrong-owner logger
   (`ProductManagerImpl:35`), lowercase `logger`
   (`UserAuthenticationProvider:45`), setter injection in `StorageServiceImpl`.
 - Fix: `private static final Logger LOGGER = getLogger(OwnClass.class)`;
   constructor injection. No behavior change; include in a boy-scout PR.
-- Directory slice in review (PR #228): `AuthenticationController`/`UserRegistrationController`
+- Directory slice FIXED (PR #228, merged): `AuthenticationController`/`UserRegistrationController`
   loggers now `private static final LOGGER` with own-class owners; `ControllerAdvice` logger
-  uppercased. Product-service half (`ProductController:32`, `CartController:17`,
-  `CategoryController:19`, `ProductManagerImpl:35`, `StorageServiceImpl`) remains OPEN.
+  uppercased.
+- Product half in review (PR #235): `ProductController` and `CategoryController`
+  loggers now `private static final`; `ProductManagerImpl` logger re-owned to its own
+  class. Re-verified on current master, halves INVALID (already conforming):
+  `CartController` (private static final), `UserAuthenticationProvider:41`,
+  `StorageServiceImpl` (constructor injection).
 
 ### C9. `canDeactivate` does network I/O on every navigation away — OPEN (Medium)
 - `product-guard.guard.ts:24-32`: leaving `/product/:id` blocks on
