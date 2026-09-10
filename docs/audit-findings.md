@@ -1848,3 +1848,22 @@ Re-verified this cycle: BI2, BI3, BD2 still OPEN (taken IN REVIEW in the
 (`CredentialsDto` is still an unconstrained `record(String, String)` —
 directory-service, left for a follow-up batch). No new actionable items —
 no new `###` sections appended.
+
+## BN. AuthN and AuthZ boundaries re-hunt (Lens 2, 2026-09-09)
+
+Hunt method: enumerated every `@PreAuthorize` site in product-service, every
+`@TargetUser`/`@AuthenticationPrincipal` parameter in both services, both
+`SecurityConfig` filter chains, and the directory `JwtAuthFilter`/
+`UserAuthenticationProvider.refreshToken` binding. Re-verified this cycle:
+W1 still OPEN (`ShippingController.java:22-25` still ungated, throttle still
+blocked on B8); B4 still OPEN (`OrderController.createOrder` still takes no
+`@TargetUser`, `CustomerOrder` still has no owner column);
+`PaymentController` read paths still ownership-checked via
+`requireOwnedPayment`; all four product `@TargetUser` endpoints still behind
+`isFullyAuthenticated()`; directory `/refresh-token` still binds
+`username.equals(userDto.getUsername())`
+(`UserAuthenticationProvider.java:126`); B2 stays INVALID (directory denies
+anonymous at the filter layer via `anyRequest().authenticated()`, so the
+SpEL `@TargetUser` never evaluates on `anonymousUser` — unlike
+product-service, which needs its resolver because its chain is
+`permitAll()`). No new actionable items — no new `###` sections appended.
