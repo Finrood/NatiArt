@@ -20,7 +20,7 @@ import com.saas.directory.service.UserManager;
 
 @RestController
 public class UserRegistrationController {
-    public static Logger LOGGER = LoggerFactory.getLogger(UserController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(UserRegistrationController.class);
 
     private final UserManager userManager;
     private final UserAuthenticationProvider userAuthenticationProvider;

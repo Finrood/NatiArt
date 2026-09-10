@@ -21,7 +21,7 @@ import com.saas.directory.service.AuthenticationManager;
 
 @RestController
 public class AuthenticationController {
-    public static Logger LOGGER = LoggerFactory.getLogger(AuthenticationController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthenticationController.class);
 
     private final AuthenticationManager authenticationManager;
     private final UserAuthenticationProvider userAuthenticationProvider;
