@@ -111,6 +111,12 @@ GH_FIXTURE_DIR="$d"
 assert_eq "PASS" "$(pr_checks_summary 1)" "all pass -> PASS"
 rm -rf "$d"
 
+d=$(mkfixture checksmixed)
+printf 'directory-service\tpass\t42s\turl\nguidelines\tpending\t6s\turl\n' > "$d/checks.txt"
+GH_FIXTURE_DIR="$d"
+assert_eq "PENDING" "$(pr_checks_summary 1)" "mixed pass and pending -> PENDING"
+rm -rf "$d"
+
 d=$(mkfixture checkspending)
 : > "$d/checks.txt"
 GH_FIXTURE_DIR="$d"

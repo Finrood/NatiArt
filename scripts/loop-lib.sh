@@ -105,8 +105,11 @@ checks_failed() { # reads `gh pr checks` text on stdin; true iff any STATE colum
     # whole line (a passing job named e.g. failover-guard must not read as failed).
     awk -F'\t' '$2 ~ /^(fail|cancel)/ {f=1; exit} END {exit !f}'
 }
-checks_passed() { # reads `gh pr checks` text on stdin; true iff any STATE column is pass/success
-    awk -F'\t' '$2 ~ /^(pass|success)/ {f=1; exit} END {exit !f}'
+checks_passed() { # reads `gh pr checks` text on stdin; true iff every check passed
+    # An empty result or any non-terminal/non-success state is not mergeable.
+    awk -F'\t' '
+        NF >= 2 { seen=1; if ($2 !~ /^(pass|success)$/) { bad=1 } }
+        END { exit !(seen && !bad) }'
 }
 pr_checks_summary() { # $1 = PR number; prints FAIL|PASS|PENDING (never fails)
     local checks
