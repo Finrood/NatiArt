@@ -25,8 +25,8 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
@@ -209,8 +209,8 @@ class AsaasPaymentServiceTest {
     void mapAsaasError_mapsUnexpectedUpstreamFailuresToBadGateway() {
         final HttpServerErrorException upstream =
                 HttpServerErrorException.create(HttpStatus.INTERNAL_SERVER_ERROR, "Bad Gateway", null, null, null);
-        final UpstreamServiceException mapped = assertInstanceOf(
-                UpstreamServiceException.class, AsaasPaymentService.mapAsaasError(upstream));
+        final UpstreamServiceException mapped =
+                assertInstanceOf(UpstreamServiceException.class, AsaasPaymentService.mapAsaasError(upstream));
         assertEquals(HttpStatus.BAD_GATEWAY, mapped.getHttpStatus());
         assertEquals("Payment provider unavailable", mapped.getMessage());
     }
@@ -219,11 +219,11 @@ class AsaasPaymentServiceTest {
     void mapAsaasError_mapsRateLimitAndPreservesRetryAfter() {
         final HttpHeaders headers = new HttpHeaders();
         headers.set(HttpHeaders.RETRY_AFTER, "7");
-        final HttpClientErrorException upstream = HttpClientErrorException.create(
-                HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests", headers, null, null);
+        final HttpClientErrorException upstream =
+                HttpClientErrorException.create(HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests", headers, null, null);
 
-        final UpstreamServiceException mapped = assertInstanceOf(
-                UpstreamServiceException.class, AsaasPaymentService.mapAsaasError(upstream));
+        final UpstreamServiceException mapped =
+                assertInstanceOf(UpstreamServiceException.class, AsaasPaymentService.mapAsaasError(upstream));
 
         assertEquals(HttpStatus.TOO_MANY_REQUESTS, mapped.getHttpStatus());
         assertEquals("7", mapped.getRetryAfter());

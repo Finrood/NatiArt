@@ -17,15 +17,14 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
-
-import com.portcelana.natiart.dto.shipping.ShippingEstimateRequest;
 
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.controller.helper.UserNotAllowedException;
+import com.portcelana.natiart.dto.shipping.ShippingEstimateRequest;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -91,8 +90,8 @@ class ShippingServiceTest {
     void mapShippingError_mapsUnexpectedUpstreamFailuresToBadGateway() {
         final HttpServerErrorException upstream =
                 HttpServerErrorException.create(HttpStatus.INTERNAL_SERVER_ERROR, "Bad Gateway", null, null, null);
-        final UpstreamServiceException mapped = assertInstanceOf(
-                UpstreamServiceException.class, ShippingService.mapShippingError(upstream));
+        final UpstreamServiceException mapped =
+                assertInstanceOf(UpstreamServiceException.class, ShippingService.mapShippingError(upstream));
         assertEquals(HttpStatus.BAD_GATEWAY, mapped.getHttpStatus());
         assertEquals("Shipping provider unavailable", mapped.getMessage());
     }
@@ -101,11 +100,11 @@ class ShippingServiceTest {
     void mapShippingError_mapsRateLimitAndPreservesRetryAfter() {
         final HttpHeaders headers = new HttpHeaders();
         headers.set(HttpHeaders.RETRY_AFTER, "11");
-        final HttpClientErrorException upstream = HttpClientErrorException.create(
-                HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests", headers, null, null);
+        final HttpClientErrorException upstream =
+                HttpClientErrorException.create(HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests", headers, null, null);
 
-        final UpstreamServiceException mapped = assertInstanceOf(
-                UpstreamServiceException.class, ShippingService.mapShippingError(upstream));
+        final UpstreamServiceException mapped =
+                assertInstanceOf(UpstreamServiceException.class, ShippingService.mapShippingError(upstream));
 
         assertEquals(HttpStatus.TOO_MANY_REQUESTS, mapped.getHttpStatus());
         assertEquals("11", mapped.getRetryAfter());
@@ -125,8 +124,7 @@ class ShippingServiceTest {
 
         final UpstreamServiceException mapped = org.junit.jupiter.api.Assertions.assertThrows(
                 UpstreamServiceException.class,
-                () -> new ShippingService(
-                                "https://api.example.com/calculate", "test-token", "88085201", restTemplate)
+                () -> new ShippingService("https://api.example.com/calculate", "test-token", "88085201", restTemplate)
                         .getShippingEstimates(new ShippingEstimateRequest("88010000", 1.0f, 20.0f, 15.0f, 10.0f, 1)));
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, mapped.getHttpStatus());

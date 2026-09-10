@@ -8,8 +8,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mock.http.MockHttpInputMessage;
@@ -126,9 +126,8 @@ class ControllerAdviceTest {
 
     @Test
     void handleUpstreamServiceException_returnsStaticBodyAndRetryAfterHeader() {
-        final ResponseEntity<Object> result = advice.handleUpstreamServiceException(
-                new UpstreamServiceException(
-                        "Payment provider rate limit exceeded", HttpStatus.TOO_MANY_REQUESTS, "7"));
+        final ResponseEntity<Object> result = advice.handleUpstreamServiceException(new UpstreamServiceException(
+                "Payment provider rate limit exceeded", HttpStatus.TOO_MANY_REQUESTS, "7"));
 
         assertEquals(HttpStatus.TOO_MANY_REQUESTS, result.getStatusCode());
         assertEquals("Payment provider rate limit exceeded", result.getBody());
