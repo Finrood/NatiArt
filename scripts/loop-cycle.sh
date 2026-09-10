@@ -362,11 +362,17 @@ fi
 # 5. Stale-branch hygiene: prune local branches whose remote is gone.
 git fetch -q --prune origin
 git branch -vv | awk '/: gone]/{print $1}' | grep -v '^\*' | xargs -r git branch -d 2>/dev/null || true
-# Salvage retention: keep the newest 5 salvage branches, delete older ones.
+# Salvage retention: keep the newest 5 salvage branches, and only delete older
+# branches after proving their commits are already merged into origin/master.
+# Old unmerged salvage is still recoverable WIP and must never be force-deleted.
 git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads/salvage/ 2>/dev/null | tail -n +6 | while read -r sb; do
-    log "Deleting old salvage branch $sb."
-    git branch -D "$sb" 2>/dev/null || true
-    git push -q origin --delete "$sb" 2>/dev/null || true
+    if git merge-base --is-ancestor "$sb" origin/master 2>/dev/null; then
+        log "Deleting old merged salvage branch $sb."
+        git branch -D "$sb" 2>/dev/null || true
+        git push -q origin --delete "$sb" 2>/dev/null || true
+    else
+        log "Preserving old unmerged salvage branch $sb."
+    fi
 done
 
 # 5a. Mechanical verdict production. Runs every cycle, including REPAIR MODE —
@@ -478,10 +484,14 @@ git branch -r --merged origin/master 2>/dev/null | sed 's#^ *origin/##' | grep -
         git push -q origin --delete "$b" 2>/dev/null || log "Could not delete $b (likely already gone)."
     fi
 done || true
-git ls-remote --heads origin 'salvage/*' 2>/dev/null | awk '{print $2}' | sed 's#refs/heads/##' | sort | head -n -5 | while read -r sb; do
+git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/remotes/origin/salvage/ 2>/dev/null | sed 's#^origin/##' | tail -n +6 | while read -r sb; do
     [[ -z "$sb" ]] && continue
-    log "Deleting old remote-only salvage branch $sb."
-    git push -q origin --delete "$sb" 2>/dev/null || log "Could not delete $sb (likely already gone)."
+    if git merge-base --is-ancestor "origin/$sb" origin/master 2>/dev/null; then
+        log "Deleting old merged remote salvage branch $sb."
+        git push -q origin --delete "$sb" 2>/dev/null || log "Could not delete $sb (likely already gone)."
+    else
+        log "Preserving old unmerged remote salvage branch $sb."
+    fi
 done || true
 
 # 6. Hand one item to the agent (non-interactive, repo permission policy applies;
