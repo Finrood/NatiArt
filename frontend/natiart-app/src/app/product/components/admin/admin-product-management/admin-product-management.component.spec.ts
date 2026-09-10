@@ -2,7 +2,6 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
-import { provideAnimations } from '@angular/platform-browser/animations';
 import { of, Subject, throwError } from 'rxjs';
 
 import { ProductManagementComponent } from './admin-product-management.component';
@@ -16,7 +15,7 @@ describe('ProductManagementComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ProductManagementComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideAnimations()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     }).compileComponents();
   });
 
@@ -78,8 +77,7 @@ describe('ProductManagementComponent error UX (O2)', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
-        provideAnimations(),
-        { provide: ProductService, useValue: productOps },
+                { provide: ProductService, useValue: productOps },
         { provide: CategoryService, useValue: { getCategories: (): Subject<never[]> => new Subject<never[]>() } },
         { provide: PackageService, useValue: { getPackages: (): Subject<never[]> => new Subject<never[]>() } },
       ],

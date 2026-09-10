@@ -1,4 +1,4 @@
-import {Component, OnDestroy, OnInit} from '@angular/core';
+import {ChangeDetectorRef, Component, OnDestroy, OnInit} from '@angular/core';
 import {map, switchMap} from "rxjs/operators";
 import {catchError, interval, of, Subscription, throwError} from "rxjs";
 import {PaymentService} from "../../../../service/payment.service";
@@ -30,7 +30,8 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   constructor(
     private route: ActivatedRoute,
     private paymentService: PaymentService,
-    private router: Router
+    private router: Router,
+    private changeDetectorRef: ChangeDetectorRef
   ) {
   }
 
@@ -58,7 +59,10 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
     this.stopQrCode();
     this.qrSubscription = this.paymentService.getPixQrCode(paymentId).subscribe(
       (data) => (this.qrCodeData = data),
-      () => (this.paymentStatus = 'ERROR')
+      () => {
+        this.paymentStatus = 'ERROR';
+        this.changeDetectorRef.detectChanges();
+      }
     );
   }
 
@@ -179,4 +183,3 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
     this.stopFireworks();
   }
 }
-

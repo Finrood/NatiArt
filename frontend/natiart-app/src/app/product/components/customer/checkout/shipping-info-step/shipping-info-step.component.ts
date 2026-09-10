@@ -3,7 +3,6 @@ import {FormGroup, ReactiveFormsModule, Validators} from "@angular/forms";
 
 import {Subject} from "rxjs";
 import {takeUntil} from "rxjs/operators";
-import {animate, style, transition, trigger} from "@angular/animations";
 import {AddressFormComponent} from "../address-form/address-form.component";
 
 @Component({
@@ -14,17 +13,6 @@ import {AddressFormComponent} from "../address-form/address-form.component";
     AddressFormComponent
 ],
   templateUrl: './shipping-info-step.component.html',
-  animations: [
-    trigger('slideInRight', [
-      transition(':enter', [
-        style({ transform: 'translateX(100%)', opacity: 0 }),
-        animate('300ms ease-out', style({ transform: 'translateX(0)', opacity: 1 })),
-      ]),
-      transition(':leave', [
-        animate('300ms ease-in', style({ transform: 'translateX(100%)', opacity: 0 }))
-      ])
-    ]),
-  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ShippingInfoStepComponent implements OnInit, OnDestroy {

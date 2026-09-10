@@ -1,7 +1,6 @@
 import {ChangeDetectionStrategy, Component, Input} from '@angular/core';
 import {FormGroup, ReactiveFormsModule} from "@angular/forms";
 
-import {animate, style, transition, trigger} from "@angular/animations";
 import {
   NatiartFormFieldComponent
 } from "../../../../../shared/components/natiart-form-field/natiart-form-field.component";
@@ -16,17 +15,6 @@ import {PaymentMethod} from "../../../../models/paymentMethod.model";
     NatiartFormFieldComponent
 ],
   templateUrl: './payment-info-step.component.html',
-  animations: [
-    trigger('fadeIn', [
-      transition(':enter', [
-        style({ opacity: 0, transform: 'translateY(5px)' }),
-        animate('200ms ease-out', style({ opacity: 1, transform: 'translateY(0)' })),
-      ]),
-      transition(':leave', [
-        animate('200ms ease-in', style({ opacity: 0, transform: 'translateY(5px)' }))
-      ])
-    ]),
-  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PaymentInfoStepComponent {

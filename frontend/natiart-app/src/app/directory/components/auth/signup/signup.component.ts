@@ -1,7 +1,6 @@
 import {ChangeDetectionStrategy, Component, OnInit} from '@angular/core';
 import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {CustomPasswordValidators} from '../../../validator/CustomPasswordValidators';
-import {animate, style, transition, trigger} from '@angular/animations';
 import {Router, RouterLink} from '@angular/router';
 import {CommonModule} from "@angular/common";
 
@@ -21,20 +20,6 @@ import {CustomCepValidators} from "../../../validator/CustomCepValidators";
   templateUrl: './signup.component.html',
   styleUrls: ['./signup.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  animations: [
-    trigger('fadeIn', [
-      transition(':enter', [
-        style({ opacity: 0 }),
-        animate('300ms ease-out', style({ opacity: 1 })),
-      ]),
-    ]),
-    trigger('slideIn', [
-      transition('* <=> *', [
-        style({ transform: 'translateX(100%)', opacity: 0 }),
-        animate('400ms cubic-bezier(0.4, 0, 0.2, 1)', style({ transform: 'translateX(0)', opacity: 1 })),
-      ]),
-    ]),
-  ],
   imports: [
     ReactiveFormsModule,
     RouterLink,

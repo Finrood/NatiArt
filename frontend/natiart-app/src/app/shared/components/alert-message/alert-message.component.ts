@@ -1,6 +1,5 @@
 import {Component} from '@angular/core';
 import { NgClass } from '@angular/common';
-import {animate, style, transition, trigger} from '@angular/animations';
 
 export interface AlertMessage {
   type: 'success' | 'error';
@@ -11,17 +10,6 @@ export interface AlertMessage {
   selector: 'app-alert-messages',
   templateUrl: './alert-message.component.html',
   imports: [NgClass],
-  animations: [
-    trigger('alertAnimation', [
-      transition(':enter', [
-        style({ opacity: 0, transform: 'translateX(50px)' }),
-        animate('300ms ease-out', style({ opacity: 1, transform: 'translateX(0)' }))
-      ]),
-      transition(':leave', [
-        animate('300ms ease-in', style({ opacity: 0, transform: 'translateX(50px)' }))
-      ])
-    ])
-  ]
 })
 export class AlertMessageComponent {
   alertMessages: AlertMessage[] = [];
@@ -46,4 +34,3 @@ export class AlertMessageComponent {
     }
   }
 }
-

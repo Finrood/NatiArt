@@ -2,7 +2,6 @@ import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testin
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
-import { provideAnimations } from '@angular/platform-browser/animations';
 
 import { TopBannerComponent } from './top-banner.component';
 
@@ -10,7 +9,7 @@ describe('TopBannerComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [TopBannerComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideAnimations()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     }).compileComponents();
   });
 
@@ -73,4 +72,3 @@ describe('TopBannerComponent', () => {
     expect(fixture.componentInstance.currentBannerIndex).toBe(indexAtDestroy);
   }));
 });
-

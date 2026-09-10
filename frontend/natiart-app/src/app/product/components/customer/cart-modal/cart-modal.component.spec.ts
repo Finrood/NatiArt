@@ -2,7 +2,6 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
-import { provideAnimations } from '@angular/platform-browser/animations';
 import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 
 import { CartModalComponent } from './cart-modal.component';
@@ -33,7 +32,7 @@ describe('CartModalComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [CartModalComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideAnimations()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     }).compileComponents();
   });
 
