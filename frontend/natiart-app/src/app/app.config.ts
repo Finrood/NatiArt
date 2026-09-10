@@ -5,6 +5,7 @@ import {routes} from './app.routes';
 import {provideHttpClient, withInterceptors} from "@angular/common/http";
 import {jwtInterceptor} from "./directory/interceptors/jwt-interceptor.service";
 import {AuthenticationService} from "./directory/service/authentication.service";
+import {filter, firstValueFrom, take} from "rxjs";
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -15,7 +16,12 @@ export const appConfig: ApplicationConfig = {
     {
       provide: APP_INITIALIZER,
       multi: true,
-      useFactory: (authService: AuthenticationService) => () => authService.authResolved$.subscribe(),
+      useFactory: (authService: AuthenticationService) => () => firstValueFrom(
+        authService.authResolved$.pipe(
+          filter((resolved: boolean) => resolved),
+          take(1)
+        )
+      ),
       deps: [AuthenticationService]
     }
   ]
