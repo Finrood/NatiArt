@@ -50,7 +50,13 @@ emit() { # $1 = fixture file
     if [[ -n "$jqfilter" ]]; then jq -r "$jqfilter" "$1"; else cat "$1"; fi
 }
 if [[ "$1" == "pr" && "$2" == "list" ]]; then
+    if [[ "${GH_PR_FAIL_ONCE:-0}" == "1" && ! -f "$GH_PR_FAIL_ONCE_MARKER" ]]; then
+        printf 'partial garbage\n'
+        : > "$GH_PR_FAIL_ONCE_MARKER"
+        exit 1
+    fi
     if [[ "${GH_PR_FAIL:-0}" == "1" ]]; then echo "boom" >&2; exit 1; fi
+    if [[ "${GH_PR_WARN:-0}" == "1" ]]; then echo "warning from gh" >&2; fi
     emit "$GH_PR_JSON"
     exit 0
 fi
@@ -88,6 +94,20 @@ export GH_PR_JSON="$WORK/pr-active.json" GH_ISSUE_JSON="$WORK/issue-none.json"
 run_check
 assert_eq "0" "$RC" "active loop -> exit 0"
 assert_not_contains "$GH_CALL_LOG" "create" "active loop -> no issue created"
+
+# Successful gh output with a warning on stderr must remain valid JSON.
+export GH_PR_WARN=1
+run_check
+assert_eq "0" "$RC" "warning plus valid JSON -> exit 0"
+assert_not_contains "$GH_CALL_LOG" "create" "warning plus valid JSON -> no false alert"
+unset GH_PR_WARN
+
+# Failed-attempt stdout must be discarded before a retry succeeds.
+export GH_PR_FAIL_ONCE=1 GH_PR_FAIL_ONCE_MARKER="$WORK/fail-once.marker"
+run_check
+assert_eq "0" "$RC" "garbage failure followed by success -> exit 0"
+assert_not_contains "$GH_CALL_LOG" "create" "garbage failure followed by success -> no false alert"
+unset GH_PR_FAIL_ONCE GH_PR_FAIL_ONCE_MARKER
 
 # --- 2. idle, no open alert: file once ---
 cat > "$WORK/pr-idle.json" <<EOF

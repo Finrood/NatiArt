@@ -41,7 +41,7 @@ ls -t logs/ | head
 systemctl --user stop natiart-improvement-loop.timer
 systemctl --user start natiart-improvement-loop.timer
 
-# dry-run of the guards without invoking the agent
+# read-only preflight of auth, disk, required files, lenses, and syntax
 ./scripts/loop-cycle.sh --check-only
 ```
 
