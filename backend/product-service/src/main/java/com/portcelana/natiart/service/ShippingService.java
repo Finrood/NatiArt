@@ -70,7 +70,9 @@ public class ShippingService {
             throw mapShippingError(e);
         }
 
-        return parseAndFilterResponse(response.getBody());
+        final List<ShippingEstimate> estimates = parseAndFilterResponse(response.getBody());
+        LOGGER.info("Shipping estimates calculated: optionCount=[{}]", estimates.size());
+        return estimates;
     }
 
     private MelhorenvioShippingCalculationRequest createMelhorEnvioRequest(
