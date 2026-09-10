@@ -1982,3 +1982,46 @@ runner-ups.
   retry hazard. Tests: same-key replay → single order row, stock
   decremented once.
   Tracked, not silently fixed.
+
+## BS. N+1 queries and pagination (Lens 5 hunt, 2026-09-10)
+
+Hunt method: re-ran the Lens 5 enumeration on current master (every
+repository query, every derived-query call site, page/size caps on all four
+listing controllers, every DTO `from()` touch against association fetch
+types with `open-in-view=false`). Re-verified this cycle: product listings
+still id-page plus `findAllWithImagesByIds` fetching images + category +
+packaging (`repository/ProductRepository.java:33-47`,
+`service/ProductManagerImpl.java:128-141`); all four listing controllers
+still clamp via `toPageable` (`controller/ProductController.java:134-138`
+pattern); `createOrder` touches only scalar product state
+(`isActive`/`getLabel`/prices,
+`service/OrderManagerImpl.java:102-119`); AE3/AE4 still OPEN and latent;
+BC1 still OPEN. Cleared as non-findings: `deleteCartItem` /
+`decreaseCartItemQuantity` load-then-delete (intentional — the documented
+`Personalization` cascade needs managed entities,
+`repository/CartItemRepository.java:60-68`); category/package listings
+(scalar-only DTOs). BS1 below is the runner-up.
+
+### BS1. Cart add path maps through the DTO off the non-fetching derived lookup — OPEN (Low)
+- `service/CartManagerImpl.java:50` returns
+  `CartItemDto.from(getCartLineOrDie(...))`, and `getCartLineOrDie`
+  (`:92-97`) uses the derived `findCartItemByUsernameAndProduct`
+  (`repository/CartItemRepository.java:27`) with no fetch joins — while the
+  listing path uses the fetch-join `findCartItemsByUsername` (`:23-25`).
+  `CartItemDto.from` (`dto/CartItemDto.java:10-15`) → `ProductDto.from`
+  touches `product.getImages()` (`dto/ProductDto.java:36-48`), a LAZY
+  `@ElementCollection` (`model/Product.java:59-61`), on top of the EAGER
+  `CartItem.product` (`model/CartItem.java:23-25`), the EAGER-by-default
+  `@OneToOne personalization` (`:27-28`), and its LAZY options map handed
+  to the DTO by reference (`dto/PersonalizationDto.java:17`,
+  `model/Personalization.java:16-19` — see BC1). Every successful add
+  therefore pays 2-4 lazy selects the listing path eliminated: single-row
+  cost, not a fan-out, but on the hottest write path in the storefront
+  (every add-to-cart click).
+- Fix: serve the add response from the fetch-join query (re-read via
+  `findCartItemsByUsername` filtered to the product, or add fetch joins to
+  a dedicated `findCartItem...WithDetails`), and extend the
+  `CartItemRepositoryFetchTest` pin to the add path. Tests: bounded query
+  count on add; personalized-line add serializes in-transaction.
+  Found by Lens 5 hunt, 2026-09-10.
+  Tracked, not silently fixed.
