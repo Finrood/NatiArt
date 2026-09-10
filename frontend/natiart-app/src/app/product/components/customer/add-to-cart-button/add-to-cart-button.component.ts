@@ -2,6 +2,7 @@ import {Component, ElementRef, EventEmitter, Input, Output} from '@angular/core'
 import {PersonalizationModalComponent} from "../personalization-modal/personalization-modal.component";
 import {Product} from "../../../models/product.model";
 import {CartService} from "../../../service/cart.service";
+import {ProductService} from "../../../service/product.service";
 import {PersonalizationOption} from "../../../models/support/personalization-option";
 
 import {ButtonComponent} from "../../../../shared/components/button.component";
@@ -40,6 +41,7 @@ export class AddToCartButtonComponent {
 
   constructor(
     private cartService: CartService,
+    private productService: ProductService,
     private elRef: ElementRef<HTMLElement> // Inject ElementRef to get the button
   ) {}
 
@@ -74,15 +76,27 @@ export class AddToCartButtonComponent {
   }
 
   onPersonalizationComplete(result: { goldBorder?: boolean, customImage?: File }) {
-    if (this.selectedProductForModal) {
-      this.cartService.addToCart(
-        this.selectedProductForModal,
-        this.quantity, // Use the quantity passed to the component
-        result.goldBorder,
-        result.customImage
-      );
-      this.itemAdded.emit(this.elRef.nativeElement.querySelector('button')!); // Emit button element
+    const selectedProduct: Product | null = this.selectedProductForModal;
+    if (!selectedProduct?.id) {
+      this.closePersonalizationModal();
+      return;
     }
-    this.closePersonalizationModal(); // This will also reset isAdding
+
+    // The modal may stay open while a listing refresh changes price, stock, or
+    // availability. Re-read the product before persisting the cart line so a
+    // stale snapshot cannot become the checkout price.
+    this.productService.getProduct(selectedProduct.id).subscribe({
+      next: (currentProduct: Product): void => {
+        const quantity: number = Math.min(this.quantity, currentProduct.stockQuantity);
+        if (currentProduct.active === false || quantity <= 0) {
+          this.closePersonalizationModal();
+          return;
+        }
+        this.cartService.addToCart(currentProduct, quantity, result.goldBorder, result.customImage);
+        this.itemAdded.emit(this.elRef.nativeElement.querySelector('button')!);
+        this.closePersonalizationModal();
+      },
+      error: (): void => this.closePersonalizationModal(),
+    });
   }
 }
