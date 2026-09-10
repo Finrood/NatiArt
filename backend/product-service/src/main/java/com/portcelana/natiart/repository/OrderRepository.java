@@ -12,7 +12,8 @@ import com.portcelana.natiart.model.support.OrderStatus;
 
 @Repository
 public interface OrderRepository extends JpaRepository<CustomerOrder, String> {
-    @Query("SELECT CASE WHEN COUNT(item) > 0 THEN true ELSE false END FROM CustomerOrder customerOrder JOIN customerOrder.items item WHERE item.product = :product")
+    @Query(
+            "SELECT CASE WHEN COUNT(item) > 0 THEN true ELSE false END FROM CustomerOrder customerOrder JOIN customerOrder.items item WHERE item.product = :product")
     boolean existsByProduct(@Param("product") Product product);
 
     @Modifying

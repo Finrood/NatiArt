@@ -46,7 +46,12 @@ class ProductManagerPaginationTest {
     @BeforeEach
     void setUp() {
         productManager = new ProductManagerImpl(
-                productRepository, orderRepository, cartItemRepository, categoryManager, packageManager, storageService);
+                productRepository,
+                orderRepository,
+                cartItemRepository,
+                categoryManager,
+                packageManager,
+                storageService);
     }
 
     @Test
