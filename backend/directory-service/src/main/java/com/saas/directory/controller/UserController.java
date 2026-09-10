@@ -23,7 +23,7 @@ public class UserController {
 
     @GetMapping("/users/current")
     public ResponseEntity<UserDto> currentUser(@TargetUser String username) {
-        LOGGER.info("User [{}] is getting current logged-in user", username);
+        LOGGER.debug("User [{}] is getting current logged-in user", username);
 
         if (username == null || username.isEmpty()) {
             return ResponseEntity.ok(null);

@@ -27,7 +27,7 @@ public class CategoryController {
 
     @GetMapping("/categories/{categoryId}")
     public CategoryDto getCategory(@PathVariable String categoryId) {
-        LOGGER.info("Getting category with id [{}]", categoryId);
+        LOGGER.debug("Getting category with id [{}]", categoryId);
 
         return CategoryDto.from(categoryManager.getCategoryOrDie(categoryId));
     }
@@ -36,7 +36,7 @@ public class CategoryController {
     public List<CategoryDto> getCategories(
             @RequestParam(required = false, defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "20") int size) {
-        LOGGER.info("Getting all categories");
+        LOGGER.debug("Getting all categories page [{}] size [{}]", page, size);
         Pageable pageable = toPageable(page, size);
         return categoryManager.getCategories(pageable).stream()
                 .map(CategoryDto::from)
