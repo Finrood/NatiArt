@@ -959,17 +959,25 @@ checkout double-submit (guarded by `isSubmitting`,
 (`DirectoryApplication.java:10` carries `@EnableAsync`, so the annotation
 is live — only the executor choice below is filed).
 
-### AQ2. `@Async` registration fan-out runs on the unbounded default executor — OPEN (Low)
+### AQ2. `@Async` registration fan-out runs on the unbounded default executor — IN REVIEW (Low, PR #234)
 - `listener/UserRegistrationListener.java:42` (`@Async` on
   `handleUserRegistration`) has no `TaskExecutor` bean behind it (repo-wide
   grep for `TaskExecutor|ThreadPool` in `backend/` returns zero hits), so
-  Spring falls back to `SimpleAsyncTaskExecutor`: one fresh thread per
-  registration, unbounded, no queue. A ghost-checkout burst spawns a thread
-  burst with it. Severity Low (registration rate is human-scale today).
+  Spring Boot falls back to an effectively unbounded application executor:
+  a registration burst (Asaas fan-out) spawns one thread per task with no
+  queue bound. Severity Low (registration rate is human-scale today).
   Found by Lens 8 hunt, 2026-09-07.
 - Fix: bounded `ThreadPoolTaskExecutor` bean (fixed pool + bounded queue,
   caller-runs rejection) in directory-service. Tests: bean present with
-  bounded queue capacity. Tracked, not silently fixed.
+  bounded queue capacity. Fixed in PR #234; queue-capacity/thread-pool
+  bounds asserted in `AsyncConfigTest`.
+- Re-verified 2026-09-10 (Lens 8): B8 still OPEN (`RateLimitFilter` in-memory
+  window map unchanged, strategic), K5 still OPEN (`TokenCleanupService`
+  `@Scheduled` purge uncoordinated across pods — fix needs a DB-backed lock,
+  schema decision deferred to the maintainer). Cleared as non-findings:
+  `PerformanceLoggingFilter` (request-scoped locals only, no instance state);
+  `OrderManagerImpl.ALLOWED_TRANSITIONS` (immutable constant table, not
+  cross-request state).
 
 ## AR. Frontend auth flow re-hunt (Lens 9, 2026-09-07)
 
