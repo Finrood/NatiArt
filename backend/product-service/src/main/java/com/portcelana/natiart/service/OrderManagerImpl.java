@@ -2,6 +2,7 @@ package com.portcelana.natiart.service;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -151,9 +152,14 @@ public class OrderManagerImpl implements OrderManager {
         if (items.size() > MAX_ORDER_LINES) {
             throw new IllegalArgumentException("An order must not contain more than " + MAX_ORDER_LINES + " items");
         }
+        final Set<String> productIds = new HashSet<>();
         for (OrderItemDto item : items) {
             if (item.getProductId() == null || item.getProductId().isBlank()) {
                 throw new IllegalArgumentException("Every order item must reference a product");
+            }
+            if (!productIds.add(item.getProductId())) {
+                throw new IllegalArgumentException(
+                        "An order must not contain duplicate product [" + item.getProductId() + "] lines");
             }
             if (item.getQuantity() == null || item.getQuantity() <= 0) {
                 throw new IllegalArgumentException("Item quantities must be positive");
