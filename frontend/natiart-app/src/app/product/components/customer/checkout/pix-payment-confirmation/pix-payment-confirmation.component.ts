@@ -62,6 +62,11 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
     this.qrSubscription = this.paymentService.getPixQrCode(paymentId).subscribe(
       (data) => (this.qrCodeData = data),
       () => {
+        // Status polling cannot make this screen usable without the QR code.
+        // Stop it so a later PENDING status cannot replace the QR error with
+        // the loading spinner while the component is already in a terminal
+        // error state.
+        this.stopPolling();
         this.paymentStatus = 'ERROR';
         this.changeDetectorRef.detectChanges();
       }
