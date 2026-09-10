@@ -131,6 +131,8 @@ check_case() {
 }
 check_case 'backend/a.java' "$all_checks" yes 'backend paths require backend checks'
 check_case 'frontend/a.ts' "$all_checks" yes 'frontend paths require frontend checks'
+check_case 'frontend/a.ts' $'guidelines\tpass\t1s\nbuild-and-test (24)\tpass\t1s' yes 'frontend matrix check name is accepted'
+check_case 'frontend/a.ts' $'guidelines\tpass\t1s\nbuild-and-test-malicious\tpass\t1s' no 'frontend check prefix collision is rejected'
 check_case 'scripts/loop.sh' "$all_checks" yes 'scripts require shell checks'
 check_case 'docs/a.md' $'guidelines\tpass\t1s' yes 'docs require guidelines only'
 check_case '.github/workflows/loop-watchdog.yml' $'bash-tests\tpass\t1s\nshellcheck\tpass\t1s' yes 'watchdog workflow requires loop checks'

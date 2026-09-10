@@ -171,7 +171,13 @@ required_checks_passed() { # $1=changed files, $2=gh pr checks output
     fi
     while IFS= read -r name; do
         [[ -z "$name" ]] && continue
-        if ! awk -F'\t' -v expected="$name" '$1 == expected && $2 ~ /^(pass|success)$/ { found=1; exit } END { exit !found }' <<<"$checks"; then
+        if [[ "$name" == "build-and-test" ]]; then
+            # Frontend CI is a matrix job and GitHub decorates its check name
+            # as `build-and-test (<matrix value>)`; keep the suffix bounded.
+            if ! awk -F'\t' '$1 == "build-and-test" || $1 ~ /^build-and-test \([^()[:space:]]+\)$/ { if ($2 ~ /^(pass|success)$/) { found=1; exit } } END { exit !found }' <<<"$checks"; then
+                return 1
+            fi
+        elif ! awk -F'\t' -v expected="$name" '$1 == expected && $2 ~ /^(pass|success)$/ { found=1; exit } END { exit !found }' <<<"$checks"; then
             return 1
         fi
     done <<<"$expected"
