@@ -1311,3 +1311,19 @@ re-verified INVALID (CORS origins already property-externalized on master).
   (both `application-production.properties` override the key with prod-only
   origins, pinned by `ApplicationProductionPropertiesTest` in both services).
 
+
+### B10. Logging/DI convention drift — FIXED (Low; directory slice PR #228, product half PR #235)
+- Public mutable loggers (`ProductController:32`, `CartController:17`,
+  `CategoryController:19`, `AuthenticationController:25`), wrong-owner logger
+  (`ProductManagerImpl:35`), lowercase `logger`
+  (`UserAuthenticationProvider:45`), setter injection in `StorageServiceImpl`.
+- Fix: `private static final Logger LOGGER = getLogger(OwnClass.class)`;
+  constructor injection. No behavior change; include in a boy-scout PR.
+- Directory slice FIXED (PR #228, merged): `AuthenticationController`/`UserRegistrationController`
+  loggers now `private static final LOGGER` with own-class owners; `ControllerAdvice` logger
+  uppercased.
+- Product half FIXED (PR #235, merged): `ProductController` and `CategoryController`
+  loggers now `private static final`; `ProductManagerImpl` logger re-owned to its own
+  class. Re-verified on master, remaining halves INVALID (already conforming):
+  `CartController` (private static final), `UserAuthenticationProvider:41`,
+  `StorageServiceImpl` (constructor injection).
