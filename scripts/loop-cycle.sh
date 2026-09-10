@@ -72,6 +72,14 @@ if [[ "${DISK_AVAIL_KB:-0}" -lt 2097152 ]]; then
     exit 1
 fi
 
+# Check-only is a genuinely side-effect-free preflight. Keep it ahead of tree
+# healing, PR self-healing, branch cleanup, and agent execution: those phases
+# can commit, reset, merge, delete, or otherwise mutate repository state.
+if [[ "$CHECK_ONLY" -eq 1 ]]; then
+    log "Check-only mode: auth and disk gates pass; no repository or GitHub mutations performed."
+    exit 0
+fi
+
 # 1. Clean tree guard. A killed cycle (timeout kill, reboot, external pkill)
 #    can leave dirt anywhere; the loop must never wedge on it. Every dirty case
 #    self-heals: salvage the WIP to a dedicated snapshot branch (inspectable
@@ -360,11 +368,6 @@ git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads/sa
     git branch -D "$sb" 2>/dev/null || true
     git push -q origin --delete "$sb" 2>/dev/null || true
 done
-
-if [[ "$CHECK_ONLY" -eq 1 ]]; then
-    log "Check-only mode: all preconditions pass. Agent run skipped."
-    exit 0
-fi
 
 # 5a. Mechanical verdict production. Runs every cycle, including REPAIR MODE —
 # and reviews RED PRs too: the reviewer is the one who reports machine-readable
