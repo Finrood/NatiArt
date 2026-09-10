@@ -14,6 +14,8 @@ import com.portcelana.natiart.model.Product;
 
 @Repository
 public interface CartItemRepository extends JpaRepository<CartItem, String> {
+    boolean existsByProduct(Product product);
+
     /**
      * Loads a user's cart lines with the associations the listing DTO touches
      * (`product` with its `images`, plus `personalization`) in a single query.

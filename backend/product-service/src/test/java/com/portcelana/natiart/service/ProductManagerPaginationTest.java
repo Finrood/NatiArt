@@ -16,6 +16,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
 import com.portcelana.natiart.model.Product;
+import com.portcelana.natiart.repository.CartItemRepository;
+import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.ProductRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -23,6 +25,12 @@ class ProductManagerPaginationTest {
 
     @Mock
     private ProductRepository productRepository;
+
+    @Mock
+    private OrderRepository orderRepository;
+
+    @Mock
+    private CartItemRepository cartItemRepository;
 
     @Mock
     private CategoryManager categoryManager;
@@ -37,7 +45,13 @@ class ProductManagerPaginationTest {
 
     @BeforeEach
     void setUp() {
-        productManager = new ProductManagerImpl(productRepository, categoryManager, packageManager, storageService);
+        productManager = new ProductManagerImpl(
+                productRepository,
+                orderRepository,
+                cartItemRepository,
+                categoryManager,
+                packageManager,
+                storageService);
     }
 
     @Test

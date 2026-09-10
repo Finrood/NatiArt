@@ -27,6 +27,8 @@ import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.ProductDto;
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Product;
+import com.portcelana.natiart.repository.CartItemRepository;
+import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.ProductRepository;
 import com.portcelana.natiart.storage.InputFile;
 import com.portcelana.natiart.storage.StorageService;
@@ -36,6 +38,12 @@ class ProductManagerImplTest {
 
     @Mock
     private ProductRepository productRepository;
+
+    @Mock
+    private OrderRepository orderRepository;
+
+    @Mock
+    private CartItemRepository cartItemRepository;
 
     @Mock
     private CategoryManager categoryManager;
@@ -167,7 +175,31 @@ class ProductManagerImplTest {
     void deleteProduct_nullId_throwsNotFoundWithoutDeleting() {
         assertThrows(ResourceNotFoundException.class, () -> productManager.deleteProduct(null));
 
-        verify(productRepository, never()).deleteById(any());
+        verify(productRepository, never()).delete(any(Product.class));
+    }
+
+    @Test
+    void deleteProduct_referencedByOrder_throwsWithoutDeleting() {
+        final Product product = new Product("Mug", BigDecimal.TEN);
+        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
+        when(orderRepository.existsByProduct(product)).thenReturn(true);
+
+        assertThrows(IllegalArgumentException.class, () -> productManager.deleteProduct(product.getId()));
+
+        verify(cartItemRepository, never()).existsByProduct(any(Product.class));
+        verify(productRepository, never()).delete(any(Product.class));
+    }
+
+    @Test
+    void deleteProduct_withoutReferencesDeletesProduct() {
+        final Product product = new Product("Mug", BigDecimal.TEN);
+        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
+        when(orderRepository.existsByProduct(product)).thenReturn(false);
+        when(cartItemRepository.existsByProduct(product)).thenReturn(false);
+
+        productManager.deleteProduct(product.getId());
+
+        verify(productRepository).delete(product);
     }
 
     @Test
