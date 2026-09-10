@@ -1915,3 +1915,61 @@ files pure ASCII. BO1-BO2 below are runner-ups.
 - Fix: pin prod-only origins in both production profiles (or fail fast when
   the default includes localhost). Tests: prod profile resolves no localhost
   origin. Found by Lens 3 hunt, 2026-09-10.
+
+## BR. Data integrity and transactions (Lens 4 hunt, 2026-09-10)
+
+Hunt method: re-read the order write path on current master
+(`OrderManagerImpl.createOrder`/`updateOrderStatus`, `CustomerOrder`
+mapping, `OrderController`, `ProductRepository` stock query,
+`CartManagerImpl`, storefront `checkout.component.ts` submit flow and
+`pix-payment-confirmation`) against the BP/BQ baseline. Re-verified:
+BP1/BP2/BQ1/BQ2 areas still as filed (scale gate, contact guards,
+duplicate-line check and upstream-id guard all still absent — their PRs
+#230/#231 stand open); B4 freight half still OPEN (client
+`deliveryAmount` trusted); G1 backend reconciliation + AM1 order-linked
+dedupe hold; BA1/BA2/AE3/AE4 still OPEN and latent. Cleared as
+non-findings: the row-atomic decrement itself
+(`ProductRepository.java:24-27` guards `stockQuantity >= :quantity`, so
+oversell through `createOrder` is impossible); server-computed line
+prices/total; per-line and whole-request caps. BR1-BR2 below are
+runner-ups.
+
+### BR1. CANCELLED transition never restores reserved stock; no restock path exists — OPEN (Low, latent)
+- `service/OrderManagerImpl.java:102-119` permanently decrements stock via
+  `productRepository.decreaseStockIfAvailable`, but
+  `service/OrderManagerImpl.java:125-145` (`updateOrderStatus`) only flips
+  the status column — a `PENDING`/`PAID`/`PROCESSING` → `CANCELLED`
+  transition leaks every reserved unit. Repo-wide grep for
+  `increaseStock|restock|restoreStock` in
+  `backend/product-service/src/main/java` hits nothing:
+  `repository/ProductRepository.java:24-27` exposes only the decrement, so
+  there is no way to return stock even if a caller wanted to. Latent today
+  (no endpoint drives `updateOrderStatus`, per BA2 — the leak goes live the
+  moment a cancel endpoint ships), and unfixable after the fact (sold-out
+  products stay sold out with no ledger of what was lost).
+  Found by Lens 4 hunt, 2026-09-10.
+- Fix: add an `increaseStockById` query and restore each line's quantity
+  inside the same `updateOrderStatus` transaction when the target status is
+  `CANCELLED` (guard: only from a state that held a reservation, never
+  twice). Tests: cancel restores exact units; double-cancel never
+  double-restores.
+  Tracked, not silently fixed.
+
+### BR2. `createOrder` has no idempotency guard; retry mints duplicate orders and double-decrements stock — OPEN (Low)
+- `controller/OrderController.java:21-26` takes no idempotency key and
+  `service/OrderManagerImpl.java:68-123` unconditionally inserts: every
+  `CustomerOrder` gets a fresh random UUID
+  (`model/CustomerOrder.java:62-64`), so two POSTs of the same basket —
+  double-click past the client flag, or a retry after the response to a
+  slow batched-decrement transaction is lost — persist two orders and
+  decrement stock twice, with no unique natural key to collide on (unlike
+  the AM1 `Payment.orderId` backstop, which has no order-side equivalent).
+  The storefront `isSubmitting`/`isLoading$` button guard
+  (`checkout.component.html:63`, `checkout.component.ts:330-333`) covers
+  only the happy path, not response-lost retries.
+  Found by Lens 4 hunt, 2026-09-10.
+- Fix: accept a client-supplied idempotency key on `POST /orders/create`
+  (unique column, return the existing order on replay) or document the
+  retry hazard. Tests: same-key replay → single order row, stock
+  decremented once.
+  Tracked, not silently fixed.
