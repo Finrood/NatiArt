@@ -1925,6 +1925,50 @@ constraint as backstop. BP1-BP2 below are runner-ups.
   firstname → 400, store untouched.
   Tracked, not silently fixed.
 
+## BQ. Data integrity and transactions (Lens 4 hunt, 2026-09-10)
+
+Hunt method: re-read the order/payment/cart write paths on current master
+(`OrderManagerImpl.createOrder`, `AsaasPaymentService.createPayment`,
+`CartManagerImpl`, `CustomerOrder`/`Payment` mappings, `OrderController`)
+against the BB/BA baseline; verified `getProductsOrDie` fails closed on
+unknown ids (`ProductManagerImpl.java:93-102`) and the cart line cap is
+atomic (`CartManagerImpl.java:49-58`). Re-verified: B4 owner half FIXED on
+master (`ownerExternalId` persisted, blank rejected, controller passes the
+principal's external id — PRs #215/#220; the BN "no owner column" line is
+stale, the BB narrowing to server-side freight holds); G1 backend
+reconciliation, AM1 order-linked dedupe and the `Payment.orderId` unique
+backstop hold (`AsaasPaymentService.java:93-117`,
+`Payment.java:28`); BA1/BA2/AE3/AE4 still OPEN and latent. BQ1-BQ2 below
+are runner-ups.
+
+### BQ1. Duplicate product lines bypass `MAX_ITEM_QUANTITY` — OPEN (Low)
+- `service/OrderManagerImpl.java:147-165` (`validateItems`) caps each line at
+  `MAX_ITEM_QUANTITY = 100` and the whole request at `MAX_ORDER_LINES = 50`,
+  but never rejects the same `productId` twice; the product fetch uses
+  `distinct` (`:98-101`) while the reservation loop (`:102-119`) inserts one
+  `CustomerOrderItem` per line. Fifty duplicate lines x 100 units order 5000
+  units of one product in a single POST, defeating the stated
+  anti-absurdity guard (`:24-26`) — live stock is the only bound — and
+  fulfillment sees N identical lines for one product.
+- Fix: reject duplicate product ids (or merge them) in `validateItems`.
+  Tests: duplicate-id order → 400, stock untouched.
+  Found by Lens 4 hunt, 2026-09-10.
+
+### BQ2. Null upstream payment id fails the ledger save after the charge — OPEN (Low)
+- `service/AsaasPaymentService.java:148` persists
+  `new Payment(responseBody.getId(), ...)` with the upstream-controlled id;
+  `dto/payment/asaas/AsaasPaymentCreationResponse.java:8` declares `id` a
+  plain deserialized `String` (absent member → null, no guard — BI2 guarded
+  the date fields in `toCreationResponse:177` but not the id consumed one
+  step earlier). A 200 with a missing `id` fails the local save AFTER the
+  upstream charge exists: orphan charge with no ledger row, and the
+  storefront retry mints a second charge (the AM1 order-linked dedupe keys
+  on a row that was never written).
+- Fix: null/blank-guard the upstream id and fail closed with a static 502
+  before the save (same pattern as the date guards). Tests: stubbed null
+  id → 502, save never attempted.
+  Found by Lens 4 hunt, 2026-09-10.
+
 ## BR. Data integrity and transactions (Lens 4 hunt, 2026-09-10)
 
 Hunt method: re-read the order write path on current master
@@ -1983,7 +2027,7 @@ runner-ups.
   decremented once.
   Tracked, not silently fixed.
 
-## BS. N+1 queries and pagination (Lens 5 hunt, 2026-09-10)
+## BT. N+1 queries and pagination (Lens 5 hunt, 2026-09-10)
 
 Hunt method: re-ran the Lens 5 enumeration on current master (every
 repository query, every derived-query call site, page/size caps on all four
@@ -2000,9 +2044,9 @@ BC1 still OPEN. Cleared as non-findings: `deleteCartItem` /
 `decreaseCartItemQuantity` load-then-delete (intentional — the documented
 `Personalization` cascade needs managed entities,
 `repository/CartItemRepository.java:60-68`); category/package listings
-(scalar-only DTOs). BS1 below is the runner-up.
+(scalar-only DTOs). BT1 below is the runner-up.
 
-### BS1. Cart add path maps through the DTO off the non-fetching derived lookup — OPEN (Low)
+### BT1. Cart add path maps through the DTO off the non-fetching derived lookup — OPEN (Low)
 - `service/CartManagerImpl.java:50` returns
   `CartItemDto.from(getCartLineOrDie(...))`, and `getCartLineOrDie`
   (`:92-97`) uses the derived `findCartItemByUsernameAndProduct`
@@ -2024,4 +2068,67 @@ BC1 still OPEN. Cleared as non-findings: `deleteCartItem` /
   `CartItemRepositoryFetchTest` pin to the add path. Tests: bounded query
   count on add; personalized-line add serializes in-transaction.
   Found by Lens 5 hunt, 2026-09-10.
+  Tracked, not silently fixed.
+
+## BS. Data integrity and transactions (Lens 4 hunt, 2026-09-10)
+
+Hunt method: re-read the order write path on current master
+(`OrderManagerImpl.createOrder`/`validateItems`, `CustomerOrder`/
+`CustomerOrderItem` mappings, `OrderController`,
+`ProductManagerImpl.deleteProduct`, `CategoryManagerImpl.deleteCategory`,
+`CartItem` mapping, product-service `ControllerAdvice` exception table,
+`OrderRepository`/`CartItemRepository` query lists) against the BP/BQ/BR
+baseline. Re-verified: BP1/BP2/BQ1/BQ2/BR1/BR2 areas still as filed (scale
+gate, contact guards, duplicate-line check, upstream-id guard, restock path
+and order idempotency key all still absent — PRs #230/#231/#232 stand open);
+B4 freight half still OPEN (client `deliveryAmount` trusted);
+G1 backend reconciliation + AM1 order-linked dedupe hold; BA1/BA2/AE3/AE4
+still OPEN and latent. Cleared as non-findings: whole-order rollback
+(single `@Transactional` over batched reads + row-atomic decrements;
+unknown product ids fail closed via `getProductsOrDie` → 404);
+server-computed line prices/total; per-line and whole-request caps.
+BS1-BS2 below are runner-ups.
+
+### BS1. Null order-line element NPEs into a 500 instead of a 400 — OPEN (Low)
+- `service/OrderManagerImpl.java:154-164` (`validateItems`) dereferences
+  `item.getProductId()` / `item.getQuantity()` with no null-element guard,
+  and the batched fetch at `:98-101` streams `OrderItemDto::getProductId`
+  the same way. Jackson preserves JSON nulls inside collections, so
+  `{"items":[null],...}` deserializes to a one-null list and the first
+  dereference throws `NullPointerException` — which matches no
+  `configuration/ControllerAdvice.java` handler (`NullPointerException` is
+  not an `IllegalArgumentException` subclass) and lands in the catch-all
+  `Exception` handler (`:30-34`) → 500 "Internal server error". A
+  client-shape error reported as a server failure (same class as BP2's
+  409-instead-of-400). Store untouched (the NPE precedes every write, and
+  the `@Transactional` rolls back anyway) — contract bug, not corruption.
+  Found by Lens 4 hunt, 2026-09-10.
+- Fix: null-guard each element in `validateItems` (400 via
+  `IllegalArgumentException`, matching the sibling item guards). Tests:
+  `[null]` line → 400, stock untouched, no ledger row.
+  Tracked, not silently fixed.
+
+### BS2. `deleteProduct` has no order/cart-reference guard; FK violation surfaces as a generic 409 — OPEN (Low)
+- `service/ProductManagerImpl.java:210-217` (`deleteProduct`) goes straight
+  to `productRepository.deleteById(id)`, while the sibling
+  `service/CategoryManagerImpl.java:102-108` (`deleteCategory`) pre-checks
+  `productRepository.existsByCategory` and rejects with an actionable 400.
+  `CustomerOrderItem.product` is a non-optional FK
+  (`model/CustomerOrderItem.java:18-20`, `nullable = false`) and
+  `CartItem.product` a non-optional FK
+  (`model/CartItem.java:23-24`), yet no repository exposes
+  `existsByProduct` (verified by grep over `repository/`) and nothing
+  checks references before the delete. Deleting a product with order
+  history or live cart lines therefore trips the raw FK constraint →
+  generic 409 "Resource conflict"
+  (`configuration/ControllerAdvice.java:123-127`) with no guidance toward
+  the proper removal-from-sale path (`isActive` via `updateProduct`,
+  `ProductController.java:97-109`, and the visibility toggle at
+  `:111-115`). Fulfilled-order history is protected only
+  by the raw constraint, never by an explicit rule. Found by Lens 4 hunt,
+  2026-09-10.
+- Fix: pre-check order/cart references in `deleteProduct` (400 with an
+  actionable "deactivate instead" message, mirroring the category guard),
+  or document hard-delete as admin-only-with-consequences. Tests: delete of
+  an order-referenced product → 400, product row intact, history readable.
   Tracked, not silently fixed.
