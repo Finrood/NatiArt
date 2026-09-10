@@ -38,6 +38,7 @@ import com.portcelana.natiart.dto.payment.PaymentCreationResponse;
 import com.portcelana.natiart.dto.payment.PaymentStatusResponse;
 import com.portcelana.natiart.dto.payment.asaas.AsaasPaymentCreationRequest;
 import com.portcelana.natiart.dto.payment.asaas.AsaasPaymentCreationResponse;
+import com.portcelana.natiart.dto.payment.asaas.AsaasPaymentPixQrCodeResponse;
 import com.portcelana.natiart.dto.payment.helper.PaymentMethod;
 import com.portcelana.natiart.dto.payment.helper.PaymentProcessor;
 import com.portcelana.natiart.dto.payment.helper.PaymentStatus;
@@ -541,6 +542,86 @@ class AsaasPaymentServiceTest {
         assertTrue(events.stream()
                 .anyMatch(event -> event.getLevel() == Level.WARN
                         && event.getFormattedMessage().contains("pay-orphan")));
+    }
+
+    @Test
+    void createPayment_nullDateCreated_failsClosedWith502() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        final AsaasPaymentCreationResponse upstream = mock(AsaasPaymentCreationResponse.class);
+        when(upstream.getId()).thenReturn("pay-nodate");
+        when(upstream.getDateCreated()).thenReturn(null);
+        when(upstream.getDueDate()).thenReturn(LocalDate.of(2026, 9, 7));
+        when(restTemplate.postForEntity(eq(PAYMENTS_URL), any(), eq(AsaasPaymentCreationResponse.class)))
+                .thenReturn(ResponseEntity.ok(upstream));
+
+        final AsaasApiException thrown = assertThrows(
+                AsaasApiException.class,
+                () -> newService(restTemplate, paymentRepository)
+                        .createPayment(
+                                new PaymentCreationRequest(
+                                        PaymentProcessor.ASAAS,
+                                        "cus_MINE",
+                                        new BigDecimal("10.00"),
+                                        PaymentMethod.PIX),
+                                "cus_MINE"));
+
+        assertEquals(HttpStatus.BAD_GATEWAY, thrown.getHttpStatus());
+        assertEquals("Invalid payment provider response", thrown.getMessage());
+        verify(paymentRepository, never()).save(any(Payment.class));
+    }
+
+    @Test
+    void createPayment_nullDueDate_failsClosedWith502() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        final AsaasPaymentCreationResponse upstream = mock(AsaasPaymentCreationResponse.class);
+        when(upstream.getId()).thenReturn("pay-nodue");
+        when(upstream.getDateCreated()).thenReturn(LocalDate.of(2026, 9, 6));
+        when(upstream.getDueDate()).thenReturn(null);
+        when(restTemplate.postForEntity(eq(PAYMENTS_URL), any(), eq(AsaasPaymentCreationResponse.class)))
+                .thenReturn(ResponseEntity.ok(upstream));
+
+        final AsaasApiException thrown = assertThrows(
+                AsaasApiException.class,
+                () -> newService(restTemplate, paymentRepository)
+                        .createPayment(
+                                new PaymentCreationRequest(
+                                        PaymentProcessor.ASAAS,
+                                        "cus_MINE",
+                                        new BigDecimal("10.00"),
+                                        PaymentMethod.PIX),
+                                "cus_MINE"));
+
+        assertEquals(HttpStatus.BAD_GATEWAY, thrown.getHttpStatus());
+        verify(paymentRepository, never()).save(any(Payment.class));
+    }
+
+    @Test
+    void getPixQrCode_malformedExpirationDate_failsClosedWith502() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        when(paymentRepository.findById("pay-1")).thenReturn(Optional.of(new Payment("pay-1", "cus_MINE")));
+        final AsaasPaymentCreationResponse fetched = mock(AsaasPaymentCreationResponse.class);
+        when(fetched.getCustomer()).thenReturn("cus_MINE");
+        when(restTemplate.exchange(
+                        eq(PAYMENTS_URL + "/pay-1"), eq(HttpMethod.GET), any(), eq(AsaasPaymentCreationResponse.class)))
+                .thenReturn(ResponseEntity.ok(fetched));
+        final AsaasPaymentPixQrCodeResponse qr = mock(AsaasPaymentPixQrCodeResponse.class);
+        when(qr.getExpirationDate()).thenReturn("23/09/2026 23:59:59");
+        when(restTemplate.exchange(
+                        eq(PAYMENTS_URL + "/pay-1/pixQrCode"),
+                        eq(HttpMethod.GET),
+                        any(),
+                        eq(AsaasPaymentPixQrCodeResponse.class)))
+                .thenReturn(ResponseEntity.ok(qr));
+
+        final AsaasApiException thrown = assertThrows(
+                AsaasApiException.class,
+                () -> newService(restTemplate, paymentRepository).getPixQrCode("pay-1", "cus_MINE"));
+
+        assertEquals(HttpStatus.BAD_GATEWAY, thrown.getHttpStatus());
+        assertEquals("Invalid payment provider response", thrown.getMessage());
     }
 
     private PaymentCreationRequest orderLinked(PaymentCreationRequest request) {

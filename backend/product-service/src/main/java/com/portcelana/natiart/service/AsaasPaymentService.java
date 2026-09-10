@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Optional;
 
@@ -162,8 +163,18 @@ public class AsaasPaymentService implements PaymentService {
      * Builds the versioned creation response from an upstream payment body.
      * Shared by the fresh-charge path and the idempotent-replay path so a
      * retried POST returns the same shape as the original charge.
+     *
+     * Upstream date fields are nullable on the wire (absent JSON members
+     * deserialize to null): dereferencing them NPEd into a 500, so a missing
+     * date fails closed with a static 502 instead.
      */
     private static PaymentCreationResponse toCreationResponse(AsaasPaymentCreationResponse responseBody) {
+        if (responseBody.getDateCreated() == null || responseBody.getDueDate() == null) {
+            LOGGER.warn(
+                    "Asaas payment [{}] has null date fields: failing closed",
+                    responseBody.getId());
+            throw new AsaasApiException("Invalid payment provider response", HttpStatus.BAD_GATEWAY);
+        }
         return new PaymentCreationResponse(
                 responseBody.getId(),
                 responseBody.getDateCreated().atStartOfDay(),
@@ -200,9 +211,7 @@ public class AsaasPaymentService implements PaymentService {
                             responseBody.isSuccess(),
                             responseBody.getEncodedImage(),
                             responseBody.getPayload(),
-                            LocalDateTime.parse(
-                                    responseBody.getExpirationDate(),
-                                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))))
+                            parseExpirationOrDie(responseBody.getExpirationDate())))
                     .orElseThrow(() ->
                             new IllegalArgumentException("Received a null response body from " + asaasPaymentUrl));
         } else if (response.getStatusCode() == HttpStatus.UNAUTHORIZED
@@ -212,6 +221,24 @@ public class AsaasPaymentService implements PaymentService {
             throw new ResourceNotFoundException(String.format("Payment with id [%s] not found", paymentId));
         } else {
             throw new IllegalArgumentException("Bad request");
+        }
+    }
+
+    /**
+     * Parses the upstream PIX expiration timestamp. The wire format is
+     * provider-controlled: a null or drifted value fails closed with a static
+     * 502 (the raw text is debug-logged server-side only, never echoed).
+     */
+    private static LocalDateTime parseExpirationOrDie(String expirationDate) {
+        if (expirationDate == null) {
+            LOGGER.warn("Asaas PIX QR response has a null expiration date: failing closed");
+            throw new AsaasApiException("Invalid payment provider response", HttpStatus.BAD_GATEWAY);
+        }
+        try {
+            return LocalDateTime.parse(expirationDate, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        } catch (DateTimeParseException e) {
+            LOGGER.debug("Asaas PIX QR response has an unparseable expiration date [{}]", expirationDate);
+            throw new AsaasApiException("Invalid payment provider response", HttpStatus.BAD_GATEWAY);
         }
     }
 
