@@ -635,10 +635,7 @@ class AsaasPaymentServiceTest {
                 () -> newService(restTemplate, paymentRepository)
                         .createPayment(
                                 new PaymentCreationRequest(
-                                        PaymentProcessor.ASAAS,
-                                        "cus_MINE",
-                                        new BigDecimal("10.00"),
-                                        PaymentMethod.PIX),
+                                        PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX),
                                 "cus_MINE"));
 
         assertEquals(HttpStatus.BAD_GATEWAY, thrown.getHttpStatus());
