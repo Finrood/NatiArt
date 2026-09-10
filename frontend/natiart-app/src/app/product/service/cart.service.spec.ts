@@ -1,11 +1,27 @@
 import {TestBed} from '@angular/core/testing';
 
 import {CartService} from './cart.service';
+import {CartItem} from '../models/CartItem.model';
+import {Product} from '../models/product.model';
 
 describe('CartService', () => {
   let service: CartService;
 
+  const product = (overrides: Partial<Product> = {}): Product => ({
+    id: 'p1',
+    label: 'Painting',
+    originalPrice: 100,
+    markedPrice: 80,
+    stockQuantity: 5,
+    categoryId: 'cat-1',
+    availablePersonalizations: [],
+    tags: new Set<string>(),
+    images: [],
+    ...overrides
+  });
+
   beforeEach(() => {
+    localStorage.removeItem('natiart-cart');
     TestBed.configureTestingModule({});
     service = TestBed.inject(CartService);
   });
@@ -13,4 +29,71 @@ describe('CartService', () => {
   it('should be created', () => {
     expect(service).toBeTruthy();
   });
+
+  it('addToCart_clampsOverStockQuantityToAvailableStock', () => {
+    service.addToCart(product({stockQuantity: 2}), 10).subscribe();
+
+    const items: CartItem[] = service.getCartItemsSnapshot();
+    expect(items.length).toBe(1);
+    expect(items[0].quantity).toBe(2);
+  });
+
+  it('addToCart_groupsIdenticalLinesAndCapsTheCombinedQuantityAtStock', () => {
+    service.addToCart(product(), 3).subscribe();
+    service.addToCart(product(), 4).subscribe();
+
+    const items: CartItem[] = service.getCartItemsSnapshot();
+    expect(items.length).toBe(1);
+    expect(items[0].quantity).toBe(5);
+  });
+
+  it('getCartTotal_emitsTheSumOfMarkedPriceTimesQuantity', () => {
+    let total: number | undefined;
+    service.getCartTotal().subscribe(value => total = value);
+
+    service.addToCart(product({id: 'a', markedPrice: 10}), 2).subscribe();
+    service.addToCart(product({id: 'b', markedPrice: 7.5}), 3).subscribe();
+
+    expect(total).toBe(42.5);
+  });
+
+  it('updateItemQuantity_clampsToStockAndFloorsAtOne', () => {
+    service.addToCart(product(), 1).subscribe();
+    const cartItemId = service.getCartItemsSnapshot()[0].cartItemId;
+
+    service.updateItemQuantity(cartItemId, 99).subscribe();
+    expect(service.getCartItemsSnapshot()[0].quantity).toBe(5);
+
+    service.updateItemQuantity(cartItemId, 0).subscribe();
+    expect(service.getCartItemsSnapshot()[0].quantity).toBe(1);
+  });
+
+  it('savesAnImageFreeCartToLocalStorageAndRestoresItInANewInstance', () => {
+    service.addToCart(product(), 2).subscribe();
+    const saved = localStorage.getItem('natiart-cart');
+    expect(saved).toContain('"p1"');
+
+    const restored = new CartService();
+    const items: CartItem[] = restored.getCartItemsSnapshot();
+    expect(items.length).toBe(1);
+    expect(items[0].product.id).toBe('p1');
+    expect(restored.getCartTotalSnapshot()).toBe(160);
+  });
+
+  it('doesNotPersistLinesThatCarryACustomImage', () => {
+    service.addToCart(product(), 1, false, new File([], 'art.png')).subscribe();
+
+    expect(localStorage.getItem('natiart-cart')).toBeNull();
+  });
+
+  it('recoversToAnEmptyCartWhenThePersistedCartIsCorrupt', () => {
+    localStorage.setItem('natiart-cart', 'not-json{');
+
+    const restored = new CartService();
+
+    expect(restored.getCartItemsSnapshot()).toEqual([]);
+    expect(restored.getCartTotalSnapshot()).toBe(0);
+    expect(localStorage.getItem('natiart-cart')).toBeNull();
+  });
 });
+
