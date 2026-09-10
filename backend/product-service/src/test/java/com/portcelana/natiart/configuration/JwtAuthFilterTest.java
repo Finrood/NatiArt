@@ -119,7 +119,11 @@ class JwtAuthFilterTest {
     }
 
     private MockHttpServletRequest requestWithToken() {
-        final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/products");
+        return requestWithToken("GET", "/products");
+    }
+
+    private MockHttpServletRequest requestWithToken(String method, String path) {
+        final MockHttpServletRequest request = new MockHttpServletRequest(method, path);
         request.addHeader("Authorization", "Bearer test-token");
         return request;
     }
@@ -149,15 +153,28 @@ class JwtAuthFilterTest {
     }
 
     @Test
-    void invalidTokenShortCircuitsWith401AndDoesNotContinueTheChain() throws Exception {
+    void invalidTokenOnPublicReadContinuesAsAnonymous() throws Exception {
         final JwtAuthFilter filter = filterWithHandler(401, null);
         final MockHttpServletResponse response = new MockHttpServletResponse();
         final MockFilterChain chain = new MockFilterChain();
 
         filter.doFilter(requestWithToken(), response, chain);
 
+        assertEquals(200, response.getStatus());
+        assertNotNull(chain.getRequest(), "public reads must continue anonymously after token rejection");
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    void invalidTokenOnProtectedWriteStillShortCircuitsWith401() throws Exception {
+        final JwtAuthFilter filter = filterWithHandler(401, null);
+        final MockHttpServletResponse response = new MockHttpServletResponse();
+        final MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(requestWithToken("POST", "/cart/item/p1/add"), response, chain);
+
         assertEquals(401, response.getStatus());
-        assertNull(chain.getRequest(), "the chain must NOT continue after a 401 from the directory service");
+        assertNull(chain.getRequest(), "protected writes must not continue with an invalid token");
         assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 
@@ -187,7 +204,7 @@ class JwtAuthFilterTest {
         final MockFilterChain chain = new MockFilterChain();
 
         final long start = System.currentTimeMillis();
-        filter.doFilter(requestWithToken(), response, chain);
+        filter.doFilter(requestWithToken("POST", "/cart/item/p1/add"), response, chain);
         final long elapsed = System.currentTimeMillis() - start;
 
         assertEquals(503, response.getStatus(), "a directory-service outage must map to 503, not a mass 401");
@@ -202,7 +219,7 @@ class JwtAuthFilterTest {
         final MockFilterChain chain = new MockFilterChain();
 
         final long start = System.currentTimeMillis();
-        filter.doFilter(requestWithToken(), response, chain);
+        filter.doFilter(requestWithToken("POST", "/cart/item/p1/add"), response, chain);
         final long elapsed = System.currentTimeMillis() - start;
 
         assertEquals(503, response.getStatus(), "a hung validation call must time out into 503");
