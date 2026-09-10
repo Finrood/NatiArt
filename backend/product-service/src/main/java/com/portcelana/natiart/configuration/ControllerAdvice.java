@@ -16,6 +16,7 @@ import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.controller.helper.UserNotAllowedException;
 import com.portcelana.natiart.service.AsaasApiException;
+import com.portcelana.natiart.service.UpstreamServiceException;
 
 @org.springframework.web.bind.annotation.ControllerAdvice
 public class ControllerAdvice {
@@ -98,6 +99,21 @@ public class ControllerAdvice {
     public ResponseEntity<Object> handleAsaasApiException(AsaasApiException e) {
         LOGGER.error("Asaas API error: status={}, message={}", e.getHttpStatus(), e.getMessage(), e);
         return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
+    }
+
+    /**
+     * Maps external-service transport and status failures to safe responses.
+     * Only the provider's explicitly supported {@code Retry-After} value is
+     * forwarded; provider response bodies never leave the server.
+     */
+    @ExceptionHandler(UpstreamServiceException.class)
+    public ResponseEntity<Object> handleUpstreamServiceException(UpstreamServiceException e) {
+        LOGGER.error("Upstream service error: status={}, message={}", e.getHttpStatus(), e.getMessage(), e);
+        final org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        if (e.getRetryAfter() != null) {
+            headers.set(org.springframework.http.HttpHeaders.RETRY_AFTER, e.getRetryAfter());
+        }
+        return new ResponseEntity<>(e.getMessage(), headers, e.getHttpStatus());
     }
 
     /**

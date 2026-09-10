@@ -3,7 +3,7 @@ package com.portcelana.natiart.service;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -12,9 +12,17 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.RestTemplate;
+
+import com.portcelana.natiart.dto.shipping.ShippingEstimateRequest;
 
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.controller.helper.UserNotAllowedException;
@@ -80,10 +88,54 @@ class ShippingServiceTest {
     }
 
     @Test
-    void mapShippingError_passesThroughUnexpectedUpstreamFailures() {
+    void mapShippingError_mapsUnexpectedUpstreamFailuresToBadGateway() {
         final HttpServerErrorException upstream =
                 HttpServerErrorException.create(HttpStatus.INTERNAL_SERVER_ERROR, "Bad Gateway", null, null, null);
-        assertSame(upstream, ShippingService.mapShippingError(upstream));
+        final UpstreamServiceException mapped = assertInstanceOf(
+                UpstreamServiceException.class, ShippingService.mapShippingError(upstream));
+        assertEquals(HttpStatus.BAD_GATEWAY, mapped.getHttpStatus());
+        assertEquals("Shipping provider unavailable", mapped.getMessage());
+    }
+
+    @Test
+    void mapShippingError_mapsRateLimitAndPreservesRetryAfter() {
+        final HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.RETRY_AFTER, "11");
+        final HttpClientErrorException upstream = HttpClientErrorException.create(
+                HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests", headers, null, null);
+
+        final UpstreamServiceException mapped = assertInstanceOf(
+                UpstreamServiceException.class, ShippingService.mapShippingError(upstream));
+
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, mapped.getHttpStatus());
+        assertEquals("11", mapped.getRetryAfter());
+    }
+
+    @Test
+    void getShippingEstimates_mapsTransportFailureToServiceUnavailableAfterBoundedRetry() {
+        final RestTemplate restTemplate = org.mockito.Mockito.mock(RestTemplate.class);
+        final ResourceAccessException upstream = new ResourceAccessException("read timed out");
+        org.mockito.Mockito.doThrow(upstream)
+                .when(restTemplate)
+                .exchange(
+                        org.mockito.ArgumentMatchers.eq("https://api.example.com/calculate"),
+                        org.mockito.ArgumentMatchers.eq(HttpMethod.POST),
+                        org.mockito.ArgumentMatchers.any(HttpEntity.class),
+                        org.mockito.ArgumentMatchers.any(ParameterizedTypeReference.class));
+
+        final UpstreamServiceException mapped = org.junit.jupiter.api.Assertions.assertThrows(
+                UpstreamServiceException.class,
+                () -> new ShippingService(
+                                "https://api.example.com/calculate", "test-token", "88085201", restTemplate)
+                        .getShippingEstimates(new ShippingEstimateRequest("88010000", 1.0f, 20.0f, 15.0f, 10.0f, 1)));
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, mapped.getHttpStatus());
+        org.mockito.Mockito.verify(restTemplate, org.mockito.Mockito.times(3))
+                .exchange(
+                        org.mockito.ArgumentMatchers.eq("https://api.example.com/calculate"),
+                        org.mockito.ArgumentMatchers.eq(HttpMethod.POST),
+                        org.mockito.ArgumentMatchers.any(HttpEntity.class),
+                        org.mockito.ArgumentMatchers.any(ParameterizedTypeReference.class));
     }
 
     @Test
@@ -96,7 +148,7 @@ class ShippingServiceTest {
         final List<ILoggingEvent> events =
                 captureLogEvents(ShippingService.class, () -> mapped[0] = ShippingService.mapShippingError(upstream));
 
-        assertSame(upstream, mapped[0]);
+        assertInstanceOf(UpstreamServiceException.class, mapped[0]);
         assertEquals(1, events.size());
         assertEquals(Level.WARN, events.get(0).getLevel());
         final String message = events.get(0).getFormattedMessage();

@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -12,8 +13,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
@@ -31,11 +35,16 @@ public class ShippingService {
     private final String apiUrl;
     private final String apiToken;
     private final String fromPostalCode;
+    private final RetryTemplate retryTemplate;
 
     public ShippingService(
             @Value("${melhorenvio.api.url}") String apiUrl,
             @Value("${melhorenvio.api.token}") String apiToken,
             @Value("${melhorenvio.api.from-postal-code:88085201}") String fromPostalCode) {
+        this(apiUrl, apiToken, fromPostalCode, createRestTemplate());
+    }
+
+    ShippingService(String apiUrl, String apiToken, String fromPostalCode, RestTemplate restTemplate) {
         if (apiToken == null || apiToken.isBlank()) {
             throw new IllegalStateException(
                     "melhorenvio.api.token is blank: set the MELHORENVIO_API_TOKEN environment variable");
@@ -44,13 +53,11 @@ public class ShippingService {
             throw new IllegalStateException(
                     "melhorenvio.api.from-postal-code is blank: set the MELHORENVIO_FROM_POSTAL_CODE environment variable");
         }
-        final SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(Duration.ofSeconds(5));
-        factory.setReadTimeout(Duration.ofSeconds(15));
-        this.restTemplate = new RestTemplate(factory);
+        this.restTemplate = restTemplate;
         this.apiUrl = apiUrl;
         this.apiToken = apiToken;
         this.fromPostalCode = fromPostalCode;
+        this.retryTemplate = createRetryTemplate();
     }
 
     public List<ShippingEstimate> getShippingEstimates(ShippingEstimateRequest shippingEstimateRequest) {
@@ -61,13 +68,15 @@ public class ShippingService {
 
         final ResponseEntity<List<MelhorenvioShippingCalculationResponse>> response;
         try {
-            response = restTemplate.exchange(
+            response = executeRetryable(() -> restTemplate.exchange(
                     apiUrl,
                     HttpMethod.POST,
                     new HttpEntity<>(createMelhorEnvioRequest(shippingEstimateRequest), headers),
-                    new ParameterizedTypeReference<>() {});
+                    new ParameterizedTypeReference<>() {}));
         } catch (HttpStatusCodeException e) {
             throw mapShippingError(e);
+        } catch (ResourceAccessException e) {
+            throw mapShippingTransportError(e);
         }
 
         return parseAndFilterResponse(response.getBody());
@@ -123,6 +132,44 @@ public class ShippingService {
         if (statusCode == HttpStatus.NOT_FOUND) {
             return new ResourceNotFoundException("Shipping estimate not found in the shipping provider");
         }
-        return e;
+        if (statusCode.value() == HttpStatus.TOO_MANY_REQUESTS.value()) {
+            return new UpstreamServiceException(
+                    "Shipping provider rate limit exceeded", HttpStatus.TOO_MANY_REQUESTS, retryAfter(e));
+        }
+        return new UpstreamServiceException("Shipping provider unavailable", HttpStatus.BAD_GATEWAY);
+    }
+
+    static UpstreamServiceException mapShippingTransportError(ResourceAccessException e) {
+        LOGGER.warn("Shipping provider API transport failure: {}", e.getMessage());
+        return new UpstreamServiceException("Shipping provider unavailable", HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    private static String retryAfter(HttpStatusCodeException e) {
+        final HttpHeaders headers = e.getResponseHeaders();
+        if (headers == null) {
+            return null;
+        }
+        final String value = headers.getFirst(HttpHeaders.RETRY_AFTER);
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private static RestTemplate createRestTemplate() {
+        final SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(Duration.ofSeconds(15));
+        return new RestTemplate(factory);
+    }
+
+    private static RetryTemplate createRetryTemplate() {
+        return RetryTemplate.builder()
+                .maxAttempts(3)
+                .exponentialBackoff(100, 2, 1000)
+                .retryOn(HttpServerErrorException.class)
+                .retryOn(ResourceAccessException.class)
+                .build();
+    }
+
+    private <T> T executeRetryable(Supplier<T> request) {
+        return retryTemplate.execute(context -> request.get());
     }
 }

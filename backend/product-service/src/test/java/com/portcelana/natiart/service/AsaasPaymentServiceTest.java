@@ -3,7 +3,7 @@ package com.portcelana.natiart.service;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -12,6 +12,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -25,10 +26,12 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
@@ -203,10 +206,37 @@ class AsaasPaymentServiceTest {
     }
 
     @Test
-    void mapAsaasError_passesThroughUnexpectedUpstreamFailures() {
+    void mapAsaasError_mapsUnexpectedUpstreamFailuresToBadGateway() {
         final HttpServerErrorException upstream =
                 HttpServerErrorException.create(HttpStatus.INTERNAL_SERVER_ERROR, "Bad Gateway", null, null, null);
-        assertSame(upstream, AsaasPaymentService.mapAsaasError(upstream));
+        final UpstreamServiceException mapped = assertInstanceOf(
+                UpstreamServiceException.class, AsaasPaymentService.mapAsaasError(upstream));
+        assertEquals(HttpStatus.BAD_GATEWAY, mapped.getHttpStatus());
+        assertEquals("Payment provider unavailable", mapped.getMessage());
+    }
+
+    @Test
+    void mapAsaasError_mapsRateLimitAndPreservesRetryAfter() {
+        final HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.RETRY_AFTER, "7");
+        final HttpClientErrorException upstream = HttpClientErrorException.create(
+                HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests", headers, null, null);
+
+        final UpstreamServiceException mapped = assertInstanceOf(
+                UpstreamServiceException.class, AsaasPaymentService.mapAsaasError(upstream));
+
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, mapped.getHttpStatus());
+        assertEquals("7", mapped.getRetryAfter());
+    }
+
+    @Test
+    void mapAsaasTransportError_mapsTimeoutToServiceUnavailableWithoutRawMessage() {
+        final ResourceAccessException upstream = new ResourceAccessException("connect timed out");
+
+        final UpstreamServiceException mapped = AsaasPaymentService.mapAsaasTransportError(upstream);
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, mapped.getHttpStatus());
+        assertEquals("Payment provider unavailable", mapped.getMessage());
     }
 
     @Test
@@ -219,12 +249,31 @@ class AsaasPaymentServiceTest {
         final List<ILoggingEvent> events = captureLogEvents(
                 AsaasPaymentService.class, () -> mapped[0] = AsaasPaymentService.mapAsaasError(upstream));
 
-        assertSame(upstream, mapped[0]);
+        assertInstanceOf(UpstreamServiceException.class, mapped[0]);
         assertEquals(1, events.size());
         assertEquals(Level.WARN, events.get(0).getLevel());
         final String message = events.get(0).getFormattedMessage();
         assertTrue(message.contains("400"));
         assertTrue(message.contains("validation-failed-marker"));
+    }
+
+    @Test
+    void createPayment_doesNotRetryProviderFailure() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final HttpServerErrorException upstream =
+                HttpServerErrorException.create(HttpStatus.INTERNAL_SERVER_ERROR, "Unavailable", null, null, null);
+        when(restTemplate.postForEntity(eq(PAYMENTS_URL), any(), eq(AsaasPaymentCreationResponse.class)))
+                .thenThrow(upstream);
+
+        assertThrows(
+                UpstreamServiceException.class,
+                () -> newService(restTemplate, mock(PaymentRepository.class))
+                        .createPayment(
+                                new PaymentCreationRequest(
+                                        PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX),
+                                "cus_MINE"));
+
+        verify(restTemplate).postForEntity(eq(PAYMENTS_URL), any(), eq(AsaasPaymentCreationResponse.class));
     }
 
     @Test
@@ -296,6 +345,26 @@ class AsaasPaymentServiceTest {
 
         assertEquals("pay-1", response.getPaymentId());
         assertEquals(PaymentStatus.PENDING, response.getStatus());
+    }
+
+    @Test
+    void getPaymentStatus_retriesTransientProviderFailureWithBoundedAttempts() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        when(paymentRepository.findById("pay-1")).thenReturn(Optional.of(new Payment("pay-1", "cus_MINE")));
+        final HttpServerErrorException upstream =
+                HttpServerErrorException.create(HttpStatus.BAD_GATEWAY, "Unavailable", null, null, null);
+        when(restTemplate.exchange(
+                        eq(PAYMENTS_URL + "/pay-1"), eq(HttpMethod.GET), any(), eq(AsaasPaymentCreationResponse.class)))
+                .thenThrow(upstream);
+
+        assertThrows(
+                UpstreamServiceException.class,
+                () -> newService(restTemplate, paymentRepository).getPaymentStatus("pay-1", "cus_MINE"));
+
+        verify(restTemplate, times(3))
+                .exchange(
+                        eq(PAYMENTS_URL + "/pay-1"), eq(HttpMethod.GET), any(), eq(AsaasPaymentCreationResponse.class));
     }
 
     @Test
