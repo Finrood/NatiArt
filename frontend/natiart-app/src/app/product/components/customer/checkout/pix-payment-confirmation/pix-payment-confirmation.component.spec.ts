@@ -187,6 +187,9 @@ describe('PixPaymentConfirmationComponent', () => {
 
     expect(component.paymentStatus).toBe('ERROR');
 
+    tick(10000);
+    expect(http.match(statusUrl).length).toBe(0);
+
     fixture.detectChanges();
     const text: string = fixture.nativeElement.textContent as string;
     expect(text).toContain('Could not load the payment details');
