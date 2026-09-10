@@ -18,16 +18,19 @@ describe('productGuard', () => {
   const routeWithId = (id: string | null): ActivatedRouteSnapshot =>
     ({paramMap: convertToParamMap(id === null ? {} : {id})} as unknown as ActivatedRouteSnapshot);
 
-  const run = (id: string | null): Observable<boolean> =>
+  const run = (id: string | null): Observable<boolean> | boolean =>
     TestBed.runInInjectionContext(() =>
       (productGuard as unknown as (
         component: object,
         route: ActivatedRouteSnapshot,
         currentState: RouterStateSnapshot,
         nextState: RouterStateSnapshot
-      ) => Observable<boolean>)(
+      ) => Observable<boolean> | boolean)(
         {}, routeWithId(id), {} as RouterStateSnapshot, {} as RouterStateSnapshot
       ));
+
+  const resolve = async (result: Observable<boolean> | boolean): Promise<boolean> =>
+    result instanceof Observable ? firstValueFrom(result) : result;
 
   beforeEach(() => {
     productService = jasmine.createSpyObj<ProductService>('ProductService', ['getProduct']);
@@ -40,7 +43,7 @@ describe('productGuard', () => {
   it('allowsDeactivationWhenTheProductFetchSucceeds', async () => {
     productService.getProduct.and.returnValue(of({id: 'p1'} as Product));
 
-    await expectAsync(firstValueFrom(run('p1'))).toBeResolvedTo(true);
+    await expectAsync(resolve(run('p1'))).toBeResolvedTo(true);
 
     expect(navigate).not.toHaveBeenCalled();
   });
@@ -48,13 +51,13 @@ describe('productGuard', () => {
   it('blocksAndRedirectsToTheDashboardWhenTheProductFetchFails', async () => {
     productService.getProduct.and.returnValue(throwError(() => new Error('backend down')));
 
-    await expectAsync(firstValueFrom(run('p1'))).toBeResolvedTo(false);
+    await expectAsync(resolve(run('p1'))).toBeResolvedTo(false);
 
     expect(navigate).toHaveBeenCalledWith(['/dashboard']);
   });
 
   it('blocksWithoutNetworkEgressWhenTheRouteCarriesNoId', async () => {
-    await expectAsync(firstValueFrom(run(null))).toBeResolvedTo(false);
+    await expectAsync(resolve(run(null))).toBeResolvedTo(false);
 
     expect(navigate).toHaveBeenCalledWith(['/dashboard']);
     expect(productService.getProduct).not.toHaveBeenCalled();
