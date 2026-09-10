@@ -3,7 +3,7 @@
 # See docs/continuous-improvement-loop.md. Supports --check-only (no agent run).
 set -euo pipefail
 
-REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 LOCK="/tmp/natiart-improvement-loop.lock"
 LOG_DIR="$REPO/logs"
 CHECK_ONLY=0
@@ -23,6 +23,28 @@ exec 9>"$LOCK"
 if ! flock -n 9; then
     log "Another cycle is still running; exiting."
     exit 0
+fi
+
+# Self-modification guard: bash parses a running script incrementally, so a
+# merge that rewrites this file mid-run kills the cycle with a syntax error
+# (2026-09-09: our own PR #226 merge shifted lines under the 08:57 cycle ->
+# `line 507: syntax error near (`, exit 2, no health row). Re-exec from a
+# stable snapshot so on-disk merges can no longer move code under us.
+# REPO is exported: the /tmp copy cannot derive it from its own path, so a
+# pre-exported value wins via ${REPO:-...} above (without this the child
+# resolves REPO=/ and dies sourcing loop-lib.sh).
+if [[ -z "${NATIART_LOOP_SNAPSHOTTED:-}" ]]; then
+    SNAP="$(mktemp /tmp/natiart-loop-cycle-XXXXXX.sh)"
+    cp "$REPO/scripts/loop-cycle.sh" "$SNAP"
+    export REPO NATIART_LOOP_SNAPSHOTTED=1
+    exec bash "$SNAP" "$@"
+fi
+# Running from a /tmp snapshot: remove our own copy on exit (bash holds the
+# script fd open, so unlinking mid-run is safe; without this every cycle
+# leaks one file into /tmp).
+if [[ "${BASH_SOURCE[0]:-}" == /tmp/natiart-loop-cycle-*.sh ]]; then
+    SNAP_SELF="${BASH_SOURCE[0]}"
+    trap 'rm -f "$SNAP_SELF"' EXIT
 fi
 
 mkdir -p "$LOG_DIR"
@@ -138,7 +160,8 @@ if [[ "$LOCAL_AHEAD" -gt 0 ]]; then
     if git branch "$B" && git push -q origin "$B"; then
         PR_URL=$(gh pr create --base master --head "$B" \
             --title "[Salvage] $LOCAL_AHEAD unpushed master commit(s) recovered from interrupted cycle" \
-            --body "Loop guard found local master ahead of origin (work never pushed by the cycle that made it). Recovered to a reviewable PR; master reset to origin. Created by the loop; review like any cycle output." \
+            --body "Loop guard found local master ahead of origin (work never pushed by the cycle that made it). Recovered to a reviewable PR; master reset to origin. Created by the loop guard (no agent model); review like any cycle output.
+Model: loop-guard/salvage" \
             2>/dev/null || true)
         git checkout -q master
         git reset -q --hard origin/master
@@ -377,6 +400,8 @@ for n in $ALL_PRS; do
     AUTHOR_SKIP="$(gh pr view "$n" --json body --jq .body 2>/dev/null | author_model_of || true)"
     if [[ -n "$AUTHOR_SKIP" ]]; then
         log "PR #$n author model is $AUTHOR_SKIP; reviewer will prefer a different model."
+    else
+        log "PR #$n has no attributable author model (missing/blank/unknown footer); reviewer independence best-effort."
     fi
     log "Spawning mechanical reviewer for PR #$n (build $BUILD_STATUS, merge $MERGE_STATUS, 1 per cycle)."
     STATUS_NOTE=" Known loop status — Build: $BUILD_STATUS, Merge: $MERGE_STATUS. Re-verify both yourself with 'gh pr checks $n' and 'gh pr view $n --json mergeable', report them as 'Build: ...' and 'Merge: ...' lines per the review prompt, and let them drive the verdict: red build or conflict forces REQUEST_CHANGES."
@@ -513,7 +538,8 @@ if [[ -n "${REVIEW_PID:-}" ]]; then
     if [[ "${REVIEW_AFTER:-0}" -le "${REVIEW_BEFORE:-0}" ]]; then
         log "Mechanical reviewer posted NO new verdict on PR #$REVIEW_PR; next cycle will retry."
     else
-        log "Mechanical reviewer posted verdict on PR #$REVIEW_PR (latest: $(latest_verdict "$REVIEW_PR"))."
+        REVIEW_MODEL="$(verdict_model "$REVIEW_PR" || true)"
+        log "Mechanical reviewer posted verdict on PR #$REVIEW_PR (latest: $(latest_verdict "$REVIEW_PR") by ${REVIEW_MODEL:-unknown})."
     fi
 fi
 log "Agent cycle finished with status $STATUS."

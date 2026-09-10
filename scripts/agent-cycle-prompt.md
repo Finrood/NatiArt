@@ -171,6 +171,9 @@ model: an own line at column 0, exactly `Model: <value of $NATIART_MODEL>`
 (no bullet, no indent, no bold — the loop parses `^Model:`), the last
 `Model:` line of the body wins (environment variable set by the loop; run
 `echo "$NATIART_MODEL"` to read it and put the literal value in the footer).
+If `$NATIART_MODEL` is empty (manual run outside `run-agent.sh`), write
+`Model: manual/<cli you run under>/<thinking level you used>` instead —
+never leave the value blank, never write a bare `unknown`.
 
 ## Anti-starvation protocol (starvation is a bug — "no work" is invalid)
 

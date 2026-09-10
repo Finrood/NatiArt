@@ -13,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 
+import com.portcelana.natiart.service.AsaasApiException;
+
 class ControllerAdviceTest {
 
     private ControllerAdvice advice;
@@ -105,5 +107,14 @@ class ControllerAdviceTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
         assertEquals("Malformed request body", result.getBody());
+    }
+
+    @Test
+    void handleAsaasApiException_returnsCarriedStatusWithStaticBody() {
+        final ResponseEntity<Object> result = advice.handleAsaasApiException(
+                new AsaasApiException("Invalid payment provider response", HttpStatus.BAD_GATEWAY));
+
+        assertEquals(HttpStatus.BAD_GATEWAY, result.getStatusCode());
+        assertEquals("Invalid payment provider response", result.getBody());
     }
 }

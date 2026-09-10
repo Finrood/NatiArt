@@ -61,11 +61,14 @@ public class StorageServiceImpl implements StorageService {
     // ----------------------------------------------------------------------
 
     private Storage getStorage(URI uri) {
+        // A client-controlled scheme choice is a 400, not a 500: no registered
+        // storage can serve the location, so there is nothing to find. The
+        // message stays static (no URI echo); the name-keyed overload below
+        // keeps IllegalStateException -- it only serves server configuration.
         return storages.stream()
                 .filter(manager -> manager.support(uri))
                 .findFirst()
-                .orElseThrow(() ->
-                        new IllegalStateException(String.format("There is no manager handling the uri [%s]", uri)));
+                .orElseThrow(() -> new IllegalArgumentException("Unsupported file location"));
     }
 
     private Storage getStorage(String name) {
