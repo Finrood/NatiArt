@@ -85,12 +85,14 @@ class CartItemRepositoryFetchTest {
     }
 
     @Test
-    void cartListingInitializesPersonalizationWithoutPerLineProductSelects() {
-        final CartItem personalized = new CartItem("jane", newProductWithImage("personalized"));
-        final Personalization personalization = new Personalization();
-        personalization.setPersonalizationOptions(Map.of(PersonalizationOption.GOLDEN_BORDER, "yes"));
-        personalized.setPersonalization(personalization);
-        cartItemRepository.save(personalized);
+    void cartListingBatchesPersonalizationOptionsAcrossLines() {
+        for (int i = 0; i < 3; i++) {
+            final CartItem personalized = new CartItem("jane", newProductWithImage("personalized-" + i));
+            final Personalization personalization = new Personalization();
+            personalization.setPersonalizationOptions(Map.of(PersonalizationOption.GOLDEN_BORDER, "yes-" + i));
+            personalized.setPersonalization(personalization);
+            cartItemRepository.save(personalized);
+        }
         // Flush first: clear() alone would discard the still-unflushed inserts.
         entityManager.flush();
         entityManager.clear();
@@ -100,10 +102,19 @@ class CartItemRepositoryFetchTest {
         final List<CartItem> lines = cartItemRepository.findCartItemsByUsername("jane");
         final List<CartItemDto> dtos = lines.stream().map(CartItemDto::from).toList();
 
-        assertEquals(1, dtos.size());
-        assertTrue(Hibernate.isInitialized(lines.get(0).getPersonalization()));
-        // One listing query plus at most the lazy personalization-options map;
-        // the per-line product and image selects must be gone.
+        assertEquals(3, dtos.size());
+        final List<String> optionValues = dtos.stream()
+                .map(dto -> dto.getPersonalizationDto()
+                        .getPersonalizationOptions()
+                        .get(PersonalizationOption.GOLDEN_BORDER))
+                .toList();
+        for (int i = 0; i < lines.size(); i++) {
+            assertTrue(Hibernate.isInitialized(lines.get(i).getPersonalization()));
+            assertTrue(Hibernate.isInitialized(lines.get(i).getPersonalization().getPersonalizationOptions()));
+            assertTrue(optionValues.contains("yes-" + i));
+        }
+        // One listing query plus one batched collection query; a query per
+        // personalized cart line would regress this bound immediately.
         assertTrue(statistics.getQueryExecutionCount() <= 2);
     }
 
