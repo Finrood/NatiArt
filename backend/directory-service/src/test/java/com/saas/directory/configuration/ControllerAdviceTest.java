@@ -84,12 +84,12 @@ class ControllerAdviceTest {
     }
 
     @Test
-    void handleArgumentException_returns400WithTheDeliberateValidationMessage() {
+    void handleArgumentException_returns400WithStaticBodyWithoutLeakingDetails() {
         final ResponseEntity<Object> result =
-                advice.handleArgumentException(new IllegalArgumentException("Username cannot be empty"));
+                advice.handleArgumentException(new IllegalArgumentException("Unexpected enum constant INTERNAL"));
 
         assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
-        assertEquals("Username cannot be empty", result.getBody());
+        assertEquals("Invalid request", result.getBody());
     }
 
     @Test
