@@ -7,6 +7,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,8 +15,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -41,6 +45,7 @@ public class AsaasPaymentService implements PaymentService {
     private final RestTemplate restTemplate;
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
+    private final RetryTemplate retryTemplate;
 
     private final String asaasApiKey;
 
@@ -63,6 +68,7 @@ public class AsaasPaymentService implements PaymentService {
         this.restTemplate = new RestTemplate(factory);
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
+        this.retryTemplate = createRetryTemplate();
     }
 
     AsaasPaymentService(
@@ -76,6 +82,7 @@ public class AsaasPaymentService implements PaymentService {
         this.restTemplate = restTemplate;
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
+        this.retryTemplate = createRetryTemplate();
     }
 
     public PaymentCreationResponse createPayment(
@@ -126,6 +133,8 @@ public class AsaasPaymentService implements PaymentService {
                     asaasPaymentUrl, asaasPaymentCreationRequestHttpEntity, AsaasPaymentCreationResponse.class);
         } catch (HttpStatusCodeException e) {
             throw mapAsaasError(e);
+        } catch (ResourceAccessException e) {
+            throw mapAsaasTransportError(e);
         }
 
         // The default RestTemplate error handler throws
@@ -201,13 +210,15 @@ public class AsaasPaymentService implements PaymentService {
 
         final ResponseEntity<AsaasPaymentPixQrCodeResponse> response;
         try {
-            response = restTemplate.exchange(
+            response = executeRetryable(() -> restTemplate.exchange(
                     paymentResourceUrl(asaasPaymentUrl, paymentId, "pixQrCode"),
                     HttpMethod.GET,
                     entity,
-                    AsaasPaymentPixQrCodeResponse.class);
+                    AsaasPaymentPixQrCodeResponse.class));
         } catch (HttpStatusCodeException e) {
             throw mapAsaasError(e);
+        } catch (ResourceAccessException e) {
+            throw mapAsaasTransportError(e);
         }
 
         if (response.getStatusCode() == HttpStatus.OK) {
@@ -261,13 +272,15 @@ public class AsaasPaymentService implements PaymentService {
     private AsaasPaymentCreationResponse fetchPaymentOrDie(String paymentId) {
         final ResponseEntity<AsaasPaymentCreationResponse> response;
         try {
-            response = restTemplate.exchange(
+            response = executeRetryable(() -> restTemplate.exchange(
                     paymentResourceUrl(asaasPaymentUrl, paymentId),
                     HttpMethod.GET,
                     new HttpEntity<>(getRequestHeaders()),
-                    AsaasPaymentCreationResponse.class);
+                    AsaasPaymentCreationResponse.class));
         } catch (HttpStatusCodeException e) {
             throw mapAsaasError(e);
+        } catch (ResourceAccessException e) {
+            throw mapAsaasTransportError(e);
         }
         if (response.getStatusCode() == HttpStatus.NOT_FOUND) {
             throw new ResourceNotFoundException(String.format("Payment with id [%s] not found", paymentId));
@@ -343,7 +356,38 @@ public class AsaasPaymentService implements PaymentService {
         if (statusCode == HttpStatus.NOT_FOUND) {
             return new ResourceNotFoundException("Payment not found in the payment provider");
         }
-        return e;
+        if (statusCode.value() == HttpStatus.TOO_MANY_REQUESTS.value()) {
+            return new UpstreamServiceException(
+                    "Payment provider rate limit exceeded", HttpStatus.TOO_MANY_REQUESTS, retryAfter(e));
+        }
+        return new UpstreamServiceException("Payment provider unavailable", HttpStatus.BAD_GATEWAY);
+    }
+
+    static UpstreamServiceException mapAsaasTransportError(ResourceAccessException e) {
+        LOGGER.warn("Asaas payment API transport failure: {}", e.getMessage());
+        return new UpstreamServiceException("Payment provider unavailable", HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    private static String retryAfter(HttpStatusCodeException e) {
+        final HttpHeaders headers = e.getResponseHeaders();
+        if (headers == null) {
+            return null;
+        }
+        final String value = headers.getFirst(HttpHeaders.RETRY_AFTER);
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private static RetryTemplate createRetryTemplate() {
+        return RetryTemplate.builder()
+                .maxAttempts(3)
+                .exponentialBackoff(100, 2, 1000)
+                .retryOn(HttpServerErrorException.class)
+                .retryOn(ResourceAccessException.class)
+                .build();
+    }
+
+    private <T> T executeRetryable(Supplier<T> request) {
+        return retryTemplate.execute(context -> request.get());
     }
 
     /**
