@@ -70,6 +70,8 @@ if [[ "$CHECK_ONLY" -eq 0 ]]; then
     exec > >(tee -a "$LOG_FILE") 2>&1
     # Log retention belongs to normal cycles; check-only must not create,
     # modify, or delete anything under the repository's log directory.
+    # Keep the last 480 cycle logs (~10 days at 30-min cadence) so every
+    # red-team window stays fully inspectable.
     ls -t "$LOG_DIR"/loop-*.log 2>/dev/null | tail -n +481 | xargs -r rm -f || true
 fi
 
@@ -632,6 +634,7 @@ log "Agent cycle finished with status $STATUS."
 # Health row (gitignored logs/health.csv): one line per cycle for trends and
 # post-mortems — grep it for merged counts, repair frequency, idle stretches.
 HEALTH="$LOG_DIR/health.csv"
-[[ -f "$HEALTH" ]] || echo "timestamp,slot,open_code,open_docs,repair_prs,merged,reviewed_pr,exit_status" > "$HEALTH"
+HEALTH_HEADER="timestamp,slot,open_code_before,open_docs_before,repair_prs,merged,reviewed_pr,exit_status"
+health_init_or_migrate "$HEALTH" "$HEALTH_HEADER"
 echo "$(date -Is),${SLOT:-?},${OPEN_PRS:-?},$(echo "${DOCS_PRS:-}" | wc -w | tr -d '[:space:]'),\"${REPAIR_PRS:-}\",${merged:-0},${REVIEW_PR:-none},$STATUS" >> "$HEALTH"
 exit "$STATUS"
