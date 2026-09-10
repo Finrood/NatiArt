@@ -128,7 +128,13 @@ public class AsaasPaymentService implements PaymentService {
             throw mapAsaasError(e);
         }
 
-        if (response.getStatusCode() == HttpStatus.OK) {
+        // The default RestTemplate error handler throws
+        // HttpStatusCodeException on any non-2xx (mapped above), so only 2xx
+        // bodies reach here: any 2xx (200 today, 201 if Asaas ever follows the
+        // creation convention) saves the ledger row first, then responds. A
+        // charge without its ledger row is the orphan the save-failure branch
+        // below logs for -- and a client retry would then double-charge.
+        if (response.getStatusCode().is2xxSuccessful()) {
             final Optional<AsaasPaymentCreationResponse> asaasPaymentCreationResponse =
                     Optional.ofNullable(response.getBody());
             return asaasPaymentCreationResponse
@@ -152,11 +158,10 @@ public class AsaasPaymentService implements PaymentService {
                     })
                     .orElseThrow(() ->
                             new IllegalArgumentException("Received a null response body from " + asaasPaymentUrl));
-        } else if (response.getStatusCode() == HttpStatus.UNAUTHORIZED) {
-            throw new UserNotAllowedException("Unauthorized api call to " + asaasPaymentUrl);
-        } else {
-            throw new IllegalArgumentException("Bad request");
         }
+        // Unreachable with the default error handler (non-2xx throws above):
+        // fail closed as a provider failure, never as a client error.
+        throw new AsaasApiException("Invalid payment provider response", HttpStatus.BAD_GATEWAY);
     }
 
     /**

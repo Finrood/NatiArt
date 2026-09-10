@@ -624,6 +624,34 @@ class AsaasPaymentServiceTest {
         assertEquals("Invalid payment provider response", thrown.getMessage());
     }
 
+    @Test
+    void createPayment_non200Success_savesLedgerRowAndResponds() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        final AsaasPaymentCreationResponse upstream = mock(AsaasPaymentCreationResponse.class);
+        when(upstream.getId()).thenReturn("pay-201");
+        when(upstream.getDateCreated()).thenReturn(LocalDate.of(2026, 9, 6));
+        when(upstream.getCustomer()).thenReturn("cus_MINE");
+        when(upstream.getBillingType()).thenReturn("PIX");
+        when(upstream.getStatus()).thenReturn("PENDING");
+        when(upstream.getDueDate()).thenReturn(LocalDate.of(2026, 9, 7));
+        when(upstream.getInvoiceUrl()).thenReturn("http://invoice");
+        when(upstream.getInvoiceNumber()).thenReturn("003");
+        when(restTemplate.postForEntity(eq(PAYMENTS_URL), any(), eq(AsaasPaymentCreationResponse.class)))
+                .thenReturn(new ResponseEntity<>(upstream, HttpStatus.CREATED));
+
+        final PaymentCreationResponse response = newService(restTemplate, paymentRepository)
+                .createPayment(
+                        new PaymentCreationRequest(
+                                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX),
+                        "cus_MINE");
+
+        assertEquals("pay-201", response.getPaymentId());
+        verify(paymentRepository)
+                .save(argThat(payment ->
+                        "pay-201".equals(payment.getId()) && "cus_MINE".equals(payment.getOwnerExternalId())));
+    }
+
     private PaymentCreationRequest orderLinked(PaymentCreationRequest request) {
         return new PaymentCreationRequest(
                 request.getPaymentProcessor(),
