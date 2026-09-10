@@ -197,14 +197,14 @@ print_tail() { # $1 = log file
     tail -n 15 "$f" 2>/dev/null || true
 }
 
-kill_agent() { # $1 = pid; TERM first, escalate to KILL (opencode can ignore TERM)
+kill_agent() { # $1 = process-group leader pid; terminate the whole attempt tree
     local pid="$1" _
-    kill -TERM "$pid" 2>/dev/null || return 0
+    kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || return 0
     for _ in 1 2 3; do
         kill -0 "$pid" 2>/dev/null || return 0
         sleep 1
     done
-    kill -KILL "$pid" 2>/dev/null || true
+    kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
     return 0
 }
 
@@ -219,13 +219,13 @@ launch_attempt() { # $1=cli $2=model_id $3=think; spawns child bg, sets $PID
         opencode)
             local variant_arg=()
             [[ -n "$think" ]] && variant_arg=(--variant "$think")
-            (cd "$REPO" && exec opencode run "$PROMPT" --dir "$REPO" --title "$TITLE" -m "$model_id" "${variant_arg[@]}") \
+            (cd "$REPO" && exec setsid opencode run "$PROMPT" --dir "$REPO" --title "$TITLE" -m "$model_id" "${variant_arg[@]}") \
                 >"$ATT_LOG" 2>&1 &
             ;;
         cline)
             local think_arg=()
             [[ -n "$think" ]] && think_arg=(--thinking "$think")
-            (cd "$REPO" && exec cline --cwd "$REPO" -m "$model_id" "${think_arg[@]}" "${ALLOWED_ARGS[@]:+${ALLOWED_ARGS[@]}}" --json "$PROMPT") \
+            (cd "$REPO" && exec setsid cline --cwd "$REPO" -m "$model_id" "${think_arg[@]}" "${ALLOWED_ARGS[@]:+${ALLOWED_ARGS[@]}}" --json "$PROMPT") \
                 >"$ATT_LOG" 2>&1 &
             ;;
         *)
