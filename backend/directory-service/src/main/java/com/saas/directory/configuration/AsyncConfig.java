@@ -11,16 +11,11 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 /**
  * Binds all {@code @Async} work in this service to a bounded executor.
  * <p>
- * Without a dedicated {@code taskExecutor} bean, Spring Boot falls back to an
- * effectively unbounded application executor: a registration burst on the
- * Asaas fan-out ({@code UserRegistrationListener}) spawns one thread per task
- * with no queue bound. Naming the bean {@code taskExecutor} is what Spring's
- * async interceptor looks for when several {@code TaskExecutor} beans exist
- * ({@code AsyncExecutionAspectSupport#DEFAULT_TASK_EXECUTOR_BEAN_NAME}).
- * <p>
- * Overflow runs on the caller thread ({@link ThreadPoolExecutor.CallerRunsPolicy})
- * instead of dropping registrations, and the fixed pool bounds peak thread
- * usage. All settings are tunable via {@code saas.async.*} properties.
+ * Without a {@code taskExecutor} bean, Spring Boot's default application
+ * executor spawns a thread per task with no queue bound, so a registration
+ * burst on the Asaas fan-out is unbounded. The bean name matches the one the
+ * async interceptor falls back to when several {@code TaskExecutor} beans
+ * exist; overflow runs on the caller thread instead of dropping work.
  */
 @Configuration
 public class AsyncConfig {
