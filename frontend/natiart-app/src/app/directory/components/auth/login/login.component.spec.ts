@@ -14,6 +14,8 @@ import { environment } from '../../../../../environments/environment';
 describe('LoginComponent', () => {
   const CURRENT_USER_URL: string =
     `${environment.api.directory.url}${environment.api.directory.endpoints.user}${environment.api.directory.endpoints.current}`;
+  const LOGIN_URL: string =
+    `${environment.api.directory.url}${environment.api.directory.endpoints.login}`;
 
   const mockUser: User = {
     id: 'user-1',
@@ -132,6 +134,32 @@ describe('LoginComponent', () => {
 
     httpTesting.expectNone(CURRENT_USER_URL);
     expect(navigateSpy).not.toHaveBeenCalled();
+    httpTesting.verify();
+    TestBed.inject(AuthenticationService).ngOnDestroy();
+  }));
+
+  it('ignores duplicate submissions while login is in flight', fakeAsync(() => {
+    const {fixture, httpTesting} = setup();
+    const component: LoginComponent = fixture.componentInstance;
+    component.loginForm.setValue({credentials: {username: 'user@natiart.test', password: 'password'}});
+
+    component.doLoginUser();
+    const loginRequest: TestRequest = httpTesting.expectOne(LOGIN_URL);
+    component.doLoginUser();
+    expect(httpTesting.match(LOGIN_URL)).toHaveSize(0);
+    expect(component.isSubmitting).toBeTrue();
+
+    const accessExpiration: number = Math.floor(Date.now() / 1000) + 3600;
+    const refreshExpiration: number = Math.floor(Date.now() / 1000) + 8 * 24 * 3600;
+    loginRequest.flush({
+      accessToken: unsignedToken(accessExpiration),
+      refreshToken: unsignedToken(refreshExpiration),
+    });
+    const currentUserRequest: TestRequest = httpTesting.expectOne(CURRENT_USER_URL);
+    currentUserRequest.flush(mockUser);
+    tick();
+
+    expect(component.isSubmitting).toBeFalse();
     httpTesting.verify();
     TestBed.inject(AuthenticationService).ngOnDestroy();
   }));
