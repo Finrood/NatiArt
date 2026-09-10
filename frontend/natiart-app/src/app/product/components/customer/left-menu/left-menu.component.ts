@@ -12,6 +12,7 @@ import {NgClass} from "@angular/common";
 })
 export class LeftMenuComponent implements OnInit {
   categories: Category[] = [];
+  categoryLoadFailed = false;
   isOpen = true;
 
   constructor(private categoryService: CategoryService) {
@@ -27,8 +28,11 @@ export class LeftMenuComponent implements OnInit {
 
   private loadCategories(): void {
     this.categoryService.getCategories().subscribe({
-      next: (response) => this.categories = response,
-      error: (error) => console.error('Error getting categories:', error)
+      next: (response) => {
+        this.categories = response;
+        this.categoryLoadFailed = false;
+      },
+      error: () => this.categoryLoadFailed = true
     });
   }
 }
