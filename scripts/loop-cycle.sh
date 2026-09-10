@@ -4,7 +4,15 @@
 set -euo pipefail
 
 REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-LOCK="/tmp/natiart-improvement-loop.lock"
+umask 077
+if [[ -n "${XDG_RUNTIME_DIR:-}" ]]; then
+    LOCK_DIR="$XDG_RUNTIME_DIR/natiart-improvement-loop"
+else
+    LOCK_DIR="/tmp/natiart-improvement-loop-$UID"
+fi
+mkdir -p "$LOCK_DIR"
+chmod 700 "$LOCK_DIR"
+LOCK="$LOCK_DIR/lock"
 LOG_DIR="$REPO/logs"
 CHECK_ONLY=0
 [[ "${1:-}" == "--check-only" ]] && CHECK_ONLY=1
