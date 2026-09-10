@@ -13,6 +13,7 @@ import {StepIndicatorComponent} from "./step-indicator/step-indicator.component"
 import {CustomPhoneValidators} from "../../../validator/CustomPhoneValidators";
 import {CustomCpfValidators} from "../../../validator/CustomCpfValidators";
 import {CustomCepValidators} from "../../../validator/CustomCepValidators";
+import {finalize} from 'rxjs/operators';
 
 @Component({
   selector: 'app-signup',
@@ -33,6 +34,7 @@ export class SignupComponent implements OnInit {
   signupForm: FormGroup;
   currentStep = 1;
   errorMessage = '';
+  isSubmitting = false;
 
   constructor(
     private fb: FormBuilder,
@@ -60,6 +62,9 @@ export class SignupComponent implements OnInit {
   }
 
   doRegisterUser(): void {
+    if (this.isSubmitting) {
+      return;
+    }
     if (this.signupForm.invalid) {
       this.signupForm.markAllAsTouched();
       this.setErrorMessage('Please fill all required fields correctly.');
@@ -73,7 +78,9 @@ export class SignupComponent implements OnInit {
       profile: formValue.profile as Profile
     };
 
+    this.isSubmitting = true;
     this.signupService.registerUser(userRegistration)
+      .pipe(finalize(() => this.isSubmitting = false))
       .subscribe({
         next: () => {
           this.router.navigate(['/login'])
