@@ -178,8 +178,9 @@ public class OrderManagerImpl implements OrderManager {
     }
 
     private void requireNonNegativeAmount(BigDecimal amount, String field) {
-        if (amount == null || amount.signum() < 0) {
-            throw new IllegalArgumentException("The " + field + " must be a non-negative value");
+        if (amount == null || amount.signum() < 0 || amount.scale() > 2) {
+            throw new IllegalArgumentException(
+                    "The " + field + " must be a non-negative value with at most two fraction digits");
         }
     }
 
