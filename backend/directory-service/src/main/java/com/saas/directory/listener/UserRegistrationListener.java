@@ -9,12 +9,12 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
-import org.springframework.web.client.HttpClientErrorException;
 
 import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
 import com.saas.directory.event.UserRegisteredEvent;
 import com.saas.directory.model.ExternalUser;
+import com.saas.directory.service.AsaasApiException;
 import com.saas.directory.service.AsaasUserManager;
 import com.saas.directory.service.UserManager;
 import com.saas.directory.service.support.RetryExternalApiCall;
@@ -55,18 +55,27 @@ public class UserRegistrationListener {
 
     /**
      * Recovery method for handleUserRegistration. This is called when all retry attempts fail.
-     * It specifically handles Exception to catch anything the @Retryable annotation was configured for.
+     * A mapped Asaas 4xx is a permanent client error and logs a targeted "will not be retried"
+     * line; anything else (5xx, timeouts, DB failures) is logged as CRITICAL for manual review.
      *
      * @param e     The final exception that caused the failure.
      * @param event The original event that was being processed.
      */
     @Recover
     public void recover(Exception e, UserRegisteredEvent event) {
-        if (e instanceof HttpClientErrorException.BadRequest) {
+        // Exceptions that reach this recover are mapped AsaasApiExceptions, the
+        // wrapped plain Exceptions registerUser produces for 5xx/timeouts, or
+        // resource/DB failures -- never raw HttpClientErrorExceptions (those are
+        // mapped away inside AsaasUserManager). A mapped 4xx is permanent: no
+        // retry could cure it, so it must not page ops with a CRITICAL.
+        if (e instanceof AsaasApiException asaasApiException
+                && asaasApiException.getHttpStatus() != null
+                && asaasApiException.getHttpStatus().is4xxClientError()) {
             LOGGER.error(
-                    "Unrecoverable 400 Bad Request error for user [{}]. The request is malformed and will not be retried. Error: {}",
+                    "Unrecoverable Asaas client error [{}] for user [{}]: the registration request is malformed and will not be retried. Error: {}",
+                    asaasApiException.getHttpStatus(),
                     event.username(),
-                    e.getMessage());
+                    asaasApiException.getMessage());
             return;
         }
 
