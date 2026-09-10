@@ -1,5 +1,11 @@
 <div class="max-w-md mx-auto my-10 p-8 bg-white rounded-2xl shadow-lg text-center">
 
+  @if (copyFailed) {
+    <p class="mb-4 text-sm text-red-600" role="alert">
+      Could not copy the PIX code. Please select and copy it manually.
+    </p>
+  }
+
   <!-- Payment Success State -->
   @if (paymentStatus === 'COMPLETED') {
     <div>

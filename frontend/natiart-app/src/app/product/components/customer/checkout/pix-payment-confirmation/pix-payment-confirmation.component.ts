@@ -20,6 +20,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   paymentId: string | null = null;
   qrCodeData!: { encodedImage: string; payload: string; expirationDate: Date };
   paymentStatus: string = 'PENDING';
+  copyFailed: boolean = false;
   pollingInterval!: Subscription;
   private paramSubscription: Subscription | null = null;
   private qrSubscription: Subscription | null = null;
@@ -43,6 +44,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
       const routedId: string | null = params.get('paymentId');
       this.stopPolling();
       this.stopQrCode();
+      this.copyFailed = false;
       if (routedId) {
         this.paymentId = routedId;
         this.paymentStatus = 'PENDING';
@@ -131,10 +133,16 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
     }
   }
 
-  copyToClipboard(inputElement: HTMLInputElement) {
+  copyToClipboard(inputElement: HTMLInputElement): void {
+    this.copyFailed = false;
     inputElement.select();
-    document.execCommand('copy');
-    inputElement.setSelectionRange(0, 0);
+    try {
+      this.copyFailed = !document.execCommand('copy');
+    } catch {
+      this.copyFailed = true;
+    } finally {
+      inputElement.setSelectionRange(0, 0);
+    }
   }
 
   closePayment() {
