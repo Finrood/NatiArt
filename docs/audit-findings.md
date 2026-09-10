@@ -2260,3 +2260,60 @@ this cycle (PR #236). One new finding below.
   specs. Found by Lens 13 hunt, 2026-09-10.
   Tracked, not silently fixed.
 
+
+## BX. File and storage safety re-hunt (Lens 7, 2026-09-10)
+
+Hunt method: re-read the full storage surface on current master against the
+BD baseline (`storage/StorageFileSystem.java`,
+`storage/StorageServiceImpl.java`, `storage/Storage.java`,
+`storage/InputFile.java`, `service/ImageConversionService.java`,
+`service/ProductManagerImpl.java:220-266`,
+`controller/ProductController.java:81-155`,
+`application.properties:18-21` multipart/storage caps). Re-verified:
+BD1 still OPEN (no per-request image count cap — fixed in flight this
+cycle, PR pending); BD2 IN REVIEW (unsupported-scheme 400 fix merged via
+PR #227; flip pending); BD3 still OPEN and latent (zero controller callers
+for `downloadFiles`/`downloadDirectory` — no request path triggers them
+yet). BI2/BI3 date/envelope guards confirmed fixed on master
+(`AsaasPaymentService.java:177,235-247`). Cleared as non-findings:
+write-path confinement (`resolveAllowedWriteFile`,
+`StorageFileSystem.java:111-130`); read-path canonical confinement
+(`resolveAllowedFile`, `:62-79`); symlink skip in recursive zipping
+(`zipFileRecursively`, `:189-194`); zip entry collision disambiguation
+(`uniqueZipEntryName`, `:154-168`); image dimension/pixel caps plus
+undecodable-bytes 400 (`ImageConversionService.java:20-21,43-53,85-108`);
+framework byte caps (`max-file-size=10MB`, `max-request-size=100MB`).
+BX1-BX2 below are the runner-ups.
+
+### BX1. Unchecked WebP writer lookup throws `NoSuchElementException` (500) when no encoder is registered — OPEN (Low)
+- `service/ImageConversionService.java:48-52` calls
+  `ImageIO.getImageWritersByMIMEType("image/webp").next()` with no
+  `hasNext()` guard (the `writer == null` check below it is dead: the JDK
+  iterator never returns null, it throws `NoSuchElementException` — a
+  `RuntimeException` outside the `IOException` the `convertToWebP`
+  `catch (IOException e)` wrapper handles, so it escapes
+  `controller/ProductController.java:144` (`processImages`) into
+  `configuration/ControllerAdvice.java:29-33` catch-all → 500). Latent
+  today (the `webp-imageio` dependency always registers one), but exactly
+  the Lens 7 unchecked-decode class on the single image-ingest path serving
+  both `POST /products/create` and `PUT /products/{productId}`.
+- Fix: guard with `hasNext()` and fail with the existing static
+  `IOException("No WebP ImageWriter found")` so the failure stays in the
+  handled conversion-error channel with no runtime detail leaked. Tests:
+  writer enumeration empty → handled conversion error, never 500.
+  Found by Lens 7 hunt, 2026-09-10.
+
+### BX2. `openFile` on a missing-but-confined file throws `IllegalStateException` (500) instead of 404 — OPEN (Low)
+- `storage/StorageFileSystem.java:52-60` (`openFile`) resolves via
+  `resolveAllowedFile` (`:62-79`, correctly confined) then calls
+  `FileUtils.openInputStream`, whose `FileNotFoundException` is wrapped in
+  `IllegalStateException("Error while reading file ...")` — a 500 via the
+  `ControllerAdvice` catch-all. A well-formed `file:` URI inside an allowed
+  root pointing at a deleted/moved image (stale product `images` entry after
+  disk cleanup) is a 404 (`ResourceNotFoundException`, same as the
+  outside-root paths two lines above), not a server failure. Reachable via
+  public `GET /images?path=` (`ProductController.java:123-132`, no auth).
+- Fix: catch `FileNotFoundException`/`NoSuchFileException` separately and
+  throw `ResourceNotFoundException` with a static message (no path echo).
+  Tests: confined-but-missing file → 404; outside-root path stays 404.
+  Found by Lens 7 hunt, 2026-09-10.

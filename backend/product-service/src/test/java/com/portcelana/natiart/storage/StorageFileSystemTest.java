@@ -75,6 +75,19 @@ class StorageFileSystemTest {
     }
 
     @Test
+    void openFileMissingButConfinedFileThrowsNotFoundInsteadOfServerError() throws IOException {
+        Path root = tempDir.resolve("product-images");
+        Files.createDirectories(root);
+        StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+
+        final ResourceNotFoundException thrown = assertThrows(
+                ResourceNotFoundException.class,
+                () -> storage.openFile(root.resolve("p1/gone.webp").toUri()));
+
+        assertTrue(thrown.getMessage().contains("gone.webp"));
+    }
+
+    @Test
     void openFileFallsBackToDefaultRootsWhenUnconfigured() throws IOException {
         Path cwdImages = Path.of(System.getProperty("user.dir"), "product-images");
         URI uri = writeInside(cwdImages, "fallback-test/img.webp", "image-bytes");

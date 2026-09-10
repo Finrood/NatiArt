@@ -3,6 +3,7 @@ package com.portcelana.natiart.service;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
@@ -19,8 +20,15 @@ import com.luciad.imageio.webp.WebPWriteParam;
 public class ImageConversionService {
     static final int MAX_IMAGE_DIMENSION = 6000;
     static final long MAX_PIXELS = 24_000_000L;
+    static final int MAX_IMAGES_PER_REQUEST = 10;
 
     public List<MultipartFile> convertToWebP(List<MultipartFile> images) throws IOException {
+        if (images != null && images.size() > MAX_IMAGES_PER_REQUEST) {
+            // Each entry decodes to a full BufferedImage (up to MAX_PIXELS, ~96MB heap),
+            // so the framework byte caps alone do not bound heap/CPU: reject over-count
+            // with 400 (mapped via ControllerAdvice) before touching any bytes.
+            throw new IllegalArgumentException("Too many images: at most " + MAX_IMAGES_PER_REQUEST + " per request");
+        }
         return images.stream()
                 .map(image -> {
                     try {
@@ -45,11 +53,15 @@ public class ImageConversionService {
 
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-        final ImageWriter writer =
-                ImageIO.getImageWritersByMIMEType("image/webp").next();
-        if (writer == null) {
+        final ImageWriter writer;
+        final Iterator<ImageWriter> writers = ImageIO.getImageWritersByMIMEType("image/webp");
+        if (!writers.hasNext()) {
+            // The webp-imageio dependency always registers one, so a missing writer is a
+            // broken runtime, not a client error: keep the static IOException (surfaced
+            // via the conversion wrapper) without leaking runtime detail.
             throw new IOException("No WebP ImageWriter found");
         }
+        writer = writers.next();
 
         try (ImageOutputStream ios = ImageIO.createImageOutputStream(baos)) {
             writer.setOutput(ios);

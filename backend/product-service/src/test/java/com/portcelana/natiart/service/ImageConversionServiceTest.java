@@ -62,4 +62,17 @@ class ImageConversionServiceTest {
 
         assertThrows(IllegalArgumentException.class, () -> service.convertToWebP(java.util.List.of(huge)));
     }
+
+    @Test
+    void convertToWebP_rejectsImageCountAbovePerRequestCap() {
+        final java.util.List<MultipartFile> images = new java.util.ArrayList<>();
+        for (int index = 0; index <= ImageConversionService.MAX_IMAGES_PER_REQUEST; index++) {
+            images.add(new MockMultipartFile("newImages", "test.png", "image/png", new byte[] {(byte) index}));
+        }
+
+        final IllegalArgumentException thrown =
+                assertThrows(IllegalArgumentException.class, () -> service.convertToWebP(images));
+
+        assertTrue(thrown.getMessage().contains(String.valueOf(ImageConversionService.MAX_IMAGES_PER_REQUEST)));
+    }
 }

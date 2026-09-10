@@ -53,6 +53,12 @@ public class StorageFileSystem implements Storage {
         final File file = resolveAllowedFile(path);
         try {
             return FileUtils.openInputStream(file);
+        } catch (java.io.FileNotFoundException e) {
+            // A well-formed file: URI inside an allowed root pointing at a deleted/moved
+            // image (stale product images entry after disk cleanup) is a 404, not a 500:
+            // same signal as the outside-root paths in resolveAllowedFile. Static message
+            // (file.getName() only, never the full path) so disk layout never leaks.
+            throw new ResourceNotFoundException("Requested file does not exist: " + file.getName());
         } catch (IOException e) {
             throw new IllegalStateException(
                     String.format("Error while reading file [%s] on local storage.", file.getName()), e);
