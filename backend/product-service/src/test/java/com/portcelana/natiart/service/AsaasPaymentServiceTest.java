@@ -560,18 +560,14 @@ class AsaasPaymentServiceTest {
                 () -> newService(restTemplate, paymentRepository)
                         .createPayment(
                                 new PaymentCreationRequest(
-                                        PaymentProcessor.ASAAS,
-                                        "cus_MINE",
-                                        new BigDecimal("10.00"),
-                                        PaymentMethod.PIX),
+                                        PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX),
                                 "cus_MINE"));
 
         assertEquals(HttpStatus.BAD_GATEWAY, thrown.getHttpStatus());
         assertEquals("Invalid payment provider response", thrown.getMessage());
         verify(paymentRepository)
                 .save(argThat(payment ->
-                        "pay-nodate".equals(payment.getId())
-                                && "cus_MINE".equals(payment.getOwnerExternalId())));
+                        "pay-nodate".equals(payment.getId()) && "cus_MINE".equals(payment.getOwnerExternalId())));
     }
 
     @Test
@@ -590,10 +586,7 @@ class AsaasPaymentServiceTest {
                 () -> newService(restTemplate, paymentRepository)
                         .createPayment(
                                 new PaymentCreationRequest(
-                                        PaymentProcessor.ASAAS,
-                                        "cus_MINE",
-                                        new BigDecimal("10.00"),
-                                        PaymentMethod.PIX),
+                                        PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX),
                                 "cus_MINE"));
 
         assertEquals(HttpStatus.BAD_GATEWAY, thrown.getHttpStatus());

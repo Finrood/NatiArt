@@ -175,9 +175,7 @@ public class AsaasPaymentService implements PaymentService {
      */
     private static PaymentCreationResponse toCreationResponse(AsaasPaymentCreationResponse responseBody) {
         if (responseBody.getDateCreated() == null || responseBody.getDueDate() == null) {
-            LOGGER.warn(
-                    "Asaas payment [{}] has null date fields: failing closed",
-                    responseBody.getId());
+            LOGGER.warn("Asaas payment [{}] has null date fields: failing closed", responseBody.getId());
             throw new AsaasApiException("Invalid payment provider response", HttpStatus.BAD_GATEWAY);
         }
         return new PaymentCreationResponse(
