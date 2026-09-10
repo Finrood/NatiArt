@@ -1876,6 +1876,63 @@ SpEL `@TargetUser` never evaluates on `anonymousUser` — unlike
 product-service, which needs its resolver because its chain is
 `permitAll()`). No new actionable items — no new `###` sections appended.
 
+## BP. Data integrity and transactions (Lens 4 hunt, 2026-09-10)
+
+Hunt method: re-verified the Lens 4 backlog against current `master`
+(`OrderManagerImpl.createOrder`, `CustomerOrder` mapping, `OrderController`,
+`AsaasPaymentService.createPayment`, `PaymentController`, `Payment` unique
+backstop, `ControllerAdvice` exception table). Re-verified this cycle: B4
+owner half is FIXED on master (`CustomerOrder.java:62-63` carries
+`ownerExternalId nullable = false`, `OrderManagerImpl.java:70-75` rejects
+blank owners, `OrderController.java:21-26` requires
+`isFullyAuthenticated()` and passes the principal's external id — the BN
+re-hunt claim ("takes no `@TargetUser`, no owner column") is stale, freight
+half still OPEN per the BB narrowing); G1 backend half holds
+(order-linked value reconciliation + ownership check before egress,
+`AsaasPaymentService.java:93-118`); AM1 order-linked dedupe + `Payment.orderId`
+unique backstop hold (`Payment.java:28-29`); BA1 still OPEN (nothing calls
+`updateOrderStatus`); BA2 still OPEN and accepted while no endpoint drives
+the path (`OrderManagerImpl.java:128-132` comment); AE3/AE4 still OPEN and
+latent (no read endpoint wires them). Cleared as non-findings: whole-order
+rollback (single `@Transactional` over batched reads + row-atomic
+decrements), server-computed item prices from scale-2 product columns,
+concurrent same-order double POST before-egress dedupe with the unique
+constraint as backstop. BP1-BP2 below are runner-ups.
+
+### BP1. `deliveryAmount` accepts more than two fraction digits into scale-2 money columns — OPEN (Low)
+- `service/OrderManagerImpl.java:167-171` (`requireNonNegativeAmount`)
+  checks only null/signum, while the sibling money gate
+  (`service/AsaasPaymentService.java:89`,
+  `dto/payment/PaymentCreationRequest.java` constructor) rejects
+  `value.scale() > 2`. A `deliveryAmount` of `10.001` passes order creation
+  and flows into `CustomerOrder.deliveryAmount`/`totalAmount`
+  (`model/CustomerOrder.java:53-57`, both `precision = 10, scale = 2`) and
+  the G1 exact-match reconciliation (`compareTo` ignores scale, but the
+  persisted total may have been rounded/truncated DB-side — H2 vs PostgreSQL
+  rounding differs per `agents/java-persistence.md`). Item prices are safe
+  (server-computed from scale-2 product columns,
+  `model/Product.java:31-35`); freight is the one money input with no scale
+  gate. Found by Lens 4 hunt, 2026-09-10.
+- Fix: reject `deliveryAmount.scale() > 2` in `requireNonNegativeAmount`
+  (or a dedicated money guard) with 400. Tests: 3-decimal freight → 400,
+  store untouched; exact-scale freight still accepted.
+  Tracked, not silently fixed.
+
+### BP2. Order contact fields unvalidated: null trips the DB constraint into a 409 instead of a 400 — OPEN (Low)
+- `service/OrderManagerImpl.java:70-93` copies `firstname`/`lastname`/`email`
+  from the DTO with no null/blank check (`validateItems` covers only line
+  items), while `model/CustomerOrder.java:22-28` marks all three
+  `nullable = false`. A null contact field therefore fails at JPA flush and
+  maps via `configuration/ControllerAdvice.java:123-127`
+  (`DataIntegrityViolationException` → 409 "Resource conflict") instead of a
+  400 validation error — a client-shape error reported as a state conflict.
+  Product-service carries zero `@Valid`/`@Validated` usage (noted in BK), so
+  no framework guard catches it first. Found by Lens 4 hunt, 2026-09-10.
+- Fix: null/blank-guard the three contact fields in `createOrder` (400 via
+  `IllegalArgumentException`, matching the item guards). Tests: null
+  firstname → 400, store untouched.
+  Tracked, not silently fixed.
+
 ## BQ. Data integrity and transactions (Lens 4 hunt, 2026-09-10)
 
 Hunt method: re-read the order/payment/cart write paths on current master
@@ -1976,6 +2033,49 @@ runner-ups.
   (unique column, return the existing order on replay) or document the
   retry hazard. Tests: same-key replay → single order row, stock
   decremented once.
+  Tracked, not silently fixed.
+
+## BU. N+1 queries and pagination (Lens 5 hunt, 2026-09-10)
+
+Hunt method: re-ran the Lens 5 enumeration on current master (every
+repository query, every derived-query call site, page/size caps on all four
+listing controllers, every DTO `from()` touch against association fetch
+types with `open-in-view=false`). Re-verified this cycle: product listings
+still id-page plus `findAllWithImagesByIds` fetching images + category +
+packaging (`repository/ProductRepository.java:33-47`,
+`service/ProductManagerImpl.java:128-141`); all four listing controllers
+still clamp via `toPageable` (`controller/ProductController.java:134-138`
+pattern); `createOrder` touches only scalar product state
+(`isActive`/`getLabel`/prices,
+`service/OrderManagerImpl.java:102-119`); AE3/AE4 still OPEN and latent;
+BC1 still OPEN. Cleared as non-findings: `deleteCartItem` /
+`decreaseCartItemQuantity` load-then-delete (intentional — the documented
+`Personalization` cascade needs managed entities,
+`repository/CartItemRepository.java:60-68`); category/package listings
+(scalar-only DTOs). BU1 below is the runner-up.
+
+### BU1. Cart add path maps through the DTO off the non-fetching derived lookup — OPEN (Low)
+- `service/CartManagerImpl.java:50` returns
+  `CartItemDto.from(getCartLineOrDie(...))`, and `getCartLineOrDie`
+  (`:92-97`) uses the derived `findCartItemByUsernameAndProduct`
+  (`repository/CartItemRepository.java:27`) with no fetch joins — while the
+  listing path uses the fetch-join `findCartItemsByUsername` (`:23-25`).
+  `CartItemDto.from` (`dto/CartItemDto.java:10-15`) → `ProductDto.from`
+  touches `product.getImages()` (`dto/ProductDto.java:36-48`), a LAZY
+  `@ElementCollection` (`model/Product.java:59-61`), on top of the EAGER
+  `CartItem.product` (`model/CartItem.java:23-25`), the EAGER-by-default
+  `@OneToOne personalization` (`:27-28`), and its LAZY options map handed
+  to the DTO by reference (`dto/PersonalizationDto.java:17`,
+  `model/Personalization.java:16-19` — see BC1). Every successful add
+  therefore pays 2-4 lazy selects the listing path eliminated: single-row
+  cost, not a fan-out, but on the hottest write path in the storefront
+  (every add-to-cart click).
+- Fix: serve the add response from the fetch-join query (re-read via
+  `findCartItemsByUsername` filtered to the product, or add fetch joins to
+  a dedicated `findCartItem...WithDetails`), and extend the
+  `CartItemRepositoryFetchTest` pin to the add path. Tests: bounded query
+  count on add; personalized-line add serializes in-transaction.
+  Found by Lens 5 hunt, 2026-09-10.
   Tracked, not silently fixed.
 
 ## BS. Data integrity and transactions (Lens 4 hunt, 2026-09-10)
