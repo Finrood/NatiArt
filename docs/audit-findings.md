@@ -1772,6 +1772,26 @@ with the documented `backend/AGENTS.md` convention.
   `error.error` defensively. Specs: a non-JSON error body renders the generic
   message instead of crashing. Found by Lens 15 hunt, 2026-09-09.
 
+## BL. Frontend data identity re-hunt (Lens 10, 2026-09-10)
+
+Hunt method: re-read the cart/product identity paths on the fix branch
+(`cart.service.ts:33-205`, `product.service.ts:18-65`,
+`product-list.component.ts:65-135`, `product-detail.component.ts:287-387`,
+`cart.component.ts:87-149,222-223`, `cart-modal.component.ts:48-129`,
+`order-summary.component.ts:46-100`, plus `app.routes.ts:41` and
+`pix-payment-confirmation.component.ts:37-55`) against the BG baseline.
+Re-verified: BG1 still OPEN (no `storage`-event listener under
+`frontend/natiart-app/src/` — out of scope for the AS1/AS2/BW1 batch);
+BG2 still OPEN (stale personalization snapshot at confirm time — needs a
+product decision on re-fetch vs re-validate, left for the maintainer).
+Cleared as non-findings: checkout PIX `value` snapshot
+(`checkout.component.ts:301` — priced from the sanitized cart total;
+order-link wiring is owned by G1/B4); `addToCart` custom-image lines
+always mint fresh ids (no grouping collapse); related-products image
+map is token-guarded with revoke-on-reset; PIX param subscription
+follows the routed id with stop/restart on change.
+No new findings appended this cycle — hunt ran, backlog stands.
+
 ## BH. Observability and log hygiene (Lens 14 hunt, 2026-09-09)
 
 Hunt method: swept both services for `System.out`/`printStackTrace` (zero
