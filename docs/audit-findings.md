@@ -1,11 +1,19 @@
-# Full-Codebase Audit Findings (master after PR #242)
+# Full-Codebase Audit Findings (master at `a4906df`)
 
 Date: 2026-09-10. Scope: backend (`directory-service`, `product-service`) and
 frontend (`natiart-app`). Every finding below was verified by reading the cited
 file. Conventions checked against `agents/*.md`, `backend/AGENTS.md` and
 `frontend/natiart-app/AGENTS.md`.
 
-Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-verify. Flipped `FIXED` sections move to `docs/audit-findings-archive.md`.
+Status legend: `OPEN` = verified live work; `DEFERRED` = verified but conditional,
+latent, or awaiting a product/architecture decision; `IN REVIEW` = PR open;
+`INVALID` = stale, duplicated, or resolved on re-verification. Flipped `FIXED`
+sections move to `docs/audit-findings-archive.md`.
+
+The current-status headings and narrowing notes were comprehensively
+re-verified against `a4906df` on 2026-09-10. Historical paragraphs below a
+heading describe how a finding was originally discovered; when they conflict
+with a later narrowing note, the later note is authoritative.
 
 ---
 
@@ -22,19 +30,26 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
   are rejected 401 by `AuthorizationFilter` before handler argument resolution; directory
   `JwtAuthFilter` returns after 401 on invalid tokens (PR #64). The EL1008E path is unreachable.
 
-### B4. Order integrity gaps: client-priced shipping, no owner — OPEN (Medium)
+### B4. Order integrity gap: client-priced shipping — OPEN (Medium; owner half fixed)
 - `OrderManagerImpl.java` trusts client `deliveryAmount` (send `0` = free
   shipping — only non-negativity is checked); `CustomerOrder` has no owner
   column, `OrderController` takes no `@TargetUser`. Already fixed on master:
   server-side unit pricing from `Product`, atomic stock reservation via
   `decreaseStockIfAvailable` with whole-order rollback, per-line quantity cap
   (`MAX_ITEM_QUANTITY`, PR #77) and `product.isActive()` rejection (PR #77).
-- Fix remainder: compute freight server-side, persist owner. Tests for each.
+- Re-verified at `a4906df`: ownership is fixed. `CustomerOrder.ownerExternalId`
+  is non-null, and `OrderController` passes the authenticated principal's
+  external id. The remaining defect is that `deliveryAmount` is still copied
+  from the request and only checked for non-negativity. Compute freight
+  server-side or validate a signed/server-held quote; test that a caller cannot
+  select free shipping.
 
-### B7. Unbounded pagination + `getAllOrders()` full-table scan — OPEN (Low-Medium, paged-listing half FIXED in PR #82; `getAllOrders()` full-table scan remains)
+### B7. Pagination bounds and order full-table scan — INVALID (pagination fixed; order remainder consolidated into AE3)
 - `ProductController.java:50-59,62-81`, `CategoryController.java:35-43` accept
   raw `page`/`size` (`size=Integer.MAX_VALUE` dumps table; negative page → 500).
-- Fix: cap size (`@Max(100)`), `@Min(0)` page. Tests: oversized/negative clamped.
+- Re-verified at `a4906df`: all listing controllers clamp page to at least 0
+  and size to 1..100. The remaining `getAllOrders()` issue is tracked once, in
+  AE3, instead of as a duplicate here.
 
 ### B8. In-memory rate-limit state (statelessness violation) — OPEN (Medium, strategic)
 - `RateLimitFilter.java:29,55-65` holds `ConcurrentHashMap<String,
@@ -43,7 +58,7 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
 - Fix (strategic, needs decision): shared store (Redis/DB) or gateway; trust
   `X-Forwarded-For` only from configured proxies. Short-term: document + bound.
 
-### B9. JWT filter flaws on both services — OPEN (Medium; product half mostly fixed on master, remainder narrowed)
+### B9. Product authentication depends on synchronous directory validation — OPEN (Low-Medium; original filter bugs fixed)
 - Directory `JwtAuthFilter.java:33-34,44-52`: `contains("/refresh-token")`
   over-matches; falls through to chain after 401 instead of returning.
   (Directory slice FIXED in PR #64: exact path+method match, return after 401.
@@ -59,7 +74,13 @@ Status legend: `OPEN` = to fix, `IN REVIEW` = PR open, `INVALID` = stale on re-v
   per-request-build claim is stale. Still real: `.block()` on the servlet
   thread (every authenticated product request waits up to 5s on directory) and
   any directory outage turning every authenticated product request into a 503.
-  The negative-validation cache remains the remaining worthwhile hardening.
+  Re-verified at `a4906df`: the directory filter defects, per-request
+  `WebClient` construction, missing timeout, and fall-through behavior are all
+  fixed. The remaining architectural concern is one blocking remote directory
+  validation per authenticated product request, making directory latency and
+  availability part of every protected request. A local-verification or short,
+  revocation-aware cache design needs an explicit security tradeoff; a negative
+  cache is not automatically safe.
 
 ## AZ. AuthN and AuthZ boundaries (Lens 2 hunt, 2026-09-08)
 
@@ -172,21 +193,22 @@ finding below.
 
 ## K. Concurrency and statelessness (Lens 8 hunt, 2026-09-05)
 
-### K5. `TokenCleanupService` scheduler runs on every pod with no distributed lock — OPEN (Low)
+### K5. `TokenCleanupService` scheduler runs on every pod with no distributed lock — DEFERRED (Low; harmless unless multi-instance cost matters)
 - `directory/.../service/TokenCleanupService.java:23` (`@Scheduled`
   `fixedDelay`, enabled by `@EnableScheduling` in
   `directory/.../DirectoryApplication.java:10-12`) deletes expired tokens via
-  a single idempotent bulk query, so concurrent runs are harmless — but in a
-  multi-instance deployment every pod fires the purge hourly and logs
-  `Purged [N]...` independently (duplicate work + duplicate log lines, no
-  coordination). `fixedDelay` prevents overlap within one JVM only.
+  a single idempotent bulk query, so concurrent runs are harmless. In a
+  multi-instance deployment every pod still attempts the purge hourly, but
+  only instances that actually delete rows log `Purged [N]...`; the practical
+  cost is redundant queries/lock contention, not guaranteed duplicate log
+  lines. `fixedDelay` prevents overlap within one JVM only.
   Found by Lens 8 hunt, 2026-09-06.
 - Fix: distributed lock (ShedLock) or document single-scheduler topology.
   Tracked, not silently fixed.
 
 ## L. Frontend auth flow (Lens 9 hunt, 2026-09-05)
 
-### L3. `/checkout` requires auth but implements a guest ghost-user flow — OPEN (Medium)
+### L3. `/checkout` requires auth but implements a guest ghost-user flow — DEFERRED (Medium; product decision required)
 - `frontend/natiart-app/src/app/app.routes.ts:37` guards `/checkout` with
   `authGuard`, so anonymous users bounce to `/login` before
   `createUserIfGuestCheckout` (`checkout.component.ts:237-289`) can ever take
@@ -206,18 +228,20 @@ finding below.
 
 ## M. Frontend data identity (Lens 10 hunt, 2026-09-05)
 
-### N2. Ghost endpoint email-enumeration oracle — OPEN (Medium)
-- Same code: pre-existing `USER` email → `ResourceAlreadyExistsException`
-  (`UserManager.java:97-100`, → 409) while a fresh email → `200` with tokens
-  and a pre-existing `GHOST` email → `200` with tokens (N1). Three distinguishable
-  outcomes let an anonymous caller enumerate which emails are registered and
-  which are ghost checkouts. Product-service has no rate limiting (B8), so the
-  oracle is unthrottled.
+### N2. Ghost endpoint exposes fresh-versus-existing email status — OPEN (Low-Medium; narrowed and weakly rate-limited)
+- Re-verified at `a4906df`: any pre-existing email, whether `USER` or `GHOST`,
+  now returns 409 without tokens; a fresh email returns 200 with tokens. The old
+  three-outcome claim is stale, but the two-outcome enumeration signal remains.
+  The directory `RateLimitFilter` covers `/register-ghost-user` at 10 requests
+  per minute per client key; B8 explains why that in-memory,
+  caller-`X-Forwarded-For`-derived throttle is not a durable distributed bound.
 - Repro: `POST /register-ghost-user` with `taken-user@example.com` → 409 vs
   `nobody@example.com` → 200.
-- Fix: uniform response for existing emails (no tokens, same status), plus
-  rate-limit/count KPIs when B8 lands. Tests: all three email classes return
-  the identical unauthenticated response shape.
+- Fix requires redesign rather than a cosmetic status change: immediate guest
+  authentication inherently differs from rejection of an existing account.
+  Options include verified email ownership, an opaque continuation flow, or an
+  accepted/rate-limited enumeration tradeoff. Never issue tokens for an
+  existing address without proof of ownership.
 
 ### Q3. `TopBannerComponent` rotation/destroy logic has a should-create-only spec — INVALID (fixed by PR #236)
 - `frontend/natiart-app/src/app/product/components/customer/dashboard/top-banner/top-banner.component.ts:37-68`
@@ -304,11 +328,13 @@ service `build.gradle.kts` files and both CI workflows for scope/reproducibility
 gaps. The former grouped Dependabot majors were superseded by verified
 replacement PRs #241 (Spring) and #242 (Angular), both now merged.
 
-### T5. No Gradle dependency locking / checksum verification; no audit gate in CI — OPEN (Low)
+### T5. No Gradle dependency locking / checksum verification; no audit gate in CI — DEFERRED (Low; supply-chain policy decision)
 - Repo has no `backend/gradle.lockfile` (or any `*.lockfile`) and no
-  `gradle/verification-metadata.xml`, so backend builds float on transitive
-  ranges and cannot reproduce bit-identical graphs or fail on tampered
-  artifacts. CI (`.github/workflows/backend_workflow.yml`,
+  `gradle/verification-metadata.xml`, so the resolved graph is not explicitly
+  locked and downloaded artifacts are not checksum-verified by repository
+  policy. Exact declared versions and the Spring BOM still provide substantial
+  reproducibility; this is defense-in-depth, not proof that current builds
+  already resolve differently. CI (`.github/workflows/backend_workflow.yml`,
   `frontend_workflow.yml`) runs build+test only — advisories surface solely
   via monthly grouped dependabot PRs, which then bundle safe patches behind
   red majors (T1/T3).
@@ -596,15 +622,19 @@ listing uses a fetch join. Cleared as non-findings: `findAllIds*` id-page querie
 directory `findByUser`/`findByJti*` single-row lookups (no fan-out). AE1-AE3
 below are runner-ups.
 
-### AE3. `getAllOrders` unbounded `findAll` will N+1 on items when wired — OPEN (Low)
+### AE3. `getAllOrders` is unbounded and returns lazy items when wired — DEFERRED (Low; no read endpoint)
 - `service/OrderManagerImpl.java:51-53` returns `orderRepository.findAll()`
   with no pagination; `CustomerOrder.items` is LAZY (`model/CustomerOrder.java:50-51`)
   and `OrderDto.from` (`dto/OrderDto.java:47-49`) streams the items, so each
   order costs one extra select the moment an admin list endpoint calls it
   (latent today: `controller/OrderController.java:19-23` exposes only
   `POST /orders/create`, same reason X4 stays tracked).
-- Fix: capped `Pageable` admin listing with `@EntityGraph`/fetch join on
-  `items` when the endpoint is wired (X4); until then tracked, not silently fixed.
+- Re-verified at `a4906df`: the full-table scan is real but no endpoint calls
+  it. Because the method returns entities and `open-in-view=false`, mapping in
+  a controller after the transaction closes may throw
+  `LazyInitializationException`; mapping inside a transaction without a fetch
+  plan would instead N+1. Add capped pagination and an explicit DTO/fetch plan
+  when the read endpoint is introduced.
 
 ## AF. Frontend data identity re-hunt (Lens 10, 2026-09-07)
 
@@ -719,7 +749,7 @@ INFO/ERROR lines (registration lifecycle with asaas id, already actionable);
 only, never the token string); `main.ts:6` bootstrap `console.error`
 (single crash path). AI1-AI3 below are runner-ups.
 
-### AI1. Money-path services are log-silent: no audit trail on payment/order/shipping flows — OPEN (Medium)
+### AI1. Money paths lack successful-operation audit logs — OPEN (Medium; failure logging exists)
 - `AsaasPaymentService.java`, `ShippingService.java`, `OrderManagerImpl.java`
   and `CartManagerImpl.java` contain zero `slf4j`/`Logger` references
   (verified per-file). Payment creation/status (`createPayment`,
@@ -734,6 +764,10 @@ only, never the token string); `main.ts:6` bootstrap `console.error`
   failure (R2 covers the failure half). Tests: ListAppender asserts the
   audit line carries the payment id; response bodies stay static.
   Tracked, not silently fixed.
+- Re-verified at `a4906df`: `AsaasPaymentService` and `ShippingService` now
+  log provider failures, so the original "zero logger references" wording is
+  stale. Successful payment creation, order creation/status changes, shipping
+  estimates, and cart operations still lack a coherent audit trail.
 
 ### AI2. Per-request INFO logs on hot catalog/cart read paths — OPEN (Low)
 - `ProductController.java` (6 INFO sites: every GET including
@@ -767,7 +801,7 @@ signup/admin screens (idiomatic HttpErrorResponse lambda parameter, not a
 hidden contract). AJ1-AJ3 below are runner-ups; B11+S6 fixed in flight this
 cycle.
 
-### AJ3. `GET /images` breaks product resource nesting — OPEN (Low)
+### AJ3. `GET /images` is not nested under the product resource — DEFERRED (Low; API-style preference, not a correctness defect)
 - `controller/ProductController.java:123` serves `GET /images` while every
   sibling product route nests under `/products`; the storefront calls it via a
   separate `apiUrlImages` base (`product.service.ts:59`).
@@ -809,7 +843,7 @@ branches were closed.
 Cleared as non-findings: prod `npm audit` (clean); the former Spring Boot and
 Angular/TypeScript major decisions are complete in PRs #241/#242.
 
-### AL1. Moderate `qs` advisory in the dev-only karma chain — OPEN (Low)
+### AL1. Moderate `qs` advisory in the dev-only karma chain — INVALID (resolved; current audit is clean)
 - Full `npm audit` reports 2 moderate `qs` advisories
   (`GHSA-x5fp-wj9c-mxmx` array-limit bypass, `GHSA-4mjr-xmp4-gh2g` DoS)
   via `node_modules/karma/node_modules/body-parser` → nested `qs`
@@ -824,8 +858,11 @@ Angular/TypeScript major decisions are complete in PRs #241/#242.
   binaries) and never touches `qs`/`body-parser`. The only real fix is the
   Karma upgrade remains the likely remediation; the old Dependabot reference
   is no longer applicable.
+- Re-verified at `a4906df`: `npm audit --json` reports zero vulnerabilities
+  across production and development dependencies. The Angular/Karma upgrade
+  resolved the former nested advisory.
 
-### AL2. Workflow action versions drift across workflows; all use mutable tags — OPEN (Low)
+### AL2. Workflow actions use mutable major tags — OPEN (Low; version-drift half fixed)
 - `.github/workflows/guidelines-consistency.yml:51` and
   `frontend_workflow.yml:34,37` pin `actions/checkout@v7` /
   `actions/setup-node@v7`, while `backend_workflow.yml:32,35,41,49,63,66,72,80`
@@ -863,7 +900,7 @@ cross-type reconciliation, not wire corruption), `AsaasPaymentCreationRequest`
 nested `Discount`/`Interest`/`Fine`/`Split` `Double` knobs (never populated
 by `from()`, upstream optionals only).
 
-### AM1. Payment creation has no idempotency guard; charge-then-save is non-atomic — INVALID (fixed by PR #213)
+### AM1. Order-less payment creation has no idempotency guard and remains charge-then-save — OPEN (Medium; order-linked half fixed by PR #213)
 - `controller/PaymentController.java:26-32` (`POST /payments/create`) takes no
   idempotency key, and `service/AsaasPaymentService.java:88-100` charges Asaas
   upstream first, then persists the local `Payment` row outside any
@@ -886,6 +923,12 @@ by `from()`, upstream optionals only).
   Residual: order-less charges (no `orderId`) are still charge-then-save, and
   a concurrent same-order double POST can still double-charge before the
   unique constraint fails the second save loud.
+- Re-verified at `a4906df`: order-linked payments replay the existing ledger
+  entry and use a unique `Payment.orderId` backstop. `orderId` is still
+  optional, however, so order-less charges retain the original no-key,
+  upstream-charge-then-local-save failure mode. This item can close when the
+  storefront always creates an order and the API requires `orderId`, or when
+  order-less charges gain their own idempotency key.
 
 ## AN. N+1 queries and pagination (Lens 5 hunt, 2026-09-07)
 
@@ -909,7 +952,7 @@ queries (indexed id-only selects); `existsByCategory`/`existsByPackaging`
 (single `SELECT 1` guards); directory-service (single-row lookups only, no
 `findAll`, no listing endpoint).
 
-### AE4. `getOrderById` fans out over order items and their products — OPEN (Low)
+### AE4. `getOrderById` returns an order with lazy items and eager line products — DEFERRED (Low; no read endpoint)
 - `service/OrderManagerImpl.java:43-47` loads the order with plain `findById`,
   then `dto/OrderDto.java:47-49` streams `customerOrder.getItems()` (LAZY
   `CustomerOrder.items`, `model/CustomerOrder.java:50-51`), and each
@@ -922,7 +965,10 @@ queries (indexed id-only selects); `existsByCategory`/`existsByPackaging`
   query when the admin/single-order read endpoint is wired (with X4/AE3).
   Tests: single-order read issues a bounded query count (Hibernate
   statistics), items present. Found by Lens 5 hunt, 2026-09-07.
-  Tracked, not silently fixed.
+  Re-verified at `a4906df`: no read endpoint calls it. As with AE3, mapping
+  after the transaction closes can fail on the lazy collection; mapping inside
+  the transaction without a fetch plan can fan out. Add a dedicated fetch
+  query and DTO boundary when the endpoint is introduced.
 ## AQ. Concurrency and statelessness (Lens 8 hunt, 2026-09-07)
 
 Hunt method: grepped `backend/` for cross-request in-memory state
@@ -1033,7 +1079,7 @@ pix-payment param subscription (follows the routed id, null maps to
 id-less cards; cart `@for` track by `cartItemId`. AS1-AS2 below are
 runner-ups.
 
-### AS1. `loadCartFromLocalStorage` restores unvalidated persisted identity — OPEN (Low)
+### AS1. `loadCartFromLocalStorage` restores unvalidated persisted identity — INVALID (fixed by PR #238)
 - `frontend/natiart-app/src/app/product/service/cart.service.ts:147-162`
   `JSON.parse`s the `natiart-cart` entry with no shape check: a stale or
   hand-edited entry with a missing/duplicate `cartItemId` or a null
@@ -1047,8 +1093,11 @@ runner-ups.
   regenerate colliding/blank ids, drop null-product lines before emit.
   Spec: tampered payload restores only the valid lines.
   Found by Lens 10 hunt, 2026-09-07.
+- Re-verified at `a4906df`: `sanitizeRestoredCart` now drops malformed lines,
+  validates product/id/quantity fields, and regenerates duplicate cart-item
+  ids before emitting the restored cart.
 
-### AS2. `product-list` image map never prunes removed product ids — OPEN (Low)
+### AS2. `product-list` image map never prunes removed product ids — INVALID (fixed by PR #238)
 - `frontend/natiart-app/src/app/product/components/customer/dashboard/product-list/product-list.component.ts:65-81`
   only adds map entries (with a re-fetch guard) but has no removal pass
   for ids that left the list, unlike the cart sibling
@@ -1061,6 +1110,9 @@ runner-ups.
   emission) and revoke-before-overwrite in `fetchImage`. Spec: emission
   that drops a product revokes its URL and deletes the key.
   Found by Lens 10 hunt, 2026-09-07.
+- Re-verified at `a4906df`: `updateProductImages` builds the live id set,
+  revokes and deletes removed entries, and `fetchImage` revokes before
+  replacing a URL.
 
 ## AT. Test quality (Lens 13 hunt, 2026-09-07)
 
@@ -1243,7 +1295,7 @@ stay capped with destroy teardown. Two runner-ups below are new.
   `clearTimeout` on manual dismiss, clear all in `ngOnDestroy`. Spec: pending
   alerts + destroy → no post-destroy mutation; dismiss-then-fire stays a no-op.
 
-### AY2. Admin `dragEnded` defers a state write on a bare zero-delay timer — OPEN (Low)
+### AY2. Admin `dragEnded` defers a state write on a bare zero-delay timer — DEFERRED (Low; negligible one-macrotask retention)
 - `frontend/natiart-app/src/app/product/components/admin/admin-product-management/admin-product-management.component.ts:417-419`:
   `dragEnded()` sets `isDragging = false` inside an untracked `setTimeout(..., 0)`
   while the sibling `pendingAlertsTimer` (`:62`, `:123-128`) is handle-tracked
@@ -1274,7 +1326,7 @@ is rejected by `ShippingService` at construction; zero Authorization-header
 or token-bearing log statements; no `server.error.include` overrides (Boot 3
 defaults never leak messages on 500); properties files are pure ASCII.
 
-### AZ2. `ControllerAdvice` echoes raw `IllegalArgumentException` messages into 400 bodies — INVALID (fixed by PR #211)
+### AZ2. Generic `IllegalArgumentException` handlers still echo raw messages — OPEN (Low; number-format half fixed by PR #211)
 - `backend/directory-service/src/main/java/com/saas/directory/configuration/ControllerAdvice.java:46-49`
   and
   `backend/product-service/src/main/java/com/portcelana/natiart/configuration/ControllerAdvice.java:36-38`
@@ -1288,6 +1340,12 @@ defaults never leak messages on 500); properties files are pure ASCII.
   (keep the deliberate guard-failure path); log the raw message server-side at
   DEBUG with the correlation context. Tests: an IAE with an
   internals-bearing message maps to a static body.
+- Re-verified at `a4906df`: both advice classes still return
+  `IllegalArgumentException.getMessage()`. PR #211 added a static
+  `NumberFormatException` handler and several upstream parsers now throw static
+  messages, but the generic reflection path remains. Narrow the handler or
+  distinguish explicit client-validation exceptions from machine/upstream
+  parsing failures.
 
 ## BB. Data integrity and transactions (Lens 4 hunt, 2026-09-09)
 
@@ -1312,7 +1370,7 @@ a separate `ownerExternalId` parameter sourced from the resolved principal
 and never reads `orderDto.getOwnerExternalId()`, so a forged body owner is
 ignored by construction — pinned by `createOrderIgnoresClientSuppliedOwnerInBody`).
 
-### BA4. `getOrderById`/`getAllOrders` still owner-unaware — OPEN (Low)
+### BA4. `getOrderById`/`getAllOrders` still owner-unaware — DEFERRED (Low; no read endpoint)
 - `service/OrderManagerImpl.java:43-54` reads by id / full-table with no owner
   scope, and `dto/OrderDto.java` now round-trips `ownerExternalId`. Latent
   today: `controller/OrderController.java:19-23` exposes only
@@ -1329,7 +1387,7 @@ ignored by construction — pinned by `createOrderIgnoresClientSuppliedOwnerInBo
   freight half needs a product decision (reprice via `ShippingService` inside
   order creation vs a quoted-freight token), so it stays tracked, not silently
   fixed.
-### BA1. Successful payment never moves the order out of PENDING — INVALID (fixed by PR #213)
+### BA1. Successful payment never moves the order out of PENDING — OPEN (Medium; not fixed by PR #213)
 - `service/OrderManager.java:16` declares `updateOrderStatus` but nothing calls
   it: repo-wide grep for `updateOrderStatus|OrderStatus.PAID|setStatus` in
   `backend/product-service/src/main` hits only the declaration, the
@@ -1345,8 +1403,13 @@ ignored by construction — pinned by `createOrderIgnoresClientSuppliedOwnerInBo
   payment event counts as paid. Tests: completed payment flips the linked
   order; failed payment leaves it `PENDING`.
   Tracked, not silently fixed.
+- Re-verified at `a4906df`: `updateOrderStatus` is referenced only by its
+  interface, implementation, and tests. Neither payment creation nor payment
+  status polling calls it, so a linked successful payment still leaves the
+  order `PENDING`. PR #213 added transition guards and payment idempotency but
+  did not wire the payment-to-order transition.
 
-### BA2. Status guard check-then-update can interleave under concurrency — OPEN (Low)
+### BA2. Status guard check-then-update can interleave under concurrency — DEFERRED (Low; no status endpoint)
 - `service/OrderManagerImpl.java:111-127` (X4 guard, in flight this cycle)
   reads the current status via `getOrderById`, validates against
   `ALLOWED_TRANSITIONS`, then fires the bulk `updateStatusById`: two racing
@@ -1513,16 +1576,16 @@ dimension/pixel caps (`ImageConversionService.java:20-21,73-96`, pinned by
 exists, so zip-slip on extraction is N/A (zip creation only). BD1-BD3 below
 are the runner-ups.
 
-### BD1. No per-request image count cap on product create/update — OPEN (Low)
+### BD1. No per-request image count cap on product create/update — OPEN (Low; bounded by 100 MB total request size)
 - `controller/ProductController.java:140-154` (`processImages`) forwards an
   unbounded `List<MultipartFile>` to
   `service/ImageConversionService.java:23-33` (`convertToWebP`), which decodes
   each entry to a full `BufferedImage` (up to `MAX_PIXELS = 24_000_000`,
-  ~96MB heap each) via `parallelStream` in
-  `service/ProductManagerImpl.java:255-262` (`processImages`). Byte caps bound
-  the request (10MB/file, 100MB/request,
-  `application.properties:20-21`), but nothing caps the image COUNT: a
-  100MB request can carry ~10 max-size images decoded concurrently.
+  ~96MB heap each). Conversion is sequential in `ImageConversionService`;
+  `ProductManagerImpl` uses `parallelStream` only for uploading the already
+  converted files. Byte caps bound the request (10MB/file, 100MB/request,
+  `application.properties:20-21`), but nothing caps the image count, and all
+  converted results are retained until the batch completes.
   Blast radius is admin-only (`POST /products/create` and
   `PUT /products/{productId}` both carry `@PreAuthorize("hasRole('ADMIN')")`,
   `ProductController.java:82,98`), hence Low.
@@ -1548,7 +1611,7 @@ are the runner-ups.
   never 500; `file:` outside allowed roots stays 404.
   Found by Lens 7 hunt, 2026-09-09.
 
-### BD3. `downloadFiles`/`downloadDirectory` zip unbounded input with no caps — OPEN (Low)
+### BD3. `downloadFiles`/`downloadDirectory` zip unbounded input with no caps — DEFERRED (Low; no request caller)
 - `storage/StorageFileSystem.java:133-147` (`downloadFiles`) zips an
   unbounded `Set<URI>` and `:171-187` (`downloadDirectory`) zips a whole
   directory tree recursively, both via uncaped `TempFile` staging and with no
@@ -1581,7 +1644,7 @@ clamp is user-visible via quantity re-render); `personalization-modal`
 submit-guard `console.warn` is an unreachable-UI branch. BF1-BF2 below are
 new.
 
-### BF1. PIX confirmation falls into an eternal spinner after a transient QR-load failure — OPEN (Low)
+### BF1. PIX confirmation can show a spinner for up to five minutes after a transient QR-load failure — OPEN (Low; duration corrected)
 - `frontend/natiart-app/src/app/product/components/customer/checkout/pix-payment-confirmation/pix-payment-confirmation.component.ts:57-62`
   (`loadQrCode`) sets `paymentStatus = 'ERROR'` on a QR load failure but
   leaves `qrCodeData` null and does NOT stop the status polling started in
@@ -1591,11 +1654,11 @@ new.
   (`pix-payment-confirmation.component.html:63-68`), with `qrCodeData`
   still null the `@if (qrCodeData)` QR branch and the
   `@else if (paymentStatus === 'ERROR')` error branch both miss, so the
-  `@else` "Loading payment details…" spinner (`:66-68`) renders forever —
-  the component never re-fetches the QR, and the 60-attempt poll merely
-  keeps status PENDING until the tab is closed. Degraded UX only (no data
-  loss; user can navigate back), but exactly the Lens-12 "spinner stuck on
-  failure" class on a payment page. Found by Lens 12 hunt, 2026-09-09.
+  `@else` "Loading payment details…" spinner (`:66-68`) renders until the
+  60-attempt poll expires after about five minutes and restores `ERROR`; the
+  component never re-fetches the QR. Degraded UX only (no data loss; user can
+  navigate back), but exactly the Lens-12 "spinner stuck on failure" class on
+  a payment page. Found by Lens 12 hunt, 2026-09-09.
 - Fix: in `loadQrCode`'s error handler call `stopPolling()` so ERROR is
   terminal, or re-issue the QR fetch when polling reports a live status
   while `qrCodeData` is missing. Spec: QR failure + successful status poll
@@ -1637,7 +1700,7 @@ both paths, `isSubmitting` reset on both paths — O2 admin half FIXED on
 master); admin `fetchImagePreview` error path (`showAlert`, `:365-367`).
 BE1-BE2 below are the runner-ups.
 
-### BE1. Checkout card-payment path writes an info message it clears in the same tick — OPEN (Low)
+### BE1. Checkout card-payment path writes an info message it clears in the same tick — DEFERRED (Low; cosmetic dead update)
 - `frontend/natiart-app/src/app/product/components/customer/checkout/checkout.component.ts:354-359`:
   `setInfoMessage('Processing card payment...')` is followed synchronously by
   `setErrorMessage('Card payment is not yet implemented.')` and
@@ -1716,7 +1779,7 @@ synchronously from the `BehaviorSubject` that `setAuthTokensAndUser`'
 s inner `fetchCurrentUser` already populated via `tap` — no stale-user
 race. Two runner-ups below are new.
 
-### BG1. Multi-tab carts silently clobber each other, no `storage`-event sync — OPEN (Low)
+### BG1. Multi-tab carts silently clobber each other, no `storage`-event sync — DEFERRED (Low; product feature decision)
 - `frontend/natiart-app/src/app/product/service/cart.service.ts:18-22,133-162`:
   the cart lives in a memory array mirrored to `localStorage` (`natiart-cart`)
   on every mutation, and `loadCartFromLocalStorage` runs once in the
@@ -2026,7 +2089,7 @@ oversell through `createOrder` is impossible); server-computed line
 prices/total; per-line and whole-request caps. BR1-BR2 below are
 runner-ups.
 
-### BR1. CANCELLED transition never restores reserved stock; no restock path exists — OPEN (Low, latent)
+### BR1. CANCELLED transition never restores reserved stock; no restock path exists — DEFERRED (Low; no status endpoint)
 - `service/OrderManagerImpl.java:102-119` permanently decrements stock via
   `productRepository.decreaseStockIfAvailable`, but
   `service/OrderManagerImpl.java:125-145` (`updateOrderStatus`) only flips
@@ -2077,7 +2140,7 @@ PR #227; BI4 is invalid after the AZ2 rename; AX1 remains OPEN (frontend
 refresh no-timeout). BT1
 below is a runner-up.
 
-### BT1. `UserRegistrationListener` recover's 400 branch is unreachable; every Asaas 4xx logs "CRITICAL … manual intervention" — OPEN (Low)
+### BT1. Asaas registration exception wrapping defeats retry/recovery classification — OPEN (Medium; broader than the original 400 branch)
 - `service/AsaasUserManager.java:60-64` catches every `HttpClientErrorException`
   and rethrows `mapAsaasError` → `AsaasApiException`, so no 4xx ever reaches the
   retry layer. But `listener/UserRegistrationListener.java:63-78` — the
@@ -2102,6 +2165,13 @@ below is a runner-up.
   `BadRequest` branch; consider a total-elapsed budget cap on the retry.
   Tests: registerUser 400 → recover logs the permanent branch, never
   CRITICAL; 5xx → CRITICAL. Tracked, not silently fixed.
+- Re-verified at `a4906df`: `AsaasUserManager` maps 4xx to
+  `AsaasApiException` and wraps 5xx/timeouts in plain `Exception`; neither
+  shape matches the retry annotation's declared retry/no-retry exception
+  classes. Consequently the problem is broader than a dead 400 recovery
+  branch: transient failures may also bypass the intended retry policy. Keep
+  provider exception types intact or classify the mapped exception explicitly,
+  then test attempt counts as well as recovery logging.
 
 ## BU. N+1 queries and pagination (Lens 5 hunt, 2026-09-10)
 
@@ -2259,7 +2329,7 @@ test asserts through them); zero assert-free frontend specs; zero skipped
 backend tests. AT1/AT2/Q3/Q4 (the should-create-only family) fixed in flight
 this cycle (PR #236). One new finding below.
 
-### BW1. `CartService.updateItemQuantity` removal branch is unreachable — OPEN (Low)
+### BW1. `CartService.updateItemQuantity` removal branch is unreachable — INVALID (fixed by PR #238)
 - `frontend/natiart-app/src/app/product/service/cart.service.ts:82-90`:
   `Math.max(1, Math.min(quantity, item.product.stockQuantity))` guarantees
   `newQuantity >= 1`, so the `newQuantity <= 0` branch calling
@@ -2271,3 +2341,6 @@ this cycle (PR #236). One new finding below.
   `removeFromCart`'s job) or let 0 pass through to removal — and align the
   specs. Found by Lens 13 hunt, 2026-09-10.
   Tracked, not silently fixed.
+- Re-verified at `a4906df`: the dead branch is gone. The method explicitly
+  floors quantities at one and documents that removal belongs to
+  `removeFromCart`; tests pin that contract.
