@@ -68,11 +68,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (WebClientResponseException.Unauthorized | WebClientResponseException.Forbidden e) {
                 SecurityContextHolder.clearContext();
+                if (isPublicRead(request)) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 return;
             } catch (Exception e) {
                 LOGGER.warn("Token validation is temporarily unavailable: {}", e.getMessage());
                 SecurityContextHolder.clearContext();
+                if (isPublicRead(request)) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
                 response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, "Authentication service unavailable");
                 return;
             }
@@ -86,5 +94,24 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return bearerToken.substring(7);
         }
         return null;
+    }
+
+    /**
+     * Catalog resources are intentionally public. A stale browser token must
+     * not turn those reads into an authentication outage; method security still
+     * protects authenticated endpoints after the request continues anonymously.
+     */
+    private boolean isPublicRead(HttpServletRequest request) {
+        if (!"GET".equalsIgnoreCase(request.getMethod())) {
+            return false;
+        }
+        final String path = request.getRequestURI();
+        return path.equals("/products")
+                || path.startsWith("/products/")
+                || path.equals("/categories")
+                || path.startsWith("/categories/")
+                || path.equals("/packages")
+                || path.startsWith("/packages/")
+                || path.equals("/images");
     }
 }
