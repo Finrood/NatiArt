@@ -82,7 +82,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
     });
   }
 
-  @HostListener('window:resize', ['$event'])
+  @HostListener('window:resize')
   onResize(): void {
     this.isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   }

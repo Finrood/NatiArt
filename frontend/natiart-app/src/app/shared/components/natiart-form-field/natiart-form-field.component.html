@@ -63,7 +63,7 @@
       }
       @if (control?.errors?.['minlength']) {
         <p>
-          Minimum length {{ control?.errors?.['minlength'].requiredLength }} characters
+          Minimum length {{ control!.errors!['minlength'].requiredLength }} characters
         </p>
       }
       @if (control?.errors?.['pattern']) {
