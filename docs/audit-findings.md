@@ -2027,7 +2027,7 @@ runner-ups.
   decremented once.
   Tracked, not silently fixed.
 
-## BT. N+1 queries and pagination (Lens 5 hunt, 2026-09-10)
+## BU. N+1 queries and pagination (Lens 5 hunt, 2026-09-10)
 
 Hunt method: re-ran the Lens 5 enumeration on current master (every
 repository query, every derived-query call site, page/size caps on all four
@@ -2044,9 +2044,9 @@ BC1 still OPEN. Cleared as non-findings: `deleteCartItem` /
 `decreaseCartItemQuantity` load-then-delete (intentional — the documented
 `Personalization` cascade needs managed entities,
 `repository/CartItemRepository.java:60-68`); category/package listings
-(scalar-only DTOs). BT1 below is the runner-up.
+(scalar-only DTOs). BU1 below is the runner-up.
 
-### BT1. Cart add path maps through the DTO off the non-fetching derived lookup — OPEN (Low)
+### BU1. Cart add path maps through the DTO off the non-fetching derived lookup — OPEN (Low)
 - `service/CartManagerImpl.java:50` returns
   `CartItemDto.from(getCartLineOrDie(...))`, and `getCartLineOrDie`
   (`:92-97`) uses the derived `findCartItemByUsernameAndProduct`
