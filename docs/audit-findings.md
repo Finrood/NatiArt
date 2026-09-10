@@ -1867,3 +1867,51 @@ anonymous at the filter layer via `anyRequest().authenticated()`, so the
 SpEL `@TargetUser` never evaluates on `anonymousUser` — unlike
 product-service, which needs its resolver because its chain is
 `permitAll()`). No new actionable items — no new `###` sections appended.
+
+## BO. Secrets and configuration re-hunt (Lens 3, 2026-09-10)
+
+Hunt method: grepped `backend/` for token/password/secret log arguments,
+hard-coded `http(s)://` in main code, every `@Value` site and its property
+default; diffed all `application*.properties` profiles per service and all
+three `src/environments/environment*.ts` shapes; grepped the storefront for
+token-bearing `console.log`. Re-verified this cycle: AI4/B10 fixed in flight
+on `fix/directory-auth-log-hygiene` (CredentialsDto now `@NotBlank @Email
+@Size`, login takes `@Valid`; directory loggers now `private static final
+LOGGER` with own-class owners); AZ1 still OPEN (NFE half already static via
+`handleNumberFormatException`, Asaas `valueOf` parsers fail closed with static
+messages, deliberate IAE validation messages stay pinned by
+`ControllerAdviceTest` — the catch-all IAE echo remains for machine-generated
+inputs); Y4 still OPEN (both `application-production.properties` still pin no
+payment/shipping/directory endpoints). Cleared as non-findings: frontend envs
+correctly split (`environment.production.ts` points at
+`https://natiart.samuelpetre.com/server/*`, dev mirrors localhost);
+`authentication.service.ts:246` token-decode log records only the exception,
+never the token string; Asaas keys carry no property default so boot fails
+closed when unset; JWT blank secret throws at construction
+(`UserAuthenticationProvider.java:66-74`); sandbox URLs as `@Value` defaults
+fail safe (misconfiguration charges sandbox, never real money); properties
+files pure ASCII. BO1-BO2 below are runner-ups.
+
+### BO1. `TokenManager` echoes client-presented `jti` into 400 bodies — OPEN (Low)
+- `service/TokenManager.java:39` (`Token [%s] does not exist`, jti) and `:47`
+  (`Token [%s] is invalid`, jti) embed the caller-presented bearer identifier
+  in the `IllegalArgumentException` message, which
+  `configuration/ControllerAdvice.java:72` reflects verbatim
+  (`return new ResponseEntity<>(e.getMessage(), BAD_REQUEST)`). The `jti` is a
+  random UUID (not a signing secret), so exposure is Low — but it is a
+  bearer-adjacent server artifact in a client body, the same class as AZ1.
+- Fix: static "Invalid token" body for the jti paths; log the `jti`
+  server-side at DEBUG. Tests: jti-bearing IAE maps to a static body.
+  Found by Lens 3 hunt, 2026-09-10.
+
+### BO2. Production CORS default still allows `localhost:4200` — OPEN (Low)
+- Both services' `application.properties` default
+  `nati.cors.allowed-origins` to
+  `http://localhost:4200,https://natiart.samuelpetre.com`, and neither
+  `application-production.properties` overrides the key — so a prod boot
+  without `CORS_ALLOWED_ORIGINS` set silently allows the dev origin.
+  Browser-origin scope only (no server bypass), hence Low; still
+  per-environment drift under Lens 3.
+- Fix: pin prod-only origins in both production profiles (or fail fast when
+  the default includes localhost). Tests: prod profile resolves no localhost
+  origin. Found by Lens 3 hunt, 2026-09-10.
