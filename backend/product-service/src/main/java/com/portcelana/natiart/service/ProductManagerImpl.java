@@ -22,7 +22,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.portcelana.natiart.controller.ProductController;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.ProductDto;
 import com.portcelana.natiart.model.Category;
@@ -34,7 +33,7 @@ import com.portcelana.natiart.storage.StorageService;
 
 @Service
 public class ProductManagerImpl implements ProductManager {
-    public static Logger LOGGER = LoggerFactory.getLogger(ProductController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProductManagerImpl.class);
     private static final String IMAGE_BASE_PATH = "product-images/";
 
     private final ProductRepository productRepository;
