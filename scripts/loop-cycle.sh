@@ -233,7 +233,7 @@ while read -r n; do
     else
         CODE_PRS="$CODE_PRS $n"
     fi
-done < <(gh_safe gh pr list --state open --limit 100 --json number,headRefName --jq '.[] | select(.headRefName | startswith("dependabot/") | not) | .number')
+done < <(gh_safe gh pr list --state open --limit 1000 --json number,headRefName --jq '.[] | select(.headRefName | startswith("dependabot/") | not) | .number')
 OPEN_PRS=$(echo "$CODE_PRS" | wc -w | tr -d '[:space:]')
 log "Open code PRs: $OPEN_PRS"
 log "Open docs PRs:$DOCS_PRS"
@@ -324,7 +324,7 @@ while IFS=$'\t' read -r dn dcreated dtitle; do
         log "Merge of dependabot #$dn failed transiently; leaving open for next cycle."
         continue
     fi
-done < <(gh_safe gh pr list --state open --limit 100 --json number,headRefName,createdAt,title \
+done < <(gh_safe gh pr list --state open --limit 1000 --json number,headRefName,createdAt,title \
     --jq '.[] | select(.headRefName | startswith("dependabot/")) | "\(.number)\t\(.createdAt)\t\(.title)"')
 # Refresh once if anything merged above (branches may be deleted by the merge).
 if [[ "$merged" -ge 1 ]]; then
