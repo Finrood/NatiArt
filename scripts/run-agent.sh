@@ -201,7 +201,11 @@ kill_agent() { # $1 = process-group leader pid; terminate the whole attempt tree
     local pid="$1" _
     kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || return 0
     for _ in 1 2 3; do
-        kill -0 "$pid" 2>/dev/null || return 0
+        # The leader may exit before descendants do; keep waiting while either
+        # the leader or its process group still exists.
+        if ! kill -0 "$pid" 2>/dev/null && ! kill -0 -- "-$pid" 2>/dev/null; then
+            return 0
+        fi
         sleep 1
     done
     kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
