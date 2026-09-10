@@ -126,10 +126,9 @@ public class UserRegistrationListenerTest {
     void recover_shouldCompleteWithoutSideEffects_onPermanentProviderFailure() {
         // Arrange
         UserRegisteredEvent event = new UserRegisteredEvent("faileduser");
-        AsaasApiException badRequest =
-                new AsaasApiException(
-                        "Customer registration failed at the payment provider",
-                        org.springframework.http.HttpStatus.BAD_REQUEST);
+        AsaasApiException badRequest = new AsaasApiException(
+                "Customer registration failed at the payment provider",
+                org.springframework.http.HttpStatus.BAD_REQUEST);
 
         // Act
         userRegistrationListener.recover(badRequest, event);

@@ -9,12 +9,13 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+
 import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
 import com.saas.directory.event.UserRegisteredEvent;
 import com.saas.directory.model.ExternalUser;
-import com.saas.directory.service.AsaasUserManager;
 import com.saas.directory.service.AsaasApiException;
+import com.saas.directory.service.AsaasUserManager;
 import com.saas.directory.service.UserManager;
 import com.saas.directory.service.support.RetryExternalApiCall;
 

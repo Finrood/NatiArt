@@ -27,12 +27,8 @@ class AsaasUserManagerTest {
 
     @Test
     void constructor_rejectsBlankApiKey() {
-        assertThrows(
-                IllegalStateException.class,
-                () -> new AsaasUserManager("  ", CUSTOMERS_URL));
-        assertThrows(
-                IllegalStateException.class,
-                () -> new AsaasUserManager(null, CUSTOMERS_URL));
+        assertThrows(IllegalStateException.class, () -> new AsaasUserManager("  ", CUSTOMERS_URL));
+        assertThrows(IllegalStateException.class, () -> new AsaasUserManager(null, CUSTOMERS_URL));
     }
 
     @Test
@@ -70,8 +66,8 @@ class AsaasUserManagerTest {
     @Test
     void registerUser_preservesRetryableServerFailures() throws Exception {
         final RestTemplate restTemplate = org.mockito.Mockito.mock(RestTemplate.class);
-        final HttpServerErrorException upstream = HttpServerErrorException.create(
-                HttpStatus.BAD_GATEWAY, "Bad Gateway", null, null, null);
+        final HttpServerErrorException upstream =
+                HttpServerErrorException.create(HttpStatus.BAD_GATEWAY, "Bad Gateway", null, null, null);
         org.mockito.Mockito.when(restTemplate.postForObject(
                         org.mockito.ArgumentMatchers.eq(CUSTOMERS_URL),
                         org.mockito.ArgumentMatchers.any(),
