@@ -343,7 +343,7 @@ loop doc (match `scripts/systemd/` + `scripts/loop-cycle.sh:176`).
 Instruction-file fixes go in a human-review PR per the self-modification ban
 — tracked here, not silently fixed.
 
-### U2. Frontend guide still prescribes bare `ng test`, CI uses npm scripts — OPEN (Low)
+### U2. Frontend guide still prescribes bare `ng test`, CI uses npm scripts — IN REVIEW (Low)
 - `frontend/natiart-app/AGENTS.md:46` (bare `ng test`) vs reality:
   `.github/workflows/frontend_workflow.yml:53` runs
   `npm test -- --watch=false --browsers=ChromeHeadless`, and the cycle prompt
@@ -360,7 +360,7 @@ Instruction-file fixes go in a human-review PR per the self-modification ban
   (~10 days)" and `scripts/loop-cycle.sh:196` implements `SLOT % 480` →
   480 × 30 min = ~10 days. Doc and code agree; no drift remains.
 
-### U4. Frontend guide "7 files done" DI-migration count is stale — OPEN (Low)
+### U4. Frontend guide "7 files done" DI-migration count is stale — IN REVIEW (Low)
 - `frontend/natiart-app/AGENTS.md:27` claims the `inject()` migration is
   "in progress — 7 files done", but current master has 9 files using
   `= inject(` and 14 files still on constructor param-property DI
@@ -1807,7 +1807,30 @@ payment/order money path and the hot read paths.
   (page/size), and stop echoing the raw image path at INFO.
   Found by Lens 14 hunt, 2026-09-09.
 
-## BL. Injection and validation re-hunt (Lens 1, 2026-09-09)
+## BL. Instruction drift re-hunt (Lens 17, 2026-09-09)
+
+Hunt method: re-verified the four root mirrors byte-identical (`md5sum`), all
+`agents/*.md` frontmatter, workflow filenames (`backend_workflow.yml` JDK 25,
+`frontend_workflow.yml`), Spring Boot `3.5.6`, cart-route examples vs
+`CartController.java:24-47`, `event/`+`listener/` (directory),
+`helper/`/`storage/`/`service/support/` packages, `open-in-view=false` and
+`ddl-auto=update` properties, the `RateLimitFilter(int, Clock)` precedent,
+spec count 56 ("~55" holds), Angular 20 / Tailwind 4 / Adyen claims, and the
+`*ngIf`/`*ngFor`-free claim (grep hits were `*Form` substring false
+positives). U1 already FIXED (PR #199). U2 and U4 re-verified still OPEN and
+fixed in flight this cycle. One new finding appended.
+
+### BL1. Package-layout guide omits product-service's top-level support/ — IN REVIEW (Low)
+- `agents/java-modules-and-packages.md:24-34` layered-structure block lists
+  `service/support/` but not the top-level `support/` package
+  (`backend/product-service/src/main/java/com/portcelana/natiart/support/`,
+  five JPA attribute converters: `JsonJpaConverter`,
+  `ListStringJpaConverter`, `MapStringStringJpaConverter`,
+  `SetPersonalizationOptionJpaConverter`, `SetStringJpaConverter`).
+- Fix: add a `support/` line to the layout block.
+  Found by Lens 17 hunt, 2026-09-09.
+
+## BM. Injection and validation re-hunt (Lens 1, 2026-09-09)
 
 Hunt method: re-read the Lens 1 surface on current master against the AI
 baseline — grepped `backend/` for `.trim()` on client-bound fields (all
@@ -1825,3 +1848,22 @@ Re-verified this cycle: BI2, BI3, BD2 still OPEN (taken IN REVIEW in the
 (`CredentialsDto` is still an unconstrained `record(String, String)` —
 directory-service, left for a follow-up batch). No new actionable items —
 no new `###` sections appended.
+
+## BN. AuthN and AuthZ boundaries re-hunt (Lens 2, 2026-09-09)
+
+Hunt method: enumerated every `@PreAuthorize` site in product-service, every
+`@TargetUser`/`@AuthenticationPrincipal` parameter in both services, both
+`SecurityConfig` filter chains, and the directory `JwtAuthFilter`/
+`UserAuthenticationProvider.refreshToken` binding. Re-verified this cycle:
+W1 still OPEN (`ShippingController.java:22-25` still ungated, throttle still
+blocked on B8); B4 still OPEN (`OrderController.createOrder` still takes no
+`@TargetUser`, `CustomerOrder` still has no owner column);
+`PaymentController` read paths still ownership-checked via
+`requireOwnedPayment`; all four product `@TargetUser` endpoints still behind
+`isFullyAuthenticated()`; directory `/refresh-token` still binds
+`username.equals(userDto.getUsername())`
+(`UserAuthenticationProvider.java:126`); B2 stays INVALID (directory denies
+anonymous at the filter layer via `anyRequest().authenticated()`, so the
+SpEL `@TargetUser` never evaluates on `anonymousUser` — unlike
+product-service, which needs its resolver because its chain is
+`permitAll()`). No new actionable items — no new `###` sections appended.
