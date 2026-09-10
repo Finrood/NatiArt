@@ -33,6 +33,7 @@ import {SignupService} from "../../../../service/signup.service";
 export class SignupProfileComponent {
   @Input() profileForm!: FormGroup;
   @Input() errorMessage = '';
+  @Input() isRegistering = false;
   @Output() previousStep = new EventEmitter<void>();
   @Output() nextStep = new EventEmitter<void>();
 

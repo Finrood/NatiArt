@@ -34,8 +34,10 @@ export class AuthenticationService implements OnDestroy {
   );
 
   private destroy$ = new Subject<void>();
+  private readonly removeTokensClearedListener: () => void;
 
   constructor(private http: HttpClient, private router: Router, private tokenService: TokenService) {
+    this.removeTokensClearedListener = this.tokenService.onTokensCleared(() => this.updateState(null));
     this.initializeAuthState()
       .pipe(finalize(() => this.authResolvedSubject.next(true)))
       .subscribe();
@@ -71,6 +73,7 @@ export class AuthenticationService implements OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    this.removeTokensClearedListener();
     if (this.inactivityTimerSubscription) {
       this.inactivityTimerSubscription.unsubscribe();
     }
@@ -128,6 +131,7 @@ export class AuthenticationService implements OnDestroy {
       catchError(error => {
         if (error.status === 401) {
           this.resetAuthStateAndRedirect();
+          return throwError(() => new Error(`Failed to fetch user. Status: ${error.status}. Details: ${error.message}`));
         }
         return this.handleError(error, 'Failed to fetch user');
       })

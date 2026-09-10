@@ -56,7 +56,7 @@
     <app-button type="button" (click)="goBack()" color="secondary" size="md">
       ← Back
     </app-button>
-    <app-button type="submit" [disabled]="profileForm.invalid" color="primary" size="md" [block]="true">
+    <app-button type="submit" [disabled]="profileForm.invalid || isRegistering" color="primary" size="md" [block]="true">
       Complete Registration
     </app-button>
   </div>

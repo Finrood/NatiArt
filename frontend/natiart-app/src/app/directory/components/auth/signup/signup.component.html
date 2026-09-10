@@ -24,7 +24,7 @@
           <form (ngSubmit)="doRegisterUser()" [formGroup]="signupForm" class="mt-8">
             <div [ngSwitch]="currentStep">
               <app-signup-credentials *ngSwitchCase="1" [credentialForm]="credentialsForm" (nextStep)="onNextStep()"></app-signup-credentials>
-              <app-signup-profile *ngSwitchCase="2" [profileForm]="profileForm" [errorMessage]="errorMessage" (previousStep)="onPreviousStep()" (nextStep)="onNextStep()"></app-signup-profile>
+              <app-signup-profile *ngSwitchCase="2" [profileForm]="profileForm" [errorMessage]="errorMessage" [isRegistering]="isRegistering" (previousStep)="onPreviousStep()" (nextStep)="onNextStep()"></app-signup-profile>
             </div>
           </form>
         </div>

@@ -23,9 +23,26 @@ export class TokenService {
     TokenService.write('refreshToken', value);
   }
 
+  private readonly authStateListeners = new Set<() => void>();
+
+  /** Registers a callback invoked whenever tokens are cleared. Returns an unsubscribe function. */
+  onTokensCleared(listener: () => void): () => void {
+    this.authStateListeners.add(listener);
+    return (): void => {
+      this.authStateListeners.delete(listener);
+    };
+  }
+
   clearTokens(): void {
     this.accessToken = null;
     this.refreshToken = null;
+    for (const listener of Array.from(this.authStateListeners)) {
+      try {
+        listener();
+      } catch {
+        // One failing listener must not block the remaining session teardown.
+      }
+    }
   }
 
   private static read(key: string): string | null {

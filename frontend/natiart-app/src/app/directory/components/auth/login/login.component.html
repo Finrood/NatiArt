@@ -40,7 +40,7 @@
               </app-natiart-form-field>
             </div>
 
-            <app-button type="submit" [disabled]="loginForm.invalid" [block]="true" color="primary" size="lg">
+            <app-button type="submit" [disabled]="loginForm.invalid || isLoggingIn" [block]="true" color="primary" size="lg">
               Sign In
             </app-button>
           </form>

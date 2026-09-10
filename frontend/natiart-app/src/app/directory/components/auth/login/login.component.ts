@@ -61,6 +61,7 @@ export class LoginComponent implements OnInit {
   showPassword = false;
   loginForm: FormGroup;
   errorMessage: string = '';
+  isLoggingIn = false;
 
   constructor(
     private fb: FormBuilder,
@@ -96,6 +97,9 @@ export class LoginComponent implements OnInit {
   }
 
   doLoginUser() {
+    if (this.isLoggingIn) {
+      return;
+    }
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
       this.setErrorMessage('Please fill all required fields correctly.');
@@ -103,14 +107,17 @@ export class LoginComponent implements OnInit {
     }
 
     const credentials = this.credentialsForm.value;
+    this.isLoggingIn = true;
 
     this.authenticationService.login(credentials)
       .subscribe({
         next: (user: User) => {
+          this.isLoggingIn = false;
           this.clearErrorMessage();
           this.redirectToSavedUrlOrDashboard();
         },
         error: (error: any) => {
+          this.isLoggingIn = false;
           this.setErrorMessage('Invalid email or password. Please try again.');
           console.error('Login error:', error);
         }

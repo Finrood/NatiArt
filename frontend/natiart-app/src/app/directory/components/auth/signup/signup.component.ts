@@ -48,6 +48,7 @@ export class SignupComponent implements OnInit {
   signupForm: FormGroup;
   currentStep = 1;
   errorMessage = '';
+  isRegistering = false;
 
   constructor(
     private fb: FormBuilder,
@@ -75,6 +76,9 @@ export class SignupComponent implements OnInit {
   }
 
   doRegisterUser(): void {
+    if (this.isRegistering) {
+      return;
+    }
     if (this.signupForm.invalid) {
       this.signupForm.markAllAsTouched();
       this.setErrorMessage('Please fill all required fields correctly.');
@@ -87,15 +91,18 @@ export class SignupComponent implements OnInit {
       password: formValue.credentials.password,
       profile: formValue.profile as Profile
     };
+    this.isRegistering = true;
 
     this.signupService.registerUser(userRegistration)
       .subscribe({
         next: () => {
+          this.isRegistering = false;
           this.router.navigate(['/login'])
             .then(() => {
             });
         },
         error: (error: any) => {
+          this.isRegistering = false;
           this.setErrorMessage('Registration failed. Please try again.');
           console.error('Registration error:', error);
         }
