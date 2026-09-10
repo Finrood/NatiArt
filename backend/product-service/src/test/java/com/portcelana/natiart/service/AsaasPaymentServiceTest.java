@@ -623,6 +623,29 @@ class AsaasPaymentServiceTest {
     }
 
     @Test
+    void createPayment_missingProviderId_failsClosedBeforeLedgerSave() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        final AsaasPaymentCreationResponse upstream = mock(AsaasPaymentCreationResponse.class);
+        when(restTemplate.postForEntity(eq(PAYMENTS_URL), any(), eq(AsaasPaymentCreationResponse.class)))
+                .thenReturn(ResponseEntity.ok(upstream));
+
+        final AsaasApiException thrown = assertThrows(
+                AsaasApiException.class,
+                () -> newService(restTemplate, paymentRepository)
+                        .createPayment(
+                                new PaymentCreationRequest(
+                                        PaymentProcessor.ASAAS,
+                                        "cus_MINE",
+                                        new BigDecimal("10.00"),
+                                        PaymentMethod.PIX),
+                                "cus_MINE"));
+
+        assertEquals(HttpStatus.BAD_GATEWAY, thrown.getHttpStatus());
+        verify(paymentRepository, never()).save(any(Payment.class));
+    }
+
+    @Test
     void createPayment_non200Success_savesLedgerRowAndResponds() {
         final RestTemplate restTemplate = mock(RestTemplate.class);
         final PaymentRepository paymentRepository = mock(PaymentRepository.class);

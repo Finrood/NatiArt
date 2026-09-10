@@ -139,6 +139,10 @@ public class AsaasPaymentService implements PaymentService {
                     Optional.ofNullable(response.getBody());
             return asaasPaymentCreationResponse
                     .map(responseBody -> {
+                        if (responseBody.getId() == null || responseBody.getId().isBlank()) {
+                            LOGGER.warn("Asaas payment creation response has no payment id: failing closed");
+                            throw new AsaasApiException("Invalid payment provider response", HttpStatus.BAD_GATEWAY);
+                        }
                         // Charge-then-save is non-atomic by necessity (the
                         // upstream id only exists after the charge): if the
                         // local save fails, the orphan upstream charge is
