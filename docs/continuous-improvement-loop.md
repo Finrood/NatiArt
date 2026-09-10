@@ -216,8 +216,11 @@ workflow has reported:
 | `docs/**` (findings, lenses, loop docs) | Guidelines |
 | `scripts/**` | Guidelines + Loop Scripts (shellcheck, helper tests) |
 | `backend/**`, `frontend/**` | Guidelines (convention bans) + respective CI |
-| `.github/workflows/<name>.yml` | that workflow + Guidelines |
-| anything else | all three |
+| `.github/workflows/backend_workflow.yml` | Backend CI + Loop Scripts |
+| `.github/workflows/frontend_workflow.yml` | Frontend CI + Loop Scripts |
+| `.github/workflows/guidelines-consistency.yml` | Guidelines + Loop Scripts |
+| `.github/workflows/loop-scripts.yml`, `.github/workflows/loop-watchdog.yml`, `.github/dependabot.yml` | Loop Scripts |
+| any other path | all workflow families (conservative fallback) |
 
 No branch protection is configured, so scoping never blocks a merge — the
 table above is agent discipline, enforced by the cycle prompt.

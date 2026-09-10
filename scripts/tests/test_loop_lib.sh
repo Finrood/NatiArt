@@ -123,15 +123,27 @@ GH_FIXTURE_DIR="$d"
 assert_eq "PENDING" "$(pr_checks_summary 1)" "empty checks -> PENDING"
 rm -rf "$d"
 
-all_checks=$'guidelines\tpass\t1s\turl\ndirectory-service\tpass\t1s\turl\nproduct-service\tpass\t1s\turl\nbuild-and-test\tpass\t1s\turl\nbash-tests\tpass\t1s\turl\nshellcheck\tpass\t1s\turl'
-if required_checks_passed $'backend/a.java' "$all_checks"; then got=yes; else got=no; fi
-assert_eq "yes" "$got" "backend paths require backend checks"
-if required_checks_passed $'backend/a.java\nunknown.cfg' "$all_checks"; then got=yes; else got=no; fi
-assert_eq "yes" "$got" "mixed known and unknown paths require all checks"
-if required_checks_passed $'frontend/a.ts' "$all_checks"; then got=yes; else got=no; fi
-assert_eq "yes" "$got" "frontend paths require frontend checks"
-if required_checks_passed $'backend/a.java' $'guidelines\tpass\t1s\turl'; then got=yes; else got=no; fi
-assert_eq "no" "$got" "missing required check blocks merge"
+all_checks=$'guidelines\tpass\t1s\ndirectory-service\tpass\t1s\nproduct-service\tpass\t1s\nbuild-and-test\tpass\t1s\nbash-tests\tpass\t1s\nshellcheck\tpass\t1s'
+check_case() {
+    local files="$1" checks="$2" expected="$3" label="$4"
+    if required_checks_passed "$files" "$checks"; then got=yes; else got=no; fi
+    assert_eq "$expected" "$got" "$label"
+}
+check_case 'backend/a.java' "$all_checks" yes 'backend paths require backend checks'
+check_case 'frontend/a.ts' "$all_checks" yes 'frontend paths require frontend checks'
+check_case 'scripts/loop.sh' "$all_checks" yes 'scripts require shell checks'
+check_case 'docs/a.md' $'guidelines\tpass\t1s' yes 'docs require guidelines only'
+check_case '.github/workflows/loop-watchdog.yml' $'bash-tests\tpass\t1s\nshellcheck\tpass\t1s' yes 'watchdog workflow requires loop checks'
+check_case '.github/dependabot.yml' $'bash-tests\tpass\t1s\nshellcheck\tpass\t1s' yes 'dependabot config requires loop checks'
+check_case '.github/workflows/backend_workflow.yml' $'directory-service\tpass\t1s\nproduct-service\tpass\t1s\nbash-tests\tpass\t1s\nshellcheck\tpass\t1s' yes 'backend workflow requires backend and loop checks'
+check_case '.github/workflows/frontend_workflow.yml' $'build-and-test\tpass\t1s\nbash-tests\tpass\t1s\nshellcheck\tpass\t1s' yes 'frontend workflow requires frontend and loop checks'
+check_case '.github/workflows/guidelines-consistency.yml' $'guidelines\tpass\t1s\nbash-tests\tpass\t1s\nshellcheck\tpass\t1s' yes 'guidelines workflow requires guidelines and loop checks'
+check_case 'backend/a.java\nunknown.cfg' "$all_checks" yes 'mixed known and unknown paths require all checks'
+check_case $'backend/a.java\nunknown.cfg' $'guidelines\tpass\t1s\ndirectory-service\tpass\t1s\nproduct-service\tpass\t1s' no 'mixed paths fail without all checks'
+check_case 'unknown.cfg' "$all_checks" yes 'unknown-only paths require all checks'
+check_case 'backend/a.java' $'guidelines\tpass\t1s\ndirectory-service\tpending\t1s\nproduct-service\tpass\t1s' no 'pending required job blocks merge'
+check_case 'backend/a.java' $'guidelines\tpass\t1s\ndirectory-service\tfail\t1s\nproduct-service\tpass\t1s' no 'failed required job blocks merge'
+check_case 'backend/a.java' $'directory-service\tpass\t1s\nproduct-service\tpass\t1s\nguidelines\tpass\t1s\nunrelated\tpass\t1s\ndirectory-service\tpass\t1s' yes 'duplicate and unrelated green jobs are harmless'
 
 # --- is_docs_only ---
 d=$(mkfixture docsonly)
