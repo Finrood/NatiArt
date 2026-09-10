@@ -57,8 +57,9 @@ public class ControllerAdvice {
      * {@code NumberFormatException} for non-numeric request input, an
      * {@code Enum.valueOf} miss echoing the enum's constant list -- carry
      * server-side parsing artifacts, not client-facing validation messages.
-     * This more specific handler answers them with a static body; deliberate
-     * validation messages stay on the {@code IllegalArgumentException} handler.
+     * The generic handler below also uses a static body: only the explicit
+     * request-body guard path is allowed to return a deliberate validation
+     * message to a client.
      */
     @ExceptionHandler(NumberFormatException.class)
     public ResponseEntity<Object> handleNumberFormatException(NumberFormatException e) {
@@ -68,8 +69,8 @@ public class ControllerAdvice {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Object> handleArgumentException(IllegalArgumentException e) {
-        LOGGER.debug("Exception caught in controller: ", e);
-        return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        LOGGER.debug("Rejected invalid request: {}", e.getMessage(), e);
+        return new ResponseEntity<>("Invalid request", HttpStatus.BAD_REQUEST);
     }
 
     /**
