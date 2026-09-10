@@ -10,6 +10,7 @@ import {ButtonComponent} from "../../../../shared/components/button.component";
 import {Credentials} from "../../../models/credentials.model";
 import {TokenService} from "../../../service/token.service";
 import {RouterLink} from "@angular/router";
+import {finalize} from "rxjs/operators";
 
 @Component({
   selector: 'app-login',
@@ -28,6 +29,7 @@ export class LoginComponent implements OnInit {
   showPassword = false;
   loginForm: FormGroup;
   errorMessage: string = '';
+  isSubmitting: boolean = false;
 
   constructor(
     private fb: FormBuilder,
@@ -63,6 +65,9 @@ export class LoginComponent implements OnInit {
   }
 
   doLoginUser() {
+    if (this.isSubmitting) {
+      return;
+    }
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
       this.setErrorMessage('Please fill all required fields correctly.');
@@ -70,8 +75,10 @@ export class LoginComponent implements OnInit {
     }
 
     const credentials = this.credentialsForm.value;
+    this.isSubmitting = true;
 
     this.authenticationService.login(credentials)
+      .pipe(finalize(() => this.isSubmitting = false))
       .subscribe({
         next: (user: User) => {
           this.clearErrorMessage();
