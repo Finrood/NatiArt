@@ -24,7 +24,7 @@ public class CartController {
     @GetMapping("/cart")
     @PreAuthorize("isFullyAuthenticated()")
     public List<CartItemDto> getCart(@TargetUser String username) {
-        LOGGER.info("Getting cart of user [{}]", username);
+        LOGGER.debug("Getting cart of user [{}]", username);
 
         return cartManager.getCartItemsByUsername(username);
     }

@@ -1,6 +1,8 @@
 package com.portcelana.natiart.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -14,11 +16,17 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Pageable;
 
 import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.service.ImageConversionService;
 import com.portcelana.natiart.service.ProductManager;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 @ExtendWith(MockitoExtension.class)
 class ProductControllerPaginationTest {
@@ -79,5 +87,27 @@ class ProductControllerPaginationTest {
         verify(productManager).getProducts(captor.capture());
         assertEquals(2, captor.getValue().getPageNumber());
         assertEquals(10, captor.getValue().getPageSize());
+    }
+
+    @Test
+    void getProducts_logsAtDebugInsteadOfInfo() {
+        when(productManager.getProducts(any(Pageable.class))).thenReturn(List.of());
+        final Logger logger = (Logger) LoggerFactory.getLogger(ProductController.class);
+        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        final Level previousLevel = logger.getLevel();
+        logger.setLevel(Level.ALL);
+        logger.addAppender(appender);
+
+        try {
+            productController.getProducts(2, 10);
+
+            assertFalse(appender.list.stream().anyMatch(event -> event.getLevel() == Level.INFO));
+            assertTrue(appender.list.stream().anyMatch(event -> event.getLevel() == Level.DEBUG));
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(previousLevel);
+            appender.stop();
+        }
     }
 }
