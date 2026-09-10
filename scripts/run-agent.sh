@@ -135,7 +135,7 @@ done
 # reroute a genuine failure into failover). Curated against real provider
 # strings: opencode Console "Rate limit exceeded", cline gateway
 # INFERENCE_CAP_ERROR/429, Anthropic-style 529 overload/capacity.
-QUOTA_RE='quota|rate.?limit(ed)?|429|too many requests|insufficient|exceeded|(monthly|daily|usage|free tier) (quota|limit)|credits? (depleted|exhausted)|billing issu|out of (free )?usage|overload(ed)?|capacity|529'
+QUOTA_RE='quota|rate.?limit(ed)?|429|too many requests|insufficient[_ ]quota|(monthly|daily|usage|free tier) (quota|limit)|credits? (depleted|exhausted)|billing issu|out of (free )?usage|overloaded_error|overload(ed)?[^[:alnum:]]*(capacity|server)|529'
 
 # Reviewer/author independence: drop skipped models up front (substring match on
 # cli:model_id or label). A skip list that empties the pool is ignored — never
