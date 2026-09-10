@@ -6,6 +6,8 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +18,8 @@ import com.saas.directory.repository.TokenRepository;
 
 @Service
 public class TokenManager {
+    private static final Logger LOGGER = LoggerFactory.getLogger(TokenManager.class);
+
     private final TokenRepository tokenRepository;
 
     public TokenManager(TokenRepository tokenRepository) {
@@ -33,10 +37,12 @@ public class TokenManager {
 
     @Transactional(readOnly = true)
     public Token getTokenByJtiAndTokenTypeOrDie(String jti, TokenType tokenType) {
-        return tokenRepository
-                .findByJtiAndTokenType(jti, tokenType)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(String.format("[%s] Token [%s] does not exist", tokenType, jti)));
+        final Optional<Token> token = tokenRepository.findByJtiAndTokenType(jti, tokenType);
+        if (token.isEmpty()) {
+            LOGGER.debug("Rejected unknown [{}] token", tokenType);
+            throw new IllegalArgumentException("Invalid token");
+        }
+        return token.get();
     }
 
     @Transactional(readOnly = true)
@@ -44,7 +50,8 @@ public class TokenManager {
         final Optional<Token> dbToken = tokenRepository.findByJtiAndTokenType(jti, tokenType);
 
         if (!isTokenValid(dbToken)) {
-            throw new IllegalArgumentException(String.format("Token [%s] is invalid", jti));
+            LOGGER.debug("Rejected invalid [{}] token", tokenType);
+            throw new IllegalArgumentException("Invalid token");
         }
         return dbToken.get();
     }
