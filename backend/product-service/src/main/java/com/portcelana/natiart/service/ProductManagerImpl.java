@@ -27,6 +27,8 @@ import com.portcelana.natiart.dto.ProductDto;
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.model.Product;
+import com.portcelana.natiart.repository.CartItemRepository;
+import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.ProductRepository;
 import com.portcelana.natiart.storage.InputFile;
 import com.portcelana.natiart.storage.StorageService;
@@ -37,16 +39,22 @@ public class ProductManagerImpl implements ProductManager {
     private static final String IMAGE_BASE_PATH = "product-images/";
 
     private final ProductRepository productRepository;
+    private final OrderRepository orderRepository;
+    private final CartItemRepository cartItemRepository;
     private final CategoryManager categoryManager;
     private final PackageManager packageManager;
     private final StorageService storageService;
 
     public ProductManagerImpl(
             ProductRepository productRepository,
+            OrderRepository orderRepository,
+            CartItemRepository cartItemRepository,
             CategoryManager categoryManager,
             PackageManager packageManager,
             StorageService storageService) {
         this.productRepository = productRepository;
+        this.orderRepository = orderRepository;
+        this.cartItemRepository = cartItemRepository;
         this.categoryManager = categoryManager;
         this.packageManager = packageManager;
         this.storageService = storageService;
@@ -212,7 +220,12 @@ public class ProductManagerImpl implements ProductManager {
             // (500 via the catch-all advice); an unknown id is a 404 instead.
             throw new ResourceNotFoundException("Product with id [null] not found");
         }
-        productRepository.deleteById(id);
+        final Product product = getProductOrDie(id);
+        if (orderRepository.existsByProduct(product) || cartItemRepository.existsByProduct(product)) {
+            throw new IllegalArgumentException(
+                    "Product [" + product.getLabel() + "] is referenced by an order or cart; deactivate it instead");
+        }
+        productRepository.delete(product);
     }
 
     @Override
