@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.controller.helper.UserNotAllowedException;
+import com.portcelana.natiart.service.AsaasApiException;
 
 @org.springframework.web.bind.annotation.ControllerAdvice
 public class ControllerAdvice {
@@ -84,6 +85,18 @@ public class ControllerAdvice {
     @ExceptionHandler(UserNotAllowedException.class)
     public ResponseEntity<Object> handleResourceUserNotAllowedException(UserNotAllowedException e) {
         LOGGER.debug("Exception caught in controller: ", e);
+        return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
+    }
+
+    /**
+     * Unusable upstream payment-provider responses (missing or malformed
+     * fields) are a 502 with the exception's static message -- the message is
+     * reflected to the caller, so throw sites must never embed raw upstream
+     * text (see {@code AsaasApiException}).
+     */
+    @ExceptionHandler(AsaasApiException.class)
+    public ResponseEntity<Object> handleAsaasApiException(AsaasApiException e) {
+        LOGGER.error("Asaas API error: status={}, message={}", e.getHttpStatus(), e.getMessage(), e);
         return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
     }
 

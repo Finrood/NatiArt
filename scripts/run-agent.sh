@@ -115,6 +115,21 @@ if [[ "$PRIORITY_COUNT" -eq 0 ]]; then
     exit 2
 fi
 
+# Policy enforcement (docs/continuous-improvement-loop.md): every entry runs at
+# the highest reasoning available (xhigh) — never provider default. An empty
+# level silently downgrades to whatever the provider picks, so it is a loud
+# config error, not a default.
+for _conf_entry in "${PRIORITY[@]}"; do
+    IFS='|' read -r _conf_cli _conf_label _conf_model _conf_think <<< "$_conf_entry"
+    if [[ -z "${_conf_think:-}" ]]; then
+        log_err "agent-models.conf entry '$_conf_label' has no thinking level (policy: always xhigh, never provider default)."
+        exit 2
+    fi
+    if [[ "$_conf_think" != "xhigh" ]]; then
+        log "WARNING: agent-models.conf entry '$_conf_label' uses thinking '$_conf_think', not xhigh (policy: highest available)."
+    fi
+done
+
 # Quota-block patterns, matched against the TAIL of the attempt log (a failure
 # anywhere in a long build log mentioning e.g. a test named "*quota*" must not
 # reroute a genuine failure into failover). Curated against real provider
@@ -202,7 +217,9 @@ launch_attempt() { # $1=cli $2=model_id $3=think; spawns child bg, sets $PID
     export REPO_ROOT="$REPO"
     case "$cli" in
         opencode)
-            (cd "$REPO" && exec opencode run "$PROMPT" --dir "$REPO" --title "$TITLE" -m "$model_id") \
+            local variant_arg=()
+            [[ -n "$think" ]] && variant_arg=(--variant "$think")
+            (cd "$REPO" && exec opencode run "$PROMPT" --dir "$REPO" --title "$TITLE" -m "$model_id" "${variant_arg[@]}") \
                 >"$ATT_LOG" 2>&1 &
             ;;
         cline)
@@ -222,6 +239,7 @@ launch_attempt() { # $1=cli $2=model_id $3=think; spawns child bg, sets $PID
 # --- main loop: walk the priority list until one model works or budget dies -
 DEADLINE=$(( $(date +%s) + BUDGET ))
 attempt=0
+BLOCKED_ROUNDS=0 # consecutive full-pool blocked rounds (drives backoff below)
 while true; do
     for entry in "${EFFECTIVE[@]}"; do
         IFS='|' read -r cli label model_id think <<< "$entry"
@@ -285,6 +303,7 @@ while true; do
                 rm -f "$ATT_LOG"
                 echo "NATIART_ACTIVE_MODEL=$label"
                 echo "$label"
+                BLOCKED_ROUNDS=0
                 exit 0
             fi
 
@@ -359,6 +378,24 @@ while true; do
             exit "$rc"
         done
     done
-    log "All ${#EFFECTIVE[@]} effective models blocked; sleeping 5s and retrying from the top."
-    sleep 5
+    BLOCKED_ROUNDS=$((BLOCKED_ROUNDS + 1))
+    # All-pipes-dry backoff: quotas reset on hour scales (DeepSeek ~13h, GLM
+    # ~17-22h), so tight 5s loops only burn CPU and quota probes. Sleep grows
+    # per consecutive fully-blocked round, capped at 15 minutes; a success
+    # resets the counter and exits above, so backoff only bites during true
+    # all-pipes-dry stretches.
+    BLOCKED_SLEEP=$(( BLOCKED_ROUNDS * 60 ))
+    (( BLOCKED_SLEEP > 900 )) && BLOCKED_SLEEP=900
+    (( BLOCKED_SLEEP < 5 )) && BLOCKED_SLEEP=5
+    # Never oversleep the time budget: cap the sleep to what remains (minus a
+    # grace margin); the per-model deadline check at the loop top exits 124.
+    REMAINING=$(( DEADLINE - $(date +%s) ))
+    if (( REMAINING <= 10 )); then
+        log "Time budget exhausted after $attempt attempt(s)."
+        exit 124
+    fi
+    (( BLOCKED_SLEEP > REMAINING - 5 )) && BLOCKED_SLEEP=$(( REMAINING - 5 ))
+    (( BLOCKED_SLEEP < 1 )) && BLOCKED_SLEEP=1
+    log "All ${#EFFECTIVE[@]} effective models blocked (round $BLOCKED_ROUNDS); sleeping ${BLOCKED_SLEEP}s before retrying from the top."
+    sleep "$BLOCKED_SLEEP"
 done

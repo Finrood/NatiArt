@@ -74,11 +74,16 @@ which is exactly why you catch what it missed. Work in the repo root. Obey
    (always marked — there is no unmarked form; a legacy bare
    `VERDICT: REQUEST_CHANGES` without a marker counts as round 0 and earns one
    re-review round when the head moves).
-   Then on the next lines:
-   `Model: <value of $NATIART_MODEL>` (own line at column 0, exactly
-   `Model: <literal value>` — no bullet, no indent, no bold; read the value
-   with `echo "$NATIART_MODEL"`;
-   e.g. second line `Model: cline:zai/glm-5.3-flash/medium`),
+    Then on the next lines:
+    `Model: <value of $NATIART_MODEL>` (own line at column 0, exactly
+    `Model: <literal value>` — no bullet, no indent, no bold; read the value
+    with `echo "$NATIART_MODEL"`;
+    e.g. second line `Model: cline:zai/glm-5.3-flash/xhigh`), never blank and
+    never a bare `unknown` — an empty `$NATIART_MODEL` (manual run) means
+    `Model: manual/<your cli>/<thinking used>`. An author performing the
+    inline-fallback review below appends `/inline-fallback` (e.g.
+    `Model: <author-model>/inline-fallback`) so the comment never masquerades
+    as an independent review,
    then `Build: PASS|FAIL|PENDING` (your step-1b result, plus failing job names)
    and `Merge: MERGEABLE|CONFLICTING|UNKNOWN`.
    Verdict rule: `APPROVE` only when build is green AND mergeable (or UNKNOWN
