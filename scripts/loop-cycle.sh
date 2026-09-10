@@ -10,8 +10,17 @@ if [[ -n "${XDG_RUNTIME_DIR:-}" ]]; then
 else
     LOCK_DIR="/tmp/natiart-improvement-loop-$UID"
 fi
-mkdir -p "$LOCK_DIR"
-chmod 700 "$LOCK_DIR"
+if ! mkdir -p "$LOCK_DIR" 2>/dev/null || ! chmod 700 "$LOCK_DIR" 2>/dev/null; then
+    # Some launchers expose an unavailable runtime directory (for example
+    # during early boot). Fall back to a private per-user /tmp directory before
+    # giving up, and report the failure explicitly because the ERR trap is not
+    # installed until after this bootstrap.
+    LOCK_DIR="/tmp/natiart-improvement-loop-$UID"
+    if ! mkdir -p "$LOCK_DIR" 2>/dev/null || ! chmod 700 "$LOCK_DIR" 2>/dev/null; then
+        printf '%s\n' "ERROR: unable to create a private loop lock directory." >&2
+        exit 1
+    fi
+fi
 LOCK="$LOCK_DIR/lock"
 LOG_DIR="$REPO/logs"
 CHECK_ONLY=0
