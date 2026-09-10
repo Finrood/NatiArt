@@ -438,11 +438,18 @@ done
 
 # 5. Worktree hygiene: remove abandoned reviewer/staging worktrees that a killed
 # cycle or reboot left behind (they live next to the repo — never inside it —
-# and would otherwise accumulate). Never touch the main checkout.
+# and would otherwise accumulate). Never touch the main checkout or an
+# unmarked developer worktree. A marker and one-day age gate prove ownership and
+# avoid deleting a reviewer worktree that is still active.
 git worktree list --porcelain 2>/dev/null | awk -v repo="$REPO" '
     $1=="worktree" && $2 != repo { print $2 }' | while read -r wt; do
-    log "Removing abandoned worktree $wt."
-    git worktree remove --force "$wt" 2>/dev/null || true
+    if [[ -f "$wt/.natiart-review-marker" ]] && \
+       find "$wt" -maxdepth 0 -type d -mtime +1 -print -quit 2>/dev/null | grep -q .; then
+        log "Removing abandoned loop worktree $wt."
+        git worktree remove --force "$wt" 2>/dev/null || true
+    else
+        log "Skipping unmarked or recent worktree $wt."
+    fi
 done || true
 # Also sweep the sibling review-* clones (git worktree list does not see them).
 # Safety: only clones carrying the reviewer's .natiart-review-marker are
