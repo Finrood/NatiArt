@@ -94,9 +94,8 @@ class OrderManagerImplTest {
 
     @Test
     void createOrderRejectsDeliveryAmountWithMoreThanTwoFractionDigits() {
-        OrderDto dto = new OrderDto()
-                .setDeliveryAmount(new BigDecimal("10.001"))
-                .setItems(List.of(item("p1", 1)));
+        OrderDto dto =
+                new OrderDto().setDeliveryAmount(new BigDecimal("10.001")).setItems(List.of(item("p1", 1)));
 
         assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
         verify(productRepository, never()).decreaseStockIfAvailable(any(), anyInt());
