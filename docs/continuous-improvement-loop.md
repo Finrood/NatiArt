@@ -15,7 +15,7 @@ is chosen by `scripts/agent-models.conf` (see "Model failover" below).
 ```
 natiart-improvement-loop.timer   every 30 min (+ up to 5 min jitter)
 natiart-improvement-loop.service oneshot, 35 min timeout, low priority
-logs/loop-<timestamp>.log        per-cycle log (gitignored)
+logs/loop-<timestamp>.log        per-cycle log (gitignored; last 480 retained)
 ```
 
 Laptop timer semantics: `Persistent=true` replays one catch-up run after
@@ -152,7 +152,7 @@ empty level loudly (exit 2) and warns on any non-`xhigh` level.
 - **Boy-scout ledger**: every PR converts one discovered nit into a tracked
   backlog item instead of silently fixing or ignoring it.
 - **Health metrics** (read from `logs/`): `health.csv` (one row/cycle: slot,
-  open counts, repair list, merged, reviewed PR, exit status), PRs merged/week,
+  pre-merge open counts, repair list, merged, reviewed PR, exit status), PRs merged/week,
   backlog trend (logged every cycle), no-work rate. Escalation is automatic:
   backlog under floor → generator duty; repeated thin findings → the lens
   rotation and ratchets widen the frontier without human input.

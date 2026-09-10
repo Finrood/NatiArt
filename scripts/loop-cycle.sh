@@ -58,9 +58,9 @@ fi
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/loop-$(date +%Y%m%d-%H%M%S).log"
 exec > >(tee -a "$LOG_FILE") 2>&1
-# Log retention: keep the last 300 cycle logs (~6 days at 30-min cadence) so
-# every 10-day red-team window stays fully inspectable.
-ls -t "$LOG_DIR"/loop-*.log 2>/dev/null | tail -n +301 | xargs -r rm -f || true
+# Log retention: keep the last 480 cycle logs (~10 days at 30-min cadence) so
+# every red-team window stays fully inspectable.
+ls -t "$LOG_DIR"/loop-*.log 2>/dev/null | tail -n +481 | xargs -r rm -f || true
 
 log "=== Improvement-loop cycle start (check-only=$CHECK_ONLY) ==="
 cd "$REPO"
@@ -575,6 +575,13 @@ log "Agent cycle finished with status $STATUS."
 # Health row (gitignored logs/health.csv): one line per cycle for trends and
 # post-mortems — grep it for merged counts, repair frequency, idle stretches.
 HEALTH="$LOG_DIR/health.csv"
-[[ -f "$HEALTH" ]] || echo "timestamp,slot,open_code,open_docs,repair_prs,merged,reviewed_pr,exit_status" > "$HEALTH"
+HEALTH_HEADER="timestamp,slot,open_code_before,open_docs_before,repair_prs,merged,reviewed_pr,exit_status"
+if [[ ! -f "$HEALTH" ]]; then
+    printf '%s\n' "$HEALTH_HEADER" > "$HEALTH"
+elif [[ "$(head -n 1 "$HEALTH")" == "timestamp,slot,open_code,open_docs,repair_prs,merged,reviewed_pr,exit_status" ]]; then
+    # Migrate only the exact schema emitted by older loop versions; preserve
+    # every historical data row and leave custom files untouched.
+    sed -i "1c\\$HEALTH_HEADER" "$HEALTH"
+fi
 echo "$(date -Is),${SLOT:-?},${OPEN_PRS:-?},$(echo "${DOCS_PRS:-}" | wc -w | tr -d '[:space:]'),\"${REPAIR_PRS:-}\",${merged:-0},${REVIEW_PR:-none},$STATUS" >> "$HEALTH"
 exit "$STATUS"
