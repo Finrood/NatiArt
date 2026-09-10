@@ -40,7 +40,8 @@ public class ProductController {
 
     @GetMapping("/products/{productId}")
     public ProductDto getProduct(@PathVariable String productId) {
-        LOGGER.info("Getting product with id [{}]", productId);
+        // Hot storefront path: a per-view INFO line is read noise.
+        LOGGER.debug("Getting product with id [{}]", productId);
 
         return ProductDto.from(productManager.getProductWithImagesOrDie(productId));
     }
@@ -49,7 +50,7 @@ public class ProductController {
     public List<ProductDto> getProducts(
             @RequestParam(required = false, defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "20") int size) {
-        LOGGER.info("Getting all products");
+        LOGGER.debug("Getting all products (page [{}] size [{}])", page, size);
         Pageable pageable = toPageable(page, size);
         return productManager.getProducts(pageable).stream()
                 .map(ProductDto::from)
@@ -60,7 +61,7 @@ public class ProductController {
     public List<ProductDto> getNewProducts(
             @RequestParam(required = false, defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "20") int size) {
-        LOGGER.info("Getting new products");
+        LOGGER.debug("Getting new products (page [{}] size [{}])", page, size);
         Pageable pageable = toPageable(page, size);
         return productManager.getNewProducts(pageable).stream()
                 .map(ProductDto::from)
@@ -71,7 +72,7 @@ public class ProductController {
     public List<ProductDto> getFeaturedProducts(
             @RequestParam(required = false, defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "20") int size) {
-        LOGGER.info("Getting featured products");
+        LOGGER.debug("Getting featured products (page [{}] size [{}])", page, size);
         Pageable pageable = toPageable(page, size);
         return productManager.getFeaturedProducts(pageable).stream()
                 .map(ProductDto::from)
@@ -122,7 +123,9 @@ public class ProductController {
 
     @GetMapping("/images")
     public ResponseEntity<Resource> getProductImage(@RequestParam String path) throws IOException {
-        LOGGER.info("Getting image with path [{}]", path);
+        // The path is client-controlled: never echo it at INFO (unvalidated-input
+        // echo into logs), and image requests are the hottest read path anyway.
+        LOGGER.debug("Getting image");
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("image/webp"))

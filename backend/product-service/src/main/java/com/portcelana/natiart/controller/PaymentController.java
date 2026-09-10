@@ -1,5 +1,7 @@
 package com.portcelana.natiart.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +15,8 @@ import com.portcelana.natiart.service.PaymentService;
 
 @RestController
 public class PaymentController {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PaymentController.class);
+
     private final PaymentService paymentService;
 
     public PaymentController(PaymentService paymentService) {
@@ -27,8 +31,12 @@ public class PaymentController {
     public PaymentCreationResponse createPayment(
             @RequestBody PaymentCreationRequest paymentCreationRequest,
             @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
-        return paymentService.createPayment(
-                paymentCreationRequest, principal != null ? principal.getExternalId() : null);
+        final String requesterExternalId = principal != null ? principal.getExternalId() : null;
+        LOGGER.info(
+                "Creating payment for customer [{}] (order [{}])",
+                requesterExternalId,
+                paymentCreationRequest.getOrderId());
+        return paymentService.createPayment(paymentCreationRequest, requesterExternalId);
     }
 
     @GetMapping({"/payments/{paymentId}/status", "/api/payment/{paymentId}/status"})

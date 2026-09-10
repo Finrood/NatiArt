@@ -113,6 +113,10 @@ public class AsaasPaymentService implements PaymentService {
             final Optional<Payment> existing =
                     paymentRepository.findByOrderIdAndOwnerExternalId(orderId, requesterExternalId);
             if (existing.isPresent()) {
+                LOGGER.info(
+                        "Replaying existing Asaas payment [{}] for order [{}] instead of double-charging",
+                        existing.get().getId(),
+                        orderId);
                 return toCreationResponse(fetchPaymentOrDie(existing.get().getId()));
             }
         }
@@ -154,6 +158,11 @@ public class AsaasPaymentService implements PaymentService {
                                     orderId);
                             throw e;
                         }
+                        LOGGER.info(
+                                "Created Asaas payment [{}] for customer [{}] (order [{}])",
+                                responseBody.getId(),
+                                requesterExternalId,
+                                orderId);
                         return toCreationResponse(responseBody);
                     })
                     .orElseThrow(() ->
@@ -192,6 +201,7 @@ public class AsaasPaymentService implements PaymentService {
     public PaymentPixQrCodeResponse getPixQrCode(String paymentId, String requesterExternalId) {
         getPaymentOrDie(paymentId, requesterExternalId);
         requireOwnedPayment(fetchPaymentOrDie(paymentId).getCustomer(), requesterExternalId);
+        LOGGER.info("Issuing PIX QR code for payment [{}] to customer [{}]", paymentId, requesterExternalId);
 
         final HttpEntity<String> entity = new HttpEntity<>(getRequestHeaders());
 
@@ -249,6 +259,9 @@ public class AsaasPaymentService implements PaymentService {
         getPaymentOrDie(paymentId, requesterExternalId);
         final AsaasPaymentCreationResponse payment = fetchPaymentOrDie(paymentId);
         requireOwnedPayment(payment.getCustomer(), requesterExternalId);
+        // The storefront polls this every few seconds while a PIX payment is
+        // open: a per-poll line is noise, so it stays at DEBUG.
+        LOGGER.debug("Status check for payment [{}] by customer [{}]", paymentId, requesterExternalId);
 
         return new PaymentStatusResponse(
                 paymentId, convertAsaasPaymentStatusToGeneralPaymentStatus(parseAsaasStatus(payment.getStatus())));

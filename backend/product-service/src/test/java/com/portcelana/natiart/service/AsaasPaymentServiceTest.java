@@ -459,17 +459,26 @@ class AsaasPaymentServiceTest {
         when(restTemplate.postForEntity(eq(PAYMENTS_URL), any(), eq(AsaasPaymentCreationResponse.class)))
                 .thenReturn(ResponseEntity.ok(upstream));
 
-        final PaymentCreationResponse response = newService(restTemplate, paymentRepository, orderRepository)
-                .createPayment(
-                        orderLinked(new PaymentCreationRequest(
-                                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX)),
-                        "cus_MINE");
+        final PaymentCreationResponse[] holder = new PaymentCreationResponse[1];
+        final List<ILoggingEvent> events = captureLogEvents(
+                AsaasPaymentService.class,
+                () -> holder[0] = newService(restTemplate, paymentRepository, orderRepository)
+                        .createPayment(
+                                orderLinked(new PaymentCreationRequest(
+                                        PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX)),
+                                "cus_MINE"));
+        final PaymentCreationResponse response = holder[0];
 
         assertEquals("pay-10", response.getPaymentId());
         verify(paymentRepository)
                 .save(argThat(payment -> "ord_1".equals(payment.getOrderId())
                         && "pay-10".equals(payment.getId())
                         && "cus_MINE".equals(payment.getOwnerExternalId())));
+        // The creation audit line must carry the upstream payment id so a
+        // disputed charge can be reconstructed from logs alone.
+        assertTrue(events.stream()
+                .filter(event -> event.getLevel() == Level.INFO)
+                .anyMatch(event -> event.getFormattedMessage().contains("Created Asaas payment [pay-10]")));
     }
 
     @Test

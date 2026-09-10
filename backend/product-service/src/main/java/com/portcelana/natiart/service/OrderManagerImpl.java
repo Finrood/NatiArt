@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +23,8 @@ import com.portcelana.natiart.repository.ProductRepository;
 
 @Service
 public class OrderManagerImpl implements OrderManager {
+    private static final Logger LOGGER = LoggerFactory.getLogger(OrderManagerImpl.class);
+
     // Anti-absurdity guard on a single order line; available stock remains the
     // real bound via the atomic decreaseStockIfAvailable check.
     private static final int MAX_ITEM_QUANTITY = 100;
@@ -141,6 +145,7 @@ public class OrderManagerImpl implements OrderManager {
         if (orderRepository.updateStatusById(orderId, status) == 0) {
             throw new ResourceNotFoundException("CustomerOrder with id " + orderId + " not found");
         }
+        LOGGER.info("Order [{}] status transition [{}] -> [{}]", orderId, current.getStatus(), status);
         return getOrderById(orderId);
     }
 

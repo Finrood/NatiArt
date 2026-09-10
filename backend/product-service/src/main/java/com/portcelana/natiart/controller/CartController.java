@@ -24,7 +24,8 @@ public class CartController {
     @GetMapping("/cart")
     @PreAuthorize("isFullyAuthenticated()")
     public List<CartItemDto> getCart(@TargetUser String username) {
-        LOGGER.info("Getting cart of user [{}]", username);
+        // Hot read path (every cart open/re-render): read noise at INFO.
+        LOGGER.debug("Getting cart of user [{}]", username);
 
         return cartManager.getCartItemsByUsername(username);
     }

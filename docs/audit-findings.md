@@ -725,7 +725,7 @@ INFO/ERROR lines (registration lifecycle with asaas id, already actionable);
 only, never the token string); `main.ts:6` bootstrap `console.error`
 (single crash path). AI1-AI3 below are runner-ups.
 
-### AI1. Money-path services are log-silent: no audit trail on payment/order/shipping flows — OPEN (Medium)
+### AI1. Money-path services are log-silent: no audit trail on payment/order/shipping flows — IN REVIEW (Medium; payment/order half fixed by this cycle's observability PR, shipping/cart remain)
 - `AsaasPaymentService.java`, `ShippingService.java`, `OrderManagerImpl.java`
   and `CartManagerImpl.java` contain zero `slf4j`/`Logger` references
   (verified per-file). Payment creation/status (`createPayment`,
@@ -741,7 +741,7 @@ only, never the token string); `main.ts:6` bootstrap `console.error`
   audit line carries the payment id; response bodies stay static.
   Tracked, not silently fixed.
 
-### AI2. Per-request INFO logs on hot catalog/cart read paths — OPEN (Low)
+### AI2. Per-request INFO logs on hot catalog/cart read paths — IN REVIEW (Low; product-service half fixed by this cycle's observability PR, category/directory/auth halves remain)
 - `ProductController.java` (6 INFO sites: every GET including
   `getAllProducts`/`getNewProducts`/`getFeaturedProducts`/image),
   `CategoryController.java` (6 sites), `CartController.java` (4 sites),
@@ -1784,7 +1784,14 @@ Hunt method: swept both services for `System.out`/`printStackTrace` (zero
 hits) and all `LOGGER.*`/`console.*` call sites, then focused on the
 payment/order money path and the hot read paths.
 
-### BH1. Payment and order flows are completely unlogged — OPEN (Medium)
+Re-hunted 2026-09-10 (Lens 14 cycle): re-verified BH1/BH2 on current master
+(both still present) and swept `System.out`/`printStackTrace`/`e.getMessage()`
+log sites again — no new findings above threshold; the `mapAsaasError` body
+logging stays accepted per its JavaDoc (server-side only, static message to
+callers), and the correlation gap remains owned by R1. BH1/BH2 and BT1 fixed
+in flight this cycle (branch `fix/observability-log-hygiene`).
+
+### BH1. Payment and order flows are completely unlogged — IN REVIEW (Medium; fix branch `fix/observability-log-hygiene`, opened this cycle)
 - `backend/product-service/src/main/java/com/portcelana/natiart/controller/PaymentController.java`
   and `controller/OrderController.java` contain zero `LOGGER` statements
   (grep count 0), and `service/OrderManagerImpl.java` none either — payment
@@ -1798,7 +1805,7 @@ payment/order money path and the hot read paths.
   payment id; order transition logs old→new status.
   Found by Lens 14 hunt, 2026-09-09.
 
-### BH2. Hot read paths log context-free INFO lines and echo user-controlled path — OPEN (Low)
+### BH2. Hot read paths log context-free INFO lines and echo user-controlled path — IN REVIEW (Low; fix branch `fix/observability-log-hygiene`, opened this cycle)
 - `controller/ProductController.java:63` (`"Getting new products"`) and
   `:74` (`"Getting featured products"`) log at INFO with zero context or
   pagination parameters on every storefront page view; `:125` logs the
@@ -2065,7 +2072,7 @@ error mapping. Re-verified: BI1/BI3/BI4 still OPEN, BI2 IN REVIEW (fix PR #227
 merged — flip pending); AX1 still OPEN (frontend refresh no-timeout). BT1
 below is a runner-up.
 
-### BT1. `UserRegistrationListener` recover's 400 branch is unreachable; every Asaas 4xx logs "CRITICAL … manual intervention" — OPEN (Low)
+### BT1. `UserRegistrationListener` recover's 400 branch is unreachable; every Asaas 4xx logs "CRITICAL … manual intervention" — IN REVIEW (Low; fix branch `fix/observability-log-hygiene`, opened this cycle)
 - `service/AsaasUserManager.java:60-64` catches every `HttpClientErrorException`
   and rethrows `mapAsaasError` → `AsaasApiException`, so no 4xx ever reaches the
   retry layer. But `listener/UserRegistrationListener.java:63-78` — the
