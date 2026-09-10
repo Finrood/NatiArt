@@ -244,6 +244,40 @@ describe('jwtInterceptor', () => {
     expect(error).toBeTruthy();
   }));
 
+  it('times out a stalled refresh and permits a later refresh attempt', fakeAsync(() => {
+    const {http, httpTesting, tokenService} = setup();
+    tokenService.accessToken = 'old-access';
+    tokenService.refreshToken = 'old-refresh';
+
+    let firstError: unknown;
+    http.get('/first').subscribe({error: (error: unknown) => (firstError = error)});
+    httpTesting.expectOne('/first').flush('', {status: 401, statusText: 'Unauthorized'});
+    tick();
+    httpTesting.expectOne(REFRESH_URL);
+
+    tick(10001);
+
+    expect(firstError).toBeTruthy();
+    expect(tokenService.accessToken).toBeNull();
+    expect(tokenService.refreshToken).toBeNull();
+
+    tokenService.accessToken = 'second-access';
+    tokenService.refreshToken = 'second-refresh';
+    let secondBody: unknown;
+    http.get('/second').subscribe({next: (body: unknown) => (secondBody = body)});
+    httpTesting.expectOne('/second').flush('', {status: 401, statusText: 'Unauthorized'});
+    tick();
+
+    const secondRefresh = httpTesting.expectOne(REFRESH_URL);
+    secondRefresh.flush({accessToken: 'new-access', refreshToken: 'new-refresh'});
+    tick();
+    httpTesting.expectOne('/second').flush({ok: true});
+    tick();
+
+    expect(secondBody).toEqual({ok: true});
+    httpTesting.verify();
+  }));
+
   it('still sends the bearer on logout so the server can end the session', fakeAsync(() => {
     const {http, httpTesting, tokenService} = setup();
     tokenService.accessToken = 'abc';
