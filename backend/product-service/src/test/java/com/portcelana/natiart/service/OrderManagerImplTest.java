@@ -93,6 +93,17 @@ class OrderManagerImplTest {
     }
 
     @Test
+    void createOrderRejectsDeliveryAmountWithMoreThanTwoFractionDigits() {
+        OrderDto dto = new OrderDto()
+                .setDeliveryAmount(new BigDecimal("10.001"))
+                .setItems(List.of(item("p1", 1)));
+
+        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
+        verify(productRepository, never()).decreaseStockIfAvailable(any(), anyInt());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
     void createOrderRejectsWhenStockUnavailable() {
         Product mug = product("p2", "Mug", new BigDecimal("10.00"), null, 1);
         when(productManager.getProductsOrDie(List.of("p2"))).thenReturn(Map.of("p2", mug));
