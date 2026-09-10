@@ -113,7 +113,8 @@ public class AsaasPaymentService implements PaymentService {
             final Optional<Payment> existing =
                     paymentRepository.findByOrderIdAndOwnerExternalId(orderId, requesterExternalId);
             if (existing.isPresent()) {
-                final PaymentCreationResponse replay = toCreationResponse(fetchPaymentOrDie(existing.get().getId()));
+                final PaymentCreationResponse replay =
+                        toCreationResponse(fetchPaymentOrDie(existing.get().getId()));
                 LOGGER.info(
                         "Payment replayed: providerPaymentId=[{}], owner=[{}], order=[{}], amount=[{}]",
                         existing.get().getId(),
