@@ -136,6 +136,52 @@ checks_passed() { # reads `gh pr checks` text on stdin; true iff every check pas
         NF >= 2 { seen=1; if ($2 !~ /^(pass|success)$/) { bad=1 } }
         END { exit !(seen && !bad) }'
 }
+required_checks_passed() { # $1=changed files, $2=gh pr checks output
+    local files="$1" checks="$2" expected="" name unknown=0
+    add_expected() {
+        grep -qxF "$1" <<<"$expected" || expected+="${expected:+$'\n'}$1"
+    }
+    # Map paths to the jobs their workflow `paths` filters actually run. Keep
+    # this table in sync with .github/workflows/*.yml; a mixed known+unknown
+    # change escalates to every build family.
+    while IFS= read -r path; do
+        [[ -z "$path" ]] && continue
+        case "$path" in
+            backend/*)
+                add_expected guidelines; add_expected directory-service; add_expected product-service ;;
+            frontend/*)
+                add_expected guidelines; add_expected build-and-test ;;
+            scripts/*|docs/*|agents/*|AGENTS.md|CLAUDE.md|GEMINI.md|.cursorrules)
+                add_expected guidelines
+                [[ "$path" == scripts/* ]] && { add_expected bash-tests; add_expected shellcheck; } ;;
+            .github/dependabot.yml|.github/workflows/loop-scripts.yml|.github/workflows/loop-watchdog.yml)
+                add_expected bash-tests; add_expected shellcheck ;;
+            .github/workflows/backend_workflow.yml)
+                add_expected directory-service; add_expected product-service; add_expected bash-tests; add_expected shellcheck ;;
+            .github/workflows/frontend_workflow.yml)
+                add_expected build-and-test; add_expected bash-tests; add_expected shellcheck ;;
+            .github/workflows/guidelines-consistency.yml)
+                add_expected guidelines; add_expected bash-tests; add_expected shellcheck ;;
+            *) unknown=1 ;;
+        esac
+    done <<<"$files"
+    if [[ "$unknown" -eq 1 ]]; then
+        add_expected guidelines; add_expected directory-service; add_expected product-service
+        add_expected build-and-test; add_expected bash-tests; add_expected shellcheck
+    fi
+    while IFS= read -r name; do
+        [[ -z "$name" ]] && continue
+        if [[ "$name" == "build-and-test" ]]; then
+            # Frontend CI is a matrix job and GitHub decorates its check name
+            # as `build-and-test (<matrix value>)`; keep the suffix bounded.
+            if ! awk -F'\t' '$1 == "build-and-test" || $1 ~ /^build-and-test \([^()[:space:]]+\)$/ { if ($2 ~ /^(pass|success)$/) { found=1; exit } } END { exit !found }' <<<"$checks"; then
+                return 1
+            fi
+        elif ! awk -F'\t' -v expected="$name" '$1 == expected && $2 ~ /^(pass|success)$/ { found=1; exit } END { exit !found }' <<<"$checks"; then
+            return 1
+        fi
+    done <<<"$expected"
+}
 pr_checks_summary() { # $1 = PR number; prints FAIL|PASS|PENDING (never fails)
     local checks
     checks=$(gh_checks_safe gh pr checks "$1")

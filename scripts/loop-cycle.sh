@@ -287,12 +287,8 @@ for n in $CODE_PRS $DOCS_PRS; do
     # module guides, or CI config stays OPEN for human review — never auto-merge
     # changes to the loop's own brain, even on green CI.
     PR_FILES=""
-    if ! PR_FILES="$(gh pr view "$n" --json files --jq '.files[].path' 2>/dev/null)"; then
+    if ! PR_FILES="$(gh pr view "$n" --json files --jq '.files[].path' 2>/dev/null)" || [[ -z "$PR_FILES" ]]; then
         log "Could not resolve changed files for PR #$n; leaving OPEN (fail closed)."
-        continue
-    fi
-    if [[ -z "$PR_FILES" ]]; then
-        log "PR #$n returned no changed files; leaving OPEN (fail closed)."
         continue
     fi
     if grep -qE '^(scripts/|agents/|\.github/|\.cursorrules|docs/continuous-improvement-loop\.md|docs/loop-lenses\.md)|(^|/)(AGENTS\.md|CLAUDE\.md|GEMINI\.md)$' <<<"$PR_FILES"; then
@@ -311,6 +307,10 @@ for n in $CODE_PRS $DOCS_PRS; do
     fi
     if ! checks_passed <<<"$checks"; then
         log "PR #$n has no reported green checks yet; leaving open."
+        continue
+    fi
+    if ! required_checks_passed "$PR_FILES" "$checks"; then
+        log "PR #$n is missing one or more path-required green checks; leaving open."
         continue
     fi
     LATEST_V="$(latest_verdict "$n")"
@@ -362,6 +362,15 @@ while IFS=$'\t' read -r dn dcreated dtitle; do
     fi
     if ! checks_passed <<<"$dchecks"; then
         log "Dependabot #$dn has no green checks yet; leaving open."
+        continue
+    fi
+    D_FILES=""
+    if ! D_FILES="$(gh pr view "$dn" --json files --jq '.files[].path' 2>/dev/null)" || [[ -z "$D_FILES" ]]; then
+        log "Dependabot #$dn changed files are unavailable; leaving open."
+        continue
+    fi
+    if ! required_checks_passed "$D_FILES" "$dchecks"; then
+        log "Dependabot #$dn is missing one or more path-required green checks; leaving open."
         continue
     fi
     D_MERGEABLE_STATE="$(pr_mergeable "$dn")"
