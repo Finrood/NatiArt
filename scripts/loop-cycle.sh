@@ -334,6 +334,11 @@ while IFS=$'\t' read -r dn dcreated dtitle; do
         log "Dependabot #$dn has no green checks yet; leaving open."
         continue
     fi
+    D_MERGEABLE_STATE="$(pr_mergeable "$dn")"
+    if [[ "$D_MERGEABLE_STATE" != "MERGEABLE" ]]; then
+        log "Dependabot #$dn mergeability is $D_MERGEABLE_STATE; leaving open until GitHub confirms MERGEABLE."
+        continue
+    fi
     log "Merging aged green dependabot #$dn ($bump, >48h)."
     if gh pr merge "$dn" --merge --delete-branch 2>&1 | tail -2; then
         merged=$((merged + 1))
