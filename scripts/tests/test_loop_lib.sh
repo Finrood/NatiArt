@@ -208,6 +208,22 @@ if [[ -n "$got_stderr" ]]; then got=yes; else got=no; fi
 assert_eq "yes" "$got" "gh_safe failure -> WARN on stderr"
 rm -rf "$d"
 
+d=$(mkfixture genericfailure)
+GH_FIXTURE_DIR="$d"
+got=$(gh_safe bash -c 'printf "partial\n"; exit 1' 2>/dev/null)
+assert_eq "" "$got" "gh_safe discards partial generic output"
+rm -rf "$d"
+
+# gh commands such as `pr checks` return non-zero for pending/failing checks;
+# their stdout must still be preserved by gh_checks_safe.
+d=$(mkfixture checksnonzero)
+GH_FIXTURE_DIR="$d"
+got=$(gh_checks_safe bash -c 'printf "job\tfail\t1s\turl\\n"; exit 1' 2>"$d/stderr")
+assert_eq $'job\tfail\t1s\turl' "$got" "gh_checks_safe preserves check output on failure"
+if grep -q "check-state exit" "$d/stderr"; then got=yes; else got=no; fi
+assert_eq "yes" "$got" "gh_checks_safe logs check-state exit"
+rm -rf "$d"
+
 # --- author_model_of: unknown/blank footers are unattributed (empty) ---
 assert_eq "" "$(printf 'body\nModel: unknown (NATIART_MODEL empty in this session)\n' | author_model_of)" "unknown footer -> empty (no bogus skip)"
 assert_eq "" "$(printf 'body\nModel: unknown\n' | author_model_of)" "bare unknown -> empty"
