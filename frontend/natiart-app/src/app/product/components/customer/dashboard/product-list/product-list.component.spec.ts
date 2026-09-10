@@ -177,4 +177,37 @@ describe('ProductListComponent', () => {
     expect(cardsAfter[0]).toBe(cardsBefore[0]);
     expect(cardsAfter[1]).toBe(cardsBefore[1]);
   });
+
+  it('prunes image urls and revokes the blob when a product leaves the listing (AS2)', () => {
+    const fixture = TestBed.createComponent(ProductListComponent);
+    const component: ProductListComponent = fixture.componentInstance;
+    const productService: ProductService = TestBed.inject(ProductService);
+    spyOn(productService, 'getImage').and.returnValue(of(new Blob(['img'])));
+    const revokeSpy: jasmine.Spy = spyOn(URL, 'revokeObjectURL');
+
+    const makeProduct = (suffix: string): Product => ({
+      id: 'p-' + suffix,
+      label: 'Product ' + suffix,
+      originalPrice: 10,
+      markedPrice: 8,
+      stockQuantity: 3,
+      categoryId: 'cat-1',
+      availablePersonalizations: [],
+      tags: new Set<string>(),
+      images: ['img/' + suffix + '.png'],
+    });
+
+    component.ngOnInit();
+    const listReq = httpMock.expectOne((req: HttpRequest<unknown>): boolean => req.url.indexOf('/featured') !== -1);
+    listReq.flush([makeProduct('1'), makeProduct('2')]);
+    expect(Object.keys(component.imageUrls).length).toBe(2);
+
+    const internals = component as unknown as {
+      updateProductImages(products: Product[]): void;
+    };
+    internals.updateProductImages([makeProduct('1')]);
+
+    expect(component.imageUrls['p-2']).toBeUndefined();
+    expect(revokeSpy).toHaveBeenCalled();
+  });
 });
