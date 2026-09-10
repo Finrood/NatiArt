@@ -107,6 +107,10 @@ finding below.
   (`UserAuthenticationProvider:45`), setter injection in `StorageServiceImpl`.
 - Fix: `private static final Logger LOGGER = getLogger(OwnClass.class)`;
   constructor injection. No behavior change; include in a boy-scout PR.
+- Directory slice in review (PR #228): `AuthenticationController`/`UserRegistrationController`
+  loggers now `private static final LOGGER` with own-class owners; `ControllerAdvice` logger
+  uppercased. Product-service half (`ProductController:32`, `CartController:17`,
+  `CategoryController:19`, `ProductManagerImpl:35`, `StorageServiceImpl`) remains OPEN.
 
 ### C9. `canDeactivate` does network I/O on every navigation away — OPEN (Medium)
 - `product-guard.guard.ts:24-32`: leaving `/product/:id` blocks on
@@ -1133,7 +1137,7 @@ upstream enums (`parseAsaasStatus`/`parsePaymentMethod`/`parsePaymentStatus` fai
 with static messages); login with missing/blank credentials resolves to 401 via
 `ResourceNotFoundException`, not an NPE.
 
-### AI4. Client-supplied usernames are logged raw (log-forging) — OPEN (Low)
+### AI4. Client-supplied usernames are logged raw (log-forging) — IN REVIEW (Low, PR #228)
 - `controller/AuthenticationController.java:35` logs `credentialsDto.username()` and
   `controller/UserRegistrationController.java:38,47` log `userRegistrationDto.username()`
   verbatim; newline/CRLF-bearing input can forge log lines. The registration path is closed
@@ -1142,6 +1146,9 @@ with static messages); login with missing/blank credentials resolves to 401 via
 - Fix: constrain `CredentialsDto` (bean validation) or sanitize before logging.
   Found by Lens 1 hunt, 2026-09-07.
   Tracked, not silently fixed.
+- Fix in flight (PR #228): `CredentialsDto` now `@NotBlank @Email @Size(max = 255)` and
+  `POST /login` takes `@Valid`, so control characters are rejected with 400 (field names
+  only) before the log line; pinned by `CredentialsDtoValidationTest`.
 
 ### AU1. Bulk clearCart bypasses the Personalization cascade and orphans rows — INVALID (re-verified 2026-09-07 with an executable spec, PR #191)
 `CartItem.personalization` is `@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)` (`backend/product-service/src/main/java/com/portcelana/natiart/model/CartItem.java:27-28`). Original claim (PR #182 mechanical review): the Spring Data derived `deleteByUsername` bulk-deletes cart rows without honoring the cascade, orphaning Personalization rows. Disproven empirically (PR #191): a `@DataJpaTest` (`repository/CartItemCascadeSemanticsTest`) shows void derived deletes run load-then-remove — the cascade fires and the Personalization row and its option rows are deleted with the cart lines on BOTH delete paths. Only `@Modifying`/`@Modifying(clearAutomatically)` bulk deletes bypass the persistence context. The re-verification spec instead caught a real adjacent bug, fixed in PR #191: `deleteByUsernameAndProduct` declared with a `long` return threw `ClassCastException` inside the Spring Data proxy on every invocation, so the production path `CartManagerImpl.decreaseCartItemQuantity` (removing a line's last unit) 500ed. Fixed by declaring the method `void` and pinned by the same spec (red on unpatched master, green with the fix).
@@ -1898,31 +1905,9 @@ never the token string; Asaas keys carry no property default so boot fails
 closed when unset; JWT blank secret throws at construction
 (`UserAuthenticationProvider.java:66-74`); sandbox URLs as `@Value` defaults
 fail safe (misconfiguration charges sandbox, never real money); properties
-files pure ASCII. BO1-BO2 below are runner-ups.
+files pure ASCII. BO1-BO2 were filed as runner-ups, then FIXED in PR #229
+(sections moved to `docs/audit-findings-archive.md`).
 
-### BO1. `TokenManager` echoes client-presented `jti` into 400 bodies — OPEN (Low)
-- `service/TokenManager.java:39` (`Token [%s] does not exist`, jti) and `:47`
-  (`Token [%s] is invalid`, jti) embed the caller-presented bearer identifier
-  in the `IllegalArgumentException` message, which
-  `configuration/ControllerAdvice.java:72` reflects verbatim
-  (`return new ResponseEntity<>(e.getMessage(), BAD_REQUEST)`). The `jti` is a
-  random UUID (not a signing secret), so exposure is Low — but it is a
-  bearer-adjacent server artifact in a client body, the same class as AZ1.
-- Fix: static "Invalid token" body for the jti paths; log the `jti`
-  server-side at DEBUG. Tests: jti-bearing IAE maps to a static body.
-  Found by Lens 3 hunt, 2026-09-10.
-
-### BO2. Production CORS default still allows `localhost:4200` — OPEN (Low)
-- Both services' `application.properties` default
-  `nati.cors.allowed-origins` to
-  `http://localhost:4200,https://natiart.samuelpetre.com`, and neither
-  `application-production.properties` overrides the key — so a prod boot
-  without `CORS_ALLOWED_ORIGINS` set silently allows the dev origin.
-  Browser-origin scope only (no server bypass), hence Low; still
-  per-environment drift under Lens 3.
-- Fix: pin prod-only origins in both production profiles (or fail fast when
-  the default includes localhost). Tests: prod profile resolves no localhost
-  origin. Found by Lens 3 hunt, 2026-09-10.
 ## BP. Data integrity and transactions (Lens 4 hunt, 2026-09-10)
 
 Hunt method: re-verified the Lens 4 backlog against current `master`
@@ -2215,6 +2200,45 @@ BS1-BS2 below are runner-ups.
   (`configuration/ControllerAdvice.java:123-127`) with no guidance toward
   the proper removal-from-sale path (`isActive` via `updateProduct`,
   `ProductController.java:97-109`, and the visibility toggle at
+
+## BV. Frontend resource hygiene re-hunt (Lens 11, 2026-09-10)
+
+Hunt method: grepped the storefront for `createObjectURL`/`revokeObjectURL`
+pairs, `setInterval`/`setTimeout` handles and their `ngOnDestroy` cleanup,
+window/document listeners, and all 56 production `.subscribe()` sites
+classified by completion semantics (one-shot HTTP vs never-completing
+observables). Re-verified this cycle: `top-banner.component.ts:53-64`
+(`bannerInterval` cleared in `ngOnDestroy` + on every reset),
+`pix-payment-confirmation.component.ts` (param/qr/polling subscriptions
+unsubscribed, fireworks interval cleared, polling capped at 60 attempts with
+a 5-consecutive-error give-up — no unbounded polling), `cart.component.ts`
+(`errorDismissTimer` cleared, `destroy$` torn down, object URLs revoked),
+`admin-product-management` (subscriptions + `pendingAlertsTimer` + object
+URLs all cleaned), `top-menu` (`cartHoverCloseTimer` + `authSubscription`
+cleaned), `checkout.component.ts` and `address-form.component.ts` (all
+never-completing `valueChanges`/status observables piped through
+`takeUntil(destroy$)`), and `product-list.component.ts:195` (the
+fly-to-cart clone timer self-guards on `parentNode` before removing the
+`document.body` append — no orphaned DOM node). BV1 below is the only new
+finding.
+
+### BV1. `AlertMessageComponent` auto-dismiss timers are untracked and survive destruction — OPEN (Low)
+- `shared/components/alert-message/alert-message.component.ts:36`:
+  `showAlert` fires a raw `setTimeout(() => this.dismissAlert(alert), timeout)`
+  whose handle is never stored, and the class (lines 26-48) has no
+  `ngOnDestroy` at all — the component is the shared toast host rendered at
+  the app root, so a route change that destroys and recreates it leaves the
+  old instance's pending timers mutating a detached `alertMessages` array
+  until they fire (3s default), delaying GC of the destroyed component tree.
+  Severity Low: no user-visible breakage (new instance starts with an empty
+  list), pure resource hygiene.
+- Fix: track timer handles in a `Set<ReturnType<typeof setTimeout>>` (or a
+  per-alert handle map), clear them all in `ngOnDestroy`, and remove the
+  alert from the set on fire. Tests: spec asserting a pending timer is
+  cleared on destroy (no post-destroy `dismissAlert` call).
+  Found by Lens 11 hunt, 2026-09-10.
+  Tracked, not silently fixed.
+
   `:111-115`). Fulfilled-order history is protected only
   by the raw constraint, never by an explicit rule. Found by Lens 4 hunt,
   2026-09-10.
