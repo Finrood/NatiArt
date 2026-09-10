@@ -395,13 +395,21 @@ class AsaasPaymentServiceTest {
         when(restTemplate.postForEntity(eq(PAYMENTS_URL), any(), eq(AsaasPaymentCreationResponse.class)))
                 .thenReturn(ResponseEntity.ok(upstream));
 
-        final PaymentCreationResponse response = newService(restTemplate, paymentRepository)
-                .createPayment(
-                        new PaymentCreationRequest(
-                                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX),
-                        "cus_MINE");
+        final PaymentCreationResponse[] response = new PaymentCreationResponse[1];
+        final List<ILoggingEvent> events = captureLogEvents(
+                AsaasPaymentService.class,
+                () -> response[0] = newService(restTemplate, paymentRepository)
+                        .createPayment(
+                                new PaymentCreationRequest(
+                                        PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX),
+                                "cus_MINE"));
 
-        assertEquals("pay-9", response.getPaymentId());
+        assertEquals("pay-9", response[0].getPaymentId());
+        assertTrue(events.stream()
+                .anyMatch(event -> event.getLevel() == Level.INFO
+                        && event.getFormattedMessage().contains("pay-9")
+                        && event.getFormattedMessage().contains("10.00")
+                        && event.getFormattedMessage().contains("cus_MINE")));
         verify(paymentRepository)
                 .save(argThat(
                         payment -> "pay-9".equals(payment.getId()) && "cus_MINE".equals(payment.getOwnerExternalId())));

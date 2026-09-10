@@ -120,7 +120,15 @@ public class AsaasPaymentService implements PaymentService {
             final Optional<Payment> existing =
                     paymentRepository.findByOrderIdAndOwnerExternalId(orderId, requesterExternalId);
             if (existing.isPresent()) {
-                return toCreationResponse(fetchPaymentOrDie(existing.get().getId()));
+                final PaymentCreationResponse replay =
+                        toCreationResponse(fetchPaymentOrDie(existing.get().getId()));
+                LOGGER.info(
+                        "Payment replayed: providerPaymentId=[{}], owner=[{}], order=[{}], amount=[{}]",
+                        existing.get().getId(),
+                        requesterExternalId,
+                        orderId,
+                        value);
+                return replay;
             }
         }
         final HttpHeaders headers = getRequestHeaders();
@@ -167,7 +175,14 @@ public class AsaasPaymentService implements PaymentService {
                                     orderId);
                             throw e;
                         }
-                        return toCreationResponse(responseBody);
+                        final PaymentCreationResponse paymentResponse = toCreationResponse(responseBody);
+                        LOGGER.info(
+                                "Payment created: providerPaymentId=[{}], owner=[{}], order=[{}], amount=[{}]",
+                                responseBody.getId(),
+                                requesterExternalId,
+                                orderId,
+                                value);
+                        return paymentResponse;
                     })
                     .orElseThrow(() ->
                             new IllegalArgumentException("Received a null response body from " + asaasPaymentUrl));
