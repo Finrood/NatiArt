@@ -1868,6 +1868,50 @@ SpEL `@TargetUser` never evaluates on `anonymousUser` — unlike
 product-service, which needs its resolver because its chain is
 `permitAll()`). No new actionable items — no new `###` sections appended.
 
+## BQ. Data integrity and transactions (Lens 4 hunt, 2026-09-10)
+
+Hunt method: re-read the order/payment/cart write paths on current master
+(`OrderManagerImpl.createOrder`, `AsaasPaymentService.createPayment`,
+`CartManagerImpl`, `CustomerOrder`/`Payment` mappings, `OrderController`)
+against the BB/BA baseline; verified `getProductsOrDie` fails closed on
+unknown ids (`ProductManagerImpl.java:93-102`) and the cart line cap is
+atomic (`CartManagerImpl.java:49-58`). Re-verified: B4 owner half FIXED on
+master (`ownerExternalId` persisted, blank rejected, controller passes the
+principal's external id — PRs #215/#220; the BN "no owner column" line is
+stale, the BB narrowing to server-side freight holds); G1 backend
+reconciliation, AM1 order-linked dedupe and the `Payment.orderId` unique
+backstop hold (`AsaasPaymentService.java:93-117`,
+`Payment.java:28`); BA1/BA2/AE3/AE4 still OPEN and latent. BQ1-BQ2 below
+are runner-ups.
+
+### BQ1. Duplicate product lines bypass `MAX_ITEM_QUANTITY` — OPEN (Low)
+- `service/OrderManagerImpl.java:147-165` (`validateItems`) caps each line at
+  `MAX_ITEM_QUANTITY = 100` and the whole request at `MAX_ORDER_LINES = 50`,
+  but never rejects the same `productId` twice; the product fetch uses
+  `distinct` (`:98-101`) while the reservation loop (`:102-119`) inserts one
+  `CustomerOrderItem` per line. Fifty duplicate lines x 100 units order 5000
+  units of one product in a single POST, defeating the stated
+  anti-absurdity guard (`:24-26`) — live stock is the only bound — and
+  fulfillment sees N identical lines for one product.
+- Fix: reject duplicate product ids (or merge them) in `validateItems`.
+  Tests: duplicate-id order → 400, stock untouched.
+  Found by Lens 4 hunt, 2026-09-10.
+
+### BQ2. Null upstream payment id fails the ledger save after the charge — OPEN (Low)
+- `service/AsaasPaymentService.java:148` persists
+  `new Payment(responseBody.getId(), ...)` with the upstream-controlled id;
+  `dto/payment/asaas/AsaasPaymentCreationResponse.java:8` declares `id` a
+  plain deserialized `String` (absent member → null, no guard — BI2 guarded
+  the date fields in `toCreationResponse:177` but not the id consumed one
+  step earlier). A 200 with a missing `id` fails the local save AFTER the
+  upstream charge exists: orphan charge with no ledger row, and the
+  storefront retry mints a second charge (the AM1 order-linked dedupe keys
+  on a row that was never written).
+- Fix: null/blank-guard the upstream id and fail closed with a static 502
+  before the save (same pattern as the date guards). Tests: stubbed null
+  id → 502, save never attempted.
+  Found by Lens 4 hunt, 2026-09-10.
+
 ## BR. Data integrity and transactions (Lens 4 hunt, 2026-09-10)
 
 Hunt method: re-read the order write path on current master
