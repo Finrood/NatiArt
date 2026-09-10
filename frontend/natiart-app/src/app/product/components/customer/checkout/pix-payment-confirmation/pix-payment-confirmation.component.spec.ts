@@ -45,6 +45,27 @@ describe('PixPaymentConfirmationComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('surfaces a manual-copy fallback when the browser rejects copying', fakeAsync(() => {
+    const {fixture, component} = createAndFlushQr();
+    tick();
+    component.qrCodeData = {
+      encodedImage: 'abc',
+      payload: 'pix-payload',
+      expirationDate: new Date('2030-01-01T00:00:00Z'),
+    };
+    const input: HTMLInputElement = document.createElement('input');
+    input.value = 'pix-payload';
+    spyOn(document, 'execCommand').and.returnValue(false);
+
+    component.copyToClipboard(input);
+    fixture.detectChanges();
+
+    expect(component.copyFailed).toBeTrue();
+
+    component.ngOnDestroy();
+    http.verify();
+  }));
+
   it('keeps polling through transient status errors', fakeAsync(() => {
     const {component} = createAndFlushQr();
 
