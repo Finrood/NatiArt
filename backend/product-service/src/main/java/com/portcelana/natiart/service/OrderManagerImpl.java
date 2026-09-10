@@ -68,6 +68,7 @@ public class OrderManagerImpl implements OrderManager {
     @Override
     @Transactional
     public CustomerOrder createOrder(OrderDto orderDto, String ownerExternalId) {
+        validateContactDetails(orderDto);
         validateItems(orderDto.getItems());
         requireNonNegativeAmount(orderDto.getDeliveryAmount(), "delivery amount");
         if (ownerExternalId == null || ownerExternalId.isBlank()) {
@@ -122,6 +123,12 @@ public class OrderManagerImpl implements OrderManager {
         return orderRepository.save(customerOrder);
     }
 
+    private void validateContactDetails(OrderDto orderDto) {
+        requireNonBlankContact(orderDto.getFirstname(), "firstname");
+        requireNonBlankContact(orderDto.getLastname(), "lastname");
+        requireNonBlankContact(orderDto.getEmail(), "email");
+    }
+
     @Override
     @Transactional
     public CustomerOrder updateOrderStatus(String orderId, OrderStatus status) {
@@ -167,6 +174,12 @@ public class OrderManagerImpl implements OrderManager {
     private void requireNonNegativeAmount(BigDecimal amount, String field) {
         if (amount == null || amount.signum() < 0) {
             throw new IllegalArgumentException("The " + field + " must be a non-negative value");
+        }
+    }
+
+    private void requireNonBlankContact(String value, String field) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Order " + field + " must not be blank");
         }
     }
 }
