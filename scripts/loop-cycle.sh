@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # NatiArt continuous-improvement loop: one guarded cycle every 30 minutes.
 # See docs/continuous-improvement-loop.md. Supports --check-only (no agent run).
-set -euo pipefail
+set -Eeuo pipefail
 
 REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 umask 077
