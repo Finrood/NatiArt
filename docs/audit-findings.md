@@ -1973,3 +1973,39 @@ runner-ups.
   retry hazard. Tests: same-key replay → single order row, stock
   decremented once.
   Tracked, not silently fixed.
+## BT. HTTP integration robustness re-hunt (Lens 6, 2026-09-10)
+
+Hunt method: re-read every egress path on current master against the BI
+baseline — `AsaasPaymentService`/`ShippingService` (5s/15s timeouts present,
+401/403/404 mapped, other upstream statuses still `return e` → static 500, as
+filed in BI1), the directory `UserRegistrationListener` retry/recover wiring
+(`@RetryExternalApiCall`, `@Recover`), and `AsaasUserManager.registerUser`
+error mapping. Re-verified: BI1/BI3/BI4 still OPEN, BI2 IN REVIEW (fix PR #227
+merged — flip pending); AX1 still OPEN (frontend refresh no-timeout). BT1
+below is a runner-up.
+
+### BT1. `UserRegistrationListener` recover's 400 branch is unreachable; every Asaas 4xx logs "CRITICAL … manual intervention" — OPEN (Low)
+- `service/AsaasUserManager.java:60-64` catches every `HttpClientErrorException`
+  and rethrows `mapAsaasError` → `AsaasApiException`, so no 4xx ever reaches the
+  retry layer. But `listener/UserRegistrationListener.java:63-78` — the
+  `@Recover` for the `@RetryExternalApiCall` handler — only discriminates
+  `e instanceof HttpClientErrorException.BadRequest` (`:65-71`): within the
+  handler's call graph the exceptions that reach it are `AsaasApiException`
+  (4xx), the wrapped plain `Exception` that `registerUser:62-63` produces for
+  5xx/timeouts, `ResourceNotFoundException`, or a DB exception — never a
+  `BadRequest`. The dedicated "Unrecoverable 400 … will not be retried"
+  branch is dead code, and every permanent Asaas 4xx instead logs the
+  `CRITICAL: All retry attempts … Manual intervention may be required.` branch
+  (`:73-76`) — the wrong ops signal for a failure no retry could cure. The
+  `@Retryable` classifier (`service/support/RetryExternalApiCall.java:21-26`)
+  is masked too: its `noRetryFor={HttpClientErrorException}` never matches
+  (already mapped away), so the "never retry 4xx" contract is expressed but
+  never enforced by type. Also noted: `maxAttempts=20` with
+  `maxDelay=3_000_000` ms (~50 min step) gives one stuck registration event a
+  ~10.5 h retry window on the async path. Found by Lens 6 hunt, 2026-09-10.
+- Fix: key the recover branch on the mapped exception (`AsaasApiException`
+  with a 4xx `getHttpStatus()` → permanent, log "will not be retried"; else
+  transient/unknown → CRITICAL) or unwrap the cause chain; delete the dead
+  `BadRequest` branch; consider a total-elapsed budget cap on the retry.
+  Tests: registerUser 400 → recover logs the permanent branch, never
+  CRITICAL; 5xx → CRITICAL. Tracked, not silently fixed.
