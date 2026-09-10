@@ -9,9 +9,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.client.HttpClientErrorException;
 
 import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
@@ -19,6 +16,7 @@ import com.saas.directory.event.UserRegisteredEvent;
 import com.saas.directory.model.Role;
 import com.saas.directory.model.RoleName;
 import com.saas.directory.model.User;
+import com.saas.directory.service.AsaasApiException;
 import com.saas.directory.service.AsaasUserManager;
 import com.saas.directory.service.UserManager;
 
@@ -125,11 +123,13 @@ public class UserRegistrationListenerTest {
     }
 
     @Test
-    void recover_shouldCompleteWithoutSideEffects_onBadRequest() {
+    void recover_shouldCompleteWithoutSideEffects_onPermanentProviderFailure() {
         // Arrange
         UserRegisteredEvent event = new UserRegisteredEvent("faileduser");
-        HttpClientErrorException badRequest = HttpClientErrorException.create(
-                HttpStatus.BAD_REQUEST, "Bad Request", HttpHeaders.EMPTY, new byte[0], null);
+        AsaasApiException badRequest =
+                new AsaasApiException(
+                        "Customer registration failed at the payment provider",
+                        org.springframework.http.HttpStatus.BAD_REQUEST);
 
         // Act
         userRegistrationListener.recover(badRequest, event);
