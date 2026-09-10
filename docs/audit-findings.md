@@ -1969,3 +1969,66 @@ runner-ups.
   retry hazard. Tests: same-key replay → single order row, stock
   decremented once.
   Tracked, not silently fixed.
+
+## BS. Data integrity and transactions (Lens 4 hunt, 2026-09-10)
+
+Hunt method: re-read the order write path on current master
+(`OrderManagerImpl.createOrder`/`validateItems`, `CustomerOrder`/
+`CustomerOrderItem` mappings, `OrderController`,
+`ProductManagerImpl.deleteProduct`, `CategoryManagerImpl.deleteCategory`,
+`CartItem` mapping, product-service `ControllerAdvice` exception table,
+`OrderRepository`/`CartItemRepository` query lists) against the BP/BQ/BR
+baseline. Re-verified: BP1/BP2/BQ1/BQ2/BR1/BR2 areas still as filed (scale
+gate, contact guards, duplicate-line check, upstream-id guard, restock path
+and order idempotency key all still absent — PRs #230/#231/#232 stand open);
+B4 freight half still OPEN (client `deliveryAmount` trusted);
+G1 backend reconciliation + AM1 order-linked dedupe hold; BA1/BA2/AE3/AE4
+still OPEN and latent. Cleared as non-findings: whole-order rollback
+(single `@Transactional` over batched reads + row-atomic decrements;
+unknown product ids fail closed via `getProductsOrDie` → 404);
+server-computed line prices/total; per-line and whole-request caps.
+BS1-BS2 below are runner-ups.
+
+### BS1. Null order-line element NPEs into a 500 instead of a 400 — OPEN (Low)
+- `service/OrderManagerImpl.java:154-164` (`validateItems`) dereferences
+  `item.getProductId()` / `item.getQuantity()` with no null-element guard,
+  and the batched fetch at `:98-101` streams `OrderItemDto::getProductId`
+  the same way. Jackson preserves JSON nulls inside collections, so
+  `{"items":[null],...}` deserializes to a one-null list and the first
+  dereference throws `NullPointerException` — which matches no
+  `configuration/ControllerAdvice.java` handler (`NullPointerException` is
+  not an `IllegalArgumentException` subclass) and lands in the catch-all
+  `Exception` handler (`:30-34`) → 500 "Internal server error". A
+  client-shape error reported as a server failure (same class as BP2's
+  409-instead-of-400). Store untouched (the NPE precedes every write, and
+  the `@Transactional` rolls back anyway) — contract bug, not corruption.
+  Found by Lens 4 hunt, 2026-09-10.
+- Fix: null-guard each element in `validateItems` (400 via
+  `IllegalArgumentException`, matching the sibling item guards). Tests:
+  `[null]` line → 400, stock untouched, no ledger row.
+  Tracked, not silently fixed.
+
+### BS2. `deleteProduct` has no order/cart-reference guard; FK violation surfaces as a generic 409 — OPEN (Low)
+- `service/ProductManagerImpl.java:210-217` (`deleteProduct`) goes straight
+  to `productRepository.deleteById(id)`, while the sibling
+  `service/CategoryManagerImpl.java:102-108` (`deleteCategory`) pre-checks
+  `productRepository.existsByCategory` and rejects with an actionable 400.
+  `CustomerOrderItem.product` is a non-optional FK
+  (`model/CustomerOrderItem.java:18-20`, `nullable = false`) and
+  `CartItem.product` a non-optional FK
+  (`model/CartItem.java:23-24`), yet no repository exposes
+  `existsByProduct` (verified by grep over `repository/`) and nothing
+  checks references before the delete. Deleting a product with order
+  history or live cart lines therefore trips the raw FK constraint →
+  generic 409 "Resource conflict"
+  (`configuration/ControllerAdvice.java:123-127`) with no guidance toward
+  the proper removal-from-sale path (`isActive` via `updateProduct`,
+  `ProductController.java:97-109`, and the visibility toggle at
+  `:111-115`). Fulfilled-order history is protected only
+  by the raw constraint, never by an explicit rule. Found by Lens 4 hunt,
+  2026-09-10.
+- Fix: pre-check order/cart references in `deleteProduct` (400 with an
+  actionable "deactivate instead" message, mirroring the category guard),
+  or document hard-delete as admin-only-with-consequences. Tests: delete of
+  an order-referenced product → 400, product row intact, history readable.
+  Tracked, not silently fixed.
