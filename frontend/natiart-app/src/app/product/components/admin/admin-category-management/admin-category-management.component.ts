@@ -1,5 +1,6 @@
 import {Component, inject, OnInit, ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
+import {HttpErrorResponse} from '@angular/common/http';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {CategoryService} from '../../../service/category.service';
 import {Category} from '../../../models/category.model';
@@ -99,7 +100,7 @@ export class CategoryManagementComponent implements OnInit {
         this._categories$.next(this._categories$.value.filter(cat => cat.id !== id));
         this.showAlert('Category deleted successfully', 'success');
       },
-      error: (error: any) => {
+      error: (error: HttpErrorResponse) => {
         console.error('Error deleting category:', error);
         let errorMessage = 'An error occurred while deleting the category.';
         if (error.status === 400) {

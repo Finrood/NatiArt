@@ -1,4 +1,5 @@
 import {Component, OnInit, ViewChild} from '@angular/core';
+import {HttpErrorResponse} from '@angular/common/http';
 import {PackageService} from '../../../service/package.service';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {BehaviorSubject} from 'rxjs';
@@ -110,7 +111,7 @@ export class PackageManagementComponent implements OnInit {
         this.packages.next(this.packages.value.filter(p => p.id !== id));
         this.showAlert('Package deleted successfully', 'success');
       },
-      error: (error: any) => {
+      error: (error: HttpErrorResponse) => {
         console.error('Error deleting package:', error);
         let errorMessage = 'An error occurred while deleting the package.';
         if (error.status === 400) {

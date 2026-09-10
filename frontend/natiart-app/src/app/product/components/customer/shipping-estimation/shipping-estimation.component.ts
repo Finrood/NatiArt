@@ -1,5 +1,6 @@
 import {ChangeDetectionStrategy, Component, OnDestroy, OnInit} from '@angular/core';
 import { AsyncPipe } from '@angular/common';
+import {HttpErrorResponse} from '@angular/common/http';
 import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {BehaviorSubject, Observable, Subject} from 'rxjs';
 import {
@@ -112,7 +113,7 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
     return {status: 'success', cheapestOption, error: null};
   }
 
-  private handleError(error: any): Observable<ShippingState> {
+  private handleError(error: HttpErrorResponse): Observable<ShippingState> {
     console.error('Shipping estimation error:', error);
     return new Observable(observer => {
       observer.next({

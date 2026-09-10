@@ -1,4 +1,5 @@
 import {Component, OnInit} from '@angular/core';
+import {HttpErrorResponse} from '@angular/common/http';
 import {Router} from "@angular/router";
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from "@angular/forms";
 
@@ -77,7 +78,7 @@ export class LoginComponent implements OnInit {
           this.clearErrorMessage();
           this.redirectToSavedUrlOrDashboard();
         },
-        error: (error: any) => {
+        error: (error: HttpErrorResponse) => {
           this.setErrorMessage('Invalid email or password. Please try again.');
           console.error('Login error:', error);
         }

@@ -1,4 +1,5 @@
 import {ChangeDetectionStrategy, Component, OnInit} from '@angular/core';
+import {HttpErrorResponse} from '@angular/common/http';
 import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {CustomPasswordValidators} from '../../../validator/CustomPasswordValidators';
 import {Router, RouterLink} from '@angular/router';
@@ -80,7 +81,7 @@ export class SignupComponent implements OnInit {
             .then(() => {
             });
         },
-        error: (error: any) => {
+        error: (error: HttpErrorResponse) => {
           this.setErrorMessage('Registration failed. Please try again.');
           console.error('Registration error:', error);
         }
