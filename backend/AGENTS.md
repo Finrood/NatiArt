@@ -45,5 +45,5 @@ No instance fields like `Map`, `Set` or `AtomicReference` used as caches.
 
 ## Dependencies
 
-Spring Boot 3.5.x, Java 25, JPA (H2 local / PostgreSQL prod), Asaas payments,
+Spring Boot 4.1.x, Java 25, JPA (H2 local / PostgreSQL prod), Asaas payments,
 Adyen (frontend-side), GitHub Actions CI.

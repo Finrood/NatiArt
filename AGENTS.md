@@ -1,12 +1,12 @@
 # AGENTS.md
 
 NatiArt is a personal e-commerce platform for handmade art: a Spring Boot backend
-(Gradle, Java 25, two services) and an Angular 20 storefront.
+(Gradle, Java 25, two services) and an Angular 22 storefront.
 
 - **Backend**: `backend/directory-service` (users, auth, roles) and
   `backend/product-service` (products, cart, orders, payments, storage).
-  Gradle Kotlin DSL, Spring Boot 3.5.x, JPA (H2 local / PostgreSQL prod), JWT auth.
-- **Frontend**: `frontend/natiart-app` — single Angular 20 application,
+  Gradle Kotlin DSL, Spring Boot 4.1.x, JPA (H2 local / PostgreSQL prod), JWT auth.
+- **Frontend**: `frontend/natiart-app` — single Angular 22 application,
   Tailwind CSS 4, Adyen payments, Karma/Jasmine tests.
 - **CI**: GitHub Actions (`.github/workflows/`) builds and tests both sides on every PR to `master`.
 

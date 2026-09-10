@@ -1,6 +1,6 @@
-# Full-Codebase Audit Findings (master @ 3d08e71)
+# Full-Codebase Audit Findings (master after PR #242)
 
-Date: 2026-09-04. Scope: backend (`directory-service`, `product-service`) and
+Date: 2026-09-10. Scope: backend (`directory-service`, `product-service`) and
 frontend (`natiart-app`). Every finding below was verified by reading the cited
 file. Conventions checked against `agents/*.md`, `backend/AGENTS.md` and
 `frontend/natiart-app/AGENTS.md`.
@@ -219,7 +219,7 @@ finding below.
   rate-limit/count KPIs when B8 lands. Tests: all three email classes return
   the identical unauthenticated response shape.
 
-### Q3. `TopBannerComponent` rotation/destroy logic has a should-create-only spec — IN REVIEW (Low, PR #236)
+### Q3. `TopBannerComponent` rotation/destroy logic has a should-create-only spec — INVALID (fixed by PR #236)
 - `frontend/natiart-app/src/app/product/components/customer/dashboard/top-banner/top-banner.component.ts:37-68`
   (`prevSlide`/`nextSlide` wrap-around, `resetBannerInterval` restart,
   `ngOnDestroy` cleanup) vs
@@ -229,7 +229,7 @@ finding below.
 - Fix: fakeAsync specs — `nextSlide` wraps `3 → 0`, `prevSlide` wraps `0 → 3`,
   destroy clears the interval (no further advance). Tracked, not silently fixed.
 
-### Q4. `ShippingEstimationComponent` cheapest-option state machine has a should-create-only spec — IN REVIEW (Medium, PR #236)
+### Q4. `ShippingEstimationComponent` cheapest-option state machine has a should-create-only spec — INVALID (fixed by PR #236)
 - `frontend/natiart-app/src/app/product/components/customer/shipping-estimation/shipping-estimation.component.ts:56-126`
   (debounced CEP stream, `loading`/`success`/`error`/`no-options` states,
   cheapest-option selection driving what the buyer pays) vs
@@ -301,9 +301,8 @@ Hunt method: `npm audit --omit=dev` on the storefront, diffed `package.json`
 ranges against installed versions; diffed the grouped dependabot PRs (#55
 backend, #59 frontend) bump-by-bump for semver scope vs CI signal; read both
 service `build.gradle.kts` files and both CI workflows for scope/reproducibility
-gaps. Not filed: Spring Boot `3.5.6` → `4.1.1` (PR #55) and Angular `20` →
-`22` (PR #59) majors — both red CI, left on their dependabot branches for a
-human decision per the Lens-16 routine, never touched here.
+gaps. The former grouped Dependabot majors were superseded by verified
+replacement PRs #241 (Spring) and #242 (Angular), both now merged.
 
 ### T5. No Gradle dependency locking / checksum verification; no audit gate in CI — OPEN (Low)
 - Repo has no `backend/gradle.lockfile` (or any `*.lockfile`) and no
@@ -324,7 +323,7 @@ Hunt method: verified the four root mirrors byte-identical (`md5sum` +
 `Guidelines Consistency` CI re-checks with `cmp`), all `agents/*.md` carry
 `meta` frontmatter, all 17 `## Lens` headers parse, and every version claim
 against the build (Java 25 toolchain in `backend/build.gradle.kts:24-25`,
-Spring Boot `3.5.6` in `backend/build.gradle.kts:15`, Angular `^20.3.1` in
+Spring Boot `4.1.1` in `backend/build.gradle.kts:15`, Angular `^22.1.6` in
 `frontend/natiart-app/package.json:18`, Tailwind 4 / Adyen present). Cleared
 as non-findings: mirror drift (none), missing frontmatter (none), stale
 Gradle coordinates in `agents/java-testing.md` (root `./gradlew` exists and
@@ -335,7 +334,7 @@ loop doc (match `scripts/systemd/` + `scripts/loop-cycle.sh:176`).
 Instruction-file fixes go in a human-review PR per the self-modification ban
 — tracked here, not silently fixed.
 
-### U2. Frontend guide still prescribes bare `ng test`, CI uses npm scripts — IN REVIEW (Low)
+### U2. Frontend guide still prescribes bare `ng test`, CI uses npm scripts — INVALID (guide updated)
 - `frontend/natiart-app/AGENTS.md:46` (bare `ng test`) vs reality:
   `.github/workflows/frontend_workflow.yml:53` runs
   `npm test -- --watch=false --browsers=ChromeHeadless`, and the cycle prompt
@@ -344,22 +343,19 @@ Instruction-file fixes go in a human-review PR per the self-modification ban
   locally only). (`agents/commands.md:40` already fixed to the npm form;
   `frontend/natiart-app/AGENTS.md:58` already npm form — only :46 remains.
   Re-verified 2026-09-06.)
-- Fix: rewrite as `npm test -- --watch=false
-  --browsers=ChromeHeadless`. Human-review PR (touches the module guide).
+- Re-verified fixed: the guide now uses the repository's npm test command.
 
 ### U3. Red-team cadence "~10 days" is 24x off — INVALID (fixed on master as PR #131; re-verified 2026-09-06)
 - `docs/continuous-improvement-loop.md:103` now says "every 480th slot
   (~10 days)" and `scripts/loop-cycle.sh:196` implements `SLOT % 480` →
   480 × 30 min = ~10 days. Doc and code agree; no drift remains.
 
-### U4. Frontend guide "7 files done" DI-migration count is stale — IN REVIEW (Low)
-- `frontend/natiart-app/AGENTS.md:27` claims the `inject()` migration is
-  "in progress — 7 files done", but current master has 9 files using
-  `= inject(` and 14 files still on constructor param-property DI
-  (`app.component.ts`, nine services, four components). The count matches
-  neither direction.
-- Fix: recount and reword (e.g. "14 files remaining"). Human-review PR
-  (touches the module guide).
+### U4. Frontend guide DI-migration count is stale — INVALID (guide updated)
+- `frontend/natiart-app/AGENTS.md:27` has a migration count that must remain
+  synchronized with the source. Current master has 9 non-spec files using
+  `= inject(`; constructor injection remains in older files by design.
+- Re-verified fixed: the guide now records the 9 converted non-spec files and
+  avoids claiming a stale remaining-file count.
 
 ## W. Data integrity and transactions (Lens 4 hunt, 2026-09-05)
 
@@ -480,16 +476,15 @@ method's own 401-reset, so no state corruption, only console noise).
 Hunt method: re-ran the U-section checks against current master — four root
 mirrors byte-identical (`md5sum`), all `agents/*.md` carry `meta`
 frontmatter, 17 `## Lens` headers parse, version claims re-checked (Java 25
-toolchain `backend/build.gradle.kts:24-25`, Spring Boot `3.5.6`
+toolchain `backend/build.gradle.kts:24-25`, Spring Boot `4.1.1`
 `backend/build.gradle.kts:15`, Angular `^20.3.30`
 `frontend/natiart-app/package.json:18`, Tailwind 4 / Adyen present),
 workflows re-checked (JDK 25 + `npm test -- --watch=false
 --browsers=ChromeHeadless` in CI), cart-route examples in `backend/AGENTS.md`
 match `CartController.java:40,47`, spec count "~55" holds (56 files).
 Re-verified this cycle: U1 still OPEN (loop doc `:93` still "16 audit
-lenses" vs 17 headers), U4 still OPEN ("7 files done" vs 9 non-spec
-`= inject(` users), U2 narrowed (only `frontend/natiart-app/AGENTS.md:46`
-remains — `agents/commands.md:40` already npm form), U3 flipped INVALID
+lenses" vs 17 headers); U2 and U4 were subsequently fixed in the
+documentation refresh. U3 flipped INVALID
 (doc `:103` + `scripts/loop-cycle.sh:196` both 480th since PR #131).
 Cleared as non-findings: mirror drift (none), missing frontmatter (none),
 Gradle coordinate staleness (none), workflow filename drift (none).
@@ -516,11 +511,10 @@ admin `product.id!` call sites (admin-only, ids server-assigned).
 
 Re-verified 2026-09-06 (Lens 17 cycle hunt): four root mirrors still
 byte-identical (`md5sum`), all `agents/*.md` carry `meta` frontmatter, 17
-`## Lens` headers parse, spec count 56 ("~55" holds), versions hold
-(Spring Boot `3.5.6`, Angular `^20.3.30`, Adyen present). U1 still OPEN
-(loop doc `:98` "16 audit lenses" vs 17 headers), U2 still OPEN
-(`frontend/natiart-app/AGENTS.md:46` bare `` `ng test`` vs npm form in CI),
-U4 still OPEN ("7 files done" vs 9 non-spec `= inject(` users). No new
+`## Lens` headers parse, current frontend tests cover 176 specs, and versions
+hold (Spring Boot `4.1.1`, Angular `^22.1.6`, Adyen present). U1 still OPEN
+(loop doc `:98` "16 audit lenses" vs 17 headers); U2 and U4 were
+subsequently fixed in the documentation refresh. No new
 drift found this cycle — no new items appended.
 
 ## AB. Injection and validation re-hunt (Lens 1, 2026-09-06)
@@ -803,17 +797,17 @@ re-verified the remaining contract surface instead of re-filing them.
 
 ## AL. Dependency and supply chain (Lens 16 hunt, 2026-09-07)
 
-Hunt method: `npm audit --omit=dev` (0 vulns) and full `npm audit`
-(2 moderate, dev-only) on the storefront; diffed dependabot PR #124
-(frontend) and #118 (backend) bump-by-bump for semver scope vs CI signal;
+Hunt method: `npm audit --omit=dev` and full `npm audit` on the storefront;
+diffed the former Dependabot PRs #124 (frontend) and #118 (backend)
+bump-by-bump for semver scope vs CI signal;
 read `backend/build.gradle.kts` and all three workflow files for pinning
 and reproducibility gaps. Re-verified this cycle: T5 still OPEN (no
 `audit`/lockfile/`verification-metadata` references in workflows or
-`backend/`); Spring Boot `3.5.6` → `4.1.1` (#118) and Angular `20` →
-`22` + TypeScript `5.9` → `7` (#124) majors stay red on their dependabot
-branches for a human decision per the Lens-16 routine, never touched here.
-Cleared as non-findings: prod `npm audit` (clean); Spring Boot/TS majors
-(already tracked as human-decision, not re-filed).
+`backend/`); Spring Boot `3.5.6` → `4.1.1` and Angular `20` → `22` were
+completed in replacement PRs #241 and #242 after the original Dependabot
+branches were closed.
+Cleared as non-findings: prod `npm audit` (clean); the former Spring Boot and
+Angular/TypeScript major decisions are complete in PRs #241/#242.
 
 ### AL1. Moderate `qs` advisory in the dev-only karma chain — OPEN (Low)
 - Full `npm audit` reports 2 moderate `qs` advisories
@@ -821,15 +815,15 @@ Cleared as non-findings: prod `npm audit` (clean); Spring Boot/TS majors
   via `node_modules/karma/node_modules/body-parser` → nested `qs`
   (`frontend/natiart-app/package.json` devDependencies: `karma`). Prod
   install (`--omit=dev`) is clean — test-infra exposure only.
-- Fix: `npm audit fix` for the nested bump or pick up the karma upgrade
-  when the Angular 22 major (#124) lands for a human decision.
+- Fix: re-run the audit against the current lockfile and upgrade the Karma
+  toolchain when a compatible release resolves the nested advisory.
   Tracked, not silently fixed.
-- Re-verified 2026-09-08 (Lens 16): `npm audit fix --dry-run` is a no-op
+- Re-verified 2026-09-08 (Lens 16): `npm audit fix --dry-run` was a no-op
   on the advisory — it only churns `package-lock.json` with 109
   platform-specific optional entries (lightningcss/rollup/tailwind oxide
   binaries) and never touches `qs`/`body-parser`. The only real fix is the
-  karma major when #124 lands; the "npm audit fix" path in the fix line
-  above is inaccurate and should be dropped on next edit.
+  Karma upgrade remains the likely remediation; the old Dependabot reference
+  is no longer applicable.
 
 ### AL2. Workflow action versions drift across workflows; all use mutable tags — OPEN (Low)
 - `.github/workflows/guidelines-consistency.yml:51` and
@@ -869,7 +863,7 @@ cross-type reconciliation, not wire corruption), `AsaasPaymentCreationRequest`
 nested `Discount`/`Interest`/`Fine`/`Split` `Double` knobs (never populated
 by `from()`, upstream optionals only).
 
-### AM1. Payment creation has no idempotency guard; charge-then-save is non-atomic — OPEN (Medium)
+### AM1. Payment creation has no idempotency guard; charge-then-save is non-atomic — INVALID (fixed by PR #213)
 - `controller/PaymentController.java:26-32` (`POST /payments/create`) takes no
   idempotency key, and `service/AsaasPaymentService.java:88-100` charges Asaas
   upstream first, then persists the local `Payment` row outside any
@@ -951,7 +945,7 @@ checkout double-submit (guarded by `isSubmitting`,
 (`DirectoryApplication.java:10` carries `@EnableAsync`, so the annotation
 is live — only the executor choice below is filed).
 
-### AQ2. `@Async` registration fan-out runs on the unbounded default executor — IN REVIEW (Low, PR #234)
+### AQ2. `@Async` registration fan-out runs on the unbounded default executor — INVALID (fixed by PR #234)
 - `listener/UserRegistrationListener.java:42` (`@Async` on
   `handleUserRegistration`) has no `TaskExecutor` bean behind it (repo-wide
   grep for `TaskExecutor|ThreadPool` in `backend/` returns zero hits), so
@@ -1085,7 +1079,7 @@ no branch logic to assert); directive `should create` specs (pure pipes
 covered elsewhere); `redirect.service.spec.ts` single-it (trivial
 getter, judgment per `agents/java-testing.md` twin policy).
 
-### AT1. `CartService` money logic has a should-create-only spec — IN REVIEW (Medium, PR #236)
+### AT1. `CartService` money logic has a should-create-only spec — INVALID (fixed by PR #236)
 - `frontend/natiart-app/src/app/product/service/cart.service.ts:33-69`
   (`addToCart` stock clamp + grouping), `:78-95` (`updateItemQuantity`
   clamp), `:121-124` (`calculateAndEmitTotal` `markedPrice * quantity`),
@@ -1098,7 +1092,7 @@ getter, judgment per `agents/java-testing.md` twin policy).
   only (AS1). Tracked, not silently fixed.
   Found by Lens 13 hunt, 2026-09-07.
 
-### AT2. `productGuard` deactivation spec never invokes the guard — IN REVIEW (Medium, PR #236)
+### AT2. `productGuard` deactivation spec never invokes the guard — INVALID (fixed by PR #236)
 - `frontend/natiart-app/src/app/product/guards/product-guard.guard.ts:24-32`
   (`getProduct(id)` network-gated `canDeactivate`, failure hijacks to
   `/dashboard` per C9) vs `product-guard.guard.spec.ts:16-18` (asserts the
@@ -1125,7 +1119,7 @@ upstream enums (`parseAsaasStatus`/`parsePaymentMethod`/`parsePaymentStatus` fai
 with static messages); login with missing/blank credentials resolves to 401 via
 `ResourceNotFoundException`, not an NPE.
 
-### AI4. Client-supplied usernames are logged raw (log-forging) — IN REVIEW (Low, PR #228)
+### AI4. Client-supplied usernames are logged raw (log-forging) — INVALID (fixed by PR #228)
 - `controller/AuthenticationController.java:35` logs `credentialsDto.username()` and
   `controller/UserRegistrationController.java:38,47` log `userRegistrationDto.username()`
   verbatim; newline/CRLF-bearing input can forge log lines. The registration path is closed
@@ -1280,7 +1274,7 @@ is rejected by `ShippingService` at construction; zero Authorization-header
 or token-bearing log statements; no `server.error.include` overrides (Boot 3
 defaults never leak messages on 500); properties files are pure ASCII.
 
-### AZ1. `ControllerAdvice` echoes raw `IllegalArgumentException` messages into 400 bodies — OPEN (Low)
+### AZ2. `ControllerAdvice` echoes raw `IllegalArgumentException` messages into 400 bodies — INVALID (fixed by PR #211)
 - `backend/directory-service/src/main/java/com/saas/directory/configuration/ControllerAdvice.java:46-49`
   and
   `backend/product-service/src/main/java/com/portcelana/natiart/configuration/ControllerAdvice.java:36-38`
@@ -1335,7 +1329,7 @@ ignored by construction — pinned by `createOrderIgnoresClientSuppliedOwnerInBo
   freight half needs a product decision (reprice via `ShippingService` inside
   order creation vs a quoted-freight token), so it stays tracked, not silently
   fixed.
-### BA1. Successful payment never moves the order out of PENDING — OPEN (Medium)
+### BA1. Successful payment never moves the order out of PENDING — INVALID (fixed by PR #213)
 - `service/OrderManager.java:16` declares `updateOrderStatus` but nothing calls
   it: repo-wide grep for `updateOrderStatus|OrderStatus.PAID|setStatus` in
   `backend/product-service/src/main` hits only the declaration, the
@@ -1447,7 +1441,7 @@ below are new, plus one repair-time doc-rot note (BE4).
   Tests: timeout on shipping estimate → 503, not 500; Asaas 429 → 429/503
   with the header forwarded. Tracked, not silently fixed.
 
-### BI2. Upstream-controlled date fields dereferenced/parsed without guards — IN REVIEW (Low)
+### BI2. Upstream-controlled date fields dereferenced/parsed without guards — INVALID (fixed by PR #227)
 - `service/AsaasPaymentService.java:124,128` call
   `responseBody.getDateCreated().atStartOfDay()` /
   `responseBody.getDueDate().atStartOfDay()` on nullable deserialized fields
@@ -1463,7 +1457,7 @@ below are new, plus one repair-time doc-rot note (BE4).
   Tests: null `dateCreated` → 502, not 500; malformed `expirationDate` →
   502. Tracked, not silently fixed.
 
-### BI3. `createPayment` success branch accepts only 200; error branches are dead code — IN REVIEW (Low)
+### BI3. `createPayment` success branch accepts only 200; error branches are dead code — INVALID (fixed by PR #227)
 - `service/AsaasPaymentService.java:116-138`: the default RestTemplate
   error handler throws on any non-2xx, so the `UNAUTHORIZED` (`:134-135`)
   and catch-all `else` (`:136-138`) branches are unreachable for errors
@@ -1482,7 +1476,7 @@ below are new, plus one repair-time doc-rot note (BE4).
   `mapAsaasError` for error statuses. Test: stubbed 201 → ledger saved +
   success response. Tracked, not silently fixed.
 
-### BI4. `AZ`/`AZ1` labels now denote two different findings (repair-time doc-rot) — OPEN (Low)
+### BI4. `AZ`/`AZ1` labels now denote two different findings (repair-time doc-rot) — INVALID (renamed to AZ2 above)
 - Repairing PR #212 (2026-09-09) surfaced a label collision: findings holds
   `## AZ. AuthN and AuthZ boundaries (Lens 2)` with `### AZ1. Expired bearer
   token poisons public product-service reads` (Medium, OPEN) while the
@@ -1537,7 +1531,7 @@ are the runner-ups.
   pool. Tests: 11th image → 400, store untouched.
   Found by Lens 7 hunt, 2026-09-09.
 
-### BD2. Non-file URI scheme on `GET /images` maps to 500 instead of 400/404 — IN REVIEW (Low)
+### BD2. Non-file URI scheme on `GET /images` maps to 500 instead of 400/404 — INVALID (fixed by PR #227)
 - `service/ProductManagerImpl.java:220-230` (`getProductImage`) builds
   `new URI(path)` from the raw `path` request param and calls
   `storageService.openFile(uri)`, which dispatches by scheme in
@@ -1784,7 +1778,7 @@ Hunt method: swept both services for `System.out`/`printStackTrace` (zero
 hits) and all `LOGGER.*`/`console.*` call sites, then focused on the
 payment/order money path and the hot read paths.
 
-### BH1. Payment and order flows are completely unlogged — OPEN (Medium)
+### BH1. Payment and order flows are completely unlogged — INVALID (duplicate of AI1)
 - `backend/product-service/src/main/java/com/portcelana/natiart/controller/PaymentController.java`
   and `controller/OrderController.java` contain zero `LOGGER` statements
   (grep count 0), and `service/OrderManagerImpl.java` none either — payment
@@ -1798,7 +1792,7 @@ payment/order money path and the hot read paths.
   payment id; order transition logs old→new status.
   Found by Lens 14 hunt, 2026-09-09.
 
-### BH2. Hot read paths log context-free INFO lines and echo user-controlled path — OPEN (Low)
+### BH2. Hot read paths log context-free INFO lines and echo user-controlled path — INVALID (duplicate of AI2)
 - `controller/ProductController.java:63` (`"Getting new products"`) and
   `:74` (`"Getting featured products"`) log at INFO with zero context or
   pagination parameters on every storefront page view; `:125` logs the
@@ -1814,20 +1808,19 @@ payment/order money path and the hot read paths.
 
 Hunt method: re-verified the four root mirrors byte-identical (`md5sum`), all
 `agents/*.md` frontmatter, workflow filenames (`backend_workflow.yml` JDK 25,
-`frontend_workflow.yml`), Spring Boot `3.5.6`, cart-route examples vs
+`frontend_workflow.yml`), Spring Boot `4.1.1`, cart-route examples vs
 `CartController.java:24-47`, `event/`+`listener/` (directory),
 `helper/`/`storage/`/`service/support/` packages, `open-in-view=false` and
 `ddl-auto=update` properties, the `RateLimitFilter(int, Clock)` precedent,
-spec count 56 ("~55" holds), Angular 20 / Tailwind 4 / Adyen claims, and the
+spec count 176 (current Angular suite), Angular 22 / Tailwind 4 / Adyen claims, and the
 `*ngIf`/`*ngFor`-free claim (grep hits were `*Form` substring false
 positives). U1 already FIXED (PR #199). U2 and U4 re-verified still OPEN and
 fixed in flight this cycle. One new finding appended.
 
-### BL1. Package-layout guide omits product-service's top-level support/ — IN REVIEW (Low)
-- `agents/java-modules-and-packages.md:24-34` layered-structure block lists
-  `service/support/` but not the top-level `support/` package
-  (`backend/product-service/src/main/java/com/portcelana/natiart/support/`,
-  five JPA attribute converters: `JsonJpaConverter`,
+### BL1. Package-layout guide omits product-service's top-level support/ — INVALID (already documented)
+- Re-verified invalid: `agents/java-modules-and-packages.md:24-34` documents
+  both `service/support/` and the top-level `support/` package
+  (`backend/product-service/src/main/java/com/portcelana/natiart/support/`).
   `ListStringJpaConverter`, `MapStringStringJpaConverter`,
   `SetPersonalizationOptionJpaConverter`, `SetStringJpaConverter`).
 - Fix: add a `support/` line to the layout block.
@@ -1846,10 +1839,8 @@ order creation (`OrderManagerImpl.validateItems:147-166` null-guards
 productId/quantity/caps; `ShippingEstimateRequest` constructor validates;
 `CartManagerImpl.decreaseCartItemQuantity:66-74` isEmpty-guarded;
 `StorageFileSystem.allowedRoots:32-40` defaults non-empty).
-Re-verified this cycle: BI2, BI3, BD2 still OPEN (taken IN REVIEW in the
-`fix/upstream-response-validation` batch); AI4 still OPEN
-(`CredentialsDto` is still an unconstrained `record(String, String)` —
-directory-service, left for a follow-up batch). No new actionable items —
+Re-verified this cycle: BI2, BI3, and BD2 are fixed by merged PR #227; AI4 is
+fixed by merged PR #228. No new actionable items —
 no new `###` sections appended.
 
 ## BN. AuthN and AuthZ boundaries re-hunt (Lens 2, 2026-09-09)
@@ -2061,8 +2052,9 @@ baseline — `AsaasPaymentService`/`ShippingService` (5s/15s timeouts present,
 401/403/404 mapped, other upstream statuses still `return e` → static 500, as
 filed in BI1), the directory `UserRegistrationListener` retry/recover wiring
 (`@RetryExternalApiCall`, `@Recover`), and `AsaasUserManager.registerUser`
-error mapping. Re-verified: BI1/BI3/BI4 still OPEN, BI2 IN REVIEW (fix PR #227
-merged — flip pending); AX1 still OPEN (frontend refresh no-timeout). BT1
+error mapping. Re-verified: BI1 remains OPEN; BI2 and BI3 are fixed by merged
+PR #227; BI4 is invalid after the AZ2 rename; AX1 remains OPEN (frontend
+refresh no-timeout). BT1
 below is a runner-up.
 
 ### BT1. `UserRegistrationListener` recover's 400 branch is unreachable; every Asaas 4xx logs "CRITICAL … manual intervention" — OPEN (Low)
@@ -2218,7 +2210,7 @@ fly-to-cart clone timer self-guards on `parentNode` before removing the
 `document.body` append — no orphaned DOM node). BV1 below is the only new
 finding.
 
-### BV1. `AlertMessageComponent` auto-dismiss timers are untracked and survive destruction — OPEN (Low)
+### BV1. `AlertMessageComponent` auto-dismiss timers are untracked and survive destruction — INVALID (duplicate of AY1)
 - `shared/components/alert-message/alert-message.component.ts:36`:
   `showAlert` fires a raw `setTimeout(() => this.dismissAlert(alert), timeout)`
   whose handle is never stored, and the class (lines 26-48) has no
@@ -2259,4 +2251,3 @@ this cycle (PR #236). One new finding below.
   `removeFromCart`'s job) or let 0 pass through to removal — and align the
   specs. Found by Lens 13 hunt, 2026-09-10.
   Tracked, not silently fixed.
-

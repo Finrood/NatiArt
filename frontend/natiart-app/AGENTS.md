@@ -1,6 +1,6 @@
 # Frontend Guide — natiart-app
 
-Single Angular 20 application (no monorepo), Tailwind CSS 4, Adyen payments,
+Single Angular 22 application (no monorepo), Tailwind CSS 4, Adyen payments,
 Karma/Jasmine tests. Generic rules in `agents/*.md` supersede nothing here — this
 file is the frontend source of truth.
 
@@ -24,7 +24,8 @@ building blocks go in `shared/`. Keep `app.component` a thin shell.
   dependencies in the `imports: []` array.
 - **Control flow**: `@if` / `@for`. Never `*ngIf` / `*ngFor` (already 100% migrated).
 - **DI**: `private readonly _x = inject(X)` for new code; convert constructor
-  injections when touching (in progress — 9 files converted, 14 remaining).
+  injections when touching (currently 9 non-spec files converted; keep this
+  count synchronized when changing the migration).
 - **Signals**: adopt `signal()`/`computed()` for new component state; prefix with
   `$` (e.g. `$user`). RxJS `BehaviorSubject`/streams remain acceptable for
   streaming flows (chat, polling); do not rewrite working RxJS code unprompted.
@@ -46,7 +47,8 @@ building blocks go in `shared/`. Keep `app.component` a thin shell.
 - Runner: **Karma + Jasmine** (`npm test -- --watch=false
   --browsers=ChromeHeadless`, ChromeHeadless in CI —
   `.github/workflows/frontend_workflow.yml`).
-- ~55 specs. Policy: **test complex logic** (services, pipes, state handling);
+- 176 passing specs in the current Angular suite. Policy: **test complex logic**
+  (services, pipes, state handling);
   obvious markup needs no spec. Boilerplate "should create" specs must keep passing
   (they run in CI).
 - When adding a component with real logic, add a spec next to it.
