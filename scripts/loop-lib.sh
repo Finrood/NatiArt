@@ -7,9 +7,18 @@ log() { printf '%s\n' "[$(date -Is)] $*"; }
 
 gh_safe() { # gh calls that may fail transiently: log (to STDERR, so captured
     # stdout stays parseable) and continue with empty output.
-    local out
-    out=$("$@" 2>&1) || { log "WARN: '$*' failed transiently; treating as empty." >&2; return 0; }
-    printf '%s\n' "$out"
+    local out_file err_file status
+    out_file=$(mktemp) || { log "WARN: could not create gh stdout capture; treating as empty." >&2; return 0; }
+    err_file=$(mktemp) || { rm -f "$out_file"; log "WARN: could not create gh stderr capture; treating as empty." >&2; return 0; }
+    "$@" >"$out_file" 2>"$err_file"; status=$?
+    cat "$err_file" >&2
+    if [[ "$status" -ne 0 ]]; then
+        rm -f "$out_file" "$err_file"
+        log "WARN: '$*' failed transiently; treating as empty." >&2
+        return 0
+    fi
+    cat "$out_file"
+    rm -f "$out_file" "$err_file"
 }
 
 is_docs_only() { # $1 = PR number; true iff every changed file is under docs/
