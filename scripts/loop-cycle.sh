@@ -55,12 +55,14 @@ if [[ "${BASH_SOURCE[0]:-}" == /tmp/natiart-loop-cycle-*.sh ]]; then
     trap 'rm -f "$SNAP_SELF"' EXIT
 fi
 
-mkdir -p "$LOG_DIR"
-LOG_FILE="$LOG_DIR/loop-$(date +%Y%m%d-%H%M%S).log"
-exec > >(tee -a "$LOG_FILE") 2>&1
-# Log retention: keep the last 300 cycle logs (~6 days at 30-min cadence) so
-# every 10-day red-team window stays fully inspectable.
-ls -t "$LOG_DIR"/loop-*.log 2>/dev/null | tail -n +301 | xargs -r rm -f || true
+if [[ "$CHECK_ONLY" -eq 0 ]]; then
+    mkdir -p "$LOG_DIR"
+    LOG_FILE="$LOG_DIR/loop-$(date +%Y%m%d-%H%M%S).log"
+    exec > >(tee -a "$LOG_FILE") 2>&1
+    # Log retention belongs to normal cycles; check-only must not create,
+    # modify, or delete anything under the repository's log directory.
+    ls -t "$LOG_DIR"/loop-*.log 2>/dev/null | tail -n +481 | xargs -r rm -f || true
+fi
 
 log "=== Improvement-loop cycle start (check-only=$CHECK_ONLY) ==="
 cd "$REPO"
@@ -84,7 +86,26 @@ fi
 # healing, PR self-healing, branch cleanup, and agent execution: those phases
 # can commit, reset, merge, delete, or otherwise mutate repository state.
 if [[ "$CHECK_ONLY" -eq 1 ]]; then
-    log "Check-only mode: auth and disk gates pass; no repository or GitHub mutations performed."
+    for required in docs/audit-findings.md docs/loop-lenses.md scripts/loop-lib.sh scripts/run-agent.sh; do
+        if [[ ! -f "$REPO/$required" ]]; then
+            log "Check-only failed: required file is missing: $required."
+            exit 1
+        fi
+    done
+    if ! grep -q '^## Lens [0-9]*:' "$REPO/docs/loop-lenses.md"; then
+        log "Check-only failed: no parseable lenses found."
+        exit 1
+    fi
+    for script in "$REPO"/scripts/*.sh "$REPO"/scripts/tests/*.sh; do
+        if ! bash -n "$script"; then
+            log "Check-only failed: Bash syntax error in $script."
+            exit 1
+        fi
+    done
+    if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
+        log "Check-only warning: working tree is dirty; no changes will be salvaged or reset."
+    fi
+    log "Check-only mode: auth, disk, files, lenses, and syntax pass; no repository or GitHub mutations performed."
     exit 0
 fi
 
