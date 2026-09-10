@@ -106,4 +106,24 @@ class CartItemRepositoryFetchTest {
         // the per-line product and image selects must be gone.
         assertTrue(statistics.getQueryExecutionCount() <= 2);
     }
+
+    @Test
+    void cartAddResponseLoadsProductDetailsInOneFetchQuery() {
+        final Product product = newProductWithImage("add-details");
+        final CartItem cartItem = new CartItem("jane", product);
+        cartItemRepository.save(cartItem);
+        entityManager.flush();
+        entityManager.clear();
+
+        final Statistics statistics = statistics();
+        statistics.clear();
+        final CartItem loaded = cartItemRepository
+                .findCartItemByUsernameAndProductWithDetails("jane", product.getId())
+                .orElseThrow();
+        CartItemDto.from(loaded);
+
+        assertTrue(Hibernate.isInitialized(loaded.getProduct()));
+        assertTrue(Hibernate.isInitialized(loaded.getProduct().getImages()));
+        assertEquals(1, statistics.getQueryExecutionCount());
+    }
 }

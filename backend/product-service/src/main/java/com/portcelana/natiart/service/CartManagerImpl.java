@@ -47,7 +47,7 @@ public class CartManagerImpl implements CartManager {
         // row without limit. The unique constraint on (username, product) keeps
         // a lost insert race fail-loud instead of persisting duplicate lines.
         if (cartItemRepository.incrementQuantityIfBelowCap(username, productId, MAX_LINE_QUANTITY) > 0) {
-            return CartItemDto.from(getCartLineOrDie(username, product));
+            return CartItemDto.from(getCartLineOrDie(username, productId));
         }
         final CartItem existing = cartItemRepository
                 .findCartItemByUsernameAndProduct(username, product)
@@ -89,10 +89,10 @@ public class CartManagerImpl implements CartManager {
         cartItemRepository.deleteByUsername(username);
     }
 
-    private CartItem getCartLineOrDie(String username, Product product) {
+    private CartItem getCartLineOrDie(String username, String productId) {
         return cartItemRepository
-                .findCartItemByUsernameAndProduct(username, product)
+                .findCartItemByUsernameAndProductWithDetails(username, productId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Cart item for user [" + username + "] and product [" + product.getId() + "] not found"));
+                        "Cart item for user [" + username + "] and product [" + productId + "] not found"));
     }
 }
