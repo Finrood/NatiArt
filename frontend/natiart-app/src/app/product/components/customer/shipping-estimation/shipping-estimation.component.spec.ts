@@ -2,7 +2,6 @@ import {ComponentFixture, TestBed, fakeAsync, tick} from '@angular/core/testing'
 import {provideHttpClient} from '@angular/common/http';
 import {HttpTestingController, provideHttpClientTesting} from '@angular/common/http/testing';
 import {provideRouter} from '@angular/router';
-import {provideAnimations} from '@angular/platform-browser/animations';
 
 import {ShippingEstimationComponent} from './shipping-estimation.component';
 import {ShippingEstimate} from '../../../service/shipping.service';
@@ -18,7 +17,7 @@ describe('ShippingEstimationComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ShippingEstimationComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideAnimations()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
   });
@@ -96,4 +95,3 @@ describe('ShippingEstimationComponent', () => {
     http.verify();
   }));
 });
-

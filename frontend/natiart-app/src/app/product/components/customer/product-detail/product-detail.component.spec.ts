@@ -2,7 +2,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
-import { provideAnimations } from '@angular/platform-browser/animations';
 import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 
 import { ProductDetailComponent } from './product-detail.component';
@@ -39,8 +38,7 @@ describe('ProductDetailComponent', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        provideAnimations(),
-        { provide: ActivatedRoute, useValue: { paramMap: paramMap$.asObservable() } },
+                { provide: ActivatedRoute, useValue: { paramMap: paramMap$.asObservable() } },
         {
           provide: ProductService,
           useValue: {
@@ -115,8 +113,7 @@ describe('ProductDetailComponent stale main images', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        provideAnimations(),
-        {provide: ActivatedRoute, useValue: {paramMap: paramMap$.asObservable()}},
+                {provide: ActivatedRoute, useValue: {paramMap: paramMap$.asObservable()}},
         {
           provide: ProductService,
           useValue: {
@@ -178,8 +175,7 @@ describe('ProductDetailComponent stale related images (AA5)', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        provideAnimations(),
-        {provide: ActivatedRoute, useValue: {paramMap: paramMap$.asObservable()}},
+                {provide: ActivatedRoute, useValue: {paramMap: paramMap$.asObservable()}},
         {
           provide: ProductService,
           useValue: {

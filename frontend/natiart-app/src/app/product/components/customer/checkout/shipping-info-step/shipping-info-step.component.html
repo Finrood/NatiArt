@@ -15,7 +15,7 @@
     </div>
 
     @if (!_sameShippingAsBilling) {
-      <div [@slideInRight]>
+      <div animate.enter="shipping-slide-in" animate.leave="shipping-slide-out">
         <app-address-form
           [addressFormGroup]="billingInfoFormGroup"
           title="Billing Address"

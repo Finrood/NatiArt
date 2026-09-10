@@ -1,5 +1,18 @@
 @reference "../../../../../../styles.css";
 
+@keyframes shipping-slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes shipping-slide-out {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+.shipping-slide-in { animation: shipping-slide-in 300ms ease-out; }
+.shipping-slide-out { animation: shipping-slide-out 300ms ease-in; }
+
 .form-input {
   @apply w-full px-3 py-2 text-base text-secondary bg-surface-variant border border-primary-lighter/50 rounded-md shadow-sm;
   @apply focus:ring-2 focus:ring-primary/50 focus:border-primary;

@@ -1,0 +1,12 @@
+@keyframes alert-enter {
+  from { opacity: 0; transform: translateX(50px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes alert-leave {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(50px); }
+}
+
+.alert-enter { animation: alert-enter 300ms ease-out; }
+.alert-leave { animation: alert-leave 300ms ease-in; }

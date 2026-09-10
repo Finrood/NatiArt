@@ -9,7 +9,7 @@
   </app-natiart-form-field>
 
   @if (isCardPaymentSelected()) {
-    <ng-container @fadeIn>
+    <ng-container animate.enter="payment-fade-in" animate.leave="payment-fade-out">
       <app-natiart-form-field label="Card Number" controlName="cardNumber" [form]="paymentInfoGroup">
         <input formControlName="cardNumber" id="cardNumber" placeholder="XXXX XXXX XXXX XXXX" type="text" class="form-input">
       </app-natiart-form-field>
@@ -25,7 +25,7 @@
   }
 
   @if (isPixSelected()) {
-    <div @fadeIn class="pt-2">
+    <div animate.enter="payment-fade-in" animate.leave="payment-fade-out" class="pt-2">
       <p class="text-sm text-text-muted mb-3">
         You will be redirected to a secure page to complete your PIX payment after clicking "Place Order".
       </p>

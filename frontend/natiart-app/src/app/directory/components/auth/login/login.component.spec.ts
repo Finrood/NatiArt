@@ -3,7 +3,6 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@angular/common/http/testing';
 import { Router } from '@angular/router';
 import { provideRouter } from '@angular/router';
-import { provideAnimations } from '@angular/platform-browser/animations';
 import { ComponentFixture, fakeAsync, tick } from '@angular/core/testing';
 
 import { LoginComponent } from './login.component';
@@ -38,7 +37,7 @@ describe('LoginComponent', () => {
   } {
     TestBed.configureTestingModule({
       imports: [LoginComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideAnimations()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     });
     const httpTesting: HttpTestingController = TestBed.inject(HttpTestingController);
     const tokenService: TokenService = TestBed.inject(TokenService);

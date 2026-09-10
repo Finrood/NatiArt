@@ -2,7 +2,6 @@ import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testin
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
-import { provideAnimations } from '@angular/platform-browser/animations';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { Subject, of } from 'rxjs';
 
@@ -41,7 +40,7 @@ describe('AddressFormComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AddressFormComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideAnimations()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     }).compileComponents();
   });
 

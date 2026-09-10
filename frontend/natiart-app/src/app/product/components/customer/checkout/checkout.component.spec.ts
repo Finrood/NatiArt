@@ -2,7 +2,6 @@ import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
-import { provideAnimations } from '@angular/platform-browser/animations';
 import { Router } from '@angular/router';
 import { BehaviorSubject, of, throwError } from 'rxjs';
 
@@ -76,8 +75,7 @@ describe('CheckoutComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
-        provideAnimations(),
-        {
+                {
           provide: CartService,
           useValue: {
             getCartItems: (): BehaviorSubject<never[]> => new BehaviorSubject<never[]>([]),
