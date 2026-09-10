@@ -20,12 +20,18 @@ LOOP_PREFIXES='^(fix|perf|chore|docs|feature|salvage)/'
 with_retry() { # $1 tries, then command...: transient gh API blips must not flip the signal
     local tries="$1"
     shift
-    local i
+    local i out_file err_file
     for ((i = 1; i <= tries; i++)); do
-        if "$@" 2>&1; then
+        out_file=$(mktemp) || return 1
+        err_file=$(mktemp) || { rm -f "$out_file"; return 1; }
+        if "$@" >"$out_file" 2>"$err_file"; then
+            cat "$err_file" >&2
+            cat "$out_file"
+            rm -f "$out_file" "$err_file"
             return 0
         fi
-        # stderr: callers capture stdout as data (gh JSON); warnings must not pollute it.
+        cat "$err_file" >&2
+        rm -f "$out_file" "$err_file"
         log "WARN: attempt $i/$tries failed: $*" >&2
         sleep "${WATCHDOG_SLEEP:-10}"
     done
