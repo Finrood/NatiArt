@@ -7,6 +7,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,10 +20,12 @@ import org.springframework.mock.web.MockHttpServletResponse;
 class RateLimitFilterTest {
 
     private RateLimitFilter filter;
+    private FixedWindowStore store;
 
     @BeforeEach
     void setUp() {
-        filter = new RateLimitFilter(3);
+        store = new FixedWindowStore(Clock.systemUTC());
+        filter = new RateLimitFilter(3, List.of(), store);
     }
 
     private MockHttpServletRequest post(String uri, String remoteAddr) {
@@ -52,7 +57,7 @@ class RateLimitFilterTest {
     }
 
     @Test
-    void honorsForwardedForHeader() throws Exception {
+    void ignoresForwardedForHeaderUnlessProxyIsTrusted() throws Exception {
         for (int i = 0; i < 3; i++) {
             MockHttpServletRequest request = post("/login", "192.168.0.1");
             request.addHeader("X-Forwarded-For", "203.0.113.7");
@@ -69,7 +74,20 @@ class RateLimitFilterTest {
 
         MockHttpServletResponse directClientStillAllowed = new MockHttpServletResponse();
         filter.doFilter(post("/login", "192.168.0.1"), directClientStillAllowed, new MockFilterChain());
-        assertNotEquals(429, directClientStillAllowed.getStatus());
+        assertEquals(429, directClientStillAllowed.getStatus());
+
+        RateLimitFilter trustedFilter =
+                new RateLimitFilter(3, List.of("192.168.0.1"), new FixedWindowStore(Clock.systemUTC()));
+        for (int i = 0; i < 3; i++) {
+            MockHttpServletRequest trustedRequest = post("/login", "192.168.0.1");
+            trustedRequest.addHeader("X-Forwarded-For", "203.0.113.7");
+            trustedFilter.doFilter(trustedRequest, new MockHttpServletResponse(), new MockFilterChain());
+        }
+        MockHttpServletRequest blockedTrustedRequest = post("/login", "192.168.0.1");
+        blockedTrustedRequest.addHeader("X-Forwarded-For", "203.0.113.7");
+        MockHttpServletResponse blockedTrustedResponse = new MockHttpServletResponse();
+        trustedFilter.doFilter(blockedTrustedRequest, blockedTrustedResponse, new MockFilterChain());
+        assertEquals(429, blockedTrustedResponse.getStatus());
     }
 
     @Test
@@ -101,7 +119,7 @@ class RateLimitFilterTest {
     @Test
     void windowResetsAfterTheFixedWindowElapses() throws Exception {
         MutableClock clock = new MutableClock(0L);
-        RateLimitFilter clockedFilter = new RateLimitFilter(3, clock);
+        RateLimitFilter clockedFilter = new RateLimitFilter(3, List.of(), new FixedWindowStore(clock));
 
         for (int i = 0; i < 3; i++) {
             MockHttpServletResponse response = new MockHttpServletResponse();
@@ -144,5 +162,32 @@ class RateLimitFilterTest {
         void advance(long ms) {
             this.millis += ms;
         }
+    }
+
+    private static final class FixedWindowStore implements com.saas.directory.service.RateLimitStore {
+        private static final long WINDOW_MILLIS = 60_000L;
+        private final Clock clock;
+        private final Map<String, Window> windows = new HashMap<>();
+
+        private FixedWindowStore(Clock clock) {
+            this.clock = clock;
+        }
+
+        @Override
+        public boolean tryAcquire(String clientKey, int maxRequestsPerWindow) {
+            long now = clock.millis();
+            Window current = windows.get(clientKey);
+            if (current == null || now - current.start >= WINDOW_MILLIS) {
+                windows.put(clientKey, new Window(now, 1));
+                return true;
+            }
+            if (current.count >= maxRequestsPerWindow) {
+                return false;
+            }
+            windows.put(clientKey, new Window(current.start, current.count + 1));
+            return true;
+        }
+
+        private record Window(long start, int count) {}
     }
 }
