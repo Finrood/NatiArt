@@ -1,4 +1,4 @@
-import {Component} from '@angular/core';
+import {Component, OnDestroy} from '@angular/core';
 import { NgClass } from '@angular/common';
 
 export interface AlertMessage {
@@ -11,8 +11,9 @@ export interface AlertMessage {
   templateUrl: './alert-message.component.html',
   imports: [NgClass],
 })
-export class AlertMessageComponent {
+export class AlertMessageComponent implements OnDestroy {
   alertMessages: AlertMessage[] = [];
+  private readonly dismissTimers = new Set<ReturnType<typeof setTimeout>>();
 
   /**
    * Display a new alert message and auto-dismiss it after a given timeout (default 3000ms).
@@ -21,7 +22,11 @@ export class AlertMessageComponent {
     // Add the new alert at the beginning so it appears on top.
     this.alertMessages.unshift(alert);
     // Remove the alert after the specified timeout.
-    setTimeout(() => this.dismissAlert(alert), timeout);
+    const dismissTimer: ReturnType<typeof setTimeout> = setTimeout(() => {
+      this.dismissTimers.delete(dismissTimer);
+      this.dismissAlert(alert);
+    }, timeout);
+    this.dismissTimers.add(dismissTimer);
   }
 
   /**
@@ -32,5 +37,12 @@ export class AlertMessageComponent {
     if (index > -1) {
       this.alertMessages.splice(index, 1);
     }
+  }
+
+  ngOnDestroy(): void {
+    for (const dismissTimer of this.dismissTimers) {
+      clearTimeout(dismissTimer);
+    }
+    this.dismissTimers.clear();
   }
 }
