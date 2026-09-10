@@ -144,6 +144,18 @@ class OrderManagerImplTest {
     }
 
     @Test
+    void createOrderRejectsDuplicateProductLinesBeforeReservingStock() {
+        OrderDto dto = new OrderDto()
+                .setDeliveryAmount(BigDecimal.ZERO)
+                .setItems(List.of(item("p1", 1), item("p1", 1)));
+
+        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
+        verify(productManager, never()).getProductsOrDie(any());
+        verify(productRepository, never()).decreaseStockIfAvailable(any(), anyInt());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
     void createOrderRejectsInactiveProduct() {
         Product retired = product("p4", "Retired plate", new BigDecimal("15.00"), null, 100)
                 .setActive(false);
