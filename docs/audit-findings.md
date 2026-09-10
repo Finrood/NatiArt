@@ -235,7 +235,7 @@ finding below.
   rate-limit/count KPIs when B8 lands. Tests: all three email classes return
   the identical unauthenticated response shape.
 
-### Q3. `TopBannerComponent` rotation/destroy logic has a should-create-only spec — OPEN (Low)
+### Q3. `TopBannerComponent` rotation/destroy logic has a should-create-only spec — IN REVIEW (Low, PR #236)
 - `frontend/natiart-app/src/app/product/components/customer/dashboard/top-banner/top-banner.component.ts:37-68`
   (`prevSlide`/`nextSlide` wrap-around, `resetBannerInterval` restart,
   `ngOnDestroy` cleanup) vs
@@ -245,7 +245,7 @@ finding below.
 - Fix: fakeAsync specs — `nextSlide` wraps `3 → 0`, `prevSlide` wraps `0 → 3`,
   destroy clears the interval (no further advance). Tracked, not silently fixed.
 
-### Q4. `ShippingEstimationComponent` cheapest-option state machine has a should-create-only spec — OPEN (Medium)
+### Q4. `ShippingEstimationComponent` cheapest-option state machine has a should-create-only spec — IN REVIEW (Medium, PR #236)
 - `frontend/natiart-app/src/app/product/components/customer/shipping-estimation/shipping-estimation.component.ts:56-126`
   (debounced CEP stream, `loading`/`success`/`error`/`no-options` states,
   cheapest-option selection driving what the buyer pays) vs
@@ -1101,7 +1101,7 @@ no branch logic to assert); directive `should create` specs (pure pipes
 covered elsewhere); `redirect.service.spec.ts` single-it (trivial
 getter, judgment per `agents/java-testing.md` twin policy).
 
-### AT1. `CartService` money logic has a should-create-only spec — OPEN (Medium)
+### AT1. `CartService` money logic has a should-create-only spec — IN REVIEW (Medium, PR #236)
 - `frontend/natiart-app/src/app/product/service/cart.service.ts:33-69`
   (`addToCart` stock clamp + grouping), `:78-95` (`updateItemQuantity`
   clamp), `:121-124` (`calculateAndEmitTotal` `markedPrice * quantity`),
@@ -1114,7 +1114,7 @@ getter, judgment per `agents/java-testing.md` twin policy).
   only (AS1). Tracked, not silently fixed.
   Found by Lens 13 hunt, 2026-09-07.
 
-### AT2. `productGuard` deactivation spec never invokes the guard — OPEN (Medium)
+### AT2. `productGuard` deactivation spec never invokes the guard — IN REVIEW (Medium, PR #236)
 - `frontend/natiart-app/src/app/product/guards/product-guard.guard.ts:24-32`
   (`getProduct(id)` network-gated `canDeactivate`, failure hijacks to
   `/dashboard` per C9) vs `product-guard.guard.spec.ts:16-18` (asserts the
@@ -2204,6 +2204,14 @@ BS1-BS2 below are runner-ups.
   (`configuration/ControllerAdvice.java:123-127`) with no guidance toward
   the proper removal-from-sale path (`isActive` via `updateProduct`,
   `ProductController.java:97-109`, and the visibility toggle at
+  `:111-115`). Fulfilled-order history is protected only
+  by the raw constraint, never by an explicit rule. Found by Lens 4 hunt,
+  2026-09-10.
+- Fix: pre-check order/cart references in `deleteProduct` (400 with an
+  actionable "deactivate instead" message, mirroring the category guard),
+  or document hard-delete as admin-only-with-consequences. Tests: delete of
+  an order-referenced product → 400, product row intact, history readable.
+  Tracked, not silently fixed.
 
 ## BV. Frontend resource hygiene re-hunt (Lens 11, 2026-09-10)
 
@@ -2243,11 +2251,28 @@ finding.
   Found by Lens 11 hunt, 2026-09-10.
   Tracked, not silently fixed.
 
-  `:111-115`). Fulfilled-order history is protected only
-  by the raw constraint, never by an explicit rule. Found by Lens 4 hunt,
-  2026-09-10.
-- Fix: pre-check order/cart references in `deleteProduct` (400 with an
-  actionable "deactivate instead" message, mirroring the category guard),
-  or document hard-delete as admin-only-with-consequences. Tests: delete of
-  an order-referenced product → 400, product row intact, history readable.
+## BW. Test quality re-hunt (Lens 13, 2026-09-10)
+
+Hunt method: swept both suites for cannot-fail specs — per-file `@Test` count
+vs assertion/verify count across the 46 backend test classes, assert-free
+Karma spec sweep (`*.spec.ts` with no `expect(`), and `@Disabled`/`xdescribe`
+skip sweep. Cleared as non-findings: `ControllerSecurityTest` (its low
+static assert count is structural — the assertions live in the
+`expectForbiddenButNotAuthenticated`/`expectPassesSecurity` helpers, every
+test asserts through them); zero assert-free frontend specs; zero skipped
+backend tests. AT1/AT2/Q3/Q4 (the should-create-only family) fixed in flight
+this cycle (PR #236). One new finding below.
+
+### BW1. `CartService.updateItemQuantity` removal branch is unreachable — OPEN (Low)
+- `frontend/natiart-app/src/app/product/service/cart.service.ts:82-90`:
+  `Math.max(1, Math.min(quantity, item.product.stockQuantity))` guarantees
+  `newQuantity >= 1`, so the `newQuantity <= 0` branch calling
+  `removeFromCart` can never execute. A quantity-0 update silently floors to
+  1 instead of removing the line — a dead error branch the old
+  should-create-only spec could never catch (the new clamp spec in PR #236
+  pins the floor-at-1 behavior until the contract is decided).
+- Fix: decide the contract — either drop the dead branch (removal is
+  `removeFromCart`'s job) or let 0 pass through to removal — and align the
+  specs. Found by Lens 13 hunt, 2026-09-10.
   Tracked, not silently fixed.
+
