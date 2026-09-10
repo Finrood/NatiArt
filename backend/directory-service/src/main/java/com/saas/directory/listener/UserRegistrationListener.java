@@ -9,12 +9,12 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
-import org.springframework.web.client.HttpClientErrorException;
 
 import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
 import com.saas.directory.event.UserRegisteredEvent;
 import com.saas.directory.model.ExternalUser;
+import com.saas.directory.service.AsaasApiException;
 import com.saas.directory.service.AsaasUserManager;
 import com.saas.directory.service.UserManager;
 import com.saas.directory.service.support.RetryExternalApiCall;
@@ -47,7 +47,15 @@ public class UserRegistrationListener {
         LOGGER.info("Asynchronously handling registration for user [{}]", event.username());
 
         final UserDto userDto = UserDto.from(userManager.getUserOrDie(event.username()), null);
-        final AsaasCustomerCreationResponse asaasResponse = asaasUserManager.registerUser(userDto);
+        final AsaasCustomerCreationResponse asaasResponse;
+        try {
+            asaasResponse = asaasUserManager.registerUser(userDto);
+        } catch (AsaasApiException e) {
+            if (e.getHttpStatus().is4xxClientError()) {
+                logPermanentFailure(event, e);
+            }
+            throw e;
+        }
         ExternalUser externalUser = userManager.addAsaasCustomerIdToUser(userDto.getUsername(), asaasResponse.getId());
 
         LOGGER.info("Successfully created Asaas customer [{}] for user [{}]", asaasResponse.getId(), event.username());
@@ -62,11 +70,8 @@ public class UserRegistrationListener {
      */
     @Recover
     public void recover(Exception e, UserRegisteredEvent event) {
-        if (e instanceof HttpClientErrorException.BadRequest) {
-            LOGGER.error(
-                    "Unrecoverable 400 Bad Request error for user [{}]. The request is malformed and will not be retried. Error: {}",
-                    event.username(),
-                    e.getMessage());
+        if (isPermanentProviderFailure(e)) {
+            logPermanentFailure(event, e);
             return;
         }
 
@@ -75,5 +80,24 @@ public class UserRegistrationListener {
                 event.username(),
                 e.getMessage());
         // We could add logic to alert an admin or add to a persistent "dead-letter" queue.
+    }
+
+    private void logPermanentFailure(UserRegisteredEvent event, Exception e) {
+        LOGGER.error(
+                "Unrecoverable payment-provider request for user [{}] will not be retried. Error: {}",
+                event.username(),
+                e.getMessage());
+    }
+
+    private static boolean isPermanentProviderFailure(Throwable failure) {
+        Throwable current = failure;
+        while (current != null) {
+            if (current instanceof AsaasApiException asaasApiException
+                    && asaasApiException.getHttpStatus().is4xxClientError()) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 }
