@@ -6,6 +6,8 @@ import java.util.UUID;
 
 import jakarta.persistence.*;
 
+import org.hibernate.annotations.BatchSize;
+
 import com.portcelana.natiart.model.support.PersonalizationOption;
 
 @Entity
@@ -14,6 +16,7 @@ public class Personalization {
     private final String id;
 
     @ElementCollection
+    @BatchSize(size = 50)
     @MapKeyEnumerated(EnumType.STRING)
     @Column(name = "personalizationOptions")
     private final Map<PersonalizationOption, String> personalizationOptions = new HashMap<>();
