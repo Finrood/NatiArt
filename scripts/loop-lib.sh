@@ -5,20 +5,36 @@
 # Callers run under `set -euo pipefail`; this file sets nothing itself.
 log() { printf '%s\n' "[$(date -Is)] $*"; }
 
-gh_safe() { # gh calls that may fail transiently: log (to STDERR, so captured
-    # stdout stays parseable) and continue with empty output.
+gh_safe() { # generic gh calls: failures produce empty stdout
     local out_file err_file status
     out_file=$(mktemp) || { log "WARN: could not create gh stdout capture; treating as empty." >&2; return 0; }
     err_file=$(mktemp) || { rm -f "$out_file"; log "WARN: could not create gh stderr capture; treating as empty." >&2; return 0; }
-    "$@" >"$out_file" 2>"$err_file"; status=$?
+    if "$@" >"$out_file" 2>"$err_file"; then
+        status=0
+    else
+        status=$?
+    fi
     cat "$err_file" >&2
     if [[ "$status" -ne 0 ]]; then
         rm -f "$out_file" "$err_file"
-        log "WARN: '$*' failed transiently; treating as empty." >&2
+        log "WARN: '$*' failed transiently; treating stdout as empty." >&2
         return 0
     fi
     cat "$out_file"
     rm -f "$out_file" "$err_file"
+}
+
+gh_checks_safe() { # `gh pr checks` keeps output on non-zero check-state exits
+    local out_file err_file status
+    out_file=$(mktemp) || { log "WARN: could not create checks stdout capture." >&2; return 0; }
+    err_file=$(mktemp) || { rm -f "$out_file"; log "WARN: could not create checks stderr capture." >&2; return 0; }
+    if "$@" >"$out_file" 2>"$err_file"; then status=0; else status=$?; fi
+    cat "$err_file" >&2
+    cat "$out_file"
+    rm -f "$out_file" "$err_file"
+    if [[ "$status" -ne 0 ]]; then
+        log "WARN: '$*' returned check-state exit $status; preserving its output." >&2
+    fi
 }
 
 is_docs_only() { # $1 = PR number; true iff every changed file is under docs/
@@ -166,7 +182,7 @@ required_checks_passed() { # $1=changed files, $2=gh pr checks output
 }
 pr_checks_summary() { # $1 = PR number; prints FAIL|PASS|PENDING (never fails)
     local checks
-    checks=$(gh_safe gh pr checks "$1")
+    checks=$(gh_checks_safe gh pr checks "$1")
     if checks_failed <<<"$checks"; then echo "FAIL"
     elif checks_passed <<<"$checks"; then echo "PASS"
     else echo "PENDING"; fi

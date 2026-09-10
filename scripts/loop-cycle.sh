@@ -10,8 +10,17 @@ if [[ -n "${XDG_RUNTIME_DIR:-}" ]]; then
 else
     LOCK_DIR="/tmp/natiart-improvement-loop-$UID"
 fi
-mkdir -p "$LOCK_DIR"
-chmod 700 "$LOCK_DIR"
+if ! mkdir -p "$LOCK_DIR" 2>/dev/null || ! chmod 700 "$LOCK_DIR" 2>/dev/null; then
+    # Some launchers expose an unavailable runtime directory (for example
+    # during early boot). Fall back to a private per-user /tmp directory before
+    # giving up, and report the failure explicitly because the ERR trap is not
+    # installed until after this bootstrap.
+    LOCK_DIR="/tmp/natiart-improvement-loop-$UID"
+    if ! mkdir -p "$LOCK_DIR" 2>/dev/null || ! chmod 700 "$LOCK_DIR" 2>/dev/null; then
+        printf '%s\n' "ERROR: unable to create a private loop lock directory." >&2
+        exit 1
+    fi
+fi
 LOCK="$LOCK_DIR/lock"
 LOG_DIR="$REPO/logs"
 CHECK_ONLY=0
@@ -270,7 +279,7 @@ for n in $CODE_PRS $DOCS_PRS; do
         log "PR #$n mergeability is $MERGEABLE_STATE; leaving open until GitHub confirms MERGEABLE."
         continue
     fi
-    checks=$(gh_safe gh pr checks "$n")
+    checks=$(gh_checks_safe gh pr checks "$n")
     if checks_failed <<<"$checks"; then
         log "PR #$n has failing/cancelled checks; leaving open."
         continue
@@ -325,7 +334,7 @@ while IFS=$'\t' read -r dn dcreated dtitle; do
         log "Dependabot #$dn left open ($bump but younger than 48h)."
         continue
     fi
-    dchecks=$(gh_safe gh pr checks "$dn")
+    dchecks=$(gh_checks_safe gh pr checks "$dn")
     if checks_failed <<<"$dchecks"; then
         log "Dependabot #$dn has failing checks; leaving open."
         continue
@@ -341,6 +350,11 @@ while IFS=$'\t' read -r dn dcreated dtitle; do
     fi
     if ! required_checks_passed "$D_FILES" "$dchecks"; then
         log "Dependabot #$dn is missing one or more path-required green checks; leaving open."
+        continue
+    fi
+    D_MERGEABLE_STATE="$(pr_mergeable "$dn")"
+    if [[ "$D_MERGEABLE_STATE" != "MERGEABLE" ]]; then
+        log "Dependabot #$dn mergeability is $D_MERGEABLE_STATE; leaving open until GitHub confirms MERGEABLE."
         continue
     fi
     log "Merging aged green dependabot #$dn ($bump, >48h)."
@@ -369,7 +383,7 @@ fi
 FAILING=""
 CONFLICTING=""
 for n in $ALL_PRS; do
-    checks=$(gh_safe gh pr checks "$n")
+    checks=$(gh_checks_safe gh pr checks "$n")
     if checks_failed <<<"$checks"; then FAILING="$FAILING $n"; fi
     if [[ "$(pr_mergeable "$n")" == "CONFLICTING" ]]; then CONFLICTING="$CONFLICTING $n"; fi
 done
@@ -501,9 +515,8 @@ done || true
 # Remote hygiene: retry deletion of merged loop branches (the --delete-branch
 # flag occasionally races GitHub auto-delete and leaves them behind). Only
 # branches fully merged into master, only loop prefixes — never master,
-# dependabot/*, or unmerged work. Salvage names embed timestamps
-# (salvage/YYYYMMDD-HHMMSS-pid), so remote-only salvage branches beyond the
-# newest 5 are pruned by name order — the local retention above cannot see them.
+# dependabot/*, or unmerged work. Salvage retention uses fetched commit age and
+# verifies the remote tip is merged before deleting anything.
 git branch -r --merged origin/master 2>/dev/null | sed 's#^ *origin/##' | grep -E '^(fix|perf|chore|docs|feature)/' | sort -u | while read -r b; do
     if git ls-remote --heads origin "$b" 2>/dev/null | grep -q .; then
         log "Deleting merged remote branch $b."
