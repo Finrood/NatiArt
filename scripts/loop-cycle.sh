@@ -621,12 +621,6 @@ log "Agent cycle finished with status $STATUS."
 # post-mortems — grep it for merged counts, repair frequency, idle stretches.
 HEALTH="$LOG_DIR/health.csv"
 HEALTH_HEADER="timestamp,slot,open_code_before,open_docs_before,repair_prs,merged,reviewed_pr,exit_status"
-if [[ ! -f "$HEALTH" ]]; then
-    printf '%s\n' "$HEALTH_HEADER" > "$HEALTH"
-elif [[ "$(head -n 1 "$HEALTH")" == "timestamp,slot,open_code,open_docs,repair_prs,merged,reviewed_pr,exit_status" ]]; then
-    # Migrate only the exact schema emitted by older loop versions; preserve
-    # every historical data row and leave custom files untouched.
-    sed -i "1c\\$HEALTH_HEADER" "$HEALTH"
-fi
+health_init_or_migrate "$HEALTH" "$HEALTH_HEADER"
 echo "$(date -Is),${SLOT:-?},${OPEN_PRS:-?},$(echo "${DOCS_PRS:-}" | wc -w | tr -d '[:space:]'),\"${REPAIR_PRS:-}\",${merged:-0},${REVIEW_PR:-none},$STATUS" >> "$HEALTH"
 exit "$STATUS"

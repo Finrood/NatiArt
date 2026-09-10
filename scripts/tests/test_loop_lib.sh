@@ -56,6 +56,22 @@ mkfixture() { # $1 name; prints dir path; caller writes fixture files into it
     echo "$d"
 }
 
+# --- health_init_or_migrate: initialize, migrate exact legacy, preserve custom ---
+health_header='timestamp,slot,open_code_before,open_docs_before,repair_prs,merged,reviewed_pr,exit_status'
+legacy_header='timestamp,slot,open_code,open_docs,repair_prs,merged,reviewed_pr,exit_status'
+d=$(mktemp -d)
+health_init_or_migrate "$d/missing.csv" "$health_header"
+assert_eq "$health_header" "$(cat "$d/missing.csv")" "missing health file gets new header"
+printf '%s\nrow-one\nrow-two\n' "$legacy_header" > "$d/legacy.csv"
+health_init_or_migrate "$d/legacy.csv" "$health_header"
+assert_eq "$health_header" "$(head -n 1 "$d/legacy.csv")" "exact legacy health header migrates"
+assert_eq $'row-one\nrow-two' "$(tail -n +2 "$d/legacy.csv")" "legacy health rows remain byte-preserved"
+printf 'custom,header\nrow\n' > "$d/custom.csv"
+before="$(cat "$d/custom.csv")"
+health_init_or_migrate "$d/custom.csv" "$health_header"
+assert_eq "$before" "$(cat "$d/custom.csv")" "custom health header is not rewritten"
+rm -rf "$d"
+
 # --- latest_verdict: newer REQUEST_CHANGES vetoes older APPROVE ---
 d=$(mkfixture veto)
 cat > "$d/comments-reviews.json" <<'EOF'

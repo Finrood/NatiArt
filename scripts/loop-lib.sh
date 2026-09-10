@@ -5,6 +5,25 @@
 # Callers run under `set -euo pipefail`; this file sets nothing itself.
 log() { printf '%s\n' "[$(date -Is)] $*"; }
 
+health_init_or_migrate() { # $1=file $2=current header; returns non-zero on I/O failure
+    local file="$1" header="$2"
+    local legacy="timestamp,slot,open_code,open_docs,repair_prs,merged,reviewed_pr,exit_status"
+    if [[ ! -f "$file" ]]; then
+        printf '%s\n' "$header" > "$file"
+    elif [[ "$(head -n 1 "$file")" == "$legacy" ]]; then
+        # Replace only the exact legacy schema and copy all historical rows
+        # byte-for-byte; custom headers are intentionally left untouched.
+        local tmp
+        tmp=$(mktemp "${file}.tmp.XXXXXX") || return 1
+        if { printf '%s\n' "$header"; tail -n +2 "$file"; } > "$tmp" && mv "$tmp" "$file"; then
+            :
+        else
+            rm -f "$tmp"
+            return 1
+        fi
+    fi
+}
+
 gh_safe() { # generic gh calls: failures produce empty stdout
     local out_file err_file status
     out_file=$(mktemp) || { log "WARN: could not create gh stdout capture; treating as empty." >&2; return 0; }
