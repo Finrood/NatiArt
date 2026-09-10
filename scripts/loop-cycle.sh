@@ -283,7 +283,7 @@ for n in $CODE_PRS $DOCS_PRS; do
         log "PR #$n mergeability is $MERGEABLE_STATE; leaving open until GitHub confirms MERGEABLE."
         continue
     fi
-    checks=$(gh_safe gh pr checks "$n")
+    checks=$(gh_checks_safe gh pr checks "$n")
     if checks_failed <<<"$checks"; then
         log "PR #$n has failing/cancelled checks; leaving open."
         continue
@@ -334,7 +334,7 @@ while IFS=$'\t' read -r dn dcreated dtitle; do
         log "Dependabot #$dn left open ($bump but younger than 48h)."
         continue
     fi
-    dchecks=$(gh_safe gh pr checks "$dn")
+    dchecks=$(gh_checks_safe gh pr checks "$dn")
     if checks_failed <<<"$dchecks"; then
         log "Dependabot #$dn has failing checks; leaving open."
         continue
@@ -374,7 +374,7 @@ fi
 FAILING=""
 CONFLICTING=""
 for n in $ALL_PRS; do
-    checks=$(gh_safe gh pr checks "$n")
+    checks=$(gh_checks_safe gh pr checks "$n")
     if checks_failed <<<"$checks"; then FAILING="$FAILING $n"; fi
     if [[ "$(pr_mergeable "$n")" == "CONFLICTING" ]]; then CONFLICTING="$CONFLICTING $n"; fi
 done
