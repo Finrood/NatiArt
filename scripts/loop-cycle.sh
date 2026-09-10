@@ -506,9 +506,8 @@ done || true
 # Remote hygiene: retry deletion of merged loop branches (the --delete-branch
 # flag occasionally races GitHub auto-delete and leaves them behind). Only
 # branches fully merged into master, only loop prefixes — never master,
-# dependabot/*, or unmerged work. Salvage names embed timestamps
-# (salvage/YYYYMMDD-HHMMSS-pid), so remote-only salvage branches beyond the
-# newest 5 are pruned by name order — the local retention above cannot see them.
+# dependabot/*, or unmerged work. Salvage retention uses fetched commit age and
+# verifies the remote tip is merged before deleting anything.
 git branch -r --merged origin/master 2>/dev/null | sed 's#^ *origin/##' | grep -E '^(fix|perf|chore|docs|feature)/' | sort -u | while read -r b; do
     if git ls-remote --heads origin "$b" 2>/dev/null | grep -q .; then
         log "Deleting merged remote branch $b."
