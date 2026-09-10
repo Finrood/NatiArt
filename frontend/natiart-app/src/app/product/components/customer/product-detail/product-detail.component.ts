@@ -220,18 +220,28 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   }
 
   onPersonalizationComplete(result: { goldBorder?: boolean, customImage?: File }) {
-    if (this.selectedProductForModal) {
-      this.cartService.addToCart(
-        this.selectedProductForModal,
-        this.quantity,
-        result.goldBorder,
-        result.customImage
-      );
-      if (this.triggerElementForModal) {
-        this.triggerFlyAnimation(this.triggerElementForModal);
-      }
+    const selectedProduct: Product | null = this.selectedProductForModal;
+    const triggerElement: HTMLElement | null = this.triggerElementForModal;
+    if (!selectedProduct?.id) {
+      this.closePersonalizationModal();
+      return;
     }
-    this.closePersonalizationModal();
+
+    this.productService.getProduct(selectedProduct.id).subscribe({
+      next: (currentProduct: Product): void => {
+        const quantity: number = Math.min(this.quantity, currentProduct.stockQuantity);
+        if (currentProduct.active === false || quantity <= 0) {
+          this.closePersonalizationModal();
+          return;
+        }
+        this.cartService.addToCart(currentProduct, quantity, result.goldBorder, result.customImage);
+        if (triggerElement) {
+          this.triggerFlyAnimation(triggerElement);
+        }
+        this.closePersonalizationModal();
+      },
+      error: (): void => this.closePersonalizationModal(),
+    });
   }
 
   public triggerFlyAnimation(clickedElement: HTMLElement): void {
