@@ -34,7 +34,7 @@ with_retry() { # $1 tries, then command...: transient gh API blips must not flip
 
 pr_json=""
 fetch_prs() {
-    pr_json=$(with_retry 3 gh pr list --state all --limit 100 \
+    pr_json=$(with_retry 3 gh pr list --state all --limit 1000 \
         --json headRefName,updatedAt) || return 1
 }
 
