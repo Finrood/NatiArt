@@ -256,7 +256,16 @@ for n in $CODE_PRS $DOCS_PRS; do
     # Self-modification ban: any touch of instructions, loop scripts, loop docs,
     # module guides, or CI config stays OPEN for human review — never auto-merge
     # changes to the loop's own brain, even on green CI.
-    if gh pr view "$n" --json files --jq '.files[].path' 2>/dev/null | grep -qE '^(scripts/|agents/|\.github/|\.cursorrules|docs/continuous-improvement-loop\.md|docs/loop-lenses\.md)|(^|/)(AGENTS\.md|CLAUDE\.md|GEMINI\.md)$'; then
+    PR_FILES=""
+    if ! PR_FILES="$(gh pr view "$n" --json files --jq '.files[].path' 2>/dev/null)"; then
+        log "Could not resolve changed files for PR #$n; leaving OPEN (fail closed)."
+        continue
+    fi
+    if [[ -z "$PR_FILES" ]]; then
+        log "PR #$n returned no changed files; leaving OPEN (fail closed)."
+        continue
+    fi
+    if grep -qE '^(scripts/|agents/|\.github/|\.cursorrules|docs/continuous-improvement-loop\.md|docs/loop-lenses\.md)|(^|/)(AGENTS\.md|CLAUDE\.md|GEMINI\.md)$' <<<"$PR_FILES"; then
         log "PR #$n touches loop machinery; leaving OPEN for human review (self-modification ban)."
         continue
     fi
