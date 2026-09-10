@@ -1282,3 +1282,32 @@ re-verified INVALID (CORS origins already property-externalized on master).
   `OrderDto.ownerExternalId` stays ignored. Tests pin foreign-orderId → 403
   with the mocked upstream never hit, and the own-order happy flow.
 
+
+### BO1. `TokenManager` echoes client-presented `jti` into 400 bodies — FIXED (PR #229)
+- `service/TokenManager.java:39` (`Token [%s] does not exist`, jti) and `:47`
+  (`Token [%s] is invalid`, jti) embed the caller-presented bearer identifier
+  in the `IllegalArgumentException` message, which
+  `configuration/ControllerAdvice.java:72` reflects verbatim
+  (`return new ResponseEntity<>(e.getMessage(), BAD_REQUEST)`). The `jti` is a
+  random UUID (not a signing secret), so exposure is Low — but it is a
+  bearer-adjacent server artifact in a client body, the same class as AZ1.
+- Fix: static "Invalid token" body for the jti paths; log the `jti`
+  server-side at DEBUG. Tests: jti-bearing IAE maps to a static body.
+  Found by Lens 3 hunt, 2026-09-10. FIXED in PR #229
+  (`TokenManager` returns static "Invalid token" bodies; jti logged
+  server-side only, pinned by `TokenManagerTest`).
+
+### BO2. Production CORS default still allows `localhost:4200` — FIXED (PR #229)
+- Both services' `application.properties` default
+  `nati.cors.allowed-origins` to
+  `http://localhost:4200,https://natiart.samuelpetre.com`, and neither
+  `application-production.properties` overrides the key — so a prod boot
+  without `CORS_ALLOWED_ORIGINS` set silently allows the dev origin.
+  Browser-origin scope only (no server bypass), hence Low; still
+  per-environment drift under Lens 3.
+- Fix: pin prod-only origins in both production profiles (or fail fast when
+  the default includes localhost). Tests: prod profile resolves no localhost
+  origin. Found by Lens 3 hunt, 2026-09-10. FIXED in PR #229
+  (both `application-production.properties` override the key with prod-only
+  origins, pinned by `ApplicationProductionPropertiesTest` in both services).
+

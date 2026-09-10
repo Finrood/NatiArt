@@ -1,6 +1,7 @@
 package com.saas.directory.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +21,7 @@ import com.saas.directory.service.AuthenticationManager;
 
 @RestController
 public class AuthenticationController {
-    public static Logger LOGGER = LoggerFactory.getLogger(AuthenticationController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthenticationController.class);
 
     private final AuthenticationManager authenticationManager;
     private final UserAuthenticationProvider userAuthenticationProvider;
@@ -32,7 +33,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<UserAuthDto> authenticateUser(@RequestBody CredentialsDto credentialsDto) {
+    public ResponseEntity<UserAuthDto> authenticateUser(@Valid @RequestBody CredentialsDto credentialsDto) {
         LOGGER.info("User [{}] is logging-in", credentialsDto.username());
 
         final UserAuthDto userAuthDto = authenticationManager.login(credentialsDto);

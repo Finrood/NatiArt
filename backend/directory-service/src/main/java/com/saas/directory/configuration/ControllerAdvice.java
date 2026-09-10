@@ -19,7 +19,7 @@ import com.saas.directory.service.AsaasApiException;
 
 @org.springframework.web.bind.annotation.ControllerAdvice
 public class ControllerAdvice {
-    private static final Logger logger = LoggerFactory.getLogger(ControllerAdvice.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ControllerAdvice.class);
 
     /**
      * Static body for every invalid-token denial, shared by the filter
@@ -32,7 +32,7 @@ public class ControllerAdvice {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Object> handleAccessDeniedException(AccessDeniedException e) {
-        logger.debug("Access denied: ", e);
+        LOGGER.debug("Access denied: ", e);
         return new ResponseEntity<>("Access denied", HttpStatus.FORBIDDEN);
     }
 
@@ -48,7 +48,7 @@ public class ControllerAdvice {
                 .distinct()
                 .sorted()
                 .collect(Collectors.joining(", "));
-        logger.debug("Rejected invalid request payload: fields [{}]", fields);
+        LOGGER.debug("Rejected invalid request payload: fields [{}]", fields);
         return new ResponseEntity<>("Invalid request payload: " + fields, HttpStatus.BAD_REQUEST);
     }
 
@@ -62,13 +62,13 @@ public class ControllerAdvice {
      */
     @ExceptionHandler(NumberFormatException.class)
     public ResponseEntity<Object> handleNumberFormatException(NumberFormatException e) {
-        logger.debug("Rejected non-numeric request input: {}", e.getMessage());
+        LOGGER.debug("Rejected non-numeric request input: {}", e.getMessage());
         return new ResponseEntity<>("Invalid request", HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Object> handleArgumentException(IllegalArgumentException e) {
-        logger.debug("Exception caught in controller: ", e);
+        LOGGER.debug("Exception caught in controller: ", e);
         return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
@@ -83,28 +83,28 @@ public class ControllerAdvice {
     public ResponseEntity<Object> handleNotReadableBody(HttpMessageNotReadableException e) {
         final IllegalArgumentException guardFailure = findIllegalArgumentCause(e);
         if (guardFailure != null && guardFailure.getMessage() != null) {
-            logger.debug("Rejected malformed request body: ", e);
+            LOGGER.debug("Rejected malformed request body: ", e);
             return new ResponseEntity<>(guardFailure.getMessage(), HttpStatus.BAD_REQUEST);
         }
-        logger.debug("Rejected unreadable request body: ", e);
+        LOGGER.debug("Rejected unreadable request body: ", e);
         return new ResponseEntity<>("Malformed request body", HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Object> handleResourceNotFoundException(ResourceNotFoundException e) {
-        logger.debug("Exception caught in controller: ", e);
+        LOGGER.debug("Exception caught in controller: ", e);
         return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
     }
 
     @ExceptionHandler(AsaasApiException.class)
     public ResponseEntity<Object> handleAsaasApiException(AsaasApiException e) {
-        logger.error("Asaas API error: status={}, message={}", e.getHttpStatus(), e.getMessage(), e);
+        LOGGER.error("Asaas API error: status={}, message={}", e.getHttpStatus(), e.getMessage(), e);
         return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
     }
 
     @ExceptionHandler(ResourceAlreadyExistsException.class)
     public ResponseEntity<Object> handleResourceAlreadyExistsException(ResourceAlreadyExistsException e) {
-        logger.debug("Exception caught in controller: ", e);
+        LOGGER.debug("Exception caught in controller: ", e);
         return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
     }
 
@@ -118,7 +118,7 @@ public class ControllerAdvice {
      */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Object> handleDataIntegrityViolation(DataIntegrityViolationException e) {
-        logger.error("Data integrity violation: ", e);
+        LOGGER.error("Data integrity violation: ", e);
         return new ResponseEntity<>("Resource conflict", HttpStatus.CONFLICT);
     }
 
@@ -133,13 +133,13 @@ public class ControllerAdvice {
     public ResponseEntity<Object> illegalAccessException(IllegalAccessException e) {
         // Security: auth-decision messages historically echoed the presented JWT — return a static
         // body so bearer credentials never leak into responses.
-        logger.debug("Access denied: ", e);
+        LOGGER.debug("Access denied: ", e);
         return new ResponseEntity<>(INVALID_TOKEN_MESSAGE, HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> handleException(Exception e) {
-        logger.error("Exception caught in controller: ", e);
+        LOGGER.error("Exception caught in controller: ", e);
         return new ResponseEntity<>("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
