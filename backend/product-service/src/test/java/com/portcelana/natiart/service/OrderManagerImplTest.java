@@ -56,10 +56,7 @@ class OrderManagerImplTest {
     }
 
     private OrderDto validOrder() {
-        return new OrderDto()
-                .setFirstname("Test")
-                .setLastname("Customer")
-                .setEmail("customer@example.com");
+        return new OrderDto().setFirstname("Test").setLastname("Customer").setEmail("customer@example.com");
     }
 
     @Test
@@ -174,8 +171,7 @@ class OrderManagerImplTest {
         // 1st line succeeds, 2nd line is refused.
         when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1, 0);
 
-        OrderDto dto =
-                validOrder().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p1", 1), item("p2", 50)));
+        OrderDto dto = validOrder().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p1", 1), item("p2", 50)));
 
         assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
         // Stock was attempted for both lines (the first decrements, the second is refused)...
