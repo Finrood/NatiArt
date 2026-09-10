@@ -115,6 +115,21 @@ if [[ "$PRIORITY_COUNT" -eq 0 ]]; then
     exit 2
 fi
 
+# Policy enforcement (docs/continuous-improvement-loop.md): every entry runs at
+# the highest reasoning available (xhigh) — never provider default. An empty
+# level silently downgrades to whatever the provider picks, so it is a loud
+# config error, not a default.
+for _conf_entry in "${PRIORITY[@]}"; do
+    IFS='|' read -r _conf_cli _conf_label _conf_model _conf_think <<< "$_conf_entry"
+    if [[ -z "${_conf_think:-}" ]]; then
+        log_err "agent-models.conf entry '$_conf_label' has no thinking level (policy: always xhigh, never provider default)."
+        exit 2
+    fi
+    if [[ "$_conf_think" != "xhigh" ]]; then
+        log "WARNING: agent-models.conf entry '$_conf_label' uses thinking '$_conf_think', not xhigh (policy: highest available)."
+    fi
+done
+
 # Quota-block patterns, matched against the TAIL of the attempt log (a failure
 # anywhere in a long build log mentioning e.g. a test named "*quota*" must not
 # reroute a genuine failure into failover). Curated against real provider
@@ -372,6 +387,15 @@ while true; do
     BLOCKED_SLEEP=$(( BLOCKED_ROUNDS * 60 ))
     (( BLOCKED_SLEEP > 900 )) && BLOCKED_SLEEP=900
     (( BLOCKED_SLEEP < 5 )) && BLOCKED_SLEEP=5
+    # Never oversleep the time budget: cap the sleep to what remains (minus a
+    # grace margin); the per-model deadline check at the loop top exits 124.
+    REMAINING=$(( DEADLINE - $(date +%s) ))
+    if (( REMAINING <= 10 )); then
+        log "Time budget exhausted after $attempt attempt(s)."
+        exit 124
+    fi
+    (( BLOCKED_SLEEP > REMAINING - 5 )) && BLOCKED_SLEEP=$(( REMAINING - 5 ))
+    (( BLOCKED_SLEEP < 1 )) && BLOCKED_SLEEP=1
     log "All ${#EFFECTIVE[@]} effective models blocked (round $BLOCKED_ROUNDS); sleeping ${BLOCKED_SLEEP}s before retrying from the top."
     sleep "$BLOCKED_SLEEP"
 done

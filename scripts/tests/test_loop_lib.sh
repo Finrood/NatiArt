@@ -202,6 +202,39 @@ if [[ -n "$got_stderr" ]]; then got=yes; else got=no; fi
 assert_eq "yes" "$got" "gh_safe failure -> WARN on stderr"
 rm -rf "$d"
 
+# --- author_model_of: unknown/blank footers are unattributed (empty) ---
+assert_eq "" "$(printf 'body\nModel: unknown (NATIART_MODEL empty in this session)\n' | author_model_of)" "unknown footer -> empty (no bogus skip)"
+assert_eq "" "$(printf 'body\nModel: unknown\n' | author_model_of)" "bare unknown -> empty"
+assert_eq "" "$(printf 'body\nModel: \n' | author_model_of)" "blank footer -> empty"
+assert_eq "manual/cline/xhigh" "$(printf 'body\nModel: manual/cline/xhigh\n' | author_model_of)" "manual fallback passes through"
+assert_eq "loop-guard/salvage" "$(printf 'body\nModel: loop-guard/salvage  \n' | author_model_of)" "salvage footer passes through (trailing space trimmed)"
+
+# --- latest_verdict_body: full newest verdict body ---
+d=$(mkfixture verdictbody)
+cat > "$d/comments-reviews.json" <<'EOF'
+{"comments": [
+  {"createdAt": "2026-09-07T14:00:00Z", "body": "VERDICT: APPROVE (reviewed aaaaaaaa)\nModel: old-model\nBuild: PASS"},
+  {"createdAt": "2026-09-07T15:00:00Z", "body": "VERDICT: REQUEST_CHANGES (re-reviewed bbbbbbbb broke it)\nModel: new-model\nBuild: FAIL"}
+], "reviews": []}
+EOF
+GH_FIXTURE_DIR="$d"
+assert_eq "VERDICT: REQUEST_CHANGES (re-reviewed bbbbbbbb broke it)" "$(latest_verdict 1)" "refactored latest_verdict still vetoes"
+assert_eq "new-model" "$(verdict_model 1)" "verdict_model reads newest verdict's Model"
+rm -rf "$d"
+
+# --- verdict_model: empty when no verdict or unknown model ---
+d=$(mkfixture verdictmodelnone)
+echo '{"comments": [{"createdAt": "2026-09-07T14:00:00Z", "body": "no verdict here"}], "reviews": []}' > "$d/comments-reviews.json"
+GH_FIXTURE_DIR="$d"
+assert_eq "" "$(verdict_model 1)" "no verdict -> empty model"
+rm -rf "$d"
+
+d=$(mkfixture verdictmodelunknown)
+echo '{"comments": [{"createdAt": "2026-09-07T14:00:00Z", "body": "VERDICT: APPROVE (reviewed abc1234)\nModel: unknown (empty session)"}], "reviews": []}' > "$d/comments-reviews.json"
+GH_FIXTURE_DIR="$d"
+assert_eq "" "$(verdict_model 1)" "unknown verdict model -> empty"
+rm -rf "$d"
+
 if [[ "$ASSERT_FAILS" -gt 0 ]]; then
     echo "$ASSERT_FAILS assertion(s) failed" >&2
     exit 1

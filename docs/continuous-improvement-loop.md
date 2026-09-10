@@ -89,6 +89,11 @@ it walks the priority list in `scripts/agent-models.conf`:
 in PR compliance footers (`Model: …`) and review verdicts (second line of
 the verdict comment), so every change and review on GitHub is attributable
 to the exact model that produced it — even after failover mid-cycle.
+The value is never blank: manual runs outside the wrapper use
+`Model: manual/<cli>/<thinking>`, author inline-fallback reviews append
+`/inline-fallback`, and loop-guard salvage PRs carry
+`Model: loop-guard/salvage`. A missing/blank/`unknown` footer parses as
+unattributed (reviewer independence degrades to best-effort, logged).
 
 1. `opencode` + Muse Spark 1.3 free (xhigh) — `opencode/muse-spark-1.3-contributor-free`
 2. `cline` + Muse Spark 1.3 Contributor (xhigh, free) — `cline-free/muse-spark-1.3-contributor` via the cline gateway
@@ -97,7 +102,8 @@ to the exact model that produced it — even after failover mid-cycle.
 
 Policy: every entry runs at the highest reasoning available (`xhigh`):
 cline passes `--thinking xhigh`, opencode passes `--variant xhigh`.
-Never leave the level empty (provider default).
+Never leave the level empty (provider default) — `run-agent.sh` rejects an
+empty level loudly (exit 2) and warns on any non-`xhigh` level.
 
 - **Quota detection**: a failed attempt (`rc != 0`) whose output matches quota
   markers (quota, rate limit, 429, insufficient credits, …) falls through to the
@@ -108,7 +114,9 @@ Never leave the level empty (provider default).
   `--stall SEC` overrides. rc 126/127 (CLI missing/unrunnable) also
   falls through — a vanished binary is infrastructure, not a model error.
 - **Retry-until-success**: after the last entry the wrapper loops back to the top
-  and keeps trying (5s pause between full rounds) until the time budget is spent,
+  and keeps trying (growing backoff between full rounds: 1m per consecutive
+  blocked round, capped at 15m and at the remaining budget) until the time
+  budget is spent,
   then exits `124` (the usual "cycle timeout, state persists for next cycle"
   signal). A genuine non-quota failure propagates immediately — a real bug must
   never be masked by switching models.

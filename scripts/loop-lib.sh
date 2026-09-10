@@ -45,16 +45,27 @@ verdict_bodies() { # $1 = PR number; prints comment AND review bodies (verdicts
     gh pr view "$1" --json comments,reviews --jq '[(.comments // [])[].body, (.reviews // [])[].body] | .[]' 2>/dev/null || true
 }
 
+latest_verdict_body() { # $1 = PR number; prints the FULL BODY of the newest VERDICT
+    # comment/review (chronological by posted time), or empty when none exists.
+    gh pr view "$1" --json comments,reviews --jq '[((.comments // [])[] | {t: .createdAt, b: .body}),
+        ((.reviews // [])[] | {t: .submittedAt, b: .body})]
+        | map(select(.b | type == "string")) | map(.b |= gsub("^[ \t]+"; ""))
+        | map(select(.b | startswith("VERDICT:"))) | sort_by(.t) | last | .b // empty' \
+        2>/dev/null || true
+}
+
 latest_verdict() { # $1 = PR number; prints the FIRST LINE of the newest VERDICT
     # comment/review (chronological by posted time), or empty when none exists.
     # Merge and reviewer-round decisions must use this — never a presence grep —
     # so a newer REQUEST_CHANGES always vetoes an older APPROVE. Leading
     # whitespace is tolerated (trimmed); case must match the review prompt.
-    gh pr view "$1" --json comments,reviews --jq '[((.comments // [])[] | {t: .createdAt, b: .body}),
-        ((.reviews // [])[] | {t: .submittedAt, b: .body})]
-        | map(select(.b | type == "string")) | map(.b |= gsub("^[ \t]+"; ""))
-        | map(select(.b | startswith("VERDICT:"))) | sort_by(.t) | last | .b // empty' \
-        2>/dev/null | grep -m1 '^VERDICT:' || true
+    latest_verdict_body "$1" | grep -m1 '^VERDICT:' || true
+}
+
+verdict_model() { # $1 = PR number; prints the Model: value of the newest
+    # VERDICT body, or empty when unattributable (feeds the cycle log so every
+    # posted verdict is attributable without re-reading the PR).
+    latest_verdict_body "$1" | author_model_of || true
 }
 reviewed_sha() { # $1 = verdict first line; prints the (reviewed <sha>) marker sha or empty
     grep -oE '\(reviewed [0-9a-f]{7,40}' <<<"$1" | grep -oE '[0-9a-f]{7,40}$' || true
@@ -64,15 +75,19 @@ sha_match() { # $1 $2 = hex shas of possibly different lengths; true iff either
     [[ -n "${1:-}" && -n "${2:-}" ]] && [[ "$1" == "$2"* || "$2" == "$1"* ]]
 }
 
-reviewed_sha() { # $1 = verdict first line; prints the (reviewed <sha>) marker sha or empty
-    grep -oE '\(reviewed [0-9a-f]{7,40}' <<<"$1" | grep -oE '[0-9a-f]{7,40}$' || true
-}
-
-author_model_of() { # reads a PR body on stdin; prints the compliance-footer's
-    # Model: value (cli:model_id[/think]) or empty when absent/unparseable.
-    # The reviewer passes it to run-agent.sh --skip so a different model reviews.
-    # Tolerates indentation and **bold** markers; the tag itself stays case-sensitive.
-    grep -E '^[[:space:]]*\**Model:' | tail -1 | sed -E 's/^[[:space:]]*\**Model:\**[[:space:]]*//' || true
+author_model_of() { # reads a PR body (or verdict body) on stdin; prints the
+    # compliance-footer's Model: value (cli:model_id[/think]) or empty when
+    # absent, blank, or explicitly unknown. The reviewer passes it to
+    # run-agent.sh --skip so a different model reviews; an unknown author must
+    # not yield a bogus skip token (it matches nothing while the log claims
+    # independence). Tolerates indentation and **bold** markers; the tag itself
+    # stays case-sensitive.
+    local v
+    v=$(grep -E '^[[:space:]]*\**Model:' | tail -1 | sed -E 's/^[[:space:]]*\**Model:\**[[:space:]]*//; s/[[:space:]]+$//' || true)
+    case "$v" in
+        ""|unknown*) printf '' ;;
+        *) printf '%s\n' "$v" ;;
+    esac
 }
 
 pr_mergeable() { # $1 = PR number; prints MERGEABLE|CONFLICTING|UNKNOWN (never fails)
