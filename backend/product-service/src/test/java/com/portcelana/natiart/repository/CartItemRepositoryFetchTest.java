@@ -104,7 +104,8 @@ class CartItemRepositoryFetchTest {
 
         assertEquals(3, dtos.size());
         final List<String> optionValues = dtos.stream()
-                .map(dto -> dto.getPersonalizationDto().getPersonalizationOptions()
+                .map(dto -> dto.getPersonalizationDto()
+                        .getPersonalizationOptions()
                         .get(PersonalizationOption.GOLDEN_BORDER))
                 .toList();
         for (int i = 0; i < lines.size(); i++) {
