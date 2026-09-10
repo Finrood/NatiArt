@@ -1,7 +1,7 @@
 import {HttpClient, HttpInterceptorFn} from '@angular/common/http';
 import {inject} from '@angular/core';
 import {Router} from "@angular/router";
-import {BehaviorSubject, catchError, filter, first, switchMap, throwError} from "rxjs";
+import {BehaviorSubject, catchError, filter, first, switchMap, throwError, timeout} from "rxjs";
 import {TokenService} from "../service/token.service";
 import {environment} from "../../../environments/environment";
 
@@ -64,6 +64,7 @@ const isLogoutRequest = (url: string): boolean =>
   isEndpoint(url, [environment.api.directory.endpoints.logout]);
 
 const RETRY_HEADER = 'X-Auth-Retried';
+const REFRESH_TIMEOUT_MS = 10000;
 
 let refreshInProgress$: BehaviorSubject<string | null> | null = null;
 
@@ -83,7 +84,7 @@ const performRefresh = (http: HttpClient, tokenService: TokenService): BehaviorS
       `${environment.api.directory.url}${environment.api.directory.endpoints.refreshToken}`,
       null,
       {headers: {Authorization: `Bearer ${refreshTokenValue}`}}
-    ).subscribe({
+    ).pipe(timeout({first: REFRESH_TIMEOUT_MS})).subscribe({
       next: (response) => {
         tokenService.accessToken = response.accessToken;
         tokenService.refreshToken = response.refreshToken;
