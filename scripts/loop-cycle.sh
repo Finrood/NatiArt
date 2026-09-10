@@ -374,12 +374,17 @@ git branch -vv | awk '/: gone]/{print $1}' | grep -v '^\*' | xargs -r git branch
 # branches after proving their commits are already merged into origin/master.
 # Old unmerged salvage is still recoverable WIP and must never be force-deleted.
 git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads/salvage/ 2>/dev/null | tail -n +6 | while read -r sb; do
-    if git merge-base --is-ancestor "$sb" origin/master 2>/dev/null; then
+    REMOTE_SB_SHA="$(git rev-parse "origin/$sb" 2>/dev/null || true)"
+    if git merge-base --is-ancestor "$sb" origin/master 2>/dev/null && \
+       { [[ -z "$REMOTE_SB_SHA" ]] || git merge-base --is-ancestor "$REMOTE_SB_SHA" origin/master 2>/dev/null; }; then
         log "Deleting old merged salvage branch $sb."
         git branch -D "$sb" 2>/dev/null || true
-        git push -q origin --delete "$sb" 2>/dev/null || true
+        if [[ -n "$REMOTE_SB_SHA" ]] && ! git push -q \
+            --force-with-lease="refs/heads/$sb:$REMOTE_SB_SHA" origin --delete "$sb" 2>/dev/null; then
+            log "Remote salvage $sb changed during validation; preserving it."
+        fi
     else
-        log "Preserving old unmerged salvage branch $sb."
+        log "Preserving old salvage branch $sb (local or remote tip is unmerged)."
     fi
 done
 
