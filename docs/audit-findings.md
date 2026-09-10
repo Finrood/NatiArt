@@ -1978,8 +1978,9 @@ BS1-BS2 below are runner-ups.
   history or live cart lines therefore trips the raw FK constraint →
   generic 409 "Resource conflict"
   (`configuration/ControllerAdvice.java:123-127`) with no guidance toward
-  the proper removal-from-sale path (`isActive` + visibility toggle,
-  `ProductController.java:98`). Fulfilled-order history is protected only
+  the proper removal-from-sale path (`isActive` via `updateProduct`,
+  `ProductController.java:97-109`, and the visibility toggle at
+  `:111-115`). Fulfilled-order history is protected only
   by the raw constraint, never by an explicit rule. Found by Lens 4 hunt,
   2026-09-10.
 - Fix: pre-check order/cart references in `deleteProduct` (400 with an
