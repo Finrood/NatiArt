@@ -46,6 +46,7 @@ describe('OrderService', () => {
     expect(latest).toBeTrue();
     const req: TestRequest = httpMock.expectOne((request) => request.method === 'POST');
     expect(req.request.url.endsWith('/orders/create')).toBeTrue();
+    expect(req.request.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/);
     req.flush(makeOrder());
 
     expect(latest).toBeFalse();
@@ -61,5 +62,13 @@ describe('OrderService', () => {
     req.flush('boom', {status: 500, statusText: 'Server Error'});
 
     expect(latest).toBeFalse();
+  });
+
+  it('sends the caller supplied idempotency key unchanged', () => {
+    service.createOrder(makeOrder(), 'checkout-attempt-1').subscribe();
+
+    const req: TestRequest = httpMock.expectOne((request) => request.method === 'POST');
+    expect(req.request.headers.get('Idempotency-Key')).toBe('checkout-attempt-1');
+    req.flush(makeOrder());
   });
 });

@@ -12,6 +12,11 @@ import jakarta.persistence.*;
 import com.portcelana.natiart.model.support.OrderStatus;
 
 @Entity
+@Table(
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_customer_order_owner_idempotency",
+                        columnNames = {"owner_external_id", "idempotency_key"}))
 public class CustomerOrder {
     @Id
     private String id;
@@ -61,6 +66,12 @@ public class CustomerOrder {
 
     @Column(nullable = false)
     private String ownerExternalId;
+
+    @Column(length = 64)
+    private String idempotencyKey;
+
+    @Column(length = 64)
+    private String requestFingerprint;
 
     public CustomerOrder() {
         this.id = UUID.randomUUID().toString();
@@ -229,6 +240,24 @@ public class CustomerOrder {
 
     public CustomerOrder setOwnerExternalId(String ownerExternalId) {
         this.ownerExternalId = ownerExternalId;
+        return this;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public CustomerOrder setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
+        return this;
+    }
+
+    public String getRequestFingerprint() {
+        return requestFingerprint;
+    }
+
+    public CustomerOrder setRequestFingerprint(String requestFingerprint) {
+        this.requestFingerprint = requestFingerprint;
         return this;
     }
 
