@@ -16,6 +16,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.OrderDto;
 import com.portcelana.natiart.dto.OrderItemDto;
@@ -250,6 +251,70 @@ class OrderManagerImplTest {
         ArgumentCaptor<CustomerOrder> captor = ArgumentCaptor.forClass(CustomerOrder.class);
         verify(orderRepository).save(captor.capture());
         assertEquals("user-1", captor.getValue().getOwnerExternalId());
+    }
+
+    @Test
+    void createOrderReplaysSameKeyWithoutReadingProductsOrReservingStockAgain() {
+        Product plate = product("p1", "Plate", new BigDecimal("15.00"), null, 100);
+        when(productManager.getProductsOrDie(List.of("p1"))).thenReturn(Map.of("p1", plate));
+        when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1);
+        when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        OrderDto dto = validOrder().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p1", 1)));
+        when(orderRepository.findByOwnerExternalIdAndIdempotencyKey("user-1", "checkout-1"))
+                .thenReturn(Optional.empty());
+
+        CustomerOrder first = orderManager.createOrder(dto, "user-1", "checkout-1");
+        // Use the persisted object captured by the save answer so its
+        // fingerprint is the exact value produced by the first request.
+        when(orderRepository.findByOwnerExternalIdAndIdempotencyKey("user-1", "checkout-1"))
+                .thenReturn(Optional.of(first));
+        CustomerOrder replay = orderManager.createOrder(dto, "user-1", "checkout-1");
+
+        assertSame(first, replay);
+        verify(productManager, times(1)).getProductsOrDie(List.of("p1"));
+        verify(productRepository, times(1)).decreaseStockIfAvailable(anyString(), anyInt());
+        verify(orderRepository, times(1)).save(any(CustomerOrder.class));
+    }
+
+    @Test
+    void createOrderRejectsSameKeyForDifferentPayload() {
+        CustomerOrder existing = new CustomerOrder()
+                .setOwnerExternalId("user-1")
+                .setIdempotencyKey("checkout-1")
+                .setRequestFingerprint("fingerprint-from-another-payload");
+        when(orderRepository.findByOwnerExternalIdAndIdempotencyKey("user-1", "checkout-1"))
+                .thenReturn(Optional.of(existing));
+
+        OrderDto dto = validOrder().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p1", 1)));
+
+        assertThrows(ResourceAlreadyExistsException.class, () -> orderManager.createOrder(dto, "user-1", "checkout-1"));
+        verifyNoInteractions(productManager, productRepository);
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void createOrderReloadsWinnerAfterUniqueKeyRace() {
+        Product plate = product("p1", "Plate", new BigDecimal("15.00"), null, 100);
+        when(productManager.getProductsOrDie(List.of("p1"))).thenReturn(Map.of("p1", plate));
+        when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1);
+        CustomerOrder winner = new CustomerOrder().setOwnerExternalId("user-1").setIdempotencyKey("checkout-1");
+        when(orderRepository.findByOwnerExternalIdAndIdempotencyKey("user-1", "checkout-1"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(winner));
+        when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(invocation -> {
+            CustomerOrder attempted = invocation.getArgument(0);
+            winner.setRequestFingerprint(attempted.getRequestFingerprint());
+            throw new org.springframework.dao.DataIntegrityViolationException("duplicate key");
+        });
+
+        OrderDto dto = validOrder().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p1", 1)));
+
+        // The production transaction rolls the stock reservation back before
+        // this reload. The manager returns the committed winner rather than
+        // leaking a generic 409 to a retrying client.
+        assertSame(winner, orderManager.createOrder(dto, "user-1", "checkout-1"));
+        verify(orderRepository, times(2)).findByOwnerExternalIdAndIdempotencyKey("user-1", "checkout-1");
     }
 
     @Test

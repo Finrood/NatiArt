@@ -15,9 +15,11 @@ export class OrderService {
 
   private readonly _http: HttpClient = inject(HttpClient);
 
-  createOrder(order: OrderDto): Observable<OrderDto> {
+  createOrder(order: OrderDto, idempotencyKey: string = crypto.randomUUID()): Observable<OrderDto> {
     this.orderProcessingSubject.next(true);
-    return this._http.post<OrderDto>(`${this.apiUrl}/create`, order).pipe(
+    return this._http.post<OrderDto>(`${this.apiUrl}/create`, order, {
+      headers: {'Idempotency-Key': idempotencyKey},
+    }).pipe(
       finalize(() => this.orderProcessingSubject.next(false)),
     );
   }

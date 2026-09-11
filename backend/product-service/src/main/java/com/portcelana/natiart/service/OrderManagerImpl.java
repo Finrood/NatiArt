@@ -1,42 +1,35 @@
 package com.portcelana.natiart.service;
 
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.HashSet;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.OrderDto;
 import com.portcelana.natiart.dto.OrderItemDto;
 import com.portcelana.natiart.model.CustomerOrder;
-import com.portcelana.natiart.model.CustomerOrderItem;
-import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
-import com.portcelana.natiart.repository.ProductRepository;
 
 @Service
 public class OrderManagerImpl implements OrderManager {
-    private static final Logger LOGGER = LoggerFactory.getLogger(OrderManagerImpl.class);
+    private static final Pattern IDEMPOTENCY_KEY_PATTERN = Pattern.compile("[A-Za-z0-9._-]{1,64}");
 
-    // Anti-absurdity guard on a single order line; available stock remains the
-    // real bound via the atomic decreaseStockIfAvailable check.
-    private static final int MAX_ITEM_QUANTITY = 100;
-    // Bounds the whole request: every line costs a stock decrement plus an
-    // insert inside one transaction, so an unbounded line list can time the
-    // transaction out or blow up the database from a single POST.
-    private static final int MAX_ORDER_LINES = 50;
-
-    // Forward-only lifecycle: terminal states accept nothing, stages never
-    // rewind or skip, so a stale retry cannot resurrect a delivered order or
-    // rewind a paid one.
     private static final Map<OrderStatus, Set<OrderStatus>> ALLOWED_TRANSITIONS = Map.of(
             OrderStatus.PENDING, Set.of(OrderStatus.PAID, OrderStatus.CANCELLED),
             OrderStatus.PAID, Set.of(OrderStatus.PROCESSING, OrderStatus.CANCELLED),
@@ -46,14 +39,20 @@ public class OrderManagerImpl implements OrderManager {
             OrderStatus.CANCELLED, Set.of());
 
     private final OrderRepository orderRepository;
-    private final ProductManager productManager;
-    private final ProductRepository productRepository;
+    private final OrderCreationService orderCreationService;
 
-    public OrderManagerImpl(
-            OrderRepository orderRepository, ProductManager productManager, ProductRepository productRepository) {
+    @Autowired
+    public OrderManagerImpl(OrderRepository orderRepository, OrderCreationService orderCreationService) {
         this.orderRepository = orderRepository;
-        this.productManager = productManager;
-        this.productRepository = productRepository;
+        this.orderCreationService = orderCreationService;
+    }
+
+    /** Test-friendly constructor; production uses the transaction-owning bean above. */
+    OrderManagerImpl(
+            OrderRepository orderRepository,
+            ProductManager productManager,
+            com.portcelana.natiart.repository.ProductRepository productRepository) {
+        this(orderRepository, new OrderCreationService(orderRepository, productManager, productRepository));
     }
 
     @Override
@@ -71,84 +70,121 @@ public class OrderManagerImpl implements OrderManager {
     }
 
     @Override
-    @Transactional
-    public CustomerOrder createOrder(OrderDto orderDto, String ownerExternalId) {
-        validateContactDetails(orderDto);
-        validateItems(orderDto.getItems());
-        requireNonNegativeAmount(orderDto.getDeliveryAmount(), "delivery amount");
+    public CustomerOrder createOrder(OrderDto orderDto, String ownerExternalId, String idempotencyKey) {
         if (ownerExternalId == null || ownerExternalId.isBlank()) {
             throw new IllegalArgumentException("An order must have an owner");
         }
+        final String normalizedKey = normalizeIdempotencyKey(idempotencyKey);
+        final String fingerprint = fingerprint(orderDto);
 
-        final CustomerOrder customerOrder = new CustomerOrder();
-        customerOrder
-                .setOrderDate(Instant.now())
-                .setStatus(OrderStatus.PENDING)
-                .setOwnerExternalId(ownerExternalId)
-                .setFirstname(orderDto.getFirstname())
-                .setLastname(orderDto.getLastname())
-                .setEmail(orderDto.getEmail())
-                .setPhone(orderDto.getPhone())
-                .setCountry(orderDto.getCountry())
-                .setState(orderDto.getState())
-                .setCity(orderDto.getCity())
-                .setNeighborhood(orderDto.getNeighborhood())
-                .setZipCode(orderDto.getZipCode())
-                .setStreet(orderDto.getStreet())
-                .setComplement(orderDto.getComplement())
-                .setDeliveryAmount(orderDto.getDeliveryAmount());
-
-        BigDecimal totalItemsAmount = BigDecimal.ZERO;
-        // One batched product read for the whole order: the per-line stock
-        // decrements below stay row-atomic on purpose, only the reads batch.
-        final Map<String, Product> products = productManager.getProductsOrDie(orderDto.getItems().stream()
-                .map(OrderItemDto::getProductId)
-                .distinct()
-                .toList());
-        for (OrderItemDto item : orderDto.getItems()) {
-            final Product product = products.get(item.getProductId());
-            if (!product.isActive()) {
-                throw new IllegalArgumentException("Product [" + product.getLabel() + "] is no longer available");
+        if (normalizedKey != null) {
+            final Optional<CustomerOrder> existing = findOrder(ownerExternalId, normalizedKey);
+            if (existing.isPresent()) {
+                return returnReplayOrReject(existing.get(), fingerprint);
             }
-            final int reserved = productRepository.decreaseStockIfAvailable(product.getId(), item.getQuantity());
-            if (reserved == 0) {
-                throw new IllegalArgumentException("Insufficient stock for product [" + product.getLabel() + "]");
-            }
-            final BigDecimal unitPrice = product.getMarkedPrice().orElseGet(product::getOriginalPrice);
-            totalItemsAmount = totalItemsAmount.add(unitPrice.multiply(BigDecimal.valueOf(item.getQuantity())));
-
-            final CustomerOrderItem orderItem = new CustomerOrderItem()
-                    .setProduct(product)
-                    .setQuantity(item.getQuantity())
-                    .setPrice(unitPrice);
-            customerOrder.addOrderItem(orderItem);
         }
 
-        customerOrder.setTotalAmount(totalItemsAmount.add(customerOrder.getDeliveryAmount()));
-        final CustomerOrder savedOrder = orderRepository.save(customerOrder);
-        LOGGER.info(
-                "Order created: orderId=[{}], owner=[{}], itemCount=[{}], totalAmount=[{}]",
-                savedOrder.getId(),
-                ownerExternalId,
-                savedOrder.getItems().size(),
-                savedOrder.getTotalAmount());
-        return savedOrder;
+        try {
+            return orderCreationService.createOrder(orderDto, ownerExternalId, normalizedKey, fingerprint);
+        } catch (DataIntegrityViolationException e) {
+            // The unique index is the serialization point. This code runs
+            // after the losing transaction has rolled back, so reloading here
+            // returns the winner and never decrements stock a second time.
+            if (normalizedKey == null) {
+                throw e;
+            }
+            final Optional<CustomerOrder> winner = findOrder(ownerExternalId, normalizedKey);
+            if (winner.isEmpty()) {
+                throw e;
+            }
+            return returnReplayOrReject(winner.get(), fingerprint);
+        }
     }
 
-    private void validateContactDetails(OrderDto orderDto) {
-        requireNonBlankContact(orderDto.getFirstname(), "firstname");
-        requireNonBlankContact(orderDto.getLastname(), "lastname");
-        requireNonBlankContact(orderDto.getEmail(), "email");
+    @Override
+    public CustomerOrder createOrder(OrderDto orderDto, String ownerExternalId) {
+        return createOrder(orderDto, ownerExternalId, null);
+    }
+
+    private Optional<CustomerOrder> findOrder(String ownerExternalId, String idempotencyKey) {
+        return orderRepository.findByOwnerExternalIdAndIdempotencyKey(ownerExternalId, idempotencyKey);
+    }
+
+    private CustomerOrder returnReplayOrReject(CustomerOrder existingOrder, String fingerprint) {
+        if (!Objects.equals(existingOrder.getRequestFingerprint(), fingerprint)) {
+            throw new ResourceAlreadyExistsException("Idempotency-Key was already used for a different order");
+        }
+        return existingOrder;
+    }
+
+    private String normalizeIdempotencyKey(String idempotencyKey) {
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            return null;
+        }
+        final String normalized = idempotencyKey.trim();
+        if (!IDEMPOTENCY_KEY_PATTERN.matcher(normalized).matches()) {
+            throw new IllegalArgumentException("The Idempotency-Key header is invalid");
+        }
+        return normalized;
+    }
+
+    /** Hashes the complete client order shape so a key cannot be reused for another payload. */
+    private String fingerprint(OrderDto order) {
+        final StringBuilder canonical = new StringBuilder();
+        append(canonical, order == null ? null : order.getFirstname());
+        append(canonical, order == null ? null : order.getLastname());
+        append(canonical, order == null ? null : order.getEmail());
+        append(canonical, order == null ? null : order.getPhone());
+        append(canonical, order == null ? null : order.getCountry());
+        append(canonical, order == null ? null : order.getState());
+        append(canonical, order == null ? null : order.getCity());
+        append(canonical, order == null ? null : order.getNeighborhood());
+        append(canonical, order == null ? null : order.getZipCode());
+        append(canonical, order == null ? null : order.getStreet());
+        append(canonical, order == null ? null : order.getComplement());
+        append(canonical, order == null ? null : normalizeAmount(order.getDeliveryAmount()));
+
+        final List<String> items = new ArrayList<>();
+        if (order != null && order.getItems() != null) {
+            for (OrderItemDto item : order.getItems()) {
+                final StringBuilder itemValue = new StringBuilder();
+                append(itemValue, item == null ? null : item.getProductId());
+                append(itemValue, item == null ? null : item.getQuantity());
+                items.add(itemValue.toString());
+            }
+        }
+        items.sort(Comparator.naturalOrder());
+        append(canonical, String.join("", items));
+
+        try {
+            final byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(canonical.toString().getBytes(StandardCharsets.UTF_8));
+            final StringBuilder hex = new StringBuilder(digest.length * 2);
+            for (byte value : digest) {
+                hex.append(String.format("%02x", value));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is required", e);
+        }
+    }
+
+    private String normalizeAmount(BigDecimal amount) {
+        return amount == null ? null : amount.stripTrailingZeros().toPlainString();
+    }
+
+    private void append(StringBuilder target, Object value) {
+        if (value == null) {
+            target.append("-1:");
+            return;
+        }
+        final String text = String.valueOf(value);
+        target.append(text.length()).append(':').append(text);
     }
 
     @Override
     @Transactional
     public CustomerOrder updateOrderStatus(String orderId, OrderStatus status) {
-        // Direct update by id: concurrent status writes serialize in the
-        // database instead of colliding on @Version and surfacing
-        // OptimisticLockException as a generic 500. The guard reads current
-        // state first, so two racing transitions can still interleave with
-        // last-write-wins -- accepted while no endpoint drives this path.
         final CustomerOrder current = getOrderById(orderId);
         if (current.getStatus() == null
                 || !ALLOWED_TRANSITIONS
@@ -160,50 +196,6 @@ public class OrderManagerImpl implements OrderManager {
         if (orderRepository.updateStatusById(orderId, status) == 0) {
             throw new ResourceNotFoundException("CustomerOrder with id " + orderId + " not found");
         }
-        final CustomerOrder updatedOrder = getOrderById(orderId);
-        LOGGER.info(
-                "Order status updated: orderId=[{}], status=[{}], totalAmount=[{}]",
-                orderId,
-                updatedOrder.getStatus(),
-                updatedOrder.getTotalAmount());
-        return updatedOrder;
-    }
-
-    private void validateItems(List<OrderItemDto> items) {
-        if (items == null || items.isEmpty()) {
-            throw new IllegalArgumentException("An order must contain at least one item");
-        }
-        if (items.size() > MAX_ORDER_LINES) {
-            throw new IllegalArgumentException("An order must not contain more than " + MAX_ORDER_LINES + " items");
-        }
-        final Set<String> productIds = new HashSet<>();
-        for (OrderItemDto item : items) {
-            if (item.getProductId() == null || item.getProductId().isBlank()) {
-                throw new IllegalArgumentException("Every order item must reference a product");
-            }
-            if (!productIds.add(item.getProductId())) {
-                throw new IllegalArgumentException(
-                        "An order must not contain duplicate product [" + item.getProductId() + "] lines");
-            }
-            if (item.getQuantity() == null || item.getQuantity() <= 0) {
-                throw new IllegalArgumentException("Item quantities must be positive");
-            }
-            if (item.getQuantity() > MAX_ITEM_QUANTITY) {
-                throw new IllegalArgumentException("Item quantities must not exceed " + MAX_ITEM_QUANTITY);
-            }
-        }
-    }
-
-    private void requireNonNegativeAmount(BigDecimal amount, String field) {
-        if (amount == null || amount.signum() < 0 || amount.scale() > 2) {
-            throw new IllegalArgumentException(
-                    "The " + field + " must be a non-negative value with at most two fraction digits");
-        }
-    }
-
-    private void requireNonBlankContact(String value, String field) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("Order " + field + " must not be blank");
-        }
+        return getOrderById(orderId);
     }
 }

@@ -19,7 +19,11 @@ public interface OrderManager {
      * cannot create orders on another user's behalf and a future
      * order-linked payment check can compare within one domain.
      */
-    CustomerOrder createOrder(OrderDto order, String ownerExternalId);
+    CustomerOrder createOrder(OrderDto order, String ownerExternalId, String idempotencyKey);
+
+    default CustomerOrder createOrder(OrderDto order, String ownerExternalId) {
+        return createOrder(order, ownerExternalId, null);
+    }
 
     CustomerOrder updateOrderStatus(String orderId, OrderStatus status);
 }

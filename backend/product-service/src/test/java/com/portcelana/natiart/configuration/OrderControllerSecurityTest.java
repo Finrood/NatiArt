@@ -3,6 +3,7 @@ package com.portcelana.natiart.configuration;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -61,7 +62,7 @@ class OrderControllerSecurityTest {
     @Test
     void createOrderRequiresFullAuthenticationLikeCartAndPayment() throws Exception {
         final Method createOrder = OrderController.class.getMethod(
-                "createOrder", OrderDto.class, AuthenticationResponseDto.Principal.class);
+                "createOrder", OrderDto.class, String.class, AuthenticationResponseDto.Principal.class);
         final PreAuthorize preAuthorize = createOrder.getAnnotation(PreAuthorize.class);
 
         assertEquals("isFullyAuthenticated()", preAuthorize.value());
@@ -88,7 +89,8 @@ class OrderControllerSecurityTest {
         SecurityContextHolder.getContext()
                 .setAuthentication(new UsernamePasswordAuthenticationToken(
                         principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER"))));
-        when(orderManager.createOrder(any(OrderDto.class), any())).thenReturn(new CustomerOrder().setItems(List.of()));
+        when(orderManager.createOrder(any(OrderDto.class), any(), any()))
+                .thenReturn(new CustomerOrder().setItems(List.of()));
 
         try {
             mockMvc.perform(post("/orders/create")
@@ -107,7 +109,8 @@ class OrderControllerSecurityTest {
         SecurityContextHolder.getContext()
                 .setAuthentication(new UsernamePasswordAuthenticationToken(
                         principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER"))));
-        when(orderManager.createOrder(any(OrderDto.class), any())).thenReturn(new CustomerOrder().setItems(List.of()));
+        when(orderManager.createOrder(any(OrderDto.class), any(), any()))
+                .thenReturn(new CustomerOrder().setItems(List.of()));
 
         try {
             mockMvc.perform(post("/orders/create")
@@ -115,7 +118,7 @@ class OrderControllerSecurityTest {
                             .content("{}"))
                     .andExpect(status().isOk());
 
-            verify(orderManager).createOrder(any(OrderDto.class), eq("cus_MINE"));
+            verify(orderManager).createOrder(any(OrderDto.class), eq("cus_MINE"), isNull());
         } finally {
             SecurityContextHolder.clearContext();
         }
@@ -128,7 +131,8 @@ class OrderControllerSecurityTest {
         SecurityContextHolder.getContext()
                 .setAuthentication(new UsernamePasswordAuthenticationToken(
                         principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER"))));
-        when(orderManager.createOrder(any(OrderDto.class), any())).thenReturn(new CustomerOrder().setItems(List.of()));
+        when(orderManager.createOrder(any(OrderDto.class), any(), any()))
+                .thenReturn(new CustomerOrder().setItems(List.of()));
 
         try {
             mockMvc.perform(post("/orders/create")
@@ -136,7 +140,7 @@ class OrderControllerSecurityTest {
                             .content("{\"ownerExternalId\":\"mallory\"}"))
                     .andExpect(status().isOk());
 
-            verify(orderManager).createOrder(any(OrderDto.class), eq("cus_MINE"));
+            verify(orderManager).createOrder(any(OrderDto.class), eq("cus_MINE"), isNull());
         } finally {
             SecurityContextHolder.clearContext();
         }
