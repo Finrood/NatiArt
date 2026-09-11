@@ -39,11 +39,15 @@ class OrderManagerImplTest {
     @Mock
     private ProductRepository productRepository;
 
+    @Mock
+    private ShippingService shippingService;
+
     private OrderManagerImpl orderManager;
 
     @BeforeEach
     void setUp() {
-        orderManager = new OrderManagerImpl(orderRepository, productManager, productRepository);
+        orderManager = new OrderManagerImpl(orderRepository, productManager, productRepository, shippingService);
+        lenient().when(shippingService.getOrderShippingAmount(any())).thenReturn(BigDecimal.ZERO);
     }
 
     private Product product(String id, String label, BigDecimal original, BigDecimal marked, int stock) {
@@ -65,6 +69,7 @@ class OrderManagerImplTest {
         Product plate = product("p1", "Plate", new BigDecimal("15.00"), new BigDecimal("13.00"), 100);
         when(productManager.getProductsOrDie(List.of("p1"))).thenReturn(Map.of("p1", plate));
         when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1);
+        when(shippingService.getOrderShippingAmount(any())).thenReturn(new BigDecimal("5.00"));
         when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
         OrderDto dto = validOrder().setDeliveryAmount(new BigDecimal("5.00")).setItems(List.of(item("p1", 2)));
@@ -90,21 +95,33 @@ class OrderManagerImplTest {
     }
 
     @Test
-    void createOrderRejectsNegativeDeliveryAmount() {
+    void createOrderIgnoresNegativeClientDeliveryAmount() {
         OrderDto dto = validOrder().setDeliveryAmount(new BigDecimal("-1")).setItems(List.of(item("p1", 1)));
+        final Product product = product("p1", "Plate", new BigDecimal("15.00"), null, 10);
+        when(shippingService.getOrderShippingAmount(any())).thenReturn(new BigDecimal("7.50"));
+        when(productManager.getProductsOrDie(List.of("p1"))).thenReturn(Map.of("p1", product));
+        when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1);
+        when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
-        verify(orderRepository, never()).save(any());
+        final CustomerOrder saved = orderManager.createOrder(dto, "user-1");
+
+        assertEquals(new BigDecimal("7.50"), saved.getDeliveryAmount());
+        assertEquals(new BigDecimal("22.50"), saved.getTotalAmount());
     }
 
     @Test
-    void createOrderRejectsDeliveryAmountWithMoreThanTwoFractionDigits() {
-        OrderDto dto =
-                new OrderDto().setDeliveryAmount(new BigDecimal("10.001")).setItems(List.of(item("p1", 1)));
+    void createOrderIgnoresClientDeliveryAmountPrecision() {
+        OrderDto dto = validOrder().setDeliveryAmount(new BigDecimal("10.001")).setItems(List.of(item("p1", 1)));
+        final Product product = product("p1", "Plate", new BigDecimal("15.00"), null, 10);
+        when(shippingService.getOrderShippingAmount(any())).thenReturn(new BigDecimal("3.25"));
+        when(productManager.getProductsOrDie(List.of("p1"))).thenReturn(Map.of("p1", product));
+        when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1);
+        when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
-        verify(productRepository, never()).decreaseStockIfAvailable(any(), anyInt());
-        verify(orderRepository, never()).save(any());
+        final CustomerOrder saved = orderManager.createOrder(dto, "user-1");
+
+        assertEquals(new BigDecimal("3.25"), saved.getDeliveryAmount());
+        assertEquals(new BigDecimal("18.25"), saved.getTotalAmount());
     }
 
     @Test
@@ -278,6 +295,29 @@ class OrderManagerImplTest {
     }
 
     @Test
+    void createOrderReplaysSameKeyWhenOnlyIgnoredClientShippingChanges() {
+        Product plate = product("p1", "Plate", new BigDecimal("15.00"), null, 100);
+        when(productManager.getProductsOrDie(List.of("p1"))).thenReturn(Map.of("p1", plate));
+        when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1);
+        when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        OrderDto firstRequest = validOrder().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p1", 1)));
+        when(orderRepository.findByOwnerExternalIdAndIdempotencyKey("user-1", "checkout-1"))
+                .thenReturn(Optional.empty());
+        CustomerOrder first = orderManager.createOrder(firstRequest, "user-1", "checkout-1");
+
+        OrderDto retryRequest =
+                validOrder().setDeliveryAmount(new BigDecimal("999.999")).setItems(List.of(item("p1", 1)));
+        when(orderRepository.findByOwnerExternalIdAndIdempotencyKey("user-1", "checkout-1"))
+                .thenReturn(Optional.of(first));
+
+        assertSame(first, orderManager.createOrder(retryRequest, "user-1", "checkout-1"));
+        verify(productManager, times(1)).getProductsOrDie(List.of("p1"));
+        verify(productRepository, times(1)).decreaseStockIfAvailable(anyString(), anyInt());
+        verify(orderRepository, times(1)).save(any(CustomerOrder.class));
+    }
+
+    @Test
     void createOrderRejectsSameKeyForDifferentPayload() {
         CustomerOrder existing = new CustomerOrder()
                 .setOwnerExternalId("user-1")
@@ -347,6 +387,16 @@ class OrderManagerImplTest {
         assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
         verify(productRepository, never()).decreaseStockIfAvailable(any(), anyInt());
         verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void createOrderRejectsUnavailableShippingBeforeReservingStock() {
+        when(shippingService.getOrderShippingAmount(any()))
+                .thenThrow(new IllegalArgumentException("No shipping options are available for this address"));
+        OrderDto dto = validOrder().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p1", 1)));
+
+        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
+        verifyNoInteractions(productManager, productRepository, orderRepository);
     }
 
     @Test

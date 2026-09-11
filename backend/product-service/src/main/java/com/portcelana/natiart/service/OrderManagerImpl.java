@@ -51,8 +51,11 @@ public class OrderManagerImpl implements OrderManager {
     OrderManagerImpl(
             OrderRepository orderRepository,
             ProductManager productManager,
-            com.portcelana.natiart.repository.ProductRepository productRepository) {
-        this(orderRepository, new OrderCreationService(orderRepository, productManager, productRepository));
+            com.portcelana.natiart.repository.ProductRepository productRepository,
+            ShippingService shippingService) {
+        this(
+                orderRepository,
+                new OrderCreationService(orderRepository, productManager, productRepository, shippingService));
     }
 
     @Override
@@ -142,7 +145,6 @@ public class OrderManagerImpl implements OrderManager {
         append(canonical, order == null ? null : order.getZipCode());
         append(canonical, order == null ? null : order.getStreet());
         append(canonical, order == null ? null : order.getComplement());
-        append(canonical, order == null ? null : normalizeAmount(order.getDeliveryAmount()));
 
         final List<String> items = new ArrayList<>();
         if (order != null && order.getItems() != null) {
