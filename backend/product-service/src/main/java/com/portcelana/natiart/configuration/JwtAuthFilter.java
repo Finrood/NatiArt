@@ -9,6 +9,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -49,6 +50,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         .post()
                         .uri(directoryServiceUrl + "/validate-token")
                         .header("Authorization", "Bearer " + token)
+                        .headers(headers -> {
+                            final String correlationId = MDC.get(RequestCorrelationFilter.MDC_KEY);
+                            if (correlationId != null) {
+                                headers.set(RequestCorrelationFilter.HEADER_NAME, correlationId);
+                            }
+                        })
                         .retrieve()
                         .bodyToMono(AuthenticationResponseDto.class)
                         .timeout(Duration.ofSeconds(5))

@@ -241,6 +241,7 @@ class JwtAuthFilterTest {
         when(webClient.post()).thenReturn(uriSpec);
         when(uriSpec.uri(anyString())).thenReturn(bodySpec);
         when(bodySpec.header(anyString(), any())).thenReturn(bodySpec);
+        when(bodySpec.headers(any())).thenReturn(bodySpec);
         when(bodySpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(AuthenticationResponseDto.class)).thenReturn(Mono.just(dto));
 
