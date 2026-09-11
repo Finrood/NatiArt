@@ -3,6 +3,7 @@ import { AsyncPipe, CommonModule } from '@angular/common';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {EmptyError, firstValueFrom, map, Observable, Subject, throwError} from 'rxjs';
 import {CartItem} from '../../../models/CartItem.model';
+import {OrderDto} from '../../../models/order.model';
 import {CartService} from '../../../service/cart.service';
 import {OrderService} from '../../../service/order.service';
 import {Router} from '@angular/router';
@@ -52,6 +53,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   isLoading$: Observable<boolean>;
   sameShippingAsBilling = true;
   currentStep = 1;
+
+  private currentOrder: OrderDto | null = null;
+  private checkoutFingerprint: string | null = null;
+  private orderIdempotencyKey = crypto.randomUUID();
+  private paymentIdempotencyKey = crypto.randomUUID();
 
   private destroy$ = new Subject<void>();
 
@@ -241,15 +247,42 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         return;
       }
 
+      const orderRequest = this.buildOrderRequest();
+      const fingerprint = JSON.stringify(orderRequest);
+      if (this.checkoutFingerprint !== fingerprint) {
+        this.currentOrder = null;
+        this.checkoutFingerprint = fingerprint;
+        this.orderIdempotencyKey = crypto.randomUUID();
+        this.paymentIdempotencyKey = crypto.randomUUID();
+      }
+
+      if (!this.currentOrder) {
+        this.setInfoMessage('Creating your order...');
+        const order = await firstValueFrom(this.orderService.createOrder(orderRequest, this.orderIdempotencyKey));
+        this.clearInfoMessage();
+        if (!order?.id || order.totalAmount == null) {
+          this.setErrorMessage('Could not create your order. Please try again.');
+          return;
+        }
+        this.currentOrder = order;
+      }
+
+      const order = this.currentOrder;
+      if (!order?.id || order.totalAmount == null) {
+        this.setErrorMessage('Could not retrieve your order. Please try again.');
+        return;
+      }
+
       const pixPaymentData: PaymentCreationRequest = {
         paymentProcessor: 'ASAAS',
         customerId: user.externalId,
         billingType: PaymentMethod.PIX,
-        value: this.cartService.getCartTotalSnapshot(),
+        orderId: order.id,
+        value: order.totalAmount,
       };
 
       const paymentResponse = await firstValueFrom(
-        this.paymentService.createPixPayment(pixPaymentData)
+        this.paymentService.createPixPayment(pixPaymentData, this.paymentIdempotencyKey)
       );
 
       const paymentId: string | undefined = paymentResponse?.paymentId;
@@ -259,12 +292,47 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       }
 
       this.router.navigate(['/pix-payment', paymentId]);
+      this.currentOrder = null;
+      this.checkoutFingerprint = null;
+      this.orderIdempotencyKey = crypto.randomUUID();
+      this.paymentIdempotencyKey = crypto.randomUUID();
 
     } catch (error) {
       reportError('payment', error);
       this.setErrorMessage('Could not process PIX payment. Please try again.');
     }
     this.cdr.detectChanges();
+  }
+
+  private buildOrderRequest(): OrderDto {
+    const userInfo = this.checkoutForm.get('userInfo')?.getRawValue();
+    const shippingInfo = this.checkoutForm.get('shippingInfo')?.getRawValue();
+    const items = this.cartService.getCartItemsSnapshot().map(item => {
+      if (!item.product.id) {
+        throw new Error('A cart item is missing its product identifier.');
+      }
+      return {productId: item.product.id, quantity: item.quantity};
+    });
+
+    if (items.length === 0) {
+      throw new Error('Cannot create an order from an empty cart.');
+    }
+
+    return {
+      firstname: userInfo.firstname,
+      lastname: userInfo.lastname,
+      email: userInfo.email,
+      phone: userInfo.phone,
+      country: shippingInfo.country,
+      state: shippingInfo.state,
+      city: shippingInfo.city,
+      neighborhood: shippingInfo.neighborhood,
+      zipCode: shippingInfo.zipCode.replace(/\D/g, ''),
+      street: shippingInfo.street,
+      complement: shippingInfo.complement,
+      items,
+      deliveryAmount: 0,
+    };
   }
 
   async onSubmit(): Promise<void> {
