@@ -22,4 +22,7 @@ public interface OrderManager {
     CustomerOrder createOrder(OrderDto order, String ownerExternalId);
 
     CustomerOrder updateOrderStatus(String orderId, OrderStatus status);
+
+    /** Marks a payment-backed order as paid; repeated confirmations are safe. */
+    CustomerOrder markOrderPaid(String orderId);
 }

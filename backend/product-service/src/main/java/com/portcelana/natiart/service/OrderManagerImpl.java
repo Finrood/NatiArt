@@ -65,6 +65,16 @@ public class OrderManagerImpl implements OrderManager {
     }
 
     @Override
+    @Transactional
+    public CustomerOrder markOrderPaid(String orderId) {
+        final CustomerOrder current = getOrderById(orderId);
+        if (current.getStatus() == OrderStatus.PAID) {
+            return current;
+        }
+        return updateOrderStatus(orderId, OrderStatus.PAID);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<CustomerOrder> getAllOrders() {
         return orderRepository.findAll();

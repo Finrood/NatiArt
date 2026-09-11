@@ -318,6 +318,31 @@ class OrderManagerImplTest {
     }
 
     @Test
+    void markOrderPaid_transitionsPendingOrderThroughLifecycleGuard() {
+        final CustomerOrder order = new CustomerOrder().setStatus(OrderStatus.PENDING);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(orderRepository.updateStatusById(order.getId(), OrderStatus.PAID)).thenAnswer(invocation -> {
+            order.setStatus(OrderStatus.PAID);
+            return 1;
+        });
+
+        final CustomerOrder updated = orderManager.markOrderPaid(order.getId());
+
+        assertEquals(OrderStatus.PAID, updated.getStatus());
+        verify(orderRepository).updateStatusById(order.getId(), OrderStatus.PAID);
+    }
+
+    @Test
+    void markOrderPaid_repeatedConfirmationDoesNotUpdateAlreadyPaidOrder() {
+        final CustomerOrder order = new CustomerOrder().setStatus(OrderStatus.PAID);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        assertSame(order, orderManager.markOrderPaid(order.getId()));
+
+        verify(orderRepository, never()).updateStatusById(anyString(), any());
+    }
+
+    @Test
     void updateOrderStatus_skippedStage_throwsWithoutUpdate() {
         final CustomerOrder order = new CustomerOrder().setStatus(OrderStatus.PENDING);
         when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
