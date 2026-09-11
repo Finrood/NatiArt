@@ -2,13 +2,16 @@ package com.portcelana.natiart.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,7 +21,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Pageable;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.portcelana.natiart.dto.ProductDto;
 import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.service.ImageConversionService;
 import com.portcelana.natiart.service.ProductManager;
@@ -109,5 +115,46 @@ class ProductControllerPaginationTest {
             logger.setLevel(previousLevel);
             appender.stop();
         }
+    }
+
+    @Test
+    void createProduct_rejectsMoreThanTenImagesBeforeConversion() {
+        final ProductDto productDto = new ProductDto("label", new BigDecimal("10.00"));
+        final List<MultipartFile> images = images(11);
+
+        assertThrows(IllegalArgumentException.class, () -> productController.createProduct(productDto, images));
+        verifyNoInteractions(imageConversionService, productManager);
+    }
+
+    @Test
+    void createProduct_allowsExactlyTenImages() throws Exception {
+        final ProductDto productDto = new ProductDto("label", new BigDecimal("10.00"));
+        final List<MultipartFile> images = images(10);
+        when(imageConversionService.convertToWebP(images)).thenReturn(List.of());
+        when(productManager.createProduct(any(ProductDto.class), any()))
+                .thenReturn(new Product("label", BigDecimal.TEN));
+
+        productController.createProduct(productDto, images);
+
+        verify(imageConversionService).convertToWebP(images);
+        verify(productManager).createProduct(any(ProductDto.class), any());
+    }
+
+    @Test
+    void updateProduct_rejectsMoreThanTenImagesBeforeConversion() {
+        final ProductDto productDto = new ProductDto("label", new BigDecimal("10.00")).setId("product-1");
+        final List<MultipartFile> images = images(11);
+
+        assertThrows(
+                IllegalArgumentException.class, () -> productController.updateProduct("product-1", productDto, images));
+        verifyNoInteractions(imageConversionService, productManager);
+    }
+
+    private List<MultipartFile> images(int count) {
+        return IntStream.range(0, count)
+                .mapToObj(index ->
+                        new MockMultipartFile("newImages", "image-" + index + ".png", "image/png", new byte[0]))
+                .map(image -> (MultipartFile) image)
+                .toList();
     }
 }

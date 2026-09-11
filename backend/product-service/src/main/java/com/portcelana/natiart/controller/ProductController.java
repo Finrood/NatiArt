@@ -29,6 +29,7 @@ import com.portcelana.natiart.storage.InputFile;
 public class ProductController {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductController.class);
     private static final int MAX_PAGE_SIZE = 100;
+    private static final int MAX_IMAGES_PER_REQUEST = 10;
 
     private final ProductManager productManager;
     private final ImageConversionService imageConversionService;
@@ -138,6 +139,10 @@ public class ProductController {
     private List<InputFile> processImages(List<MultipartFile> images) throws IOException {
         if (images == null) {
             return new ArrayList<>();
+        }
+        if (images.size() > MAX_IMAGES_PER_REQUEST) {
+            throw new IllegalArgumentException(
+                    "A product may contain at most " + MAX_IMAGES_PER_REQUEST + " new images per request");
         }
         final List<MultipartFile> convertedImages = imageConversionService.convertToWebP(images);
         return convertedImages.stream()
