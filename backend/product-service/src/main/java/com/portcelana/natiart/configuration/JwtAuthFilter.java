@@ -33,11 +33,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final WebClient webClient;
 
     private final String directoryServiceUrl;
+    private final TokenValidationCache validationCache;
 
     public JwtAuthFilter(
-            WebClient.Builder webClientBuilder, @Value("${directory.service.url}") String directoryServiceUrl) {
+            WebClient.Builder webClientBuilder,
+            @Value("${directory.service.url}") String directoryServiceUrl,
+            TokenValidationCache validationCache) {
         this.webClient = webClientBuilder.build();
         this.directoryServiceUrl = directoryServiceUrl;
+        this.validationCache = validationCache;
     }
 
     @Override
@@ -46,20 +50,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         final String token = extractToken(request);
         if (token != null) {
             try {
-                final AuthenticationResponseDto authenticationResponse = webClient
-                        .post()
-                        .uri(directoryServiceUrl + "/validate-token")
-                        .header("Authorization", "Bearer " + token)
-                        .headers(headers -> {
-                            final String correlationId = MDC.get(RequestCorrelationFilter.MDC_KEY);
-                            if (correlationId != null) {
-                                headers.set(RequestCorrelationFilter.HEADER_NAME, correlationId);
-                            }
-                        })
-                        .retrieve()
-                        .bodyToMono(AuthenticationResponseDto.class)
-                        .timeout(Duration.ofSeconds(5))
-                        .block();
+                final AuthenticationResponseDto authenticationResponse =
+                        validationCache.get(token).orElseGet(() -> validateWithDirectory(token));
 
                 // MUST use the three-arg constructor: the two-arg variant treats the second argument
                 // as CREDENTIALS and builds an *unauthenticated* token with empty authorities, which
@@ -93,6 +85,28 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
         }
         filterChain.doFilter(request, response);
+    }
+
+    private AuthenticationResponseDto validateWithDirectory(String token) {
+        final AuthenticationResponseDto authenticationResponse = webClient
+                .post()
+                .uri(directoryServiceUrl + "/validate-token")
+                .header("Authorization", "Bearer " + token)
+                .headers(headers -> {
+                    final String correlationId = MDC.get(RequestCorrelationFilter.MDC_KEY);
+                    if (correlationId != null) {
+                        headers.set(RequestCorrelationFilter.HEADER_NAME, correlationId);
+                    }
+                })
+                .retrieve()
+                .bodyToMono(AuthenticationResponseDto.class)
+                .timeout(Duration.ofSeconds(5))
+                .block();
+        if (authenticationResponse == null) {
+            throw new IllegalStateException("Authentication service returned an empty validation response");
+        }
+        validationCache.put(token, authenticationResponse);
+        return authenticationResponse;
     }
 
     private String extractToken(HttpServletRequest request) {

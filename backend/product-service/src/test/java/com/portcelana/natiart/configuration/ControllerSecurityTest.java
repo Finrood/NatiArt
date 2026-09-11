@@ -78,6 +78,9 @@ class ControllerSecurityTest {
     @MockitoBean
     private WebClient.Builder webClientBuilder;
 
+    @MockitoBean
+    private TokenValidationCache tokenValidationCache;
+
     private void expectForbiddenButNotAuthenticated(RequestBuilder request) throws Exception {
         mockMvc.perform(request).andExpect(result -> {
             int s = result.getResponse().getStatus();
