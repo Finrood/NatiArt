@@ -63,8 +63,10 @@ export class AuthenticationService implements OnDestroy {
           this.resetAuthStateAndRedirect();
         } else {
           this.doRefreshToken().pipe(takeUntil(this.destroy$)).subscribe({
-            error: () => {
-              this.resetAuthStateAndRedirect();
+            error: (error: unknown) => {
+              if (this.isAuthenticationFailure(error)) {
+                this.resetAuthStateAndRedirect();
+              }
             }
           });
         }
@@ -154,9 +156,9 @@ export class AuthenticationService implements OnDestroy {
         this.fetchCurrentUser().pipe(takeUntil(this.destroy$)).subscribe();
       }),
       map(() => void 0),
-      catchError(error => {
-        this.resetAuthStateAndRedirect();
-        return this.handleError(error, 'Token refresh failed');
+      catchError((error: HttpErrorResponse) => {
+        console.error('Token refresh failed:', error.message);
+        return throwError(() => error);
       })
     );
   }
@@ -173,13 +175,14 @@ export class AuthenticationService implements OnDestroy {
           if (refreshToken && !this.isTokenExpired(refreshToken)) {
             return this.doRefreshToken().pipe(
               map(() => void 0), // Transform to Observable<void>
-              catchError(() => {
-                this.resetAuthStateAndRedirect();
+              catchError((error: unknown) => {
+                if (this.isAuthenticationFailure(error)) {
+                  this.resetAuthStateAndRedirect();
+                }
                 return of(void 0); // Complete the observable
               })
             );
           } else {
-            this.resetAuthStateAndRedirect();
             return of(void 0); // Complete the observable
           }
         })
@@ -187,8 +190,10 @@ export class AuthenticationService implements OnDestroy {
     } else if (refreshToken && !this.isTokenExpired(refreshToken)) {
       return this.doRefreshToken().pipe(
         map(() => void 0), // Transform to Observable<void>
-        catchError(() => {
-          this.resetAuthStateAndRedirect();
+        catchError((error: unknown) => {
+          if (this.isAuthenticationFailure(error)) {
+            this.resetAuthStateAndRedirect();
+          }
           return of(void 0); // Complete the observable
         })
       );
@@ -203,9 +208,21 @@ export class AuthenticationService implements OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
         if (this.tokenService.accessToken && this.isAccessTokenExpiringSoon() && !this.isTokenExpired(this.tokenService.refreshToken)) {
-          this.doRefreshToken().pipe(takeUntil(this.destroy$)).subscribe({});
+          this.doRefreshToken().pipe(takeUntil(this.destroy$)).subscribe({
+            error: (error: unknown) => {
+              if (this.isAuthenticationFailure(error)) {
+                this.resetAuthStateAndRedirect();
+              }
+            }
+          });
         } else if (this.tokenService.refreshToken && this.isRefreshTokenExpiringSoon()) {
-          this.doRefreshToken().pipe(takeUntil(this.destroy$)).subscribe({});
+          this.doRefreshToken().pipe(takeUntil(this.destroy$)).subscribe({
+            error: (error: unknown) => {
+              if (this.isAuthenticationFailure(error)) {
+                this.resetAuthStateAndRedirect();
+              }
+            }
+          });
         } else if (this.tokenService.accessToken && this.isTokenExpired(this.tokenService.accessToken) &&
                    (this.isTokenExpired(this.tokenService.refreshToken) || !this.tokenService.refreshToken)) {
           this.resetAuthStateAndRedirect();
@@ -231,6 +248,10 @@ export class AuthenticationService implements OnDestroy {
 
   private isRefreshTokenExpiringSoon(): boolean {
     return this.isTokenExpiringSoon(this.tokenService.refreshToken, this.refreshTokenRefreshBuffer);
+  }
+
+  private isAuthenticationFailure(error: unknown): boolean {
+    return error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403);
   }
 
   private getTokenExpiration(token: string): number {
