@@ -11,12 +11,14 @@ import { OrderService } from '../../../service/order.service';
 import { PaymentService } from '../../../service/payment.service';
 import { AuthenticationService } from '../../../../directory/service/authentication.service';
 import { User, RoleName } from '../../../../directory/models/user.model';
+import { OrderDto } from '../../../models/order.model';
 
 describe('CheckoutComponent', () => {
   let fixture: ComponentFixture<CheckoutComponent>;
   let component: CheckoutComponent;
   let routerNavigateSpy: jasmine.Spy;
   let createPixPaymentSpy: jasmine.Spy;
+  let createOrderSpy: jasmine.Spy;
   let isLoggedInSubject: BehaviorSubject<boolean>;
   let currentUserSubject: BehaviorSubject<User | null>;
 
@@ -65,6 +67,7 @@ describe('CheckoutComponent', () => {
     isLoggedInSubject = new BehaviorSubject<boolean>(true);
     currentUserSubject = new BehaviorSubject<User | null>(loggedInUser);
     createPixPaymentSpy = jasmine.createSpy('createPixPayment');
+    createOrderSpy = jasmine.createSpy('createOrder');
 
     await TestBed.configureTestingModule({
       imports: [CheckoutComponent],
@@ -78,11 +81,17 @@ describe('CheckoutComponent', () => {
             getCartItems: (): BehaviorSubject<never[]> => new BehaviorSubject<never[]>([]),
             getCartTotal: (): BehaviorSubject<number> => new BehaviorSubject<number>(0),
             getCartTotalSnapshot: (): number => 99.9,
+            getCartItemsSnapshot: (): Array<{ product: { id: string }; quantity: number }> => [
+              { product: { id: 'prod-1' }, quantity: 1 },
+            ],
           },
         },
         {
           provide: OrderService,
-          useValue: { orderProcessing$: new BehaviorSubject<boolean>(false).asObservable() },
+          useValue: {
+            orderProcessing$: new BehaviorSubject<boolean>(false).asObservable(),
+            createOrder: createOrderSpy,
+          },
         },
         {
           provide: AuthenticationService,
@@ -104,6 +113,22 @@ describe('CheckoutComponent', () => {
     routerNavigateSpy = spyOn(router, 'navigate').and.resolveTo(true);
     fixture = TestBed.createComponent(CheckoutComponent);
     component = fixture.componentInstance;
+    const createdOrder: OrderDto = {
+      id: 'order-123',
+      firstname: 'Ada',
+      lastname: 'Lovelace',
+      email: 'user@example.test',
+      country: 'Brazil',
+      state: 'SP',
+      city: 'Sao Paulo',
+      neighborhood: 'Centro',
+      zipCode: '01001000',
+      street: 'Praca da Se',
+      items: [],
+      deliveryAmount: 7.5,
+      totalAmount: 107.4,
+    };
+    createOrderSpy.and.returnValue(of(createdOrder));
     createPixPaymentSpy.and.returnValue(of(paymentResponseWith('pay_123')));
     fixture.detectChanges();
   });
@@ -174,6 +199,20 @@ describe('CheckoutComponent', () => {
     expect(routerNavigateSpy).not.toHaveBeenCalled();
     expect(component.errorMessage).toContain('Could not process PIX payment');
     expect(component.isSubmitting).toBeFalse();
+  });
+
+  it('reuses the created order and payment key when PIX payment is retried', async () => {
+    createPixPaymentSpy.and.returnValue(throwError(() => new Error('upstream down')));
+    await component.onProcessPixPayment(loggedInUser);
+
+    createPixPaymentSpy.and.returnValue(of(paymentResponseWith('pay_123')));
+    await component.onProcessPixPayment(loggedInUser);
+
+    expect(createOrderSpy).toHaveBeenCalledTimes(1);
+    expect(createPixPaymentSpy).toHaveBeenCalledTimes(2);
+    expect(createPixPaymentSpy.calls.argsFor(0)[1]).toMatch(/^[0-9a-f-]{36}$/);
+    expect(createPixPaymentSpy.calls.argsFor(1)[1]).toBe(createPixPaymentSpy.calls.argsFor(0)[1]);
+    expect(createPixPaymentSpy.calls.argsFor(0)[0]).toEqual(jasmine.objectContaining({orderId: 'order-123', value: 107.4}));
   });
 
   it('navigates to the PIX confirmation when the payment response carries an id', async () => {

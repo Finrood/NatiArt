@@ -14,8 +14,9 @@ export class PaymentService {
   constructor(private http: HttpClient) {
   }
 
-  createPixPayment(paymentCreationRequest: PaymentCreationRequest): Observable<PaymentCreationResponse> {
-    return this.http.post<PaymentCreationResponse>(`${this.apiUrl}/payments/create`, paymentCreationRequest);
+  createPixPayment(paymentCreationRequest: PaymentCreationRequest, idempotencyKey?: string): Observable<PaymentCreationResponse> {
+    const options = idempotencyKey ? {headers: {'Idempotency-Key': idempotencyKey}} : {};
+    return this.http.post<PaymentCreationResponse>(`${this.apiUrl}/payments/create`, paymentCreationRequest, options);
   }
 
   getPixQrCode(paymentId: string): Observable<{
