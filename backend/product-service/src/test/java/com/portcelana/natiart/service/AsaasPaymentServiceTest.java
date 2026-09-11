@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -22,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
@@ -34,6 +36,7 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.controller.helper.UserNotAllowedException;
 import com.portcelana.natiart.dto.payment.PaymentCreationRequest;
@@ -47,7 +50,10 @@ import com.portcelana.natiart.dto.payment.helper.PaymentProcessor;
 import com.portcelana.natiart.dto.payment.helper.PaymentStatus;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.Payment;
+import com.portcelana.natiart.model.PaymentIdempotency;
+import com.portcelana.natiart.model.PaymentIdempotencyStatus;
 import com.portcelana.natiart.repository.OrderRepository;
+import com.portcelana.natiart.repository.PaymentIdempotencyRepository;
 import com.portcelana.natiart.repository.PaymentRepository;
 
 import ch.qos.logback.classic.Level;
@@ -65,7 +71,14 @@ class AsaasPaymentServiceTest {
                 PAYMENTS_URL,
                 mock(RestTemplate.class),
                 mock(PaymentRepository.class),
-                mock(OrderRepository.class));
+                mock(OrderRepository.class),
+                newIdempotencyService());
+    }
+
+    private PaymentIdempotencyService newIdempotencyService() {
+        final PaymentIdempotencyRepository repository = mock(PaymentIdempotencyRepository.class);
+        when(repository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        return new PaymentIdempotencyService(repository);
     }
 
     private AsaasPaymentService newService(RestTemplate restTemplate, PaymentRepository paymentRepository) {
@@ -74,7 +87,21 @@ class AsaasPaymentServiceTest {
 
     private AsaasPaymentService newService(
             RestTemplate restTemplate, PaymentRepository paymentRepository, OrderRepository orderRepository) {
-        return new AsaasPaymentService("test-api-key", PAYMENTS_URL, restTemplate, paymentRepository, orderRepository);
+        return newService(restTemplate, paymentRepository, orderRepository, newIdempotencyService());
+    }
+
+    private AsaasPaymentService newService(
+            RestTemplate restTemplate,
+            PaymentRepository paymentRepository,
+            OrderRepository orderRepository,
+            PaymentIdempotencyService paymentIdempotencyService) {
+        return new AsaasPaymentService(
+                "test-api-key",
+                PAYMENTS_URL,
+                restTemplate,
+                paymentRepository,
+                orderRepository,
+                paymentIdempotencyService);
     }
 
     @Test
@@ -82,11 +109,19 @@ class AsaasPaymentServiceTest {
         assertThrows(
                 IllegalStateException.class,
                 () -> new AsaasPaymentService(
-                        "  ", PAYMENTS_URL, mock(PaymentRepository.class), mock(OrderRepository.class)));
+                        "  ",
+                        PAYMENTS_URL,
+                        mock(PaymentRepository.class),
+                        mock(OrderRepository.class),
+                        mock(PaymentIdempotencyService.class)));
         assertThrows(
                 IllegalStateException.class,
                 () -> new AsaasPaymentService(
-                        null, PAYMENTS_URL, mock(PaymentRepository.class), mock(OrderRepository.class)));
+                        null,
+                        PAYMENTS_URL,
+                        mock(PaymentRepository.class),
+                        mock(OrderRepository.class),
+                        mock(PaymentIdempotencyService.class)));
     }
 
     @Test
@@ -413,6 +448,73 @@ class AsaasPaymentServiceTest {
         verify(paymentRepository)
                 .save(argThat(
                         payment -> "pay-9".equals(payment.getId()) && "cus_MINE".equals(payment.getOwnerExternalId())));
+    }
+
+    @Test
+    void createPaymentSameKeyCallsProviderOnceAndRejectsChangedPayload() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        final PaymentIdempotencyService idempotencyService = mock(PaymentIdempotencyService.class);
+        final AtomicReference<PaymentIdempotency> storedReservation = new AtomicReference<>();
+        when(idempotencyService.reserve(anyString(), eq("payment-attempt-1"), anyString()))
+                .thenAnswer(invocation -> {
+                    PaymentIdempotency reservation = storedReservation.get();
+                    if (reservation == null) {
+                        reservation = new PaymentIdempotency(
+                                invocation.getArgument(0), invocation.getArgument(1), invocation.getArgument(2));
+                        storedReservation.set(reservation);
+                        return new PaymentIdempotencyReservation(reservation, true);
+                    }
+                    return new PaymentIdempotencyReservation(reservation, false);
+                });
+        doAnswer(invocation -> {
+                    storedReservation
+                            .get()
+                            .setProviderPaymentId(invocation.getArgument(2))
+                            .setStatus(PaymentIdempotencyStatus.SUCCEEDED);
+                    return null;
+                })
+                .when(idempotencyService)
+                .markSucceeded(anyString(), eq("payment-attempt-1"), anyString());
+
+        final AsaasPaymentCreationResponse upstream = mock(AsaasPaymentCreationResponse.class);
+        when(upstream.getId()).thenReturn("pay-idempotent");
+        when(upstream.getDateCreated()).thenReturn(LocalDate.of(2026, 9, 8));
+        when(upstream.getCustomer()).thenReturn("cus_MINE");
+        when(upstream.getBillingType()).thenReturn("PIX");
+        when(upstream.getStatus()).thenReturn("PENDING");
+        when(upstream.getDueDate()).thenReturn(LocalDate.of(2026, 9, 9));
+        when(upstream.getInvoiceUrl()).thenReturn("http://invoice");
+        when(upstream.getInvoiceNumber()).thenReturn("004");
+        when(restTemplate.postForEntity(eq(PAYMENTS_URL), any(), eq(AsaasPaymentCreationResponse.class)))
+                .thenReturn(ResponseEntity.ok(upstream));
+        when(restTemplate.exchange(
+                        eq(PAYMENTS_URL + "/pay-idempotent"),
+                        eq(HttpMethod.GET),
+                        any(),
+                        eq(AsaasPaymentCreationResponse.class)))
+                .thenReturn(ResponseEntity.ok(upstream));
+
+        final AsaasPaymentService service =
+                newService(restTemplate, paymentRepository, mock(OrderRepository.class), idempotencyService);
+        final PaymentCreationRequest request = new PaymentCreationRequest(
+                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX);
+
+        assertEquals(
+                "pay-idempotent",
+                service.createPayment(request, "cus_MINE", "payment-attempt-1").getPaymentId());
+        assertEquals(
+                "pay-idempotent",
+                service.createPayment(request, "cus_MINE", "payment-attempt-1").getPaymentId());
+        assertThrows(
+                ResourceAlreadyExistsException.class,
+                () -> service.createPayment(
+                        new PaymentCreationRequest(
+                                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.01"), PaymentMethod.PIX),
+                        "cus_MINE",
+                        "payment-attempt-1"));
+
+        verify(restTemplate, times(1)).postForEntity(eq(PAYMENTS_URL), any(), eq(AsaasPaymentCreationResponse.class));
     }
 
     @Test

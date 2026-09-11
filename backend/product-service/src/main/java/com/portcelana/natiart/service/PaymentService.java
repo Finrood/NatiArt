@@ -10,7 +10,13 @@ public interface PaymentService {
      * Creates a payment owned by the authenticated caller. The Asaas customer is always
      * taken from {@code requesterExternalId}, never from the request body.
      */
-    PaymentCreationResponse createPayment(PaymentCreationRequest paymentCreationRequest, String requesterExternalId);
+    PaymentCreationResponse createPayment(
+            PaymentCreationRequest paymentCreationRequest, String requesterExternalId, String idempotencyKey);
+
+    default PaymentCreationResponse createPayment(
+            PaymentCreationRequest paymentCreationRequest, String requesterExternalId) {
+        return createPayment(paymentCreationRequest, requesterExternalId, null);
+    }
 
     PaymentPixQrCodeResponse getPixQrCode(String paymentId, String requesterExternalId);
 

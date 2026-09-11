@@ -28,6 +28,9 @@ public class Payment {
     @Column(unique = true)
     private String orderId;
 
+    @Column(length = 64)
+    private String idempotencyKey;
+
     @CreatedDate
     @Column(updatable = false)
     private Instant createdAt;
@@ -39,9 +42,14 @@ public class Payment {
     }
 
     public Payment(String id, String ownerExternalId, String orderId) {
+        this(id, ownerExternalId, orderId, null);
+    }
+
+    public Payment(String id, String ownerExternalId, String orderId, String idempotencyKey) {
         this.id = id;
         this.ownerExternalId = ownerExternalId;
         this.orderId = orderId;
+        this.idempotencyKey = idempotencyKey;
     }
 
     public String getId() {
@@ -54,6 +62,10 @@ public class Payment {
 
     public String getOrderId() {
         return orderId;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
     }
 
     public Instant getCreatedAt() {
