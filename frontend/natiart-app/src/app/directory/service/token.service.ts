@@ -1,9 +1,12 @@
 import {Injectable} from '@angular/core';
+import {Observable, Subject} from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TokenService {
+  private readonly tokensClearedSubject = new Subject<void>();
+  readonly tokensCleared$: Observable<void> = this.tokensClearedSubject.asObservable();
 
   constructor() { }
 
@@ -26,6 +29,7 @@ export class TokenService {
   clearTokens(): void {
     this.accessToken = null;
     this.refreshToken = null;
+    this.tokensClearedSubject.next();
   }
 
   private static read(key: string): string | null {

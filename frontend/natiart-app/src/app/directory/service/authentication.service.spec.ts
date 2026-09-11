@@ -98,4 +98,27 @@ describe('authenticationService', () => {
     TestBed.inject(HttpTestingController).verify();
     service.ngOnDestroy();
   }));
+
+  it('clears the current user when another auth path clears the tokens', fakeAsync(() => {
+    spyOn(Router.prototype, 'navigate').and.returnValue(Promise.resolve(true));
+    const future: number = Math.floor(Date.now() / 1000) + 3600;
+    localStorage.setItem('accessToken', unsignedToken(future));
+    localStorage.setItem('refreshToken', unsignedToken(future + 8 * 24 * 3600));
+
+    const service: AuthenticationService = TestBed.inject(AuthenticationService);
+    const httpTesting: HttpTestingController = TestBed.inject(HttpTestingController);
+    httpTesting.expectOne(CURRENT_USER_URL).flush(mockUser);
+    tick();
+
+    let currentUser: User | null = null;
+    const subscription = service.currentUser$.subscribe((user: User | null) => currentUser = user);
+    expect(currentUser as unknown).toEqual(mockUser);
+
+    TestBed.inject(TokenService).clearTokens();
+
+    expect(currentUser).toBeNull();
+    subscription.unsubscribe();
+    httpTesting.verify();
+    service.ngOnDestroy();
+  }));
 });
