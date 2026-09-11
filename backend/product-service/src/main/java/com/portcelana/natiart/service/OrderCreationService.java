@@ -36,12 +36,17 @@ public class OrderCreationService {
     private final OrderRepository orderRepository;
     private final ProductManager productManager;
     private final ProductRepository productRepository;
+    private final ShippingService shippingService;
 
     public OrderCreationService(
-            OrderRepository orderRepository, ProductManager productManager, ProductRepository productRepository) {
+            OrderRepository orderRepository,
+            ProductManager productManager,
+            ProductRepository productRepository,
+            ShippingService shippingService) {
         this.orderRepository = orderRepository;
         this.productManager = productManager;
         this.productRepository = productRepository;
+        this.shippingService = shippingService;
     }
 
     @Transactional
@@ -49,7 +54,8 @@ public class OrderCreationService {
             OrderDto orderDto, String ownerExternalId, String idempotencyKey, String requestFingerprint) {
         validateContactDetails(orderDto);
         validateItems(orderDto.getItems());
-        requireNonNegativeAmount(orderDto.getDeliveryAmount(), "delivery amount");
+        final BigDecimal serverDeliveryAmount = shippingService.getOrderShippingAmount(orderDto.getZipCode());
+        requireNonNegativeAmount(serverDeliveryAmount, "shipping amount");
 
         final CustomerOrder customerOrder = new CustomerOrder();
         customerOrder
@@ -69,7 +75,7 @@ public class OrderCreationService {
                 .setZipCode(orderDto.getZipCode())
                 .setStreet(orderDto.getStreet())
                 .setComplement(orderDto.getComplement())
-                .setDeliveryAmount(orderDto.getDeliveryAmount());
+                .setDeliveryAmount(serverDeliveryAmount);
 
         BigDecimal totalItemsAmount = BigDecimal.ZERO;
         // Product reads are batched, while stock decrements remain atomic and
@@ -95,7 +101,7 @@ public class OrderCreationService {
                     .setPrice(unitPrice));
         }
 
-        customerOrder.setTotalAmount(totalItemsAmount.add(customerOrder.getDeliveryAmount()));
+        customerOrder.setTotalAmount(totalItemsAmount.add(serverDeliveryAmount));
         final CustomerOrder savedOrder = orderRepository.save(customerOrder);
         LOGGER.info(
                 "Order created: orderId=[{}], owner=[{}], itemCount=[{}], totalAmount=[{}]",
