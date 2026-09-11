@@ -3,6 +3,7 @@ package com.portcelana.natiart.configuration;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -205,7 +206,7 @@ class PaymentControllerSecurityTest {
         final UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        when(paymentService.createPayment(any(PaymentCreationRequest.class), eq("cus_MINE")))
+        when(paymentService.createPayment(any(PaymentCreationRequest.class), eq("cus_MINE"), any()))
                 .thenReturn(new PaymentCreationResponse(
                         "pay-1",
                         LocalDateTime.now(),
@@ -227,7 +228,7 @@ class PaymentControllerSecurityTest {
                     ArgumentCaptor.forClass(PaymentCreationRequest.class);
             // The service must receive the caller's id separately so it can ignore the
             // spoofable customerId in the body ("cus_OTHER").
-            verify(paymentService).createPayment(requestCaptor.capture(), eq("cus_MINE"));
+            verify(paymentService).createPayment(requestCaptor.capture(), eq("cus_MINE"), isNull());
             assertEquals("cus_OTHER", requestCaptor.getValue().getCustomerId());
         } finally {
             SecurityContextHolder.clearContext();

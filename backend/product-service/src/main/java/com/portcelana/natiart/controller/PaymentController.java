@@ -26,9 +26,10 @@ public class PaymentController {
     @PreAuthorize("isFullyAuthenticated()")
     public PaymentCreationResponse createPayment(
             @RequestBody PaymentCreationRequest paymentCreationRequest,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
         return paymentService.createPayment(
-                paymentCreationRequest, principal != null ? principal.getExternalId() : null);
+                paymentCreationRequest, principal != null ? principal.getExternalId() : null, idempotencyKey);
     }
 
     @GetMapping({"/payments/{paymentId}/status", "/api/payment/{paymentId}/status"})
