@@ -178,6 +178,9 @@ public class OrderManagerImpl implements OrderManager {
         }
         final Set<String> productIds = new HashSet<>();
         for (OrderItemDto item : items) {
+            if (item == null) {
+                throw new IllegalArgumentException("Order items must not contain null entries");
+            }
             if (item.getProductId() == null || item.getProductId().isBlank()) {
                 throw new IllegalArgumentException("Every order item must reference a product");
             }

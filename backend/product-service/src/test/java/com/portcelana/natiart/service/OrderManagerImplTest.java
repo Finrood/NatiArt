@@ -169,6 +169,15 @@ class OrderManagerImplTest {
     }
 
     @Test
+    void createOrderRejectsNullOrderLinesBeforeAccessingLineFields() {
+        OrderDto dto =
+                validOrder().setDeliveryAmount(BigDecimal.ZERO).setItems(java.util.Arrays.asList((OrderItemDto) null));
+
+        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
+        verifyNoInteractions(productManager, productRepository, orderRepository);
+    }
+
+    @Test
     void createOrderRejectsInactiveProduct() {
         Product retired = product("p4", "Retired plate", new BigDecimal("15.00"), null, 100)
                 .setActive(false);
