@@ -4,6 +4,7 @@ import {FormsModule} from '@angular/forms';
 import {Product} from '../../../models/product.model';
 import {PersonalizationOption} from "../../../models/support/personalization-option";
 import {ButtonComponent} from "../../../../shared/components/button.component"; // Ensure this path is correct
+import {reportWarning} from '../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-personalization-modal',
@@ -49,7 +50,7 @@ export class PersonalizationModalComponent {
   onSubmit() {
     if (!this.isValid()) {
       // Optional: Add some user feedback if they somehow click submit when invalid
-      console.warn("Submit clicked while form is invalid.");
+      reportWarning('invalid-input');
       return;
     }
     this.personalize.emit({

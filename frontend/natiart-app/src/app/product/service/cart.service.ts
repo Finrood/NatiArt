@@ -4,6 +4,7 @@ import {BehaviorSubject, Observable, of} from "rxjs";
 import {map} from "rxjs/operators";
 import {Product} from "../models/product.model";
 import {CartItem} from "../models/CartItem.model";
+import {reportError, reportWarning} from '../../shared/service/error-reporting.service';
 
 @Injectable({
   providedIn: 'root'
@@ -51,7 +52,7 @@ export class CartService {
       } else {
         // Check stock before adding as a new item
         if (quantity > product.stockQuantity) {
-          console.warn(`Attempted to add ${quantity} of ${product.label} but only ${product.stockQuantity} in stock.`);
+          reportWarning('cart');
           quantity = product.stockQuantity; // Adjust quantity to max available stock
         }
         if (quantity > 0) { // Only add if quantity is valid
@@ -59,7 +60,7 @@ export class CartService {
           const newItem: CartItem = { cartItemId: newCartItemId, product, quantity, goldBorder };
           this.cartItems.push(newItem);
         } else {
-          console.warn(`Cannot add ${product.label} to cart because stock is 0 or requested quantity is invalid.`);
+          reportWarning('cart');
           return of(undefined);
         }
       }
@@ -86,7 +87,7 @@ export class CartService {
       this.cartItems[itemIndex] = item;
       this.updateCart();
     } else {
-      console.warn(`Item with cartItemId ${cartItemId} not found for quantity update.`);
+      reportWarning('cart');
     }
     return of(undefined);
   }
@@ -133,11 +134,11 @@ export class CartService {
       if (serializableCart.length === this.cartItems.length) {
         localStorage.setItem(this.localStorageKey, JSON.stringify(serializableCart));
       } else {
-        console.warn("Cart contains custom images and will not be saved to localStorage.");
+        reportWarning('storage');
         localStorage.removeItem(this.localStorageKey);
       }
     } catch (e) {
-      console.error("Error saving cart to localStorage", e);
+      reportError('storage', e);
     }
   }
 
@@ -155,7 +156,7 @@ export class CartService {
         this.calculateAndEmitTotal(); // Calculate total after loading
       }
     } catch (e) {
-      console.error("Error loading cart from localStorage", e);
+      reportError('storage', e);
       this.cartItems = [];
       localStorage.removeItem(this.localStorageKey);
       this.cartItemsSubject.next([]);

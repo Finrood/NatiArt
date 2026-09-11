@@ -6,6 +6,7 @@ import {provideHttpClient, withInterceptors} from "@angular/common/http";
 import {jwtInterceptor} from "./directory/interceptors/jwt-interceptor.service";
 import {AuthenticationService} from "./directory/service/authentication.service";
 import {filter, firstValueFrom, take} from "rxjs";
+import {ErrorReportingService} from './shared/service/error-reporting.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -23,6 +24,12 @@ export const appConfig: ApplicationConfig = {
         )
       ),
       deps: [AuthenticationService]
+    },
+    {
+      provide: APP_INITIALIZER,
+      multi: true,
+      useFactory: (errorReportingService: ErrorReportingService) => () => errorReportingService.initialize(),
+      deps: [ErrorReportingService]
     }
   ]
 };

@@ -8,6 +8,7 @@ import {Credentials} from "../models/credentials.model";
 import {map, switchMap, takeUntil, tap, finalize} from "rxjs/operators";
 import {LoginResponse} from "../models/loginResponse.model";
 import {TokenService} from "./token.service";
+import {reportError} from '../../shared/service/error-reporting.service';
 
 @Injectable({
   providedIn: 'root'
@@ -108,7 +109,7 @@ export class AuthenticationService implements OnDestroy {
     return this.http.post<void>(`${this.apiUrl}${environment.api.directory.endpoints.logout}`, {}).pipe(
       tap(() => this.clearLocalAuthState()),
       catchError(error => {
-        console.error('Logout API call failed, clearing local state anyway:', error);
+        reportError('logout', error);
         this.clearLocalAuthState();
         return throwError(() => error);
       })
@@ -263,7 +264,7 @@ export class AuthenticationService implements OnDestroy {
       const decodedPayload = JSON.parse(atob(padded));
       return (decodedPayload.exp || 0) * 1000;
     } catch (e) {
-      console.error("Error decoding token: ", e);
+      reportError('token-decoding', e);
       return 0;
     }
   }
@@ -276,7 +277,7 @@ export class AuthenticationService implements OnDestroy {
   }
 
   private handleError(error: HttpErrorResponse, message: string): Observable<never> {
-    console.error(`${message}:`, error.message);
+    reportError('authentication', error);
     if (error.status === 401 && !message.toLowerCase().includes('login failed')) {
       this.resetAuthStateAndRedirect();
     }

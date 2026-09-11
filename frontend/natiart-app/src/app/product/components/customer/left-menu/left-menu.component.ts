@@ -3,6 +3,7 @@ import {Component, OnInit} from '@angular/core';
 import {Category} from '../../../models/category.model';
 import {CategoryService} from '../../../service/category.service';
 import {NgClass} from "@angular/common";
+import {reportError} from '../../../../shared/service/error-reporting.service';
 
 @Component({
     selector: 'app-left-menu',
@@ -32,7 +33,10 @@ export class LeftMenuComponent implements OnInit {
         this.categories = response;
         this.categoryLoadFailed = false;
       },
-      error: () => this.categoryLoadFailed = true
+      error: (error) => {
+        reportError('category', error);
+        this.categoryLoadFailed = true;
+      }
     });
   }
 }

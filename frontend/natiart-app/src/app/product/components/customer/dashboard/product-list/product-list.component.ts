@@ -9,6 +9,7 @@ import {CartService} from "../../../../service/cart.service";
 import {PersonalizationModalComponent} from "../../personalization-modal/personalization-modal.component";
 import {PersonalizationOption} from "../../../../models/support/personalization-option";
 import {AddToCartButtonComponent} from "../../add-to-cart-button/add-to-cart-button.component";
+import {reportError} from '../../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-product-list',
@@ -59,7 +60,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
         this.products.next(response);
         this.updateProductImages(response);
       },
-      error: (error) => console.error(`Error getting ${this.type} products:`, error)
+      error: (error) => reportError('product-loading', error)
     });
     this.subscriptions.push(sub);
   }
@@ -184,20 +185,20 @@ export class ProductListComponent implements OnInit, OnDestroy {
   public triggerFlyAnimation(clickedElement: HTMLElement): void {
     const productCard = clickedElement.closest('.product-card');
     if (!productCard) {
-      console.error("Could not find product card element for animation.");
+      reportError('product-loading');
       return;
     }
 
     const productImage = productCard.querySelector('img');
     if (!productImage) {
-      console.error("Could not find product image element for animation.");
+      reportError('product-loading');
       return;
     }
 
     // Find the cart container using its class
     const cartContainer = document.querySelector('.cart-container'); // <--- CHANGE HERE
     if (!cartContainer) {
-      console.error("Could not find cart container element (.cart-container) for animation."); // <--- CHANGE HERE
+      reportError('product-loading');
       return; // Cart container not found
     }
 

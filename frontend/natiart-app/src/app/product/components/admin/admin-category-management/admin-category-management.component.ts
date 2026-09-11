@@ -8,6 +8,7 @@ import {BehaviorSubject} from 'rxjs';
 import {NatiartFormFieldComponent} from "../../../../shared/components/natiart-form-field/natiart-form-field.component";
 import {AlertMessageComponent} from "../../../../shared/components/alert-message/alert-message.component";
 import {ButtonComponent} from "../../../../shared/components/button.component";
+import {reportError} from '../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-admin-category-management',
@@ -77,7 +78,7 @@ export class CategoryManagementComponent implements OnInit {
         this._categories$.next([...this._categories$.value, response]);
         this.closeModal();
       },
-      error: (error) => console.error('Error adding category:', error)
+      error: (error) => reportError('category', error)
     });
   }
 
@@ -90,7 +91,7 @@ export class CategoryManagementComponent implements OnInit {
         );
         this.closeModal();
       },
-      error: (error) => console.error('Error updating category:', error)
+      error: (error) => reportError('category', error)
     });
   }
 
@@ -101,7 +102,7 @@ export class CategoryManagementComponent implements OnInit {
         this.showAlert('Category deleted successfully', 'success');
       },
       error: (error: HttpErrorResponse) => {
-        console.error('Error deleting category:', error);
+        reportError('category', error);
         let errorMessage = 'An error occurred while deleting the category.';
         if (error.status === 400) {
           errorMessage = 'Category contains existing products. Delete them before deleting this category';
@@ -122,14 +123,14 @@ export class CategoryManagementComponent implements OnInit {
           this._categories$.value.map(cat => cat.id === response.id ? response : cat)
         );
       },
-      error: (error) => console.error('Error toggling category visibility:', error)
+      error: (error) => reportError('category', error)
     });
   }
 
   private getCategories(): void {
     this.categoryService.getCategories().subscribe({
       next: (response) => this._categories$.next(response),
-      error: (error) => console.error('Error getting categories:', error)
+      error: (error) => reportError('category', error)
     });
   }
 

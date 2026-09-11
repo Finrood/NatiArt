@@ -24,22 +24,30 @@ import com.saas.directory.service.RateLimitStore;
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
     private static final List<String> PROTECTED_ROUTES =
-            List.of("/login", "/register-user", "/validate-token", "/refresh-token");
+            List.of("/login", "/register-user", "/validate-token", "/refresh-token", "/client-errors");
     private final int maxRequestsPerWindow;
+    private final int clientErrorMaxRequestsPerWindow;
     private final List<String> trustedProxyAddresses;
     private final RateLimitStore rateLimitStore;
 
     @Autowired
     public RateLimitFilter(
             @Value("${saas.security.rate-limit.max-requests-per-minute:10}") int maxRequestsPerWindow,
+            @Value("${saas.security.rate-limit.client-error-max-requests-per-minute:10}")
+                    int clientErrorMaxRequestsPerWindow,
             @Value("${saas.security.rate-limit.trusted-proxies:}") List<String> trustedProxyAddresses,
             RateLimitStore rateLimitStore) {
         this.maxRequestsPerWindow = maxRequestsPerWindow;
+        this.clientErrorMaxRequestsPerWindow = clientErrorMaxRequestsPerWindow;
         this.trustedProxyAddresses = trustedProxyAddresses.stream()
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .toList();
         this.rateLimitStore = rateLimitStore;
+    }
+
+    RateLimitFilter(int maxRequestsPerWindow, List<String> trustedProxyAddresses, RateLimitStore rateLimitStore) {
+        this(maxRequestsPerWindow, maxRequestsPerWindow, trustedProxyAddresses, rateLimitStore);
     }
 
     @Override
@@ -53,10 +61,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        final String clientKey = clientIp(request);
+        final boolean clientErrorRequest = isClientErrorRequest(request);
+        final String clientKey = clientErrorRequest ? "client-error:" + clientIp(request) : clientIp(request);
+        final int requestLimit = clientErrorRequest ? clientErrorMaxRequestsPerWindow : maxRequestsPerWindow;
         final boolean allowed;
         try {
-            allowed = tryAcquireWithRetry(clientKey);
+            allowed = tryAcquireWithRetry(clientKey, requestLimit);
         } catch (RuntimeException exception) {
             // A limiter that cannot reach its shared store must not silently
             // become an unlimited bypass for authentication endpoints.
@@ -71,10 +81,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private boolean tryAcquireWithRetry(String clientKey) {
+    private boolean tryAcquireWithRetry(String clientKey, int requestLimit) {
         for (int attempt = 0; attempt < 3; attempt++) {
             try {
-                return rateLimitStore.tryAcquire(clientKey, maxRequestsPerWindow);
+                return rateLimitStore.tryAcquire(clientKey, requestLimit);
             } catch (DataIntegrityViolationException | ObjectOptimisticLockingFailureException exception) {
                 if (attempt == 2) {
                     throw exception;
@@ -82,6 +92,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
             }
         }
         throw new IllegalStateException("Rate limit store retry loop terminated unexpectedly");
+    }
+
+    private boolean isClientErrorRequest(HttpServletRequest request) {
+        return request.getRequestURI().endsWith("/client-errors");
     }
 
     private String clientIp(HttpServletRequest request) {

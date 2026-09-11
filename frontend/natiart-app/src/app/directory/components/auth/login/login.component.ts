@@ -11,6 +11,7 @@ import {ButtonComponent} from "../../../../shared/components/button.component";
 import {Credentials} from "../../../models/credentials.model";
 import {TokenService} from "../../../service/token.service";
 import {RouterLink} from "@angular/router";
+import {reportError} from '../../../../shared/service/error-reporting.service';
 import {finalize} from "rxjs/operators";
 
 @Component({
@@ -87,7 +88,7 @@ export class LoginComponent implements OnInit {
         },
         error: (error: HttpErrorResponse) => {
           this.setErrorMessage('Invalid email or password. Please try again.');
-          console.error('Login error:', error);
+          reportError('login', error);
         }
       });
   }

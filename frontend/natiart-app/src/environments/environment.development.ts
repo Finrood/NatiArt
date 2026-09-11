@@ -1,5 +1,6 @@
 export const environment = {
   production: false,
+  errorReporting: {url: ''},
   api: {
     directory: {
       url: 'http://localhost:8081',
