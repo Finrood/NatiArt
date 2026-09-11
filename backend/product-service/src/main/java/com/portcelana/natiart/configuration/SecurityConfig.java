@@ -20,21 +20,25 @@ public class SecurityConfig {
     private final CorsConfigurationSource corsFilter;
     private final WebClient.Builder webClientBuilder;
     private final String directoryServiceUrl;
+    private final TokenValidationCache tokenValidationCache;
 
     public SecurityConfig(
             CorsConfigurationSource corsFilter,
             WebClient.Builder webClientBuilder,
-            @Value("${directory.service.url}") String directoryServiceUrl) {
+            @Value("${directory.service.url}") String directoryServiceUrl,
+            TokenValidationCache tokenValidationCache) {
         this.corsFilter = corsFilter;
         this.webClientBuilder = webClientBuilder;
         this.directoryServiceUrl = directoryServiceUrl;
+        this.tokenValidationCache = tokenValidationCache;
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .addFilterBefore(
-                        new JwtAuthFilter(webClientBuilder, directoryServiceUrl), BasicAuthenticationFilter.class)
+                        new JwtAuthFilter(webClientBuilder, directoryServiceUrl, tokenValidationCache),
+                        BasicAuthenticationFilter.class)
                 .cors(cors -> cors.configurationSource(corsFilter))
                 .sessionManagement(sessions -> sessions.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(request -> request.anyRequest().permitAll());

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -14,6 +15,7 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 
 import org.junit.jupiter.api.AfterEach;
@@ -65,6 +67,12 @@ class JwtAuthFilterTest {
     private HttpServer server;
     private int port;
 
+    private TokenValidationCache emptyCache() {
+        final TokenValidationCache cache = mock(TokenValidationCache.class);
+        when(cache.get(anyString())).thenReturn(Optional.empty());
+        return cache;
+    }
+
     @BeforeEach
     void startServer() throws IOException {
         SecurityContextHolder.clearContext();
@@ -93,7 +101,7 @@ class JwtAuthFilterTest {
             exchange.close();
         });
         server.start();
-        return new JwtAuthFilter(WebClient.builder(), "http://localhost:" + port);
+        return new JwtAuthFilter(WebClient.builder(), "http://localhost:" + port, emptyCache());
     }
 
     private JwtAuthFilter filterWithHandler(int status, byte[] body, long delayMillis) {
@@ -115,7 +123,7 @@ class JwtAuthFilterTest {
             exchange.close();
         });
         server.start();
-        return new JwtAuthFilter(WebClient.builder(), "http://localhost:" + port);
+        return new JwtAuthFilter(WebClient.builder(), "http://localhost:" + port, emptyCache());
     }
 
     private MockHttpServletRequest requestWithToken() {
@@ -199,7 +207,7 @@ class JwtAuthFilterTest {
         port = socket.getLocalPort();
         socket.close();
 
-        final JwtAuthFilter filter = new JwtAuthFilter(WebClient.builder(), "http://localhost:" + port);
+        final JwtAuthFilter filter = new JwtAuthFilter(WebClient.builder(), "http://localhost:" + port, emptyCache());
         final MockHttpServletResponse response = new MockHttpServletResponse();
         final MockFilterChain chain = new MockFilterChain();
 
@@ -245,7 +253,7 @@ class JwtAuthFilterTest {
         when(bodySpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(AuthenticationResponseDto.class)).thenReturn(Mono.just(dto));
 
-        final JwtAuthFilter filter = new JwtAuthFilter(builder, "http://localhost:1");
+        final JwtAuthFilter filter = new JwtAuthFilter(builder, "http://localhost:1", emptyCache());
         for (int i = 0; i < 2; i++) {
             final MockHttpServletResponse response = new MockHttpServletResponse();
             filter.doFilter(requestWithToken(), response, new MockFilterChain());
@@ -255,5 +263,34 @@ class JwtAuthFilterTest {
         }
 
         verify(builder, times(1)).build();
+    }
+
+    @Test
+    void usesSharedCacheOnDirectoryOutageAfterSuccessfulValidation() throws Exception {
+        final AuthenticationResponseDto dto =
+                new ObjectMapper().readValue(VALID_AUTH_JSON, AuthenticationResponseDto.class);
+        final TokenValidationCache cache = mock(TokenValidationCache.class);
+        when(cache.get("test-token")).thenReturn(Optional.empty(), Optional.of(dto));
+
+        server.createContext("/validate-token", exchange -> {
+            final byte[] body = VALID_AUTH_JSON.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        final JwtAuthFilter filter = new JwtAuthFilter(WebClient.builder(), "http://localhost:" + port, cache);
+
+        filter.doFilter(
+                requestWithToken("POST", "/cart/item/p1/add"), new MockHttpServletResponse(), new MockFilterChain());
+        server.stop(0);
+        final MockHttpServletResponse cachedResponse = new MockHttpServletResponse();
+        final MockFilterChain cachedChain = new MockFilterChain();
+        filter.doFilter(requestWithToken("POST", "/cart/item/p1/add"), cachedResponse, cachedChain);
+
+        assertEquals(200, cachedResponse.getStatus());
+        assertNotNull(cachedChain.getRequest());
+        verify(cache).put(eq("test-token"), any(AuthenticationResponseDto.class));
     }
 }

@@ -50,6 +50,9 @@ class StatelessSessionTest {
     @MockitoBean
     private WebClient.Builder webClientBuilder;
 
+    @MockitoBean
+    private TokenValidationCache tokenValidationCache;
+
     @Test
     @WithMockUser(username = "jane")
     void authenticatedRequestCreatesNoSession() throws Exception {

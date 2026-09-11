@@ -59,6 +59,9 @@ class OrderControllerSecurityTest {
     @MockitoBean
     private org.springframework.web.reactive.function.client.WebClient.Builder webClientBuilder;
 
+    @MockitoBean
+    private TokenValidationCache tokenValidationCache;
+
     @Test
     void createOrderRequiresFullAuthenticationLikeCartAndPayment() throws Exception {
         final Method createOrder = OrderController.class.getMethod(
