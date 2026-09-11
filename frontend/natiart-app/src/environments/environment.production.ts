@@ -1,5 +1,7 @@
 export const environment = {
   production: true,
+  // Deployments may override this through public/runtime-config.js.
+  errorReporting: {url: '/server/directory/client-errors'},
   api: {
     directory: {
       url: 'https://natiart.samuelpetre.com/server/directory',

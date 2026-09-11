@@ -14,6 +14,7 @@ import {ButtonComponent} from "../../../../shared/components/button.component";
 import {CartItem} from "../../../models/CartItem.model";
 import {CartService} from "../../../service/cart.service";
 import {ProductService} from "../../../service/product.service";
+import {reportError} from '../../../../shared/service/error-reporting.service';
 
 interface CartState {
   items: CartItem[];
@@ -136,7 +137,7 @@ export class CartComponent implements OnInit, OnDestroy {
   proceedToCheckout(): void {
     this.router.navigate(['/checkout']).catch(error => {
       this.setError('Failed to navigate to checkout. Please try again.');
-      console.error('Error navigating to checkout:', error);
+      reportError('cart-navigation', error);
     });
   }
 
@@ -152,7 +153,7 @@ export class CartComponent implements OnInit, OnDestroy {
     action$().pipe(
       catchError(error => {
         this.setError(errorMessage);
-        console.error('Cart action error:', error);
+        reportError('cart', error);
         return of(null);
       }),
       finalize(() => this.isLoading$.next(false)),
@@ -213,7 +214,7 @@ export class CartComponent implements OnInit, OnDestroy {
         if (!this.isCartLineLive(cartItemId)) {
           return;
         }
-        console.error(`Failed to load product image for cart item ${cartItemId}:`, error);
+        reportError('cart-image', error);
         this.imageUrls[cartItemId] = 'assets/img/placeholder.png'; // Fallback
       }
     });

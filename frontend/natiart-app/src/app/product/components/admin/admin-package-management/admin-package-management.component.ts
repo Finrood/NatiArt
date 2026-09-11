@@ -8,6 +8,7 @@ import { AsyncPipe, NgClass } from '@angular/common';
 import {AlertMessageComponent} from "../../../../shared/components/alert-message/alert-message.component";
 import {NatiartFormFieldComponent} from "../../../../shared/components/natiart-form-field/natiart-form-field.component";
 import {ButtonComponent} from "../../../../shared/components/button.component";
+import {reportError} from '../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-admin-package-management',
@@ -88,7 +89,7 @@ export class PackageManagementComponent implements OnInit {
         this.packages.next([...this.packages.value, response]);
         this.closeModal();
       },
-      error: (error) => console.error('Error adding package:', error)
+      error: (error) => reportError('package', error)
     });
   }
 
@@ -101,7 +102,7 @@ export class PackageManagementComponent implements OnInit {
         );
         this.closeModal();
       },
-      error: (error) => console.error('Error updating package:', error)
+      error: (error) => reportError('package', error)
     });
   }
 
@@ -112,7 +113,7 @@ export class PackageManagementComponent implements OnInit {
         this.showAlert('Package deleted successfully', 'success');
       },
       error: (error: HttpErrorResponse) => {
-        console.error('Error deleting package:', error);
+        reportError('package', error);
         let errorMessage = 'An error occurred while deleting the package.';
         if (error.status === 400) {
           errorMessage = 'Package contains existing products. Delete them before deleting this package';
@@ -129,7 +130,7 @@ export class PackageManagementComponent implements OnInit {
   private getPackages(): void {
     this.packageService.getPackages().subscribe({
       next: (response) => this.packages.next(response),
-      error: (error) => console.error('Error getting packages:', error)
+      error: (error) => reportError('package', error)
     });
   }
 

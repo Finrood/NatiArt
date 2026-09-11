@@ -3,6 +3,7 @@ import {Router} from "@angular/router";
 import {AuthenticationService} from "../../../service/authentication.service";
 import {CommonModule} from "@angular/common";
 import {LoadingSpinnerComponent} from "../../../../shared/components/shared/loading-spinner/loading-spinner.component";
+import {reportError} from '../../../../shared/service/error-reporting.service';
 
 @Component({
     selector: 'app-logout',
@@ -28,7 +29,7 @@ export class LogoutComponent implements OnInit, OnDestroy {
         }, 2000);
       },
       error: (error) => {
-        console.error('Logout error', error);
+          reportError('logout', error);
         // Even if there's an error, we should probably still redirect to login
         this.router.navigate(['/login']);
       }

@@ -14,6 +14,7 @@ import {PersonalizationOption} from "../../../models/support/personalization-opt
 import {PersonalizationModalComponent} from "../personalization-modal/personalization-modal.component";
 import {AddToCartButtonComponent} from "../add-to-cart-button/add-to-cart-button.component";
 import {ButtonComponent} from "../../../../shared/components/button.component";
+import {reportError} from '../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-product-detail',
@@ -101,7 +102,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
         return this.productService.getProduct(productId);
       }),
       catchError((error: unknown) => {
-        console.error('Error loading product:', error);
+        reportError('product-loading', error);
         this.product$.next(null);
         this.loadError = 'Could not load this product. Please try again.';
         this.isLoading = false;
@@ -247,7 +248,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   public triggerFlyAnimation(clickedElement: HTMLElement): void {
     const buttonElement = clickedElement.closest('button');
     if (!buttonElement) {
-      console.error("Could not find button element for animation start.");
+      reportError('product-loading');
       return;
     }
 
@@ -255,7 +256,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
     const cartContainer = document.querySelector('.cart-container');
     if (!cartContainer) {
-      console.error("Could not find cart container element (.cart-container) for animation target.");
+      reportError('product-loading');
       return;
     }
     const cartRect = cartContainer.getBoundingClientRect();
@@ -325,7 +326,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
         if (token !== this.imageRequestToken) {
           return;
         }
-        console.error(`Failed to load image at index ${index}:`, err);
+        reportError('product-image', err);
         this.imageUrls[index] = 'assets/img/placeholder.png'; // Fallback image URL
       }
     });
@@ -357,7 +358,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
           }
         });
       },
-      error: (error) => console.error('Error loading related products:', error)
+      error: (error) => reportError('related-products', error)
     });
     this.relatedSubscription = subscription;
     this.subscriptions.push(subscription);
@@ -388,7 +389,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
         if (token !== this.imageRequestToken) {
           return;
         }
-        console.error(`Failed to load related image for product ${productId}:`, err);
+        reportError('product-image', err);
         this.relatedImageUrls[productId] = 'assets/img/placeholder.png'; // Fallback
         this.relatedProducts$.next([...this.relatedProducts$.value]); // Trigger update even on error
       }

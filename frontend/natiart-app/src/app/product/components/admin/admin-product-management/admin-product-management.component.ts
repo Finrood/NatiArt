@@ -14,6 +14,7 @@ import {PersonalizationOption} from '../../../models/support/personalization-opt
 import {ImageService} from '../../../service/image.service';
 import {AlertMessageComponent} from "../../../../shared/components/alert-message/alert-message.component";
 import {ButtonComponent} from "../../../../shared/components/button.component";
+import {reportError, reportWarning} from '../../../../shared/service/error-reporting.service';
 
 interface ImagePreview {
   url: string | SafeUrl;
@@ -207,7 +208,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         this.showAlert('Product deleted successfully', 'success');
       },
       error: (error) => {
-        console.error('Error deleting product:', error);
+        reportError('product-management', error);
         this.showAlert('Error deleting product', 'error');
       }
     });
@@ -219,7 +220,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         this._products$.next(this._products$.value.map(prod => prod.id === response.id ? response : prod));
       },
       error: (error) => {
-        console.error('Error toggling product visibility:', error);
+        reportError('product-management', error);
         this.showAlert('Error changing product visibility', 'error');
       }
     });
@@ -235,7 +236,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         this.isSubmitting = false;
       },
       error: (error) => {
-        console.error('Error adding product:', error);
+        reportError('product-management', error);
         this.showAlert('Error adding product', 'error');
         this.isSubmitting = false;
       }
@@ -252,7 +253,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         this.isSubmitting = false;
       },
       error: (error) => {
-        console.error('Error updating product:', error);
+        reportError('product-management', error);
         this.showAlert('Error updating product', 'error');
         this.isSubmitting = false;
       }
@@ -266,7 +267,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         this.updateAllProductImages(response);
       },
       error: (error) => {
-        console.error('Error getting products:', error);
+        reportError('product-management', error);
         this.showAlert('Error loading products', 'error');
       }
     });
@@ -276,7 +277,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
     this.categoryService.getCategories().subscribe({
       next: (response) => this.categories.next(response),
       error: (error) => {
-        console.error('Error getting categories:', error);
+        reportError('category', error);
         this.showAlert('Error loading categories', 'error');
       }
     });
@@ -286,7 +287,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
     this.packageService.getPackages().subscribe({
       next: (response) => this.packages.next(response),
       error: (error) => {
-        console.error('Error getting packages:', error);
+        reportError('package', error);
         this.showAlert('Error loading packages', 'error');
       }
     });
@@ -336,7 +337,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         this._products$.next([...this._products$.value]);
       },
       error: error => {
-        console.error('Error loading product image:', error);
+        reportError('product-image', error);
         this.imageUrls[productId] = null;
       }
     });
@@ -363,7 +364,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         reader.readAsDataURL(blob);
       },
       error: error => {
-        console.error('Error loading product image preview:', error);
+        reportError('product-image', error);
         this.showAlert('Error loading product image', 'error');
       }
     });
@@ -387,10 +388,10 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
             });
             this.imageFiles.push(preview.file);
           } catch (error) {
-            console.error('Error processing image:', error);
+            reportError('image-conversion', error);
           }
         } else {
-          console.error('Invalid image file:', file.name);
+          reportWarning('invalid-input');
         }
       }
     }

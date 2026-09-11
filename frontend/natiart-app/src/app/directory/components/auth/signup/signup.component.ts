@@ -14,6 +14,7 @@ import {StepIndicatorComponent} from "./step-indicator/step-indicator.component"
 import {CustomPhoneValidators} from "../../../validator/CustomPhoneValidators";
 import {CustomCpfValidators} from "../../../validator/CustomCpfValidators";
 import {CustomCepValidators} from "../../../validator/CustomCepValidators";
+import {reportError} from '../../../../shared/service/error-reporting.service';
 import {finalize} from 'rxjs/operators';
 
 @Component({
@@ -90,7 +91,7 @@ export class SignupComponent implements OnInit {
         },
         error: (error: HttpErrorResponse) => {
           this.setErrorMessage('Registration failed. Please try again.');
-          console.error('Registration error:', error);
+          reportError('registration', error);
         }
       });
   }

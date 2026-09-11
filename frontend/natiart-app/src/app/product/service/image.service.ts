@@ -1,6 +1,7 @@
 import {inject, Injectable} from '@angular/core';
 import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 import heic2any from 'heic2any';
+import {reportError} from '../../shared/service/error-reporting.service';
 
 @Injectable({
   providedIn: 'root'
@@ -18,7 +19,7 @@ export class ImageService {
         const jpegBlob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.8 }) as Blob;
         return new File([jpegBlob], file.name.replace(/\.heic$/i, '.jpg'), { type: 'image/jpeg' });
       } catch (error) {
-        console.error('Error converting HEIC to JPEG:', error);
+        reportError('image-conversion', error);
         throw error;
       }
     }
