@@ -64,6 +64,9 @@ class PaymentControllerSecurityTest {
     @MockitoBean
     private org.springframework.web.reactive.function.client.WebClient.Builder webClientBuilder;
 
+    @MockitoBean
+    private TokenValidationCache tokenValidationCache;
+
     @Test
     @WithAnonymousUser
     void anonymousCannotReadPaymentStatus() throws Exception {
