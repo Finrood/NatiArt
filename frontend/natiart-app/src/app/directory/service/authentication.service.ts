@@ -34,8 +34,12 @@ export class AuthenticationService implements OnDestroy {
   );
 
   private destroy$ = new Subject<void>();
+  private readonly tokenClearSubscription: Subscription;
 
   constructor(private http: HttpClient, private router: Router, private tokenService: TokenService) {
+    this.tokenClearSubscription = this.tokenService.tokensCleared$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.updateState(null));
     this.initializeAuthState()
       .pipe(finalize(() => this.authResolvedSubject.next(true)))
       .subscribe();
@@ -45,7 +49,6 @@ export class AuthenticationService implements OnDestroy {
 
   private clearLocalAuthState() {
     this.tokenService.clearTokens();
-    this.updateState(null);
   }
 
   resetInactivityTimer() {
@@ -71,6 +74,7 @@ export class AuthenticationService implements OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    this.tokenClearSubscription.unsubscribe();
     if (this.inactivityTimerSubscription) {
       this.inactivityTimerSubscription.unsubscribe();
     }
