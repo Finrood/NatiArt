@@ -43,7 +43,22 @@ describe('PaymentService', () => {
         expect(actual.paymentId).toBe('pay_123');
       });
 
-    http.expectOne(`${apiUrl}/payments/create`).flush(response);
+    const request = http.expectOne(`${apiUrl}/payments/create`);
+    expect(request.request.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/);
+    request.flush(response);
+  });
+
+  it('reuses a caller supplied idempotency key', () => {
+    service
+      .createPixPayment(
+        { paymentProcessor: 'ASAAS', customerId: 'cus_1', billingType: 'PIX', value: 10 },
+        'payment-attempt-1',
+      )
+      .subscribe();
+
+    const request = http.expectOne(`${apiUrl}/payments/create`);
+    expect(request.request.headers.get('Idempotency-Key')).toBe('payment-attempt-1');
+    request.flush({});
   });
 
   it('maps the QR payload and parses the expiration date', () => {
