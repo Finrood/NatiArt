@@ -117,6 +117,29 @@ class RateLimitFilterTest {
     }
 
     @Test
+    void clientErrorReportsUseAnIndependentBucketFromAuthentication() throws Exception {
+        RateLimitFilter independentFilter = new RateLimitFilter(3, 2, List.of(), store);
+
+        for (int i = 0; i < 2; i++) {
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            independentFilter.doFilter(post("/client-errors", "1.2.3.4"), response, new MockFilterChain());
+            assertNotEquals(429, response.getStatus());
+        }
+        MockHttpServletResponse blockedTelemetry = new MockHttpServletResponse();
+        independentFilter.doFilter(post("/client-errors", "1.2.3.4"), blockedTelemetry, new MockFilterChain());
+        assertEquals(429, blockedTelemetry.getStatus());
+
+        for (int i = 0; i < 3; i++) {
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            independentFilter.doFilter(post("/login", "1.2.3.4"), response, new MockFilterChain());
+            assertNotEquals(429, response.getStatus());
+        }
+        MockHttpServletResponse blockedAuthentication = new MockHttpServletResponse();
+        independentFilter.doFilter(post("/login", "1.2.3.4"), blockedAuthentication, new MockFilterChain());
+        assertEquals(429, blockedAuthentication.getStatus());
+    }
+
+    @Test
     void windowResetsAfterTheFixedWindowElapses() throws Exception {
         MutableClock clock = new MutableClock(0L);
         RateLimitFilter clockedFilter = new RateLimitFilter(3, List.of(), new FixedWindowStore(clock));

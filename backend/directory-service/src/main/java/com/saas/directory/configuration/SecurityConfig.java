@@ -34,6 +34,8 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.POST, "/validate-token")
                         .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/client-errors")
+                        .permitAll()
                         .anyRequest()
                         .authenticated());
 

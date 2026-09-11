@@ -20,6 +20,7 @@ import {AuthenticationService} from "../../../../directory/service/authenticatio
 import {CustomCpfValidators} from "../../../../directory/validator/CustomCpfValidators";
 import {CustomCepValidators} from "../../../../directory/validator/CustomCepValidators";
 import {ButtonComponent} from "../../../../shared/components/button.component";
+import {reportError} from '../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-checkout',
@@ -260,7 +261,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       this.router.navigate(['/pix-payment', paymentId]);
 
     } catch (error) {
-      console.error('Error processing PIX payment:', error);
+      reportError('payment', error);
       this.setErrorMessage('Could not process PIX payment. Please try again.');
     }
     this.cdr.detectChanges();
@@ -307,7 +308,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       this.setErrorMessage('Invalid payment method selected.');
 
     } catch (error) {
-      console.error('Order submission error:', error);
+      reportError('checkout', error);
       if (!this.errorMessage) {
         this.setErrorMessage('An unexpected error occurred during checkout.');
       }

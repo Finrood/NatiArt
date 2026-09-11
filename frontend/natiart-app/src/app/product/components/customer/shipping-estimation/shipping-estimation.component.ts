@@ -17,6 +17,7 @@ import {
 import {ShippingEstimate, ShippingEstimateRequest, ShippingService} from '../../../service/shipping.service';
 import {CepFormatDirective} from "../../../../directory/directive/cep-format-directive.directive";
 import {LoadingSpinnerComponent} from "../../../../shared/components/shared/loading-spinner/loading-spinner.component";
+import {reportError} from '../../../../shared/service/error-reporting.service';
 
 interface ShippingState {
   status: 'idle' | 'loading' | 'success' | 'error' | 'no-options';
@@ -68,7 +69,7 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
         this.shippingForm.get('cep')?.enable();
       },
       error => {
-        console.error('Error in shipping estimation:', error);
+        reportError('shipping-estimation', error);
         this.shippingStateSubject.next({status: 'error', cheapestOption: null, error: 'An unexpected error occurred.'});
         this.shippingForm.get('cep')?.enable();
       }
@@ -114,7 +115,7 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
   }
 
   private handleError(error: HttpErrorResponse): Observable<ShippingState> {
-    console.error('Shipping estimation error:', error);
+    reportError('shipping-estimation', error);
     return new Observable(observer => {
       observer.next({
         status: 'error',
