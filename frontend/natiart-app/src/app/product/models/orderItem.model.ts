@@ -1,7 +1,7 @@
 export interface OrderItemDto {
-  id: string;
-  orderId: string;
-  productId: number;
+  id?: string;
+  orderId?: string;
+  productId: string;
   quantity: number;
-  price: number;
+  price?: number;
 }

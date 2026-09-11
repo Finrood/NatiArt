@@ -46,6 +46,7 @@ describe('OrderService', () => {
     expect(latest).toBeTrue();
     const req: TestRequest = httpMock.expectOne((request) => request.method === 'POST');
     expect(req.request.url.endsWith('/orders/create')).toBeTrue();
+    expect(req.request.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/);
     req.flush(makeOrder());
 
     expect(latest).toBeFalse();
