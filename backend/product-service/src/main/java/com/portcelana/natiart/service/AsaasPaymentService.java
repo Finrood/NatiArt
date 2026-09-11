@@ -1,13 +1,19 @@
 package com.portcelana.natiart.service;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +30,7 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.controller.helper.UserNotAllowedException;
 import com.portcelana.natiart.dto.payment.PaymentCreationRequest;
@@ -35,17 +42,21 @@ import com.portcelana.natiart.dto.payment.helper.PaymentMethod;
 import com.portcelana.natiart.dto.payment.helper.PaymentStatus;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.Payment;
+import com.portcelana.natiart.model.PaymentIdempotency;
+import com.portcelana.natiart.model.PaymentIdempotencyStatus;
 import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.PaymentRepository;
 
 @Service
 public class AsaasPaymentService implements PaymentService {
     private static final Logger LOGGER = LoggerFactory.getLogger(AsaasPaymentService.class);
+    private static final Pattern IDEMPOTENCY_KEY_PATTERN = Pattern.compile("[A-Za-z0-9._-]{1,64}");
 
     private final String asaasPaymentUrl;
     private final RestTemplate restTemplate;
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
+    private final PaymentIdempotencyService paymentIdempotencyService;
     private final RetryTemplate retryTemplate;
 
     private final String asaasApiKey;
@@ -56,7 +67,8 @@ public class AsaasPaymentService implements PaymentService {
             @Value("${natiart.payment.asaas.payments-url:https://sandbox.asaas.com/api/v3/payments}")
                     String asaasPaymentUrl,
             PaymentRepository paymentRepository,
-            OrderRepository orderRepository) {
+            OrderRepository orderRepository,
+            PaymentIdempotencyService paymentIdempotencyService) {
         if (asaasApiKey == null || asaasApiKey.isBlank()) {
             throw new IllegalStateException(
                     "natiart.payment.asaas.apikey is blank: set the NATIART_PAYMENT_ASAAS_APIKEY environment variable");
@@ -69,6 +81,7 @@ public class AsaasPaymentService implements PaymentService {
         this.restTemplate = new RestTemplate(factory);
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
+        this.paymentIdempotencyService = paymentIdempotencyService;
         this.retryTemplate = createRetryTemplate();
     }
 
@@ -77,20 +90,24 @@ public class AsaasPaymentService implements PaymentService {
             String asaasPaymentUrl,
             RestTemplate restTemplate,
             PaymentRepository paymentRepository,
-            OrderRepository orderRepository) {
+            OrderRepository orderRepository,
+            PaymentIdempotencyService paymentIdempotencyService) {
         this.asaasApiKey = asaasApiKey;
         this.asaasPaymentUrl = asaasPaymentUrl;
         this.restTemplate = restTemplate;
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
+        this.paymentIdempotencyService = paymentIdempotencyService;
         this.retryTemplate = createRetryTemplate();
     }
 
+    @Override
     public PaymentCreationResponse createPayment(
-            PaymentCreationRequest paymentCreationRequest, String requesterExternalId) {
+            PaymentCreationRequest paymentCreationRequest, String requesterExternalId, String idempotencyKey) {
         if (requesterExternalId == null || requesterExternalId.isBlank()) {
             throw new UserNotAllowedException("Authenticated customer is required to create a payment");
         }
+        final String normalizedIdempotencyKey = normalizeIdempotencyKey(idempotencyKey);
         // Defense in depth: the DTO constructor already rejects these, but the
         // service must not trust its input shape if that ever changes.
         final BigDecimal value = paymentCreationRequest.getValue();
@@ -113,26 +130,40 @@ public class AsaasPaymentService implements PaymentService {
                         "Payment value [%s] does not match the total [%s] of order [%s]",
                         value, order.getTotalAmount(), orderId));
             }
-            // Idempotency before egress: a retried POST for the same order
-            // (timeout then storefront "try again") replays the stored charge
-            // instead of creating a second upstream charge. The lookup is
-            // scoped to the requester so one customer can never replay
-            // another's ledger row.
-            final Optional<Payment> existing =
-                    paymentRepository.findByOrderIdAndOwnerExternalId(orderId, requesterExternalId);
-            if (existing.isPresent()) {
-                final PaymentCreationResponse replay =
-                        toCreationResponse(fetchPaymentOrDie(existing.get().getId()));
-                LOGGER.info(
-                        "Payment replayed: providerPaymentId=[{}], owner=[{}], order=[{}], amount=[{}]",
-                        existing.get().getId(),
-                        requesterExternalId,
-                        orderId,
-                        value);
-                return replay;
-            }
         }
-        final HttpHeaders headers = getRequestHeaders();
+
+        final String requestFingerprint = fingerprint(paymentCreationRequest);
+        final PaymentIdempotencyReservation reservationResult =
+                reserveOrReload(requesterExternalId, normalizedIdempotencyKey, requestFingerprint);
+        final PaymentIdempotency reservation = reservationResult.record();
+        if (!Objects.equals(reservation.getRequestFingerprint(), requestFingerprint)) {
+            throw new ResourceAlreadyExistsException("Idempotency-Key was already used for a different payment");
+        }
+        if (reservation.getStatus() == PaymentIdempotencyStatus.SUCCEEDED) {
+            return replay(reservation, requesterExternalId, orderId, value);
+        }
+        if (reservation.getStatus() == PaymentIdempotencyStatus.FAILED_RECOVERABLE) {
+            throw new UpstreamServiceException(
+                    "Payment request requires reconciliation before retry", HttpStatus.SERVICE_UNAVAILABLE);
+        }
+        if (!reservationResult.acquired()) {
+            throw new ResourceAlreadyExistsException("Payment creation is already in progress");
+        }
+
+        // A legacy order-linked ledger row may predate the reservation table.
+        // Adopt it before any provider egress and make future retries durable.
+        final Optional<Payment> existing =
+                paymentRepository.findByOrderIdAndOwnerExternalId(orderId, requesterExternalId);
+        if (existing.isPresent()) {
+            paymentIdempotencyService.markSucceeded(
+                    requesterExternalId,
+                    normalizedIdempotencyKey,
+                    existing.get().getId());
+            reservation.setProviderPaymentId(existing.get().getId()).setStatus(PaymentIdempotencyStatus.SUCCEEDED);
+            return replay(reservation, requesterExternalId, orderId, value);
+        }
+
+        final HttpHeaders headers = getRequestHeaders(normalizedIdempotencyKey);
 
         final HttpEntity<AsaasPaymentCreationRequest> asaasPaymentCreationRequestHttpEntity = new HttpEntity<>(
                 AsaasPaymentCreationRequest.from(paymentCreationRequest, requesterExternalId), headers);
@@ -141,9 +172,14 @@ public class AsaasPaymentService implements PaymentService {
             response = restTemplate.postForEntity(
                     asaasPaymentUrl, asaasPaymentCreationRequestHttpEntity, AsaasPaymentCreationResponse.class);
         } catch (HttpStatusCodeException e) {
+            paymentIdempotencyService.markRecoverableFailure(requesterExternalId, normalizedIdempotencyKey);
             throw mapAsaasError(e);
         } catch (ResourceAccessException e) {
+            paymentIdempotencyService.markRecoverableFailure(requesterExternalId, normalizedIdempotencyKey);
             throw mapAsaasTransportError(e);
+        } catch (RuntimeException e) {
+            paymentIdempotencyService.markRecoverableFailure(requesterExternalId, normalizedIdempotencyKey);
+            throw e;
         }
 
         // The default RestTemplate error handler throws
@@ -153,44 +189,120 @@ public class AsaasPaymentService implements PaymentService {
         // charge without its ledger row is the orphan the save-failure branch
         // below logs for -- and a client retry would then double-charge.
         if (response.getStatusCode().is2xxSuccessful()) {
-            final Optional<AsaasPaymentCreationResponse> asaasPaymentCreationResponse =
-                    Optional.ofNullable(response.getBody());
-            return asaasPaymentCreationResponse
-                    .map(responseBody -> {
-                        if (responseBody.getId() == null || responseBody.getId().isBlank()) {
-                            LOGGER.warn("Asaas payment creation response has no payment id: failing closed");
-                            throw new AsaasApiException("Invalid payment provider response", HttpStatus.BAD_GATEWAY);
-                        }
-                        // Charge-then-save is non-atomic by necessity (the
-                        // upstream id only exists after the charge): if the
-                        // local save fails, the orphan upstream charge is
-                        // logged with its id and owner so it can be reconciled
-                        // instead of vanishing silently.
-                        try {
-                            paymentRepository.save(new Payment(responseBody.getId(), requesterExternalId, orderId));
-                        } catch (RuntimeException e) {
-                            LOGGER.warn(
-                                    "Upstream charge [{}] for owner [{}] (order [{}]) has no local ledger row: save failed",
-                                    responseBody.getId(),
-                                    requesterExternalId,
-                                    orderId);
-                            throw e;
-                        }
-                        final PaymentCreationResponse paymentResponse = toCreationResponse(responseBody);
-                        LOGGER.info(
-                                "Payment created: providerPaymentId=[{}], owner=[{}], order=[{}], amount=[{}]",
-                                responseBody.getId(),
-                                requesterExternalId,
-                                orderId,
-                                value);
-                        return paymentResponse;
-                    })
-                    .orElseThrow(() ->
-                            new IllegalArgumentException("Received a null response body from " + asaasPaymentUrl));
+            final AsaasPaymentCreationResponse responseBody = response.getBody();
+            if (responseBody == null) {
+                LOGGER.warn("Asaas payment creation response body is null: failing closed");
+                paymentIdempotencyService.markRecoverableFailure(requesterExternalId, normalizedIdempotencyKey);
+                throw new AsaasApiException("Invalid payment provider response", HttpStatus.BAD_GATEWAY);
+            }
+            if (responseBody.getId() == null || responseBody.getId().isBlank()) {
+                LOGGER.warn("Asaas payment creation response has no payment id: failing closed");
+                paymentIdempotencyService.markRecoverableFailure(requesterExternalId, normalizedIdempotencyKey);
+                throw new AsaasApiException("Invalid payment provider response", HttpStatus.BAD_GATEWAY);
+            }
+            try {
+                // Charge-then-save is non-atomic by necessity. The durable
+                // reservation remains recoverable if this local write fails.
+                paymentRepository.save(
+                        new Payment(responseBody.getId(), requesterExternalId, orderId, normalizedIdempotencyKey));
+                final PaymentCreationResponse paymentResponse = toCreationResponse(responseBody);
+                paymentIdempotencyService.markSucceeded(
+                        requesterExternalId, normalizedIdempotencyKey, responseBody.getId());
+                LOGGER.info(
+                        "Payment created: providerPaymentId=[{}], owner=[{}], order=[{}], amount=[{}]",
+                        responseBody.getId(),
+                        requesterExternalId,
+                        orderId,
+                        value);
+                return paymentResponse;
+            } catch (RuntimeException e) {
+                LOGGER.warn(
+                        "Upstream charge [{}] for owner [{}] (order [{}]) requires reconciliation after local failure",
+                        responseBody.getId(),
+                        requesterExternalId,
+                        orderId);
+                paymentIdempotencyService.markRecoverableFailure(requesterExternalId, normalizedIdempotencyKey);
+                throw e;
+            }
         }
         // Unreachable with the default error handler (non-2xx throws above):
         // fail closed as a provider failure, never as a client error.
+        paymentIdempotencyService.markRecoverableFailure(requesterExternalId, normalizedIdempotencyKey);
         throw new AsaasApiException("Invalid payment provider response", HttpStatus.BAD_GATEWAY);
+    }
+
+    @Override
+    public PaymentCreationResponse createPayment(
+            PaymentCreationRequest paymentCreationRequest, String requesterExternalId) {
+        return createPayment(paymentCreationRequest, requesterExternalId, null);
+    }
+
+    private PaymentIdempotencyReservation reserveOrReload(
+            String requesterExternalId, String idempotencyKey, String requestFingerprint) {
+        try {
+            return paymentIdempotencyService.reserve(requesterExternalId, idempotencyKey, requestFingerprint);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            final PaymentIdempotency record = paymentIdempotencyService
+                    .find(requesterExternalId, idempotencyKey)
+                    .orElseThrow(() -> e);
+            return new PaymentIdempotencyReservation(record, false);
+        }
+    }
+
+    private PaymentCreationResponse replay(
+            PaymentIdempotency reservation, String requesterExternalId, String orderId, BigDecimal value) {
+        final String providerPaymentId = reservation.getProviderPaymentId();
+        if (providerPaymentId == null || providerPaymentId.isBlank()) {
+            throw new UpstreamServiceException(
+                    "Payment request requires reconciliation before retry", HttpStatus.SERVICE_UNAVAILABLE);
+        }
+        final PaymentCreationResponse replay = toCreationResponse(fetchPaymentOrDie(providerPaymentId));
+        LOGGER.info(
+                "Payment replayed: providerPaymentId=[{}], owner=[{}], order=[{}], amount=[{}]",
+                providerPaymentId,
+                requesterExternalId,
+                orderId,
+                value);
+        return replay;
+    }
+
+    private String normalizeIdempotencyKey(String idempotencyKey) {
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            return UUID.randomUUID().toString();
+        }
+        final String normalized = idempotencyKey.trim();
+        if (!IDEMPOTENCY_KEY_PATTERN.matcher(normalized).matches()) {
+            throw new IllegalArgumentException("The Idempotency-Key header is invalid");
+        }
+        return normalized;
+    }
+
+    private String fingerprint(PaymentCreationRequest request) {
+        final StringBuilder canonical = new StringBuilder();
+        append(canonical, request.getOrderId());
+        append(canonical, request.getPaymentProcessor());
+        append(canonical, request.getBillingType());
+        append(canonical, request.getValue().stripTrailingZeros().toPlainString());
+        try {
+            final byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(canonical.toString().getBytes(StandardCharsets.UTF_8));
+            final StringBuilder hex = new StringBuilder(digest.length * 2);
+            for (byte value : digest) {
+                hex.append(String.format("%02x", value));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is required", e);
+        }
+    }
+
+    private void append(StringBuilder target, Object value) {
+        if (value == null) {
+            target.append("-1:");
+            return;
+        }
+        final String text = String.valueOf(value);
+        target.append(text.length()).append(':').append(text);
     }
 
     /**
@@ -452,6 +564,10 @@ public class AsaasPaymentService implements PaymentService {
     }
 
     private HttpHeaders getRequestHeaders() {
+        return getRequestHeaders(null);
+    }
+
+    private HttpHeaders getRequestHeaders(String idempotencyKey) {
         final HttpHeaders headers = new HttpHeaders();
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -459,6 +575,9 @@ public class AsaasPaymentService implements PaymentService {
         final String correlationId = MDC.get(com.portcelana.natiart.configuration.RequestCorrelationFilter.MDC_KEY);
         if (correlationId != null) {
             headers.set(com.portcelana.natiart.configuration.RequestCorrelationFilter.HEADER_NAME, correlationId);
+        }
+        if (idempotencyKey != null) {
+            headers.set("Idempotency-Key", idempotencyKey);
         }
 
         return headers;
