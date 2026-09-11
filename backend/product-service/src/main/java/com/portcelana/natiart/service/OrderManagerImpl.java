@@ -48,12 +48,17 @@ public class OrderManagerImpl implements OrderManager {
     private final OrderRepository orderRepository;
     private final ProductManager productManager;
     private final ProductRepository productRepository;
+    private final ShippingService shippingService;
 
     public OrderManagerImpl(
-            OrderRepository orderRepository, ProductManager productManager, ProductRepository productRepository) {
+            OrderRepository orderRepository,
+            ProductManager productManager,
+            ProductRepository productRepository,
+            ShippingService shippingService) {
         this.orderRepository = orderRepository;
         this.productManager = productManager;
         this.productRepository = productRepository;
+        this.shippingService = shippingService;
     }
 
     @Override
@@ -75,10 +80,10 @@ public class OrderManagerImpl implements OrderManager {
     public CustomerOrder createOrder(OrderDto orderDto, String ownerExternalId) {
         validateContactDetails(orderDto);
         validateItems(orderDto.getItems());
-        requireNonNegativeAmount(orderDto.getDeliveryAmount(), "delivery amount");
         if (ownerExternalId == null || ownerExternalId.isBlank()) {
             throw new IllegalArgumentException("An order must have an owner");
         }
+        final BigDecimal serverDeliveryAmount = shippingService.getOrderShippingAmount(orderDto.getZipCode());
 
         final CustomerOrder customerOrder = new CustomerOrder();
         customerOrder
@@ -96,7 +101,7 @@ public class OrderManagerImpl implements OrderManager {
                 .setZipCode(orderDto.getZipCode())
                 .setStreet(orderDto.getStreet())
                 .setComplement(orderDto.getComplement())
-                .setDeliveryAmount(orderDto.getDeliveryAmount());
+                .setDeliveryAmount(serverDeliveryAmount);
 
         BigDecimal totalItemsAmount = BigDecimal.ZERO;
         // One batched product read for the whole order: the per-line stock
@@ -124,7 +129,7 @@ public class OrderManagerImpl implements OrderManager {
             customerOrder.addOrderItem(orderItem);
         }
 
-        customerOrder.setTotalAmount(totalItemsAmount.add(customerOrder.getDeliveryAmount()));
+        customerOrder.setTotalAmount(totalItemsAmount.add(serverDeliveryAmount));
         final CustomerOrder savedOrder = orderRepository.save(customerOrder);
         LOGGER.info(
                 "Order created: orderId=[{}], owner=[{}], itemCount=[{}], totalAmount=[{}]",
@@ -191,13 +196,6 @@ public class OrderManagerImpl implements OrderManager {
             if (item.getQuantity() > MAX_ITEM_QUANTITY) {
                 throw new IllegalArgumentException("Item quantities must not exceed " + MAX_ITEM_QUANTITY);
             }
-        }
-    }
-
-    private void requireNonNegativeAmount(BigDecimal amount, String field) {
-        if (amount == null || amount.signum() < 0 || amount.scale() > 2) {
-            throw new IllegalArgumentException(
-                    "The " + field + " must be a non-negative value with at most two fraction digits");
         }
     }
 

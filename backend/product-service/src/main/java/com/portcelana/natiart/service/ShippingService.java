@@ -30,6 +30,13 @@ import com.portcelana.natiart.service.support.MelhorenvioShippingCalculationResp
 @Service
 public class ShippingService {
     private static final Logger LOGGER = LoggerFactory.getLogger(ShippingService.class);
+    // Checkout freight is calculated from package data owned by this service;
+    // the order request cannot choose the amount that is persisted or charged.
+    private static final float ORDER_PACKAGE_WEIGHT_KG = 2;
+    private static final float ORDER_PACKAGE_LENGTH_CM = 17;
+    private static final float ORDER_PACKAGE_WIDTH_CM = 12.7f;
+    private static final float ORDER_PACKAGE_HEIGHT_CM = 2;
+    private static final int ORDER_PACKAGE_QUANTITY = 1;
 
     private final RestTemplate restTemplate;
     private final String apiUrl;
@@ -82,6 +89,24 @@ public class ShippingService {
         final List<ShippingEstimate> estimates = parseAndFilterResponse(response.getBody());
         LOGGER.info("Shipping estimates calculated: optionCount=[{}]", estimates.size());
         return estimates;
+    }
+
+    /**
+     * Calculates the freight amount for an order using server-owned package
+     * dimensions and the cheapest valid provider estimate.
+     */
+    public BigDecimal getOrderShippingAmount(String destinationPostalCode) {
+        final ShippingEstimateRequest request = new ShippingEstimateRequest(
+                destinationPostalCode == null ? null : destinationPostalCode.replaceAll("\\D", ""),
+                ORDER_PACKAGE_WEIGHT_KG,
+                ORDER_PACKAGE_LENGTH_CM,
+                ORDER_PACKAGE_WIDTH_CM,
+                ORDER_PACKAGE_HEIGHT_CM,
+                ORDER_PACKAGE_QUANTITY);
+        return getShippingEstimates(request).stream()
+                .findFirst()
+                .map(ShippingEstimate::getPrice)
+                .orElseThrow(() -> new IllegalArgumentException("No shipping options are available for this address"));
     }
 
     private MelhorenvioShippingCalculationRequest createMelhorEnvioRequest(
