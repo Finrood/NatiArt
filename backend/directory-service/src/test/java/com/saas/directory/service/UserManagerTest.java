@@ -18,16 +18,12 @@ import org.springframework.context.ApplicationEventPublisher;
 import com.saas.directory.controller.helper.ResourceAlreadyExistsException;
 import com.saas.directory.controller.helper.ResourceNotFoundException;
 import com.saas.directory.dto.ProfileDto;
-import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.UserRegistrationDto;
-import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
 import com.saas.directory.event.UserRegisteredEvent;
-import com.saas.directory.model.ExternalUser;
 import com.saas.directory.model.Profile;
 import com.saas.directory.model.Role;
 import com.saas.directory.model.RoleName;
 import com.saas.directory.model.User;
-import com.saas.directory.model.UserType;
 import com.saas.directory.repository.ExternalUserRepository;
 import com.saas.directory.repository.RoleRepository;
 import com.saas.directory.repository.UserRepository;
@@ -39,7 +35,6 @@ public class UserManagerTest {
     private final RoleRepository roleRepository = mock(RoleRepository.class);
     private final ProfileManager profileManager = mock(ProfileManager.class);
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
-    private final AsaasUserManager asaasUserManager = mock(AsaasUserManager.class);
 
     @Captor
     private ArgumentCaptor<UserRegisteredEvent> eventCaptor;
@@ -48,13 +43,8 @@ public class UserManagerTest {
 
     @BeforeEach
     public void initContext() {
-        userManager = new UserManager(
-                userRepository,
-                externalUserRepository,
-                roleRepository,
-                profileManager,
-                eventPublisher,
-                asaasUserManager);
+        userManager =
+                new UserManager(userRepository, externalUserRepository, roleRepository, profileManager, eventPublisher);
     }
 
     @Test
@@ -62,13 +52,6 @@ public class UserManagerTest {
         final UserRegistrationDto registration = new UserRegistrationDto("   ", "password", new ProfileDto());
 
         assertThrows(IllegalArgumentException.class, () -> userManager.registerUser(registration));
-    }
-
-    @Test
-    public void test_registerGhostUser_blank_username_throws_illegal_argument() {
-        final UserRegistrationDto registration = new UserRegistrationDto(null, "irrelevant", null);
-
-        assertThrows(IllegalArgumentException.class, () -> userManager.registerGhostUser(registration));
     }
 
     @Test
@@ -244,100 +227,5 @@ public class UserManagerTest {
         UserRegisteredEvent capturedEvent = eventCaptor.getValue();
         assertNotNull(capturedEvent);
         assertEquals("new_username", capturedEvent.username());
-    }
-
-    @Test
-    public void registerGhostUser_existingGhostEmail_throwsWithoutSideEffects() {
-        final User existingGhost = new User("victim@example.com", "unseen-random-password")
-                .setRole(new Role(RoleName.USER))
-                .setUserType(UserType.GHOST);
-        when(userRepository.findUserByUsernameIgnoreCase("victim@example.com")).thenReturn(Optional.of(existingGhost));
-
-        final UserRegistrationDto dto = new UserRegistrationDto("victim@example.com", "password", null);
-
-        assertThrows(ResourceAlreadyExistsException.class, () -> userManager.registerGhostUser(dto));
-        verify(userRepository, never()).save(any(User.class));
-        verifyNoInteractions(roleRepository, profileManager, asaasUserManager, externalUserRepository, eventPublisher);
-    }
-
-    @Test
-    public void registerGhostUser_existingUserEmail_throwsWithoutSideEffects() {
-        final User existingUser = new User("taken@example.com", "password").setRole(new Role(RoleName.USER));
-        when(userRepository.findUserByUsernameIgnoreCase("taken@example.com")).thenReturn(Optional.of(existingUser));
-
-        final UserRegistrationDto dto = new UserRegistrationDto("taken@example.com", "password", null);
-
-        assertThrows(ResourceAlreadyExistsException.class, () -> userManager.registerGhostUser(dto));
-        verify(userRepository, never()).save(any(User.class));
-        verifyNoInteractions(roleRepository, profileManager, asaasUserManager, externalUserRepository, eventPublisher);
-    }
-
-    @Test
-    public void registerGhostUser_freshEmail_createsGhostAndProvisionsAsaasCustomer() throws Exception {
-        final Role userRole = new Role(RoleName.USER);
-        final User persistedGhost = new User("new-ghost@example.com", "random-uuid-password")
-                .setRole(userRole)
-                .setUserType(UserType.GHOST);
-        when(userRepository.findUserByUsernameIgnoreCase("new-ghost@example.com"))
-                .thenReturn(Optional.empty(), Optional.of(persistedGhost));
-        when(roleRepository.findRoleByLabel(RoleName.USER)).thenReturn(Optional.of(userRole));
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        final Profile profile = new Profile(
-                        "John",
-                        "Doe",
-                        "00000000011",
-                        "USA",
-                        "USA",
-                        "Los Angeles",
-                        "Campinas",
-                        "90001",
-                        "123 Main St",
-                        persistedGhost)
-                .setPhone("+1234567890")
-                .setComplement("Apt 101");
-        when(profileManager.createProfile(any(User.class), any(ProfileDto.class)))
-                .thenReturn(profile);
-        final AsaasCustomerCreationResponse asaasResponse = new AsaasCustomerCreationResponse(
-                "customer",
-                "cus_12345",
-                "2025-01-01",
-                "Test User",
-                "test@test.com",
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                false,
-                null,
-                null,
-                false,
-                null,
-                null,
-                null,
-                false,
-                null,
-                false,
-                null,
-                0,
-                null,
-                null,
-                null);
-        when(asaasUserManager.registerUser(any(UserDto.class))).thenReturn(asaasResponse);
-
-        final User result =
-                userManager.registerGhostUser(new UserRegistrationDto("new-ghost@example.com", "password", null));
-
-        assertEquals("new-ghost@example.com", result.getUsername());
-        assertEquals(UserType.GHOST, result.getUserType());
-        verify(asaasUserManager, times(1)).registerUser(any(UserDto.class));
-        verify(userRepository, times(2)).save(any(User.class));
-        verify(externalUserRepository, times(1)).save(any(ExternalUser.class));
-        verify(eventPublisher, never()).publishEvent(any());
     }
 }

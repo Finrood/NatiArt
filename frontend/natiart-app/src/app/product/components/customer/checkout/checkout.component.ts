@@ -1,7 +1,7 @@
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit} from '@angular/core';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
-import {catchError, EmptyError, firstValueFrom, map, Observable, Subject, throwError} from 'rxjs';
+import {EmptyError, firstValueFrom, map, Observable, Subject, throwError} from 'rxjs';
 import {CartItem} from '../../../models/CartItem.model';
 import {CartService} from '../../../service/cart.service';
 import {OrderService} from '../../../service/order.service';
@@ -17,9 +17,6 @@ import {PaymentMethod} from "../../../models/paymentMethod.model";
 import {LoadingSpinnerComponent} from "../../../../shared/components/shared/loading-spinner/loading-spinner.component";
 import {User} from "../../../../directory/models/user.model";
 import {AuthenticationService} from "../../../../directory/service/authentication.service";
-import {SignupService} from "../../../../directory/service/signup.service";
-import {Profile} from "../../../../directory/models/profile.model";
-import {UserRegistration} from "../../../../directory/models/user-registration.model";
 import {CustomCpfValidators} from "../../../../directory/validator/CustomCpfValidators";
 import {CustomCepValidators} from "../../../../directory/validator/CustomCepValidators";
 import {ButtonComponent} from "../../../../shared/components/button.component";
@@ -63,7 +60,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     private authenticationService: AuthenticationService,
     private orderService: OrderService,
     private paymentService: PaymentService,
-    private signupService: SignupService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {
@@ -224,46 +220,8 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     return this.isLoggedIn$.pipe(
       switchMap(isLoggedIn => {
         if (!isLoggedIn) {
-          const userInfo = this.checkoutForm.get('userInfo')?.value;
-          const shippingInfo = this.checkoutForm.get('shippingInfo')?.value;
-
-          const profile: Profile = {
-            firstname: userInfo.firstname,
-            lastname: userInfo.lastname,
-            cpf: userInfo.cpf.replace(/\D/g, ''),
-            phone: userInfo.phone.replace(/\D/g, ''),
-            country: shippingInfo.country,
-            state: shippingInfo.state,
-            city: shippingInfo.city,
-            neighborhood: shippingInfo.neighborhood,
-            zipCode: shippingInfo.zipCode.replace(/\D/g, ''),
-            street: shippingInfo.street,
-            complement: shippingInfo.complement,
-          };
-
-          const userRegistration: UserRegistration = {
-            username: userInfo.email,
-            password: this.generateRandomPassword(),
-            profile: profile,
-          };
-          this.setInfoMessage('Creating a temporary account to process your order...');
-          return this.signupService.registerGhostUser(userRegistration).pipe(
-            switchMap((loginResponse) => {
-              this.clearInfoMessage();
-              return this.authenticationService.setAuthTokensAndUser(loginResponse);
-            }),
-            switchMap(() => this.currentUser$),
-            map(user => {
-              if (!user) throw new Error('Ghost user registration or login failed.');
-              return user;
-            }),
-            catchError(error => {
-              this.clearInfoMessage();
-              this.setErrorMessage('Guest checkout setup failed. Please try again or register.');
-              console.error('Guest checkout error:', error);
-              return throwError(() => error);
-            })
-          );
+          this.setErrorMessage('Please sign in or register before checking out.');
+          return throwError(() => new Error('Guest checkout requires an authenticated account.'));
         } else {
           return this.currentUser$.pipe(map(user => {
             if (!user) throw new Error('No logged-in user found.');
@@ -357,13 +315,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       this.isSubmitting = false;
     }
     this.cdr.detectChanges();
-  }
-
-  private generateRandomPassword(): string {
-    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
-    const randomValues = new Uint32Array(16);
-    crypto.getRandomValues(randomValues);
-    return Array.from(randomValues, value => alphabet[value % alphabet.length]).join('');
   }
 
   private setInfoMessage(message: string): void {

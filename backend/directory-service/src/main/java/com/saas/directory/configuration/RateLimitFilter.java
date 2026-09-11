@@ -22,7 +22,7 @@ import com.saas.directory.service.RateLimitStore;
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
     private static final List<String> PROTECTED_ROUTES =
-            List.of("/login", "/register-user", "/register-ghost-user", "/validate-token", "/refresh-token");
+            List.of("/login", "/register-user", "/validate-token", "/refresh-token");
     private final int maxRequestsPerWindow;
     private final List<String> trustedProxyAddresses;
     private final RateLimitStore rateLimitStore;

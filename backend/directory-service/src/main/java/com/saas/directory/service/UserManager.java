@@ -1,7 +1,6 @@
 package com.saas.directory.service;
 
 import java.util.Optional;
-import java.util.UUID;
 import javax.management.relation.RoleNotFoundException;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -11,9 +10,7 @@ import org.springframework.util.StringUtils;
 
 import com.saas.directory.controller.helper.ResourceAlreadyExistsException;
 import com.saas.directory.controller.helper.ResourceNotFoundException;
-import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.UserRegistrationDto;
-import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
 import com.saas.directory.event.UserRegisteredEvent;
 import com.saas.directory.model.*;
 import com.saas.directory.model.helper.PaymentProcessor;
@@ -28,21 +25,18 @@ public class UserManager {
     private final RoleRepository roleRepository;
     private final ProfileManager profileManager;
     private final ApplicationEventPublisher eventPublisher;
-    private final AsaasUserManager asaasUserManager;
 
     public UserManager(
             UserRepository userRepository,
             ExternalUserRepository externalUserRepository,
             RoleRepository roleRepository,
             ProfileManager profileManager,
-            ApplicationEventPublisher eventPublisher,
-            AsaasUserManager asaasUserManager) {
+            ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.externalUserRepository = externalUserRepository;
         this.roleRepository = roleRepository;
         this.profileManager = profileManager;
         this.eventPublisher = eventPublisher;
-        this.asaasUserManager = asaasUserManager;
     }
 
     @Transactional(readOnly = true)
@@ -85,45 +79,6 @@ public class UserManager {
         final User savedUser = userRepository.save(newUser);
 
         eventPublisher.publishEvent(new UserRegisteredEvent(savedUser.getUsername()));
-
-        return savedUser;
-    }
-
-    /**
-     * Registers a guest checkout account. Any pre-existing account for the email —
-     * ghost or regular — is rejected without issuing tokens: re-registration must
-     * never authenticate as somebody else's account (ghost passwords are unseen
-     * random UUIDs, so a token here would be a de-facto login without proof of
-     * ownership). Callers receive {@code 409} via the controller advice.
-     */
-    @Transactional
-    public User registerGhostUser(UserRegistrationDto userRegistrationDto) throws Exception {
-        if (!StringUtils.hasText(userRegistrationDto.username())) {
-            throw new IllegalArgumentException("Username cannot be empty");
-        }
-        final Optional<User> optionalUser = userRepository.findUserByUsernameIgnoreCase(userRegistrationDto.username());
-
-        if (optionalUser.isPresent()) {
-            throw new ResourceAlreadyExistsException(
-                    String.format("User [%s] already exist", userRegistrationDto.username()));
-        }
-
-        final Role role = roleRepository
-                .findRoleByLabel(RoleName.USER)
-                .orElseThrow(() -> new RoleNotFoundException(String.format("Role [%s] not found", RoleName.USER)));
-
-        final User newUser = userRepository.save(new User(
-                        userRegistrationDto.username().trim(), UUID.randomUUID().toString())
-                .setRole(role)
-                .setUserType(UserType.GHOST));
-        final Profile profile = profileManager.createProfile(newUser, userRegistrationDto.profile());
-        newUser.setProfile(profile);
-        final User savedUser = userRepository.save(newUser);
-
-        // Synchronously create Asaas customer for ghost user
-        final UserDto userDto = UserDto.from(savedUser, null);
-        final AsaasCustomerCreationResponse asaasResponse = asaasUserManager.registerUser(userDto);
-        addAsaasCustomerIdToUser(userDto.getUsername(), asaasResponse.getId());
 
         return savedUser;
     }
