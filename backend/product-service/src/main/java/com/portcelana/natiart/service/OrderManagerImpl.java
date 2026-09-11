@@ -64,6 +64,23 @@ public class OrderManagerImpl implements OrderManager {
     }
 
     @Override
+    @Transactional
+    public CustomerOrder markOrderPaid(String orderId) {
+        final CustomerOrder current = getOrderById(orderId);
+        if (current.getStatus() == OrderStatus.PENDING) {
+            return updateOrderStatus(orderId, OrderStatus.PAID);
+        }
+        if (current.getStatus() == OrderStatus.PAID
+                || current.getStatus() == OrderStatus.PROCESSING
+                || current.getStatus() == OrderStatus.SHIPPED
+                || current.getStatus() == OrderStatus.DELIVERED) {
+            return current;
+        }
+        throw new IllegalArgumentException(
+                "A confirmed payment must not mark order [" + orderId + "] from status [" + current.getStatus() + "]");
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<CustomerOrder> getAllOrders() {
         return orderRepository.findAll();
