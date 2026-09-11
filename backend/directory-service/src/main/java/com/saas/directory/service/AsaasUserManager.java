@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -97,6 +98,10 @@ public class AsaasUserManager {
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("access_token", asaasApiKey);
+        final String correlationId = MDC.get(com.saas.directory.configuration.RequestCorrelationFilter.MDC_KEY);
+        if (correlationId != null) {
+            headers.set(com.saas.directory.configuration.RequestCorrelationFilter.HEADER_NAME, correlationId);
+        }
 
         return headers;
     }

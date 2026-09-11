@@ -24,7 +24,10 @@ import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -302,6 +305,35 @@ class AsaasPaymentServiceTest {
             logger.detachAppender(appender);
             logger.setLevel(previousLevel);
         }
+    }
+
+    @Test
+    void getPaymentStatus_forwardsInboundCorrelationIdToProvider() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        when(paymentRepository.findById("pay-1")).thenReturn(Optional.of(new Payment("pay-1", "cus_MINE")));
+        final AsaasPaymentCreationResponse upstream = mock(AsaasPaymentCreationResponse.class);
+        when(upstream.getCustomer()).thenReturn("cus_MINE");
+        when(upstream.getStatus()).thenReturn("PENDING");
+        when(restTemplate.exchange(
+                        eq(PAYMENTS_URL + "/pay-1"), eq(HttpMethod.GET), any(), eq(AsaasPaymentCreationResponse.class)))
+                .thenReturn(ResponseEntity.ok(upstream));
+
+        MDC.put("correlationId", "checkout-42");
+        try {
+            newService(restTemplate, paymentRepository).getPaymentStatus("pay-1", "cus_MINE");
+        } finally {
+            MDC.remove("correlationId");
+        }
+
+        final ArgumentCaptor<HttpEntity> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate)
+                .exchange(
+                        eq(PAYMENTS_URL + "/pay-1"),
+                        eq(HttpMethod.GET),
+                        entityCaptor.capture(),
+                        eq(AsaasPaymentCreationResponse.class));
+        assertEquals("checkout-42", entityCaptor.getValue().getHeaders().getFirst("X-Request-ID"));
     }
 
     @Test

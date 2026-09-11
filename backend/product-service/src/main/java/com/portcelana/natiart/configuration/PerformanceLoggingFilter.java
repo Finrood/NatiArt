@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -31,9 +32,19 @@ public class PerformanceLoggingFilter implements Filter {
         final long duration = System.currentTimeMillis() - startTime;
 
         if (duration >= SLOW_REQUEST_THRESHOLD_MS) {
-            LOGGER.info("SLOW request [{}] to [{}] took [{}] ms", method, requestURI, duration);
+            LOGGER.info(
+                    "SLOW request [{}] to [{}] took [{}] ms correlationId=[{}]",
+                    method,
+                    requestURI,
+                    duration,
+                    MDC.get(RequestCorrelationFilter.MDC_KEY));
         } else {
-            LOGGER.debug("Request [{}] to [{}] took [{}] ms", method, requestURI, duration);
+            LOGGER.debug(
+                    "Request [{}] to [{}] took [{}] ms correlationId=[{}]",
+                    method,
+                    requestURI,
+                    duration,
+                    MDC.get(RequestCorrelationFilter.MDC_KEY));
         }
     }
 

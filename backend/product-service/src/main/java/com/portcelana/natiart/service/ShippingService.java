@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
@@ -65,6 +66,10 @@ public class ShippingService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("Accept", "application/json");
         headers.set("Authorization", "Bearer " + apiToken);
+        final String correlationId = MDC.get(com.portcelana.natiart.configuration.RequestCorrelationFilter.MDC_KEY);
+        if (correlationId != null) {
+            headers.set(com.portcelana.natiart.configuration.RequestCorrelationFilter.HEADER_NAME, correlationId);
+        }
 
         final ResponseEntity<List<MelhorenvioShippingCalculationResponse>> response;
         try {

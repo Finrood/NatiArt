@@ -11,6 +11,7 @@ import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -455,6 +456,10 @@ public class AsaasPaymentService implements PaymentService {
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("access_token", asaasApiKey);
+        final String correlationId = MDC.get(com.portcelana.natiart.configuration.RequestCorrelationFilter.MDC_KEY);
+        if (correlationId != null) {
+            headers.set(com.portcelana.natiart.configuration.RequestCorrelationFilter.HEADER_NAME, correlationId);
+        }
 
         return headers;
     }
