@@ -98,4 +98,27 @@ describe('authenticationService', () => {
     TestBed.inject(HttpTestingController).verify();
     service.ngOnDestroy();
   }));
+
+  it('keeps credentials when a background refresh hits a transient server error', fakeAsync(() => {
+    const navigateSpy: jasmine.Spy = spyOn(Router.prototype, 'navigate').and.returnValue(Promise.resolve(true));
+    const service: AuthenticationService = TestBed.inject(AuthenticationService);
+    const tokenService: TokenService = TestBed.inject(TokenService);
+    const accessToken: string = unsignedToken(Math.floor(Date.now() / 1000) + 60);
+    const refreshToken: string = unsignedToken(Math.floor(Date.now() / 1000) + 8 * 24 * 3600);
+    tokenService.accessToken = accessToken;
+    tokenService.refreshToken = refreshToken;
+    const initialNavigationCount: number = navigateSpy.calls.count();
+
+    tick();
+
+    const refreshRequest: TestRequest = TestBed.inject(HttpTestingController).expectOne(REFRESH_URL);
+    refreshRequest.flush('', {status: 503, statusText: 'Service Unavailable'});
+    tick();
+
+    expect(tokenService.accessToken).toBe(accessToken);
+    expect(tokenService.refreshToken).toBe(refreshToken);
+    expect(navigateSpy.calls.count()).toBe(initialNavigationCount);
+    TestBed.inject(HttpTestingController).verify();
+    service.ngOnDestroy();
+  }));
 });
