@@ -54,6 +54,8 @@ class RequestCorrelationFilterTest {
         filter.doFilter(unsafeRequest, unsafeResponse, new MockFilterChain());
 
         assertNotNull(unsafeResponse.getHeader(RequestCorrelationFilter.HEADER_NAME));
-        assertEquals(36, unsafeResponse.getHeader(RequestCorrelationFilter.HEADER_NAME).length());
+        assertEquals(
+                36,
+                unsafeResponse.getHeader(RequestCorrelationFilter.HEADER_NAME).length());
     }
 }
