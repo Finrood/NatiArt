@@ -26,6 +26,11 @@
 
         <!-- Form Content -->
         <div class="bg-white p-8 rounded-2xl shadow-lg">
+          @if (!(isLoggedIn$ | async)) {
+            <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-md mb-6" role="status">
+              Please sign in or register before checking out. Guest checkout is currently unavailable.
+            </div>
+          }
           <form [formGroup]="checkoutForm" (ngSubmit)="onSubmit()">
 
             <!-- Step 1: Personal Information -->

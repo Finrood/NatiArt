@@ -51,7 +51,7 @@ const isEndpoint = (url: string, endpoints: string[]): boolean => {
 
 const directoryAuthEndpoints = (): string[] => {
   const endpoints = environment.api.directory.endpoints;
-  return [endpoints.login, endpoints.registerUser, endpoints.registerGhostUser];
+  return [endpoints.login, endpoints.registerUser];
 };
 
 const isAuthRequest = (url: string): boolean =>

@@ -9,13 +9,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.saas.directory.configuration.UserAuthenticationProvider;
-import com.saas.directory.dto.UserAuthDto;
 import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.UserRegistrationDto;
-import com.saas.directory.model.ExternalUser;
-import com.saas.directory.model.User;
-import com.saas.directory.repository.ExternalUserRepository;
 import com.saas.directory.service.UserManager;
 
 @RestController
@@ -23,16 +18,9 @@ public class UserRegistrationController {
     private static final Logger LOGGER = LoggerFactory.getLogger(UserRegistrationController.class);
 
     private final UserManager userManager;
-    private final UserAuthenticationProvider userAuthenticationProvider;
-    private final ExternalUserRepository externalUserRepository;
 
-    public UserRegistrationController(
-            UserManager userManager,
-            UserAuthenticationProvider userAuthenticationProvider,
-            ExternalUserRepository externalUserRepository) {
+    public UserRegistrationController(UserManager userManager) {
         this.userManager = userManager;
-        this.userAuthenticationProvider = userAuthenticationProvider;
-        this.externalUserRepository = externalUserRepository;
     }
 
     @PostMapping("/register-user")
@@ -42,18 +30,5 @@ public class UserRegistrationController {
 
         final UserDto userDto = UserDto.from(userManager.registerUser(userRegistrationDto), null);
         return ResponseEntity.ok(userDto);
-    }
-
-    @PostMapping("/register-ghost-user")
-    public ResponseEntity<UserAuthDto> registerGhostUser(@Valid @RequestBody UserRegistrationDto userRegistrationDto)
-            throws Exception {
-        LOGGER.info("Registering ghost user [{}]", userRegistrationDto.username());
-
-        final User user = userManager.registerGhostUser(userRegistrationDto);
-        ExternalUser externalUser = externalUserRepository.findByUser(user).orElse(null);
-        final UserDto userDto = UserDto.from(user, externalUser);
-        final String accessToken = userAuthenticationProvider.createAccessToken(userDto);
-        final String refreshToken = userAuthenticationProvider.createRefreshToken(userDto);
-        return ResponseEntity.ok(new UserAuthDto(accessToken, refreshToken));
     }
 }

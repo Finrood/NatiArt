@@ -10,7 +10,6 @@ import { CartService } from '../../../service/cart.service';
 import { OrderService } from '../../../service/order.service';
 import { PaymentService } from '../../../service/payment.service';
 import { AuthenticationService } from '../../../../directory/service/authentication.service';
-import { SignupService } from '../../../../directory/service/signup.service';
 import { User, RoleName } from '../../../../directory/models/user.model';
 
 describe('CheckoutComponent', () => {
@@ -18,7 +17,6 @@ describe('CheckoutComponent', () => {
   let component: CheckoutComponent;
   let routerNavigateSpy: jasmine.Spy;
   let createPixPaymentSpy: jasmine.Spy;
-  let registerGhostUserSpy: jasmine.Spy;
   let isLoggedInSubject: BehaviorSubject<boolean>;
   let currentUserSubject: BehaviorSubject<User | null>;
 
@@ -67,7 +65,6 @@ describe('CheckoutComponent', () => {
     isLoggedInSubject = new BehaviorSubject<boolean>(true);
     currentUserSubject = new BehaviorSubject<User | null>(loggedInUser);
     createPixPaymentSpy = jasmine.createSpy('createPixPayment');
-    registerGhostUserSpy = jasmine.createSpy('registerGhostUser');
 
     await TestBed.configureTestingModule({
       imports: [CheckoutComponent],
@@ -97,10 +94,6 @@ describe('CheckoutComponent', () => {
           },
         },
         {
-          provide: SignupService,
-          useValue: { registerGhostUser: registerGhostUserSpy },
-        },
-        {
           provide: PaymentService,
           useValue: { createPixPayment: createPixPaymentSpy },
         },
@@ -112,7 +105,6 @@ describe('CheckoutComponent', () => {
     fixture = TestBed.createComponent(CheckoutComponent);
     component = fixture.componentInstance;
     createPixPaymentSpy.and.returnValue(of(paymentResponseWith('pay_123')));
-    registerGhostUserSpy.and.returnValue(of({ accessToken: 'a', refreshToken: 'r' }));
     fixture.detectChanges();
   });
 
@@ -200,7 +192,7 @@ describe('CheckoutComponent', () => {
     expect(component.errorMessage).toContain('Could not process PIX payment');
   });
 
-  it('resolves the guest user once for a guest PIX submit', async () => {
+  it('blocks unauthenticated checkout before payment', async () => {
     isLoggedInSubject.next(false);
     currentUserSubject.next(loggedInUser);
     component.checkoutForm.get('userInfo')?.setValue({
@@ -225,8 +217,8 @@ describe('CheckoutComponent', () => {
 
     await component.onSubmit();
 
-    expect(registerGhostUserSpy).toHaveBeenCalledTimes(1);
-    expect(createPixPaymentSpy).toHaveBeenCalledTimes(1);
-    expect(routerNavigateSpy).toHaveBeenCalledWith(['/pix-payment', 'pay_123']);
+    expect(component.errorMessage).toContain('Please sign in or register');
+    expect(createPixPaymentSpy).not.toHaveBeenCalled();
+    expect(routerNavigateSpy).not.toHaveBeenCalled();
   });
 });
