@@ -1,4 +1,4 @@
-package com.saas.directory.configuration;
+package com.portcelana.natiart.configuration;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -10,29 +10,29 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpMethod;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.saas.directory.service.DatabaseRateLimitStore;
-import com.saas.directory.service.RateLimitStore;
+import com.portcelana.natiart.service.DatabaseRateLimitStore;
+import com.portcelana.natiart.service.RateLimitStore;
 
 @Component
-public class RateLimitFilter extends OncePerRequestFilter {
-    private static final List<String> PROTECTED_ROUTES =
-            List.of("/login", "/register-user", "/register-ghost-user", "/validate-token", "/refresh-token");
+@ConditionalOnBean(RateLimitStore.class)
+public class ShippingRateLimitFilter extends OncePerRequestFilter {
+    private static final String SHIPPING_ESTIMATE_ROUTE = "/shipping/estimate";
+
     private final int maxRequestsPerWindow;
     private final List<String> trustedProxyAddresses;
     private final RateLimitStore rateLimitStore;
 
-    @Autowired
-    public RateLimitFilter(
-            @Value("${saas.security.rate-limit.max-requests-per-minute:10}") int maxRequestsPerWindow,
-            @Value("${saas.security.rate-limit.trusted-proxies:}") List<String> trustedProxyAddresses,
+    public ShippingRateLimitFilter(
+            @Value("${nati.security.rate-limit.max-requests-per-minute:10}") int maxRequestsPerWindow,
+            @Value("${nati.security.rate-limit.trusted-proxies:}") List<String> trustedProxyAddresses,
             RateLimitStore rateLimitStore) {
         this.maxRequestsPerWindow = maxRequestsPerWindow;
         this.trustedProxyAddresses = trustedProxyAddresses.stream()
@@ -44,22 +44,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        if (!HttpMethod.POST.matches(request.getMethod())) {
-            return true;
-        }
-        return PROTECTED_ROUTES.stream().noneMatch(request.getRequestURI()::endsWith);
+        return !HttpMethod.POST.matches(request.getMethod())
+                || !SHIPPING_ESTIMATE_ROUTE.equals(request.getRequestURI());
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        final String clientKey = clientIp(request);
         final boolean allowed;
         try {
-            allowed = tryAcquireWithRetry(clientKey);
+            allowed = tryAcquireWithRetry(clientIp(request));
         } catch (RuntimeException exception) {
-            // A limiter that cannot reach its shared store must not silently
-            // become an unlimited bypass for authentication endpoints.
             response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, "Rate limit service unavailable");
             return;
         }
@@ -98,7 +93,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return remoteAddress;
     }
 
-    private static String normalizeIp(String candidate) {
+    static String normalizeIp(String candidate) {
         if (candidate == null || candidate.length() > 128 || !isIpLiteral(candidate)) {
             return "unknown";
         }

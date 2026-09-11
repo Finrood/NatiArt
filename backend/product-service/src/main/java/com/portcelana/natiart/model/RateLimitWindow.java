@@ -1,4 +1,4 @@
-package com.saas.directory.model;
+package com.portcelana.natiart.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -7,7 +7,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
 @Entity
-@Table(name = "auth_rate_limit_window")
+@Table(name = "shipping_rate_limit_window")
 public class RateLimitWindow {
     @Id
     @Column(length = 128)
@@ -22,18 +22,12 @@ public class RateLimitWindow {
     @Version
     private long version;
 
-    protected RateLimitWindow() {
-        // FOR JPA
-    }
+    protected RateLimitWindow() {}
 
     public RateLimitWindow(String clientKey, long windowStart, int requestCount) {
         this.clientKey = clientKey;
         this.windowStart = windowStart;
         this.requestCount = requestCount;
-    }
-
-    public String getClientKey() {
-        return clientKey;
     }
 
     public long getWindowStart() {
