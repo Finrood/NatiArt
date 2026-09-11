@@ -12,6 +12,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -380,6 +382,54 @@ class OrderManagerImplTest {
 
         verify(orderRepository, never()).updateStatusById(anyString(), any());
         verify(orderRepository, never()).save(any(CustomerOrder.class));
+    }
+
+    @Test
+    void markOrderPaid_transitionsPendingOrderThroughLifecycleGuard() {
+        final CustomerOrder order = new CustomerOrder().setStatus(OrderStatus.PENDING);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(orderRepository.updateStatusById(order.getId(), OrderStatus.PAID)).thenAnswer(invocation -> {
+            order.setStatus(OrderStatus.PAID);
+            return 1;
+        });
+
+        final CustomerOrder updated = orderManager.markOrderPaid(order.getId());
+
+        assertEquals(OrderStatus.PAID, updated.getStatus());
+        verify(orderRepository).updateStatusById(order.getId(), OrderStatus.PAID);
+    }
+
+    @Test
+    void markOrderPaid_repeatedConfirmationDoesNotUpdateAlreadyPaidOrder() {
+        final CustomerOrder order = new CustomerOrder().setStatus(OrderStatus.PAID);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        assertSame(order, orderManager.markOrderPaid(order.getId()));
+
+        verify(orderRepository, never()).updateStatusById(anyString(), any());
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = OrderStatus.class,
+            names = {"PROCESSING", "SHIPPED", "DELIVERED"})
+    void markOrderPaid_doesNotRewindFulfillmentOrder(OrderStatus status) {
+        final CustomerOrder order = new CustomerOrder().setStatus(status);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        assertSame(order, orderManager.markOrderPaid(order.getId()));
+
+        verify(orderRepository, never()).updateStatusById(anyString(), any());
+    }
+
+    @Test
+    void markOrderPaid_rejectsCancelledOrderWithoutUpdatingIt() {
+        final CustomerOrder order = new CustomerOrder().setStatus(OrderStatus.CANCELLED);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        assertThrows(IllegalArgumentException.class, () -> orderManager.markOrderPaid(order.getId()));
+
+        verify(orderRepository, never()).updateStatusById(anyString(), any());
     }
 
     @Test

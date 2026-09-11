@@ -18,7 +18,6 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -57,18 +56,19 @@ public class AsaasPaymentService implements PaymentService {
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
     private final PaymentIdempotencyService paymentIdempotencyService;
+    private final OrderManager orderManager;
     private final RetryTemplate retryTemplate;
 
     private final String asaasApiKey;
 
-    @Autowired
     public AsaasPaymentService(
             @Value("${natiart.payment.asaas.apikey}") String asaasApiKey,
             @Value("${natiart.payment.asaas.payments-url:https://sandbox.asaas.com/api/v3/payments}")
                     String asaasPaymentUrl,
             PaymentRepository paymentRepository,
             OrderRepository orderRepository,
-            PaymentIdempotencyService paymentIdempotencyService) {
+            PaymentIdempotencyService paymentIdempotencyService,
+            OrderManager orderManager) {
         if (asaasApiKey == null || asaasApiKey.isBlank()) {
             throw new IllegalStateException(
                     "natiart.payment.asaas.apikey is blank: set the NATIART_PAYMENT_ASAAS_APIKEY environment variable");
@@ -82,6 +82,7 @@ public class AsaasPaymentService implements PaymentService {
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
         this.paymentIdempotencyService = paymentIdempotencyService;
+        this.orderManager = orderManager;
         this.retryTemplate = createRetryTemplate();
     }
 
@@ -91,13 +92,15 @@ public class AsaasPaymentService implements PaymentService {
             RestTemplate restTemplate,
             PaymentRepository paymentRepository,
             OrderRepository orderRepository,
-            PaymentIdempotencyService paymentIdempotencyService) {
+            PaymentIdempotencyService paymentIdempotencyService,
+            OrderManager orderManager) {
         this.asaasApiKey = asaasApiKey;
         this.asaasPaymentUrl = asaasPaymentUrl;
         this.restTemplate = restTemplate;
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
         this.paymentIdempotencyService = paymentIdempotencyService;
+        this.orderManager = orderManager;
         this.retryTemplate = createRetryTemplate();
     }
 
@@ -389,12 +392,18 @@ public class AsaasPaymentService implements PaymentService {
     }
 
     public PaymentStatusResponse getPaymentStatus(String paymentId, String requesterExternalId) {
-        getPaymentOrDie(paymentId, requesterExternalId);
+        final Payment localPayment = getPaymentOrDie(paymentId, requesterExternalId);
         final AsaasPaymentCreationResponse payment = fetchPaymentOrDie(paymentId);
         requireOwnedPayment(payment.getCustomer(), requesterExternalId);
 
-        return new PaymentStatusResponse(
-                paymentId, convertAsaasPaymentStatusToGeneralPaymentStatus(parseAsaasStatus(payment.getStatus())));
+        final PaymentStatus status =
+                convertAsaasPaymentStatusToGeneralPaymentStatus(parseAsaasStatus(payment.getStatus()));
+        if (status == PaymentStatus.COMPLETED
+                && localPayment.getOrderId() != null
+                && !localPayment.getOrderId().isBlank()) {
+            orderManager.markOrderPaid(localPayment.getOrderId());
+        }
+        return new PaymentStatusResponse(paymentId, status);
     }
 
     private AsaasPaymentCreationResponse fetchPaymentOrDie(String paymentId) {

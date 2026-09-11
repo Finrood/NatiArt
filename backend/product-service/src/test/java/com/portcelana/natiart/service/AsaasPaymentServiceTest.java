@@ -75,7 +75,8 @@ class AsaasPaymentServiceTest {
                 mock(RestTemplate.class),
                 mock(PaymentRepository.class),
                 mock(OrderRepository.class),
-                newIdempotencyService());
+                newIdempotencyService(),
+                mock(OrderManager.class));
     }
 
     private PaymentIdempotencyService newIdempotencyService() {
@@ -104,7 +105,23 @@ class AsaasPaymentServiceTest {
                 restTemplate,
                 paymentRepository,
                 orderRepository,
-                paymentIdempotencyService);
+                paymentIdempotencyService,
+                mock(OrderManager.class));
+    }
+
+    private AsaasPaymentService newService(
+            RestTemplate restTemplate,
+            PaymentRepository paymentRepository,
+            OrderRepository orderRepository,
+            OrderManager orderManager) {
+        return new AsaasPaymentService(
+                "test-api-key",
+                PAYMENTS_URL,
+                restTemplate,
+                paymentRepository,
+                orderRepository,
+                newIdempotencyService(),
+                orderManager);
     }
 
     @Test
@@ -116,7 +133,8 @@ class AsaasPaymentServiceTest {
                         PAYMENTS_URL,
                         mock(PaymentRepository.class),
                         mock(OrderRepository.class),
-                        mock(PaymentIdempotencyService.class)));
+                        mock(PaymentIdempotencyService.class),
+                        mock(OrderManager.class)));
         assertThrows(
                 IllegalStateException.class,
                 () -> new AsaasPaymentService(
@@ -124,7 +142,8 @@ class AsaasPaymentServiceTest {
                         PAYMENTS_URL,
                         mock(PaymentRepository.class),
                         mock(OrderRepository.class),
-                        mock(PaymentIdempotencyService.class)));
+                        mock(PaymentIdempotencyService.class),
+                        mock(OrderManager.class)));
     }
 
     @Test
@@ -719,6 +738,58 @@ class AsaasPaymentServiceTest {
         assertEquals("pay-10", response.getPaymentId());
         verify(restTemplate, never()).postForEntity(anyString(), any(), eq(AsaasPaymentCreationResponse.class));
         verify(paymentRepository, never()).save(any(Payment.class));
+    }
+
+    @Test
+    void getPaymentStatus_completedOrderPaymentMarksOrderPaid() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        final OrderRepository orderRepository = mock(OrderRepository.class);
+        final OrderManager orderManager = mock(OrderManager.class);
+        when(paymentRepository.findById("pay-complete"))
+                .thenReturn(Optional.of(new Payment("pay-complete", "cus_MINE", "ord-1")));
+        final AsaasPaymentCreationResponse upstream = mock(AsaasPaymentCreationResponse.class);
+        when(upstream.getCustomer()).thenReturn("cus_MINE");
+        when(upstream.getStatus()).thenReturn("RECEIVED");
+        when(restTemplate.exchange(
+                        eq(PAYMENTS_URL + "/pay-complete"),
+                        eq(HttpMethod.GET),
+                        any(),
+                        eq(AsaasPaymentCreationResponse.class)))
+                .thenReturn(ResponseEntity.ok(upstream));
+
+        final PaymentStatusResponse response = newService(
+                        restTemplate, paymentRepository, orderRepository, orderManager)
+                .getPaymentStatus("pay-complete", "cus_MINE");
+
+        assertEquals(PaymentStatus.COMPLETED, response.getStatus());
+        verify(orderManager).markOrderPaid("ord-1");
+    }
+
+    @Test
+    void getPaymentStatus_pendingOrderPaymentDoesNotMarkOrderPaid() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        final OrderRepository orderRepository = mock(OrderRepository.class);
+        final OrderManager orderManager = mock(OrderManager.class);
+        when(paymentRepository.findById("pay-pending"))
+                .thenReturn(Optional.of(new Payment("pay-pending", "cus_MINE", "ord-1")));
+        final AsaasPaymentCreationResponse upstream = mock(AsaasPaymentCreationResponse.class);
+        when(upstream.getCustomer()).thenReturn("cus_MINE");
+        when(upstream.getStatus()).thenReturn("PENDING");
+        when(restTemplate.exchange(
+                        eq(PAYMENTS_URL + "/pay-pending"),
+                        eq(HttpMethod.GET),
+                        any(),
+                        eq(AsaasPaymentCreationResponse.class)))
+                .thenReturn(ResponseEntity.ok(upstream));
+
+        final PaymentStatusResponse response = newService(
+                        restTemplate, paymentRepository, orderRepository, orderManager)
+                .getPaymentStatus("pay-pending", "cus_MINE");
+
+        assertEquals(PaymentStatus.PENDING, response.getStatus());
+        verifyNoInteractions(orderManager);
     }
 
     @Test
