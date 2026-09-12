@@ -3,7 +3,6 @@ package com.portcelana.natiart.storage;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -28,6 +27,10 @@ class StorageFileSystemTest {
 
     private StorageFileSystem storageWithRoots(List<String> roots) {
         return new StorageFileSystem(roots);
+    }
+
+    private StorageFileSystem storageWithRoots(List<String> roots, Path workingDirectory) {
+        return new StorageFileSystem(roots, workingDirectory);
     }
 
     private URI writeInside(Path root, String relative, String content) throws IOException {
@@ -76,15 +79,28 @@ class StorageFileSystemTest {
 
     @Test
     void openFileFallsBackToDefaultRootsWhenUnconfigured() throws IOException {
-        Path cwdImages = Path.of(System.getProperty("user.dir"), "product-images");
+        Path applicationDirectory = tempDir.resolve("application");
+        Path cwdImages = applicationDirectory.resolve("product-images");
         URI uri = writeInside(cwdImages, "fallback-test/img.webp", "image-bytes");
+        Path sentinel = Path.of(writeInside(cwdImages, "existing/sentinel.txt", "must-survive"));
+        Path externalSentinel = tempDir.resolve("external-sentinel.txt");
+        Files.writeString(externalSentinel, "external-must-survive");
+        Path link = cwdImages.resolve("existing/external-link");
         try {
-            StorageFileSystem storage = storageWithRoots(List.of());
-            try (var in = storage.openFile(uri)) {
-                assertEquals("image-bytes", new String(in.readAllBytes()));
-            }
-        } finally {
-            cleanupRecursively(cwdImages);
+            Files.createSymbolicLink(link, externalSentinel);
+        } catch (IOException | UnsupportedOperationException e) {
+            link = null;
+        }
+
+        StorageFileSystem storage = storageWithRoots(List.of(), applicationDirectory);
+        try (var in = storage.openFile(uri)) {
+            assertEquals("image-bytes", new String(in.readAllBytes()));
+        }
+
+        assertEquals("must-survive", Files.readString(sentinel));
+        assertEquals("external-must-survive", Files.readString(externalSentinel));
+        if (link != null) {
+            assertTrue(Files.isSymbolicLink(link));
         }
     }
 
@@ -288,16 +304,4 @@ class StorageFileSystemTest {
         return new InputFile(new ByteArrayInputStream(bytes), "image/webp", "img.webp", bytes.length);
     }
 
-    private void cleanupRecursively(Path path) {
-        if (path == null || !Files.exists(path)) return;
-        File dir = path.toFile();
-        File[] entries = dir.listFiles();
-        if (entries != null) {
-            for (File entry : entries) {
-                if (entry.isDirectory()) cleanupRecursively(entry.toPath());
-                else entry.delete();
-            }
-        }
-        dir.delete();
-    }
 }
