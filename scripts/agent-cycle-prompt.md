@@ -126,7 +126,7 @@ verdict findings (the reviewer already wrote machine-readable `Build:`/`Merge:`
 lines; read them via `gh pr view <n> --json comments,reviews` and treat them
 as the repair checklist):
 
-- Conflicts first: `git fetch origin <branch> origin/master && git checkout <branch>`; `git merge origin/master` (never rebase, never force-push — history must stay mergeable); resolve keeping branch intent, run `!check`, push same branch. If `mergeable` was `UNKNOWN`, re-check after fetch — Github computes lazily.
+- Conflicts first: `git fetch origin "refs/heads/<branch>:refs/remotes/origin/<branch>" "refs/heads/master:refs/remotes/origin/master" && git checkout <branch>`; `git merge origin/master` (never rebase, never force-push — history must stay mergeable); resolve keeping branch intent, run `!check`, push same branch. If `mergeable` was `UNKNOWN`, re-check after fetch — Github computes lazily.
 - Build next: `gh pr checks`, `gh run view --log-failed`; fix checks (`./gradlew spotlessApply`, fix tests/lint); `!check` green; push same branch. Never rename, never new branch, never merge red.
 - Verdict findings last: address every blocking `file:line` item from the latest `VERDICT: REQUEST_CHANGES` comment, push, re-run one reviewer per PR (Phase 3) — the re-reviewer marks `(re-reviewed <sha>)`.
 - Loop-machinery touches: fix checks + conflicts but leave OPEN (self-mod ban still bans merge).
