@@ -24,18 +24,18 @@ describe('TopBannerComponent', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
-  it('advancesTheBannerAfterOneFullRotationInterval', fakeAsync(() => {
+  it('keepsTheReviewedBannerAfterOneFullRotationInterval', fakeAsync(() => {
     const fixture = createComponent();
     expect(fixture.componentInstance.currentBannerIndex).toBe(0);
 
     tick(4500);
 
-    expect(fixture.componentInstance.currentBannerIndex).toBe(1);
+    expect(fixture.componentInstance.currentBannerIndex).toBe(0);
   }));
 
   it('nextSlideWrapsPastTheLastBannerBackToTheFirst', () => {
     const fixture = createComponent();
-    fixture.componentInstance.currentBannerIndex = 3;
+    fixture.componentInstance.currentBannerIndex = 0;
 
     fixture.componentInstance.nextSlide();
 
@@ -48,18 +48,18 @@ describe('TopBannerComponent', () => {
 
     fixture.componentInstance.prevSlide();
 
-    expect(fixture.componentInstance.currentBannerIndex).toBe(3);
+    expect(fixture.componentInstance.currentBannerIndex).toBe(0);
   });
 
   it('goToSlideJumpsToTheRequestedBannerAndRestartsTheRotation', fakeAsync(() => {
     const fixture = createComponent();
 
-    fixture.componentInstance.goToSlide(2);
-    expect(fixture.componentInstance.currentBannerIndex).toBe(2);
+    fixture.componentInstance.goToSlide(0);
+    expect(fixture.componentInstance.currentBannerIndex).toBe(0);
 
     tick(4500);
 
-    expect(fixture.componentInstance.currentBannerIndex).toBe(3);
+    expect(fixture.componentInstance.currentBannerIndex).toBe(0);
   }));
 
   it('ngOnDestroyStopsTheRotationForGood', fakeAsync(() => {
