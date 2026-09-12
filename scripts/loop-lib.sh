@@ -106,6 +106,44 @@ latest_verdict() { # $1 = PR number; prints the FIRST LINE of the newest VERDICT
     latest_verdict_body "$1" | grep -m1 '^VERDICT:' || true
 }
 
+latest_review_record() { # $1 = PR number; prints author<TAB>body for newest review verdict
+    gh pr view "$1" --json reviews --jq '[((.reviews // [])[] | {t: .submittedAt, a: (.author.login // ""), b: .body})]
+        | map(select(.b | type == "string")) | map(.b |= gsub("^[ \\t]+"; ""))
+        | map(select(.b | startswith("VERDICT:"))) | sort_by(.t) | last
+        | "\(.a)\t\(.b | split("\\n")[0])" // empty' 2>/dev/null || true
+}
+
+login_is_allowed() { # $1 = authenticated GitHub login; comma-separated allowlist is explicit
+    local login="$1" configured="${NATIART_TRUSTED_LOGINS:-Finrood}" allowed
+    IFS=',' read -r -a allowed <<<"$configured"
+    for allowed_login in "${allowed[@]}"; do
+        [[ "$login" == "$allowed_login" ]] && return 0
+    done
+    return 1
+}
+
+trusted_latest_verdict() { # $1 = PR number; review verdict only, from an allowed author
+    local record author body
+    record="$(latest_review_record "$1")"
+    [[ "$record" == *$'\t'* ]] || return 1
+    author="${record%%$'\t'*}"
+    body="${record#*$'\t'}"
+    login_is_allowed "$author" || return 1
+    printf '%s\n' "$body" | sed -n '1p'
+}
+
+is_head_bound_approval() { # $1 = first verdict line; only full 40-character SHAs qualify
+    [[ "${1:-}" =~ ^VERDICT:\ APPROVE\ \(reviewed\ [0-9a-f]{40}\)$ ]]
+}
+
+pr_is_loop_owned() { # $1 = PR number; authenticated author + exact ownership marker
+    local metadata author body
+    author="$(gh pr view "$1" --json author --jq '.author.login // empty' 2>/dev/null)" || return 1
+    body="$(gh pr view "$1" --json body --jq '.body // empty' 2>/dev/null)" || return 1
+    login_is_allowed "$author" || return 1
+    grep -qxF 'Loop-Owner: natiart-improvement-loop' <<<"$body"
+}
+
 verdict_model() { # $1 = PR number; prints the Model: value of the newest
     # VERDICT body, or empty when unattributable (feeds the cycle log so every
     # posted verdict is attributable without re-reading the PR).
