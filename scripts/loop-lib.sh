@@ -137,7 +137,7 @@ is_head_bound_approval() { # $1 = first verdict line; only full 40-character SHA
 }
 
 pr_is_loop_owned() { # $1 = PR number; authenticated author + exact ownership marker
-    local metadata author body
+    local author body
     author="$(gh pr view "$1" --json author --jq '.author.login // empty' 2>/dev/null)" || return 1
     body="$(gh pr view "$1" --json body --jq '.body // empty' 2>/dev/null)" || return 1
     login_is_allowed "$author" || return 1
