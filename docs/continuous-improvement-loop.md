@@ -240,10 +240,10 @@ table above is agent discipline, enforced by the cycle prompt.
   fix in place on the same branch this cycle (REPAIR MODE, zero new branches),
   never stop-and-idle. Conflicts resolve via `git merge origin/master` (never
   rebase/force-push), then `!check`, then push.
-- WIP recovery: dirt on a loop branch with an open PR is auto-committed as
-  `[WIP]` and pushed; dirt on a loop-prefix branch with no PR is salvaged;
-  dirt anywhere else (suspected human work — the loop never touches it) aborts
-  the cycle loudly. Dirt on master still salvages (killed-cycle fallout).
+- WIP isolation: the loop runs only in its dedicated clean implementation
+  checkout. Any dirty state or locally-ahead master commit is ownership-
+  ambiguous, so the guard aborts without staging, publishing, stashing,
+  resetting, or deleting anything. Inspect and recover that checkout manually.
 - Watchdog: `loop-watchdog.yml` runs cloud-side every 6h and opens an issue
   when no loop-branch PR (fix|perf|chore|docs|feature|salvage — human branches
   and dependabot never count, so human activity cannot mask a dead loop) moved

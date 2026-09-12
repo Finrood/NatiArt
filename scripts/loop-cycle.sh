@@ -120,73 +120,12 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
     exit 0
 fi
 
-# 1. Clean tree guard. A killed cycle (timeout kill, reboot, external pkill)
-#    can leave dirt anywhere; the loop must never wedge on it. Every dirty case
-#    self-heals: salvage the WIP to a dedicated snapshot branch (inspectable
-#    later), then continue from a pristine master. (2026-09-06: two cycles
-#    wedged overnight on dirty master; dirty-master now salvages + resets.)
-salvage_wip() { # $1 = source branch label; salvages dirt to origin/salvage/*
-    local B
-    B="salvage/$(date +%Y%m%d-%H%M%S)-$$"
-    if git checkout -q -b "$B" && git add -A && git commit -qm "[WIP] Salvaged interrupted-cycle WIP from $1 (auto-salvage)" && git push -q origin "$B"; then
-        git checkout -q master
-        git reset -q --hard origin/master
-        log "WIP salvaged to origin/$B; master reset clean."
-        return 0
-    fi
-    # Push (or commit) failed: keep WIP locally, still reach a clean master —
-    # but only reset a branch we own. If the master checkout failed (e.g. dirt
-    # blocks it), resetting here would wipe the salvage branch's staged WIP.
-    git checkout -q master 2>/dev/null || true
-    if [[ "$(git branch --show-current 2>/dev/null)" != "master" ]]; then
-        log "Could not reach master for reset; aborting with WIP kept locally on $B."
-        return 1
-    fi
-    git reset -q --hard origin/master 2>/dev/null || true
-    [[ -z "$(git status --porcelain)" ]] && { log "Salvage push failed (likely network/auth); WIP kept on local $B."; return 0; }
-    log "Could not reach a clean master even after salvage; aborting for human review."
-    return 1
-}
+# 1. Clean tree guard. This script must run in a dedicated implementation
+#    checkout. Dirty state has no reliable author/ownership proof, so the loop
+#    refuses to stage, publish, stash, reset, or otherwise reinterpret it.
 if [[ -n "$(git status --porcelain)" ]]; then
-    CUR_BRANCH=$(git branch --show-current)
-    if [[ "$CUR_BRANCH" != "master" ]]; then
-        OWNING_PR=$(gh pr list --state open --head "$CUR_BRANCH" --json number --jq length 2>/dev/null || echo 0)
-        if [[ "$OWNING_PR" -ge 1 ]]; then
-            # Existing loop branch: keep history where its PR can see it.
-            log "Dirty tree on $CUR_BRANCH with an open PR: snapshotting interrupted-cycle WIP."
-            SNAP_BEFORE="$(git rev-parse HEAD 2>/dev/null || echo none)"
-            if git add -A && git commit -qm "[WIP] Interrupted cycle snapshot (auto-committed by loop guard)" && git push -q origin "$CUR_BRANCH"; then
-                log "WIP snapshot pushed; continuing fresh."
-            elif [[ "$(git rev-parse HEAD 2>/dev/null)" != "$SNAP_BEFORE" ]]; then
-                # Commit created but push failed: resetting would orphan the WIP.
-                # Bookmark it on a salvage branch, rewind the loop branch, push
-                # the bookmark (best effort — local bookmark survives regardless).
-                SNAP_B="salvage/$(date +%Y%m%d-%H%M%S)-$$"
-                git branch "$SNAP_B" 2>/dev/null || true
-                git reset -q --hard "$SNAP_BEFORE" 2>/dev/null || true
-                if git push -q origin "$SNAP_B" 2>/dev/null; then
-                    log "WIP snapshot preserved on origin/$SNAP_B; $CUR_BRANCH rewound."
-                else
-                    log "WIP snapshot kept on local $SNAP_B (push failed); $CUR_BRANCH rewound."
-                fi
-            elif salvage_wip "$CUR_BRANCH"; then
-                :
-            else
-                exit 1
-            fi
-        elif is_loop_branch "$CUR_BRANCH" && salvage_wip "$CUR_BRANCH"; then
-            log "Dirty tree on loop branch $CUR_BRANCH (no open PR): WIP salvaged; continuing."
-        elif is_loop_branch "$CUR_BRANCH"; then
-            exit 1
-        else
-            log "Dirty tree on non-loop branch $CUR_BRANCH with no open PR: suspected human WIP; aborting (nothing salvaged, nothing reset)."
-            exit 1
-        fi
-    elif salvage_wip "master"; then
-        :
-    else
-        exit 1
-    fi
+    log "Dirty worktree detected; refusing to salvage or mutate unowned WIP. Run the loop in its dedicated clean checkout."
+    exit 1
 fi
 
 # 2. Sync master (fast-forward only, never merge/rebase here).
@@ -197,28 +136,13 @@ if ! git pull -q --ff-only origin master; then
     exit 1
 fi
 log "master at $(git rev-parse --short HEAD), tree clean."
-# 2b. Stray-commits guard: a cycle agent that exits 0 without delivering can
-#     leave finished work committed locally on master but never pushed (seen
-#     2026-09-06 18:30). Salvage to a pushed branch + PR, then reset to
-#     origin/master. If the salvage push fails, abort WITHOUT resetting —
-#     local-only work must never be destroyed.
+# 2b. Stray-commits guard: local master commits have no machine-verifiable
+#     ownership after the cycle returns. Do not publish or reset them; leave
+#     the checkout unchanged for the owner to inspect.
 LOCAL_AHEAD=$(git rev-list --count origin/master..master 2>/dev/null || echo 0)
 if [[ "$LOCAL_AHEAD" -gt 0 ]]; then
-    B="salvage/stray-$(date +%Y%m%d-%H%M%S)"
-    if git branch "$B" && git push -q origin "$B"; then
-        PR_URL=$(gh pr create --base master --head "$B" \
-            --title "[Salvage] $LOCAL_AHEAD unpushed master commit(s) recovered from interrupted cycle" \
-            --body "Loop guard found local master ahead of origin (work never pushed by the cycle that made it). Recovered to a reviewable PR; master reset to origin. Created by the loop guard (no agent model); review like any cycle output.
-Model: loop-guard/salvage" \
-            2>/dev/null || true)
-        git checkout -q master
-        git reset -q --hard origin/master
-        log "Salvaged $LOCAL_AHEAD unpushed master commit(s) to origin/$B${PR_URL:+; PR: $PR_URL}."
-    else
-        git branch -D "$B" 2>/dev/null || true
-        log "master has $LOCAL_AHEAD unpushed commit(s) and salvage push failed; aborting cycle (work kept local for retry)."
-        exit 1
-    fi
+    log "master is $LOCAL_AHEAD commit(s) ahead of origin/master; refusing to publish or reset unowned commits."
+    exit 1
 fi
 
 # 3. Backlog guard: is there OPEN work? Starvation is a bug, so a low (not
