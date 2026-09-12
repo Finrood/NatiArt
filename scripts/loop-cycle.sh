@@ -293,7 +293,7 @@ for n in $CODE_PRS $DOCS_PRS; do
         log "Could not resolve changed files for PR #$n; leaving OPEN (fail closed)."
         continue
     fi
-    if grep -qE '^(scripts/|agents/|\.github/|\.cursorrules|docs/continuous-improvement-loop\.md|docs/loop-lenses\.md)|(^|/)(AGENTS\.md|CLAUDE\.md|GEMINI\.md)$' <<<"$PR_FILES"; then
+    if files_touch_loop_machinery "$PR_FILES"; then
         log "PR #$n touches loop machinery; leaving OPEN for human review (self-modification ban)."
         continue
     fi
@@ -343,15 +343,40 @@ done
 # a verdict (routine bumps; the agent's Lens-16 routine and the human own the
 # rest). Majors, group bumps (unparseable semver), young, and red PRs stay
 # open. Shares the max-2 merge budget above. Never pushes to their branches.
-while IFS=$'\t' read -r dn dcreated dtitle; do
+while IFS=$'\t' read -r dn _dcreated _dtitle; do
     [[ -z "$dn" ]] && continue
     [[ "$merged" -ge 2 ]] && { log "Merged 2 this cycle; dependabot #$dn waits for next cycle."; break; }
+
+    D_META="$(gh_safe gh pr view "$dn" --json author,headRefOid,commits,title \
+        --jq '[.author.login, .headRefOid, ((.commits | last | .committedDate) // ""), .title] | @tsv')"
+    IFS=$'\t' read -r d_author d_head_sha d_head_updated dtitle <<<"$D_META"
+    if ! dependabot_author_is_verified "${d_author:-}"; then
+        log "Dependabot #$dn left open (authenticated author is not dependabot[bot])."
+        continue
+    fi
+    if [[ -z "${d_head_sha:-}" || -z "${d_head_updated:-}" || -z "${dtitle:-}" ]]; then
+        log "Dependabot #$dn metadata is unavailable; leaving open."
+        continue
+    fi
     bump="$(semver_bump "$dtitle")"
     if [[ "$bump" != "patch" && "$bump" != "minor" ]]; then
         log "Dependabot #$dn left open ($bump scope needs agent/human)."
         continue
     fi
-    created_s=$(date -d "$dcreated" +%s 2>/dev/null || echo 0)
+    D_FILES=""
+    if ! D_FILES="$(gh pr view "$dn" --json files --jq '.files[].path' 2>/dev/null)" || [[ -z "$D_FILES" ]]; then
+        log "Dependabot #$dn changed files are unavailable; leaving open."
+        continue
+    fi
+    if files_touch_loop_machinery "$D_FILES"; then
+        log "Dependabot #$dn touches loop machinery; leaving open for human review."
+        continue
+    fi
+    if ! dependabot_files_supported "$D_FILES"; then
+        log "Dependabot #$dn changed files exceed supported manifest/lockfile scope; leaving open."
+        continue
+    fi
+    created_s=$(date -d "$d_head_updated" +%s 2>/dev/null || echo 0)
     now_s=$(date +%s)
     if [[ "$created_s" -le 0 || $(( (now_s - created_s) / 3600 )) -lt 48 ]]; then
         log "Dependabot #$dn left open ($bump but younger than 48h)."
@@ -366,11 +391,6 @@ while IFS=$'\t' read -r dn dcreated dtitle; do
         log "Dependabot #$dn has no green checks yet; leaving open."
         continue
     fi
-    D_FILES=""
-    if ! D_FILES="$(gh pr view "$dn" --json files --jq '.files[].path' 2>/dev/null)" || [[ -z "$D_FILES" ]]; then
-        log "Dependabot #$dn changed files are unavailable; leaving open."
-        continue
-    fi
     if ! required_checks_passed "$D_FILES" "$dchecks"; then
         log "Dependabot #$dn is missing one or more path-required green checks; leaving open."
         continue
@@ -380,8 +400,13 @@ while IFS=$'\t' read -r dn dcreated dtitle; do
         log "Dependabot #$dn mergeability is $D_MERGEABLE_STATE; leaving open until GitHub confirms MERGEABLE."
         continue
     fi
-    log "Merging aged green dependabot #$dn ($bump, >48h)."
-    if gh pr merge "$dn" --merge --delete-branch 2>&1 | tail -2; then
+    D_FINAL_SHA="$(gh pr view "$dn" --json headRefOid --jq .headRefOid 2>/dev/null || true)"
+    if [[ "$D_FINAL_SHA" != "$d_head_sha" ]]; then
+        log "Dependabot #$dn head changed during validation; leaving open for a fresh soak/checks snapshot."
+        continue
+    fi
+    log "Merging aged green dependabot #$dn ($bump, >48h, head-bound)."
+    if gh pr merge "$dn" --match-head-commit "$d_head_sha" --merge --delete-branch 2>&1 | tail -2; then
         merged=$((merged + 1))
     else
         log "Merge of dependabot #$dn failed transiently; leaving open for next cycle."
