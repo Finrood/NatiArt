@@ -741,7 +741,7 @@ class AsaasPaymentServiceTest {
     }
 
     @Test
-    void getPaymentStatus_completedOrderPaymentMarksOrderPaid() {
+    void getPaymentStatus_completedOrderPaymentDoesNotMutateOrderFromBrowserPolling() {
         final RestTemplate restTemplate = mock(RestTemplate.class);
         final PaymentRepository paymentRepository = mock(PaymentRepository.class);
         final OrderRepository orderRepository = mock(OrderRepository.class);
@@ -763,7 +763,7 @@ class AsaasPaymentServiceTest {
                 .getPaymentStatus("pay-complete", "cus_MINE");
 
         assertEquals(PaymentStatus.COMPLETED, response.getStatus());
-        verify(orderManager).markOrderPaid("ord-1");
+        verifyNoInteractions(orderManager);
     }
 
     @Test

@@ -31,6 +31,11 @@ public class Payment {
     @Column(length = 64)
     private String idempotencyKey;
 
+    @Column(length = 64)
+    private String providerStatus;
+
+    private Instant providerUpdatedAt;
+
     @CreatedDate
     @Column(updatable = false)
     private Instant createdAt;
@@ -66,6 +71,24 @@ public class Payment {
 
     public String getIdempotencyKey() {
         return idempotencyKey;
+    }
+
+    public String getProviderStatus() {
+        return providerStatus;
+    }
+
+    public Payment setProviderStatus(String providerStatus) {
+        this.providerStatus = providerStatus;
+        return this;
+    }
+
+    public Instant getProviderUpdatedAt() {
+        return providerUpdatedAt;
+    }
+
+    public Payment setProviderUpdatedAt(Instant providerUpdatedAt) {
+        this.providerUpdatedAt = providerUpdatedAt;
+        return this;
     }
 
     public Instant getCreatedAt() {
