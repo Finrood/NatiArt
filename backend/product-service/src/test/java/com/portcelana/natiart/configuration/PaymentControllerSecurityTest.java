@@ -225,7 +225,7 @@ class PaymentControllerSecurityTest {
                             post("/api/payment/create")
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(
-                                            "{\"paymentProcessor\":\"ASAAS\",\"customerId\":\"cus_OTHER\",\"value\":10.0,\"billingType\":\"PIX\"}"))
+                                            "{\"paymentProcessor\":\"ASAAS\",\"customerId\":\"cus_OTHER\",\"value\":10.0,\"billingType\":\"PIX\",\"orderId\":\"ord_1\"}"))
                     .andExpect(status().isOk());
             final ArgumentCaptor<PaymentCreationRequest> requestCaptor =
                     ArgumentCaptor.forClass(PaymentCreationRequest.class);
@@ -233,6 +233,24 @@ class PaymentControllerSecurityTest {
             // spoofable customerId in the body ("cus_OTHER").
             verify(paymentService).createPayment(requestCaptor.capture(), eq("cus_MINE"), isNull());
             assertEquals("cus_OTHER", requestCaptor.getValue().getCustomerId());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void authenticatedCreatePaymentWithoutOrderIdIs400BeforeServiceCall() throws Exception {
+        final AuthenticationResponseDto.Principal principal = mock(AuthenticationResponseDto.Principal.class);
+        when(principal.getExternalId()).thenReturn("cus_MINE");
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+
+        try {
+            mockMvc.perform(post("/api/payment/create")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"paymentProcessor\":\"ASAAS\",\"customerId\":\"cus_MINE\",\"value\":10.0,\"billingType\":\"PIX\"}"))
+                    .andExpect(status().isBadRequest());
+            verifyNoInteractions(paymentService);
         } finally {
             SecurityContextHolder.clearContext();
         }

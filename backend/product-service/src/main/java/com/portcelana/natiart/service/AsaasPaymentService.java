@@ -155,8 +155,9 @@ public class AsaasPaymentService implements PaymentService {
 
         // A legacy order-linked ledger row may predate the reservation table.
         // Adopt it before any provider egress and make future retries durable.
-        final Optional<Payment> existing =
-                paymentRepository.findByOrderIdAndOwnerExternalId(orderId, requesterExternalId);
+        final Optional<Payment> existing = orderId != null && !orderId.isBlank()
+                ? paymentRepository.findByOrderIdAndOwnerExternalId(orderId, requesterExternalId)
+                : Optional.empty();
         if (existing.isPresent()) {
             paymentIdempotencyService.markSucceeded(
                     requesterExternalId,
