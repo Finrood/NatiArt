@@ -10,55 +10,32 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-import com.saas.directory.dto.UserDto;
-import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
 import com.saas.directory.event.UserRegisteredEvent;
-import com.saas.directory.model.ExternalUser;
 import com.saas.directory.service.AsaasApiException;
-import com.saas.directory.service.AsaasUserManager;
-import com.saas.directory.service.UserManager;
-import com.saas.directory.service.support.RetryExternalApiCall;
+import com.saas.directory.service.AsaasProvisioningService;
 
 @Component
 public class UserRegistrationListener {
     private static final Logger LOGGER = LoggerFactory.getLogger(UserRegistrationListener.class);
 
-    private final UserManager userManager;
-    private final AsaasUserManager asaasUserManager;
+    private final AsaasProvisioningService provisioningService;
 
-    public UserRegistrationListener(UserManager userManager, AsaasUserManager asaasUserManager) {
-        this.userManager = userManager;
-        this.asaasUserManager = asaasUserManager;
+    public UserRegistrationListener(AsaasProvisioningService provisioningService) {
+        this.provisioningService = provisioningService;
     }
 
     /**
-     * Handles the user registration event asynchronously.
-     * This method is triggered after a new user is committed to the database.
-     * It registers the user with the external Asaas payment service and updates
-     * the user record with the external customer ID.
+     * Starts the durable provisioning job after registration. The scheduler can
+     * recover the same job if this best-effort wake-up is missed.
      *
      * @param event The event containing the newly registered user's username.
      */
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    @RetryExternalApiCall
-    public void handleUserRegistration(UserRegisteredEvent event) throws Exception {
+    public void handleUserRegistration(UserRegisteredEvent event) {
         LOGGER.info("Asynchronously handling registration for user [{}]", event.username());
-
-        final UserDto userDto = UserDto.from(userManager.getUserOrDie(event.username()), null);
-        final AsaasCustomerCreationResponse asaasResponse;
-        try {
-            asaasResponse = asaasUserManager.registerUser(userDto);
-        } catch (AsaasApiException e) {
-            if (e.getHttpStatus().is4xxClientError()) {
-                logPermanentFailure(event, e);
-            }
-            throw e;
-        }
-        ExternalUser externalUser = userManager.addAsaasCustomerIdToUser(userDto.getUsername(), asaasResponse.getId());
-
-        LOGGER.info("Successfully created Asaas customer [{}] for user [{}]", asaasResponse.getId(), event.username());
+        provisioningService.provisionUser(event.username());
     }
 
     /**
