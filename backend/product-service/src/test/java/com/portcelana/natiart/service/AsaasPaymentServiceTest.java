@@ -569,6 +569,78 @@ class AsaasPaymentServiceTest {
     }
 
     @Test
+    void createPaymentDifferentKeysForOneOrderShareOneProviderAttempt() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        final OrderRepository orderRepository = mock(OrderRepository.class);
+        final PaymentIdempotencyService idempotencyService = mock(PaymentIdempotencyService.class);
+        final AtomicReference<PaymentIdempotency> storedReservation = new AtomicReference<>();
+        when(orderRepository.findById("ord_1"))
+                .thenReturn(Optional.of(new CustomerOrder()
+                        .setTotalAmount(new BigDecimal("10.00"))
+                        .setOwnerExternalId("cus_MINE")));
+        when(paymentRepository.findByOrderIdAndOwnerExternalId("ord_1", "cus_MINE"))
+                .thenReturn(Optional.empty());
+        when(idempotencyService.reserveForOrder(anyString(), eq("ord_1"), anyString(), anyString()))
+                .thenAnswer(invocation -> {
+                    PaymentIdempotency reservation = storedReservation.get();
+                    if (reservation == null) {
+                        reservation = new PaymentIdempotency(
+                                invocation.getArgument(0),
+                                invocation.getArgument(2),
+                                invocation.getArgument(1),
+                                invocation.getArgument(3));
+                        storedReservation.set(reservation);
+                        return new PaymentIdempotencyReservation(reservation, true);
+                    }
+                    return new PaymentIdempotencyReservation(reservation, false);
+                });
+        doAnswer(invocation -> {
+                    storedReservation
+                            .get()
+                            .setProviderPaymentId(invocation.getArgument(2))
+                            .setStatus(PaymentIdempotencyStatus.SUCCEEDED);
+                    return null;
+                })
+                .when(idempotencyService)
+                .markSucceeded(anyString(), anyString(), anyString());
+
+        final AsaasPaymentCreationResponse upstream = mock(AsaasPaymentCreationResponse.class);
+        when(upstream.getId()).thenReturn("pay-order-idempotent");
+        when(upstream.getDateCreated()).thenReturn(LocalDate.of(2026, 9, 8));
+        when(upstream.getCustomer()).thenReturn("cus_MINE");
+        when(upstream.getBillingType()).thenReturn("PIX");
+        when(upstream.getStatus()).thenReturn("PENDING");
+        when(upstream.getDueDate()).thenReturn(LocalDate.of(2026, 9, 9));
+        when(restTemplate.postForEntity(eq(PAYMENTS_URL), any(), eq(AsaasPaymentCreationResponse.class)))
+                .thenReturn(ResponseEntity.ok(upstream));
+        when(restTemplate.exchange(
+                        eq(PAYMENTS_URL + "/pay-order-idempotent"),
+                        eq(HttpMethod.GET),
+                        any(),
+                        eq(AsaasPaymentCreationResponse.class)))
+                .thenReturn(ResponseEntity.ok(upstream));
+
+        final AsaasPaymentService service = newService(
+                restTemplate, paymentRepository, orderRepository, idempotencyService);
+        final PaymentCreationRequest request = orderLinked(new PaymentCreationRequest(
+                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX));
+
+        assertEquals(
+                "pay-order-idempotent",
+                service.createPayment(request, "cus_MINE", "client-key-one").getPaymentId());
+        assertEquals(
+                "pay-order-idempotent",
+                service.createPayment(request, "cus_MINE", "client-key-two").getPaymentId());
+        verify(restTemplate, times(1))
+                .postForEntity(eq(PAYMENTS_URL), any(), eq(AsaasPaymentCreationResponse.class));
+        final ArgumentCaptor<HttpEntity<AsaasPaymentCreationRequest>> requestCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).postForEntity(
+                eq(PAYMENTS_URL), requestCaptor.capture(), eq(AsaasPaymentCreationResponse.class));
+        assertEquals(storedReservation.get().getId(), requestCaptor.getValue().getHeaders().getFirst("Idempotency-Key"));
+    }
+
+    @Test
     void createPayment_orderLinked_rejectsValueMismatchWithoutUpstreamCharge() {
         final RestTemplate restTemplate = mock(RestTemplate.class);
         final OrderRepository orderRepository = mock(OrderRepository.class);
