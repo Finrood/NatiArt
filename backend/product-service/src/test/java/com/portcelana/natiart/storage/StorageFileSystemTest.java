@@ -53,7 +53,9 @@ class StorageFileSystemTest {
         writeInside(root, "p1/img.webp", "image-bytes");
         StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
 
-        assertThrows(ResourceNotFoundException.class, () -> storage.openFile(URI.create("file:///etc/passwd")));
+        ResourceNotFoundException thrown =
+                assertThrows(ResourceNotFoundException.class, () -> storage.openFile(URI.create("file:///etc/passwd")));
+        assertEquals("Requested image is not available", thrown.getMessage());
     }
 
     @Test
@@ -64,6 +66,33 @@ class StorageFileSystemTest {
 
         URI escape = URI.create(root.toUri().toString() + "../secret.txt");
         assertThrows(ResourceNotFoundException.class, () -> storage.openFile(escape));
+    }
+
+    @Test
+    void openFileReturnsNotFoundForMissingFileWithoutDisclosingPath() throws IOException {
+        Path root = tempDir.resolve("product-images");
+        Files.createDirectories(root);
+        Path missing = root.resolve("retired-product/missing.webp");
+        StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+
+        ResourceNotFoundException thrown =
+                assertThrows(ResourceNotFoundException.class, () -> storage.openFile(missing.toUri()));
+
+        assertEquals("Requested image is not available", thrown.getMessage());
+        assertFalse(thrown.getMessage().contains(root.toString()));
+    }
+
+    @Test
+    void openFileReturnsNotFoundForDirectory() throws IOException {
+        Path root = tempDir.resolve("product-images");
+        Path directory = root.resolve("retired-product");
+        Files.createDirectories(directory);
+        StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+
+        ResourceNotFoundException thrown =
+                assertThrows(ResourceNotFoundException.class, () -> storage.openFile(directory.toUri()));
+
+        assertEquals("Requested image is not available", thrown.getMessage());
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.portcelana.natiart.storage;
 import java.io.*;
 import java.net.URI;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -13,7 +14,6 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.poi.util.IOUtils;
 import org.apache.poi.util.TempFile;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,11 +51,16 @@ public class StorageFileSystem implements Storage {
     @Override
     public InputStream openFile(URI path) {
         final File file = resolveAllowedFile(path);
+        if (!file.isFile()) {
+            throw new ResourceNotFoundException("Requested image is not available");
+        }
         try {
-            return FileUtils.openInputStream(file);
+            return Files.newInputStream(file.toPath(), StandardOpenOption.READ);
+        } catch (NoSuchFileException | FileNotFoundException e) {
+            // The file may be removed between the existence check and opening it.
+            throw new ResourceNotFoundException("Requested image is not available");
         } catch (IOException e) {
-            throw new IllegalStateException(
-                    String.format("Error while reading file [%s] on local storage.", file.getName()), e);
+            throw new IllegalStateException("Error while reading the requested image from local storage.", e);
         }
     }
 
@@ -68,14 +73,14 @@ public class StorageFileSystem implements Storage {
         try {
             normalizedCandidate = candidate.getCanonicalFile().toPath();
         } catch (IOException e) {
-            throw new ResourceNotFoundException("Unable to resolve requested path: " + path);
+            throw new ResourceNotFoundException("Requested image is not available");
         }
         for (Path root : allowedRoots) {
             if (normalizedCandidate.startsWith(root)) {
                 return normalizedCandidate.toFile();
             }
         }
-        throw new ResourceNotFoundException("Requested path is outside of the allowed storage roots: " + path);
+        throw new ResourceNotFoundException("Requested image is not available");
     }
 
     @Override
