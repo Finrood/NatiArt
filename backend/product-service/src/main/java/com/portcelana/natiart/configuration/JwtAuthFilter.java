@@ -49,7 +49,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         this.directoryServiceValidationSecret = directoryServiceValidationSecret;
     }
 
-    JwtAuthFilter(WebClient.Builder webClientBuilder, String directoryServiceUrl, TokenValidationCache validationCache) {
+    JwtAuthFilter(
+            WebClient.Builder webClientBuilder, String directoryServiceUrl, TokenValidationCache validationCache) {
         this(webClientBuilder, directoryServiceUrl, validationCache, "");
     }
 

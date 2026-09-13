@@ -58,27 +58,27 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     RateLimitFilter(int maxRequestsPerWindow, List<String> trustedProxyAddresses, RateLimitStore rateLimitStore) {
-        this(maxRequestsPerWindow, maxRequestsPerWindow, trustedProxyAddresses, rateLimitStore, "", maxRequestsPerWindow);
-    }
-
-    RateLimitFilter(int maxRequestsPerWindow, int clientErrorMaxRequestsPerWindow,
-            List<String> trustedProxyAddresses, RateLimitStore rateLimitStore) {
-        this(maxRequestsPerWindow, clientErrorMaxRequestsPerWindow, trustedProxyAddresses, rateLimitStore, "",
+        this(
+                maxRequestsPerWindow,
+                maxRequestsPerWindow,
+                trustedProxyAddresses,
+                rateLimitStore,
+                "",
                 maxRequestsPerWindow);
     }
 
-    RateLimitFilter(int maxRequestsPerWindow, int clientErrorMaxRequestsPerWindow,
-            List<String> trustedProxyAddresses, RateLimitStore rateLimitStore, String internalValidationSecret,
-            int internalValidationMaxRequestsPerWindow) {
-        this.maxRequestsPerWindow = maxRequestsPerWindow;
-        this.clientErrorMaxRequestsPerWindow = clientErrorMaxRequestsPerWindow;
-        this.internalValidationMaxRequestsPerWindow = internalValidationMaxRequestsPerWindow;
-        this.trustedProxyAddresses = trustedProxyAddresses.stream()
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toList();
-        this.rateLimitStore = rateLimitStore;
-        this.internalValidationSecret = internalValidationSecret;
+    RateLimitFilter(
+            int maxRequestsPerWindow,
+            int clientErrorMaxRequestsPerWindow,
+            List<String> trustedProxyAddresses,
+            RateLimitStore rateLimitStore) {
+        this(
+                maxRequestsPerWindow,
+                clientErrorMaxRequestsPerWindow,
+                trustedProxyAddresses,
+                rateLimitStore,
+                "",
+                maxRequestsPerWindow);
     }
 
     @Override
@@ -138,7 +138,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private boolean isInternalValidationRequest(HttpServletRequest request) {
-        if (!request.getRequestURI().endsWith("/validate-token") || internalValidationSecret == null
+        if (!request.getRequestURI().endsWith("/validate-token")
+                || internalValidationSecret == null
                 || internalValidationSecret.isBlank()) {
             return false;
         }
@@ -147,7 +148,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return false;
         }
         return MessageDigest.isEqual(
-                internalValidationSecret.getBytes(StandardCharsets.UTF_8), presentedSecret.getBytes(StandardCharsets.UTF_8));
+                internalValidationSecret.getBytes(StandardCharsets.UTF_8),
+                presentedSecret.getBytes(StandardCharsets.UTF_8));
     }
 
     private String clientIp(HttpServletRequest request) {
