@@ -1,4 +1,4 @@
-import {ChangeDetectionStrategy, Component, OnInit} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit} from '@angular/core';
 import {HttpErrorResponse} from '@angular/common/http';
 import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {CustomPasswordValidators} from '../../../validator/CustomPasswordValidators';
@@ -41,7 +41,8 @@ export class SignupComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private router: Router,
-    private signupService: SignupService
+    private signupService: SignupService,
+    private changeDetectorRef: ChangeDetectorRef,
   ) {
     this.signupForm = this.initForm();
   }
@@ -82,7 +83,10 @@ export class SignupComponent implements OnInit {
 
     this.isSubmitting = true;
     this.signupService.registerUser(userRegistration)
-      .pipe(finalize(() => this.isSubmitting = false))
+      .pipe(finalize(() => {
+        this.isSubmitting = false;
+        this.changeDetectorRef.markForCheck();
+      }))
       .subscribe({
         next: () => {
           this.router.navigate(['/login'])
@@ -90,7 +94,7 @@ export class SignupComponent implements OnInit {
             });
         },
         error: (error: HttpErrorResponse) => {
-          this.setErrorMessage('Registration failed. Please try again.');
+          this.setErrorMessage(this.registrationErrorMessage(error));
           reportError('registration', error);
         }
       });
@@ -129,9 +133,21 @@ export class SignupComponent implements OnInit {
 
   private setErrorMessage(message: string): void {
     this.errorMessage = message;
+    this.changeDetectorRef.markForCheck();
   }
 
   private clearErrorMessage(): void {
     this.errorMessage = '';
+    this.changeDetectorRef.markForCheck();
+  }
+
+  private registrationErrorMessage(error: HttpErrorResponse): string {
+    if (error.status === 409) {
+      return 'An account with this email already exists.';
+    }
+    if (error.status === 0) {
+      return 'The service is unavailable. Please try again.';
+    }
+    return 'Registration failed. Please try again.';
   }
 }
