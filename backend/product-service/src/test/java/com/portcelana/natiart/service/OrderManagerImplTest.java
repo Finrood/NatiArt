@@ -199,7 +199,9 @@ class OrderManagerImplTest {
                 validOrder().setDeliveryAmount(BigDecimal.ZERO).setItems(java.util.Arrays.asList((OrderItemDto) null));
 
         assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
-        verifyNoInteractions(productManager, productRepository, orderRepository);
+        verify(orderRepository).countByOwnerExternalIdAndStatus("user-1", OrderStatus.PENDING);
+        verifyNoInteractions(productManager, productRepository);
+        verify(orderRepository, never()).save(any());
     }
 
     @Test
@@ -424,7 +426,9 @@ class OrderManagerImplTest {
         OrderDto dto = validOrder().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p1", 1)));
 
         assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
-        verifyNoInteractions(productManager, productRepository, orderRepository);
+        verify(orderRepository).countByOwnerExternalIdAndStatus("user-1", OrderStatus.PENDING);
+        verifyNoInteractions(productManager, productRepository);
+        verify(orderRepository, never()).save(any());
     }
 
     @Test
