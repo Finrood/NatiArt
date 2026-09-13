@@ -65,7 +65,7 @@ export class ConfirmationModalComponent implements OnChanges, OnDestroy {
   }
 
   @HostListener('document:keydown.escape', ['$event'])
-  onEscape(event: KeyboardEvent): void {
+  onEscape(event: Event): void {
     if (this.isOpen) {
       event.preventDefault();
       this.onCancel();
