@@ -128,6 +128,10 @@ public class AsaasPaymentService implements PaymentService {
             // else: an order owned by another customer must fail closed (403,
             // no upstream egress) even when the quoted value would match.
             requireOwnedOrder(order.getOwnerExternalId(), requesterExternalId);
+            if (order.getStatus() != null
+                    && order.getStatus() != com.portcelana.natiart.model.support.OrderStatus.PENDING) {
+                throw new IllegalArgumentException("Only pending orders can receive a new payment");
+            }
             if (order.getTotalAmount() == null || order.getTotalAmount().compareTo(value) != 0) {
                 throw new IllegalArgumentException(String.format(
                         "Payment value [%s] does not match the total [%s] of order [%s]",

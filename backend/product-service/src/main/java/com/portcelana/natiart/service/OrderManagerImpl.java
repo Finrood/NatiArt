@@ -25,6 +25,7 @@ import com.portcelana.natiart.dto.OrderItemDto;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
+import com.portcelana.natiart.repository.PaymentRepository;
 
 @Service
 public class OrderManagerImpl implements OrderManager {
@@ -40,11 +41,19 @@ public class OrderManagerImpl implements OrderManager {
 
     private final OrderRepository orderRepository;
     private final OrderCreationService orderCreationService;
+    private final com.portcelana.natiart.repository.ProductRepository productRepository;
+    private final PaymentRepository paymentRepository;
 
     @Autowired
-    public OrderManagerImpl(OrderRepository orderRepository, OrderCreationService orderCreationService) {
+    public OrderManagerImpl(
+            OrderRepository orderRepository,
+            OrderCreationService orderCreationService,
+            com.portcelana.natiart.repository.ProductRepository productRepository,
+            PaymentRepository paymentRepository) {
         this.orderRepository = orderRepository;
         this.orderCreationService = orderCreationService;
+        this.productRepository = productRepository;
+        this.paymentRepository = paymentRepository;
     }
 
     /** Test-friendly constructor; production uses the transaction-owning bean above. */
@@ -52,10 +61,13 @@ public class OrderManagerImpl implements OrderManager {
             OrderRepository orderRepository,
             ProductManager productManager,
             com.portcelana.natiart.repository.ProductRepository productRepository,
+            PaymentRepository paymentRepository,
             ShippingService shippingService) {
         this(
                 orderRepository,
-                new OrderCreationService(orderRepository, productManager, productRepository, shippingService));
+                new OrderCreationService(orderRepository, productManager, productRepository, shippingService),
+                productRepository,
+                paymentRepository);
     }
 
     @Override
@@ -204,6 +216,9 @@ public class OrderManagerImpl implements OrderManager {
     @Override
     @Transactional
     public CustomerOrder updateOrderStatus(String orderId, OrderStatus status) {
+        if (status == OrderStatus.CANCELLED) {
+            return cancelPendingOrder(orderId, null);
+        }
         final CustomerOrder current = getOrderById(orderId);
         if (current.getStatus() == null
                 || !ALLOWED_TRANSITIONS
@@ -216,5 +231,31 @@ public class OrderManagerImpl implements OrderManager {
             throw new ResourceNotFoundException("CustomerOrder with id " + orderId + " not found");
         }
         return getOrderById(orderId);
+    }
+
+    @Override
+    @Transactional
+    public CustomerOrder cancelPendingOrder(String orderId, String requesterExternalId) {
+        final CustomerOrder order = orderRepository
+                .findByIdForUpdate(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("CustomerOrder with id " + orderId + " not found"));
+        if (requesterExternalId != null
+                && !requesterExternalId.equals(order.getOwnerExternalId())) {
+            throw new com.portcelana.natiart.controller.helper.UserNotAllowedException(
+                    "The authenticated user does not own this order");
+        }
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            return order;
+        }
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new IllegalArgumentException("Only unpaid pending orders can be cancelled");
+        }
+        if (paymentRepository.findByOrderId(orderId).isPresent()) {
+            throw new IllegalArgumentException("An order with a payment must be reconciled before cancellation");
+        }
+        order.getItems().forEach(item -> productRepository.restoreStock(
+                item.getProduct().getId(), item.getQuantity()));
+        order.setStatus(OrderStatus.CANCELLED);
+        return orderRepository.save(order);
     }
 }

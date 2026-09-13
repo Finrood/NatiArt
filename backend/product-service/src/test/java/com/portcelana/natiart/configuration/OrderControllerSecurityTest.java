@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.lang.reflect.Method;
@@ -69,6 +70,44 @@ class OrderControllerSecurityTest {
         final PreAuthorize preAuthorize = createOrder.getAnnotation(PreAuthorize.class);
 
         assertEquals("isFullyAuthenticated()", preAuthorize.value());
+    }
+
+    @Test
+    void cancelOrderRequiresFullAuthentication() throws Exception {
+        final Method cancelOrder = OrderController.class.getMethod(
+                "cancelOrder", String.class, AuthenticationResponseDto.Principal.class);
+        final PreAuthorize preAuthorize = cancelOrder.getAnnotation(PreAuthorize.class);
+
+        assertEquals("isFullyAuthenticated()", preAuthorize.value());
+    }
+
+    @Test
+    @WithAnonymousUser
+    void anonymousCannotCancelOrder() throws Exception {
+        mockMvc.perform(delete("/orders/order-1")).andExpect(result -> {
+            int s = result.getResponse().getStatus();
+            if (s != 401 && s != 403) {
+                throw new AssertionError("Expected 401/403 for anonymous order cancellation but got " + s);
+            }
+        });
+    }
+
+    @Test
+    void authenticatedUserCancelsOrderWithPrincipalOwner() throws Exception {
+        final AuthenticationResponseDto.Principal principal = mock(AuthenticationResponseDto.Principal.class);
+        when(principal.getExternalId()).thenReturn("cus_MINE");
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(
+                        principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+        when(orderManager.cancelPendingOrder("order-1", "cus_MINE"))
+                .thenReturn(new CustomerOrder().setStatus(com.portcelana.natiart.model.support.OrderStatus.CANCELLED).setItems(List.of()));
+
+        try {
+            mockMvc.perform(delete("/orders/order-1")).andExpect(status().isOk());
+            verify(orderManager).cancelPendingOrder("order-1", "cus_MINE");
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     @Test

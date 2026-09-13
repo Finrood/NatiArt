@@ -27,6 +27,7 @@ import com.portcelana.natiart.model.CustomerOrderItem;
 import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
+import com.portcelana.natiart.repository.PaymentRepository;
 import com.portcelana.natiart.repository.ProductRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,11 +45,15 @@ class OrderManagerImplTest {
     @Mock
     private ShippingService shippingService;
 
+    @Mock
+    private PaymentRepository paymentRepository;
+
     private OrderManagerImpl orderManager;
 
     @BeforeEach
     void setUp() {
-        orderManager = new OrderManagerImpl(orderRepository, productManager, productRepository, shippingService);
+        orderManager = new OrderManagerImpl(
+                orderRepository, productManager, productRepository, paymentRepository, shippingService);
         lenient().when(shippingService.getOrderShippingAmount(any())).thenReturn(BigDecimal.ZERO);
     }
 
@@ -401,6 +406,17 @@ class OrderManagerImplTest {
     }
 
     @Test
+    void createOrderRejectsWhenOutstandingReservationCapIsReached() {
+        when(orderRepository.countByOwnerExternalIdAndStatus("user-1", OrderStatus.PENDING)).thenReturn(5L);
+        final OrderDto dto = validOrder().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p1", 1)));
+
+        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
+
+        verifyNoInteractions(productManager, productRepository);
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
     void createOrderRejectsUnavailableShippingBeforeReservingStock() {
         when(shippingService.getOrderShippingAmount(any()))
                 .thenThrow(new IllegalArgumentException("No shipping options are available for this address"));
@@ -512,6 +528,57 @@ class OrderManagerImplTest {
                 ResourceNotFoundException.class, () -> orderManager.updateOrderStatus("missing", OrderStatus.PAID));
 
         verify(orderRepository, never()).updateStatusById(anyString(), any());
+        verify(orderRepository, never()).save(any(CustomerOrder.class));
+    }
+
+    @Test
+    void cancelPendingOrderReleasesEachLineAndIsIdempotent() {
+        final Product plate = product("p1", "Plate", new BigDecimal("15.00"), null, 10);
+        final CustomerOrderItem line = new CustomerOrderItem()
+                .setProduct(plate)
+                .setQuantity(2)
+                .setPrice(new BigDecimal("15.00"));
+        final CustomerOrder order = new CustomerOrder()
+                .setStatus(OrderStatus.PENDING)
+                .setOwnerExternalId("user-1")
+                .setItems(new java.util.ArrayList<>(List.of(line)));
+        when(orderRepository.findByIdForUpdate(order.getId())).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertEquals(OrderStatus.CANCELLED, orderManager.cancelPendingOrder(order.getId(), "user-1").getStatus());
+        assertSame(order, orderManager.cancelPendingOrder(order.getId(), "user-1"));
+
+        verify(productRepository, times(1)).restoreStock(plate.getId(), 2);
+        verify(orderRepository, times(1)).save(order);
+    }
+
+    @Test
+    void cancelPendingOrderRejectsForeignOwnerBeforeRelease() {
+        final CustomerOrder order = new CustomerOrder()
+                .setStatus(OrderStatus.PENDING)
+                .setOwnerExternalId("user-1");
+        when(orderRepository.findByIdForUpdate(order.getId())).thenReturn(Optional.of(order));
+
+        assertThrows(
+                com.portcelana.natiart.controller.helper.UserNotAllowedException.class,
+                () -> orderManager.cancelPendingOrder(order.getId(), "user-2"));
+
+        verifyNoInteractions(productRepository);
+        verify(orderRepository, never()).save(any(CustomerOrder.class));
+    }
+
+    @Test
+    void cancelPendingOrderDoesNotReleasePaidOrder() {
+        final CustomerOrder order = new CustomerOrder()
+                .setStatus(OrderStatus.PAID)
+                .setOwnerExternalId("user-1");
+        when(orderRepository.findByIdForUpdate(order.getId())).thenReturn(Optional.of(order));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> orderManager.cancelPendingOrder(order.getId(), "user-1"));
+
+        verifyNoInteractions(productRepository);
         verify(orderRepository, never()).save(any(CustomerOrder.class));
     }
 }

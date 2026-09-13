@@ -1,8 +1,13 @@
 package com.portcelana.natiart.service;
 
+import java.time.Instant;
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,9 +24,22 @@ import com.portcelana.natiart.repository.PaymentIdempotencyRepository;
 @Service
 public class PaymentIdempotencyService {
     private final PaymentIdempotencyRepository repository;
+    private final long staleReservationMillis;
 
-    public PaymentIdempotencyService(PaymentIdempotencyRepository repository) {
+    @Autowired
+    public PaymentIdempotencyService(
+            PaymentIdempotencyRepository repository,
+            @Value("${natiart.payment.idempotency.stale-reservation-millis:900000}") long staleReservationMillis) {
         this.repository = repository;
+        if (staleReservationMillis <= 0) {
+            throw new IllegalArgumentException("The payment reservation stale interval must be positive");
+        }
+        this.staleReservationMillis = staleReservationMillis;
+    }
+
+    /** Test-friendly constructor with the production default interval. */
+    public PaymentIdempotencyService(PaymentIdempotencyRepository repository) {
+        this(repository, 900000);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -70,6 +88,20 @@ public class PaymentIdempotencyService {
                         record.setStatus(PaymentIdempotencyStatus.FAILED_RECOVERABLE);
                         repository.save(record);
                     }
+                });
+    }
+
+    /** Moves abandoned reservations into the explicit reconciliation state after a restart. */
+    @Scheduled(fixedDelayString = "${natiart.payment.idempotency.recovery-delay-millis:60000}")
+    @Transactional
+    public void recoverStaleReservations() {
+        final Instant cutoff = Instant.now().minusMillis(staleReservationMillis);
+        repository
+                .findStaleByStatus(
+                        PaymentIdempotencyStatus.IN_PROGRESS, cutoff, PageRequest.of(0, 100))
+                .forEach(record -> {
+                    record.setStatus(PaymentIdempotencyStatus.FAILED_RECOVERABLE);
+                    repository.save(record);
                 });
     }
 }
