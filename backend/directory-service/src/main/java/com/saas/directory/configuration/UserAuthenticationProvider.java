@@ -160,7 +160,8 @@ public class UserAuthenticationProvider {
         }
 
         final GrantedAuthority authority;
-        authority = new SimpleGrantedAuthority("ROLE_" + authenticatedUser.getRole().getLabel());
+        authority =
+                new SimpleGrantedAuthority("ROLE_" + authenticatedUser.getRole().getLabel());
 
         final ExternalUser externalUser =
                 externalUserRepository.findByUser(authenticatedUser).orElse(null);
