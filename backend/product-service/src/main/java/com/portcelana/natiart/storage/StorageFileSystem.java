@@ -13,9 +13,6 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.poi.util.IOUtils;
-import org.apache.poi.util.TempFile;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -52,7 +49,7 @@ public class StorageFileSystem implements Storage {
     public InputStream openFile(URI path) {
         final File file = resolveAllowedFile(path);
         try {
-            return FileUtils.openInputStream(file);
+            return Files.newInputStream(file.toPath());
         } catch (IOException e) {
             throw new IllegalStateException(
                     String.format("Error while reading file [%s] on local storage.", file.getName()), e);
@@ -93,8 +90,9 @@ public class StorageFileSystem implements Storage {
         final File file = resolveAllowedWriteFile(location, key);
         try {
             Files.createDirectories(file.toPath().getParent());
-            try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
-                IOUtils.copy(inputFile.inputStream(), fileOutputStream);
+            try (InputStream inputStream = inputFile.inputStream();
+                    FileOutputStream fileOutputStream = new FileOutputStream(file)) {
+                inputStream.transferTo(fileOutputStream);
             }
             return file.toURI();
         } catch (IOException e) {
@@ -132,15 +130,15 @@ public class StorageFileSystem implements Storage {
     @Override
     public InputStream downloadFiles(Set<URI> uriSet) {
         try {
-            final File tempFile = TempFile.createTempFile("zip-file", "");
-            try (final ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(tempFile))) {
+            final Path tempFile = Files.createTempFile("zip-file", "");
+            try (final ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(tempFile.toFile()))) {
                 final Set<String> usedEntryNames = new HashSet<>();
                 uriSet.stream().sorted(Comparator.comparing(URI::toString)).forEach((uri) -> {
                     final String fileName = uniqueZipEntryName(usedEntryNames, Paths.get(uri.getPath()));
                     addZipEntry(zip, fileName, resolveAllowedFile(uri));
                 });
             }
-            return Files.newInputStream(tempFile.toPath(), StandardOpenOption.DELETE_ON_CLOSE);
+            return Files.newInputStream(tempFile, StandardOpenOption.DELETE_ON_CLOSE);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -174,11 +172,11 @@ public class StorageFileSystem implements Storage {
             if (!directory.isDirectory()) {
                 throw new ResourceNotFoundException("Requested path is not a directory: " + uri);
             }
-            final File zipFile = TempFile.createTempFile("zip-file", "");
+            final Path zipFile = Files.createTempFile("zip-file", "");
 
-            try (final ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(zipFile))) {
+            try (final ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(zipFile.toFile()))) {
                 zipFileRecursively(directory, directory.getName(), zip);
-                return Files.newInputStream(zipFile.toPath(), StandardOpenOption.DELETE_ON_CLOSE);
+                return Files.newInputStream(zipFile, StandardOpenOption.DELETE_ON_CLOSE);
             }
 
         } catch (IOException e) {
