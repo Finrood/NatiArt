@@ -131,10 +131,13 @@ class CartManagerImplTest {
         final Product product = product("Plate");
         when(productManager.getProduct("p1")).thenReturn(Optional.of(product));
         when(cartItemRepository.decrementQuantityIfGreaterThanOne("jane", "p1")).thenReturn(0);
+        final CartItem line = new CartItem("jane", product);
+        when(cartItemRepository.findCartItemByUsernameAndProductForUpdate("jane", "p1"))
+                .thenReturn(Optional.of(line));
 
         cartManager.decreaseCartItemQuantity("jane", "p1");
 
-        verify(cartItemRepository).deleteByUsernameAndProduct("jane", product);
+        verify(cartItemRepository).delete(line);
     }
 
     @Test

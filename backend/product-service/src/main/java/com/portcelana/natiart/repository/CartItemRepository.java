@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -37,6 +38,12 @@ public interface CartItemRepository extends JpaRepository<CartItem, String> {
             @Param("username") String username, @Param("productId") String productId);
 
     Optional<CartItem> findCartItemByUsernameAndProduct(String username, Product product);
+
+    /** Locks the line before the last-unit delete decision. */
+    @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT c FROM CartItem c WHERE c.username = :username AND c.product.id = :productId")
+    Optional<CartItem> findCartItemByUsernameAndProductForUpdate(
+            @Param("username") String username, @Param("productId") String productId);
 
     /**
      * Empties a user's cart in one statement. The rows are never read on this

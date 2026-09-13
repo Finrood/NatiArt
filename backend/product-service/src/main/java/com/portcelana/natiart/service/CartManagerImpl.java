@@ -68,9 +68,12 @@ public class CartManagerImpl implements CartManager {
             return;
         }
         // Atomic guarded decrement: only the last remaining unit falls through to
-        // the idempotent delete, so concurrent decreases cannot lose updates.
+        // the locked delete decision, so a concurrent increment cannot turn a
+        // one-unit line into a two-unit line after it has been inspected.
         if (cartItemRepository.decrementQuantityIfGreaterThanOne(username, productId) == 0) {
-            cartItemRepository.deleteByUsernameAndProduct(username, product.get());
+            cartItemRepository.findCartItemByUsernameAndProductForUpdate(username, productId)
+                    .filter(cartItem -> cartItem.getQuantity() == 1)
+                    .ifPresent(cartItemRepository::delete);
         }
     }
 
