@@ -1,7 +1,6 @@
 package com.portcelana.natiart.service;
 
 import java.io.InputStream;
-import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -30,9 +29,9 @@ import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.repository.CartItemRepository;
 import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.ProductRepository;
+import com.portcelana.natiart.service.support.DomainValidation;
 import com.portcelana.natiart.storage.InputFile;
 import com.portcelana.natiart.storage.StorageService;
-import com.portcelana.natiart.service.support.DomainValidation;
 
 @Service
 public class ProductManagerImpl implements ProductManager {
