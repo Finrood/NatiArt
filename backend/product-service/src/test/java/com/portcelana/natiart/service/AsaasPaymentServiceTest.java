@@ -499,6 +499,7 @@ class AsaasPaymentServiceTest {
         verify(paymentRepository)
                 .save(argThat(
                         payment -> "pay-9".equals(payment.getId()) && "cus_MINE".equals(payment.getOwnerExternalId())));
+        verify(paymentRepository, never()).findByOrderIdAndOwnerExternalId(null, "cus_MINE");
     }
 
     @Test
