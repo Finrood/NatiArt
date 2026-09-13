@@ -37,8 +37,8 @@ class OrderRepositoryFetchTest {
     @Test
     void idempotencyReplayInitializesItemsForDetachedDtoMapping() {
         final Category category = categoryRepository.save(new Category("plates"));
-        final Product product = productRepository.save(
-                new Product("Handmade plate", new BigDecimal("25.00")).setCategory(category));
+        final Product product =
+                productRepository.save(new Product("Handmade plate", new BigDecimal("25.00")).setCategory(category));
         final CustomerOrder order = new CustomerOrder()
                 .setFirstname("Jane")
                 .setLastname("Customer")
@@ -50,11 +50,12 @@ class OrderRepositoryFetchTest {
                 .setOwnerExternalId("cus_jane")
                 .setIdempotencyKey("checkout-1")
                 .setRequestFingerprint("fingerprint");
-        order.getItems().add(new CustomerOrderItem()
-                .setCustomerOrder(order)
-                .setProduct(product)
-                .setQuantity(1)
-                .setPrice(new BigDecimal("25.00")));
+        order.getItems()
+                .add(new CustomerOrderItem()
+                        .setCustomerOrder(order)
+                        .setProduct(product)
+                        .setQuantity(1)
+                        .setPrice(new BigDecimal("25.00")));
         orderRepository.save(order);
         entityManager.flush();
         entityManager.clear();
