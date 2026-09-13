@@ -1,7 +1,7 @@
 <div [formGroup]="addressFormGroup" class="space-y-4 p-4 border border-surface-variant rounded-lg shadow-sm">
   <h3 class="text-lg font-medium text-secondary mb-3">{{ title }}</h3>
 
-  <app-natiart-form-field [label]="isBillingAddress ? 'Billing Zip Code' : 'Zip Code'" controlName="zipCode" [form]="addressFormGroup">
+  <app-natiart-form-field [label]="isBillingAddress ? 'Billing Zip Code' : 'Zip Code'" controlName="zipCode" [inputId]="isBillingAddress ? 'billingZipCode' : 'shippingZipCode'" [form]="addressFormGroup">
     <input [id]="isBillingAddress ? 'billingZipCode' : 'shippingZipCode'" formControlName="zipCode" cepFormat
       placeholder="XXXXX-XXX"
       class="form-input">
@@ -19,33 +19,33 @@
   }
 
   <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-    <app-natiart-form-field label="Country" controlName="country" [form]="addressFormGroup">
+    <app-natiart-form-field label="Country" controlName="country" [inputId]="isBillingAddress ? 'billingCountry' : 'shippingCountry'" [form]="addressFormGroup">
       <input [id]="isBillingAddress ? 'billingCountry' : 'shippingCountry'" formControlName="country" readonly
         class="form-input bg-surface-variant/30 cursor-not-allowed">
       </app-natiart-form-field>
 
-      <app-natiart-form-field label="State" controlName="state" [form]="addressFormGroup">
+      <app-natiart-form-field label="State" controlName="state" [inputId]="isBillingAddress ? 'billingState' : 'shippingState'" [form]="addressFormGroup">
         <input [id]="isBillingAddress ? 'billingState' : 'shippingState'" formControlName="state" placeholder="State"
           class="form-input">
       </app-natiart-form-field>
 
-      <app-natiart-form-field label="City" controlName="city" [form]="addressFormGroup">
+      <app-natiart-form-field label="City" controlName="city" [inputId]="isBillingAddress ? 'billingCity' : 'shippingCity'" [form]="addressFormGroup">
         <input [id]="isBillingAddress ? 'billingCity' : 'shippingCity'" formControlName="city" placeholder="City"
           class="form-input">
       </app-natiart-form-field>
 
-      <app-natiart-form-field label="Neighborhood" controlName="neighborhood" [form]="addressFormGroup">
+      <app-natiart-form-field label="Neighborhood" controlName="neighborhood" [inputId]="isBillingAddress ? 'billingNeighborhood' : 'shippingNeighborhood'" [form]="addressFormGroup">
         <input [id]="isBillingAddress ? 'billingNeighborhood' : 'shippingNeighborhood'" formControlName="neighborhood" placeholder="Neighborhood"
           class="form-input">
       </app-natiart-form-field>
     </div>
 
-    <app-natiart-form-field label="Street" controlName="street" [form]="addressFormGroup">
+    <app-natiart-form-field label="Street" controlName="street" [inputId]="isBillingAddress ? 'billingStreet' : 'shippingStreet'" [form]="addressFormGroup">
       <input [id]="isBillingAddress ? 'billingStreet' : 'shippingStreet'" formControlName="street" placeholder="123 Main St"
         class="form-input">
     </app-natiart-form-field>
 
-    <app-natiart-form-field label="Address Complement" controlName="complement" [form]="addressFormGroup" [isOptional]="true">
+    <app-natiart-form-field label="Address Complement" controlName="complement" [inputId]="isBillingAddress ? 'billingComplement' : 'shippingComplement'" [form]="addressFormGroup" [isOptional]="true">
       <input [id]="isBillingAddress ? 'billingComplement' : 'shippingComplement'" formControlName="complement"
         placeholder="Apt, suite, etc. (Optional)"
         class="form-input">

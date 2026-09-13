@@ -1,6 +1,8 @@
 <button
   [type]="type"
   [disabled]="disabled"
+  [attr.aria-label]="ariaLabel"
+  [attr.aria-describedby]="ariaDescribedby"
   class="btn {{customClass}}"
   [ngClass]="{
     'btn-primary': color === 'primary' && !disabled,
