@@ -1,0 +1,6 @@
+natiart-app/node_modules
+natiart-app/dist
+natiart-app/.angular
+natiart-app/coverage
+natiart-app/*.log
+.git
