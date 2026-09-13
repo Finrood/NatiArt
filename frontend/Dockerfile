@@ -13,19 +13,10 @@ COPY natiart-app .
 ARG NODE_ENV=production
 RUN npm run build -- --configuration=$NODE_ENV
 
-# Stage 2: Final (minimal runtime to populate volume)
-FROM alpine:3.20
+# Stage 2: serve the immutable release directly.
+FROM nginx:1.27-alpine
 
-WORKDIR /app
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/natiart-app/dist/nati-art-frontend/browser /usr/share/nginx/html
 
-# Copy built assets
-COPY --from=build /app/natiart-app/dist/nati-art-frontend/browser /app/dist
-
-# Use a non-root user (uid/gid 1000 for consistency)
-RUN addgroup -g 1000 -S appgroup && \
-    adduser -u 1000 -S appuser -G appgroup
-
-USER appuser
-
-# Keep container running to populate the volume
-CMD ["tail", "-f", "/dev/null"]
+EXPOSE 80
