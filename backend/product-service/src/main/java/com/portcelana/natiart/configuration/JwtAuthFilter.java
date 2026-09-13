@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -22,6 +23,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import com.portcelana.natiart.dto.AuthenticationResponseDto;
 
 public class JwtAuthFilter extends OncePerRequestFilter {
+    private static final String INTERNAL_SERVICE_TOKEN_HEADER = "X-Internal-Service-Token";
     private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(JwtAuthFilter.class);
 
     /**
@@ -35,14 +37,23 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final String directoryServiceUrl;
     private final TokenValidationCache validationCache;
 
+    @Autowired
     public JwtAuthFilter(
             WebClient.Builder webClientBuilder,
             @Value("${directory.service.url}") String directoryServiceUrl,
-            TokenValidationCache validationCache) {
+            TokenValidationCache validationCache,
+            @Value("${directory.service.validation-secret:}") String directoryServiceValidationSecret) {
         this.webClient = webClientBuilder.build();
         this.directoryServiceUrl = directoryServiceUrl;
         this.validationCache = validationCache;
+        this.directoryServiceValidationSecret = directoryServiceValidationSecret;
     }
+
+    JwtAuthFilter(WebClient.Builder webClientBuilder, String directoryServiceUrl, TokenValidationCache validationCache) {
+        this(webClientBuilder, directoryServiceUrl, validationCache, "");
+    }
+
+    private final String directoryServiceValidationSecret;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -93,6 +104,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 .uri(directoryServiceUrl + "/validate-token")
                 .header("Authorization", "Bearer " + token)
                 .headers(headers -> {
+                    if (directoryServiceValidationSecret != null && !directoryServiceValidationSecret.isBlank()) {
+                        headers.set(INTERNAL_SERVICE_TOKEN_HEADER, directoryServiceValidationSecret);
+                    }
                     final String correlationId = MDC.get(RequestCorrelationFilter.MDC_KEY);
                     if (correlationId != null) {
                         headers.set(RequestCorrelationFilter.HEADER_NAME, correlationId);
