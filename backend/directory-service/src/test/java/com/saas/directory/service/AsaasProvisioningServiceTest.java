@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Test;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
 import com.saas.directory.model.AsaasProvisioningJob;
 import com.saas.directory.model.AsaasProvisioningStatus;
-import com.saas.directory.model.ExternalUser;
 import com.saas.directory.model.User;
 import com.saas.directory.model.helper.PaymentProcessor;
 import com.saas.directory.repository.AsaasProvisioningJobRepository;
@@ -33,7 +32,8 @@ class AsaasProvisioningServiceTest {
         final AsaasCustomerCreationResponse existing = customerResponse("cus_existing", user.getId());
 
         when(userManager.getUserOrDie(user.getUsername())).thenReturn(user);
-        when(jobRepository.findByUserAndPaymentProcessor(user, PaymentProcessor.ASAAS)).thenReturn(Optional.of(job));
+        when(jobRepository.findByUserAndPaymentProcessor(user, PaymentProcessor.ASAAS))
+                .thenReturn(Optional.of(job));
         when(externalUserRepository.findByUserAndPaymentProcessor(user, PaymentProcessor.ASAAS))
                 .thenReturn(Optional.empty());
         when(asaasUserManager.findCustomersByExternalReference(user.getId())).thenReturn(List.of(existing));
@@ -57,7 +57,8 @@ class AsaasProvisioningServiceTest {
         final AsaasProvisioningJob job = new AsaasProvisioningJob(user, PaymentProcessor.ASAAS, Instant.now());
 
         when(userManager.getUserOrDie(user.getUsername())).thenReturn(user);
-        when(jobRepository.findByUserAndPaymentProcessor(user, PaymentProcessor.ASAAS)).thenReturn(Optional.of(job));
+        when(jobRepository.findByUserAndPaymentProcessor(user, PaymentProcessor.ASAAS))
+                .thenReturn(Optional.of(job));
         when(externalUserRepository.findByUserAndPaymentProcessor(user, PaymentProcessor.ASAAS))
                 .thenReturn(Optional.empty());
         when(asaasUserManager.findCustomersByExternalReference(user.getId()))
@@ -73,8 +74,35 @@ class AsaasProvisioningServiceTest {
 
     private AsaasCustomerCreationResponse customerResponse(String id, String externalReference) {
         return new AsaasCustomerCreationResponse(
-                "customer", id, "2025-01-01", "Test User", "test@example.com", null, null, null, null, null,
-                null, null, null, null, null, false, null, externalReference, false, null, null, null, false, null,
-                false, null, 0, null, null, null);
+                "customer",
+                id,
+                "2025-01-01",
+                "Test User",
+                "test@example.com",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                null,
+                externalReference,
+                false,
+                null,
+                null,
+                null,
+                false,
+                null,
+                false,
+                null,
+                0,
+                null,
+                null,
+                null);
     }
 }

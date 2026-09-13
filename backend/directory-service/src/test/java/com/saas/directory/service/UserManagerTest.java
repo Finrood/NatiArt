@@ -45,14 +45,13 @@ public class UserManagerTest {
 
     @BeforeEach
     public void initContext() {
-        userManager =
-                new UserManager(
-                        userRepository,
-                        externalUserRepository,
-                        roleRepository,
-                        provisioningJobRepository,
-                        profileManager,
-                        eventPublisher);
+        userManager = new UserManager(
+                userRepository,
+                externalUserRepository,
+                roleRepository,
+                provisioningJobRepository,
+                profileManager,
+                eventPublisher);
     }
 
     @Test

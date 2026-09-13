@@ -52,7 +52,8 @@ public class AsaasProvisioningService {
         final User user = userManager.getUserOrDie(username);
         final AsaasProvisioningJob job = jobRepository
                 .findByUserAndPaymentProcessor(user, PaymentProcessor.ASAAS)
-                .orElseGet(() -> jobRepository.save(new AsaasProvisioningJob(user, PaymentProcessor.ASAAS, Instant.now())));
+                .orElseGet(() ->
+                        jobRepository.save(new AsaasProvisioningJob(user, PaymentProcessor.ASAAS, Instant.now())));
         processJob(job);
     }
 
@@ -60,8 +61,8 @@ public class AsaasProvisioningService {
     @Transactional
     public void processDueJobs() {
         final Instant now = Instant.now();
-        final List<AsaasProvisioningJob> jobs = jobRepository
-                .findTop20ByStatusInAndNextAttemptAtLessThanEqualOrderByNextAttemptAtAsc(
+        final List<AsaasProvisioningJob> jobs =
+                jobRepository.findTop20ByStatusInAndNextAttemptAtLessThanEqualOrderByNextAttemptAtAsc(
                         List.of(AsaasProvisioningStatus.PENDING, AsaasProvisioningStatus.IN_PROGRESS), now);
         jobs.forEach(this::processJob);
     }
@@ -70,14 +71,15 @@ public class AsaasProvisioningService {
         final Instant now = Instant.now();
         if (job.getStatus() == AsaasProvisioningStatus.SUCCEEDED
                 || job.getStatus() == AsaasProvisioningStatus.FAILED
-                || (job.getStatus() == AsaasProvisioningStatus.IN_PROGRESS && job.getNextAttemptAt().isAfter(now))) {
+                || (job.getStatus() == AsaasProvisioningStatus.IN_PROGRESS
+                        && job.getNextAttemptAt().isAfter(now))) {
             return;
         }
 
         job.claim(now, now.plus(lease));
         final User user = job.getUser();
-        final Optional<ExternalUser> mappedCustomer = externalUserRepository.findByUserAndPaymentProcessor(
-                user, PaymentProcessor.ASAAS);
+        final Optional<ExternalUser> mappedCustomer =
+                externalUserRepository.findByUserAndPaymentProcessor(user, PaymentProcessor.ASAAS);
         if (mappedCustomer.isPresent()) {
             job.markSucceeded(mappedCustomer.get().getExternalId());
             return;

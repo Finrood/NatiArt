@@ -88,7 +88,10 @@ public class AsaasUserManager {
                 .toUri();
         try {
             final ResponseEntity<AsaasCustomerSearchResponse> response = restTemplate.exchange(
-                    requestUri, HttpMethod.GET, new HttpEntity<>(getRequestHeaders()), AsaasCustomerSearchResponse.class);
+                    requestUri,
+                    HttpMethod.GET,
+                    new HttpEntity<>(getRequestHeaders()),
+                    AsaasCustomerSearchResponse.class);
             final AsaasCustomerSearchResponse body = response.getBody();
             if (body == null || body.data() == null) {
                 return List.of();
