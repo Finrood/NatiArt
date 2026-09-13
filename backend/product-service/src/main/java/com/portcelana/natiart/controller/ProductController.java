@@ -21,7 +21,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.portcelana.natiart.dto.ProductDto;
+import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.service.ImageConversionService;
+import com.portcelana.natiart.service.CategoryManager;
 import com.portcelana.natiart.service.ProductManager;
 import com.portcelana.natiart.storage.InputFile;
 
@@ -32,10 +34,15 @@ public class ProductController {
     private static final int MAX_IMAGES_PER_REQUEST = 10;
 
     private final ProductManager productManager;
+    private final CategoryManager categoryManager;
     private final ImageConversionService imageConversionService;
 
-    public ProductController(ProductManager productManager, ImageConversionService imageConversionService) {
+    public ProductController(
+            ProductManager productManager,
+            CategoryManager categoryManager,
+            ImageConversionService imageConversionService) {
         this.productManager = productManager;
+        this.categoryManager = categoryManager;
         this.imageConversionService = imageConversionService;
     }
 
@@ -49,10 +56,14 @@ public class ProductController {
     @GetMapping("/products")
     public List<ProductDto> getProducts(
             @RequestParam(required = false, defaultValue = "0") int page,
-            @RequestParam(required = false, defaultValue = "20") int size) {
-        LOGGER.debug("Getting all products page [{}] size [{}]", page, size);
+            @RequestParam(required = false, defaultValue = "20") int size,
+            @RequestParam(required = false) String categoryId) {
+        LOGGER.debug("Getting products page [{}] size [{}] category [{}]", page, size, categoryId);
         Pageable pageable = toPageable(page, size);
-        return productManager.getProducts(pageable).stream()
+        final List<Product> products = categoryId == null || categoryId.isBlank()
+                ? productManager.getProducts(pageable)
+                : productManager.getProductsByCategory(categoryManager.getCategoryOrDie(categoryId), pageable);
+        return products.stream()
                 .map(ProductDto::from)
                 .toList();
     }
