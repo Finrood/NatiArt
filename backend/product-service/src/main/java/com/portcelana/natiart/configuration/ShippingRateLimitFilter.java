@@ -38,6 +38,8 @@ public class ShippingRateLimitFilter extends OncePerRequestFilter {
         this.trustedProxyAddresses = trustedProxyAddresses.stream()
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
+                .map(ShippingRateLimitFilter::normalizeIp)
+                .filter(s -> !"unknown".equals(s))
                 .toList();
         this.rateLimitStore = rateLimitStore;
     }
@@ -81,12 +83,16 @@ public class ShippingRateLimitFilter extends OncePerRequestFilter {
 
     private String clientIp(HttpServletRequest request) {
         final String remoteAddress = normalizeIp(request.getRemoteAddr());
-        if (trustedProxyAddresses.contains(request.getRemoteAddr())) {
+        if (trustedProxyAddresses.contains(remoteAddress)) {
             final String forwarded = request.getHeader("X-Forwarded-For");
             if (forwarded != null && !forwarded.isBlank()) {
-                final String forwardedAddress = normalizeIp(forwarded.split(",")[0].trim());
-                if (!"unknown".equals(forwardedAddress)) {
-                    return forwardedAddress;
+                final String[] chain = forwarded.split(",");
+                for (int index = chain.length - 1; index >= 0; index--) {
+                    final String forwardedAddress = normalizeIp(chain[index].trim());
+                    if (!"unknown".equals(forwardedAddress)
+                            && !trustedProxyAddresses.contains(forwardedAddress)) {
+                        return forwardedAddress;
+                    }
                 }
             }
         }
