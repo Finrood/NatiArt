@@ -47,7 +47,9 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
     private shippingService: ShippingService
   ) {
     this.shippingForm = this.fb.group({
-      cep: ['', [Validators.required, Validators.pattern(/^\d{5}-\d{3}$/)]],
+      // CepFormat keeps the control normalized to eight digits; the hyphen is
+      // presentation-only.
+      cep: ['', [Validators.required, Validators.pattern(/^\d{8}$/)]],
     });
   }
 
@@ -96,7 +98,7 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
 
   private calculateShippingEstimate(cep: string): Observable<ShippingEstimate[]> {
     const request: ShippingEstimateRequest = {
-      to: cep.replace('-', ''),
+      to: cep.replace(/\D/g, ''),
       height: 2,
       width: 12.7,
       length: 17,
