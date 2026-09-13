@@ -2,6 +2,7 @@ package com.saas.directory.listener;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -44,21 +45,33 @@ public class UserRegistrationListener {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @RetryExternalApiCall
     public void handleUserRegistration(UserRegisteredEvent event) throws Exception {
-        LOGGER.info("Asynchronously handling registration for user [{}]", event.username());
-
-        final UserDto userDto = UserDto.from(userManager.getUserOrDie(event.username()), null);
-        final AsaasCustomerCreationResponse asaasResponse;
-        try {
-            asaasResponse = asaasUserManager.registerUser(userDto);
-        } catch (AsaasApiException e) {
-            if (e.getHttpStatus().is4xxClientError()) {
-                logPermanentFailure(event, e);
-            }
-            throw e;
+        final String previousCorrelationId = MDC.get(com.saas.directory.configuration.RequestCorrelationFilter.MDC_KEY);
+        if (event.correlationId() != null) {
+            MDC.put(com.saas.directory.configuration.RequestCorrelationFilter.MDC_KEY, event.correlationId());
         }
-        ExternalUser externalUser = userManager.addAsaasCustomerIdToUser(userDto.getUsername(), asaasResponse.getId());
+        try {
+            LOGGER.info("Asynchronously handling registration for user [{}]", event.username());
 
-        LOGGER.info("Successfully created Asaas customer [{}] for user [{}]", asaasResponse.getId(), event.username());
+            final UserDto userDto = UserDto.from(userManager.getUserOrDie(event.username()), null);
+            final AsaasCustomerCreationResponse asaasResponse;
+            try {
+                asaasResponse = asaasUserManager.registerUser(userDto);
+            } catch (AsaasApiException e) {
+                if (e.getHttpStatus().is4xxClientError()) {
+                    logPermanentFailure(event, e);
+                }
+                throw e;
+            }
+            userManager.addAsaasCustomerIdToUser(userDto.getUsername(), asaasResponse.getId());
+
+            LOGGER.info("Successfully created Asaas customer [{}] for user [{}]", asaasResponse.getId(), event.username());
+        } finally {
+            if (previousCorrelationId == null) {
+                MDC.remove(com.saas.directory.configuration.RequestCorrelationFilter.MDC_KEY);
+            } else {
+                MDC.put(com.saas.directory.configuration.RequestCorrelationFilter.MDC_KEY, previousCorrelationId);
+            }
+        }
     }
 
     /**

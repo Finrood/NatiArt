@@ -7,6 +7,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.slf4j.MDC;
 
 import com.saas.directory.controller.helper.ResourceAlreadyExistsException;
 import com.saas.directory.controller.helper.ResourceNotFoundException;
@@ -78,7 +79,8 @@ public class UserManager {
         newUser.setProfile(profile);
         final User savedUser = userRepository.save(newUser);
 
-        eventPublisher.publishEvent(new UserRegisteredEvent(savedUser.getUsername()));
+        eventPublisher.publishEvent(new UserRegisteredEvent(
+                savedUser.getUsername(), MDC.get(com.saas.directory.configuration.RequestCorrelationFilter.MDC_KEY)));
 
         return savedUser;
     }
