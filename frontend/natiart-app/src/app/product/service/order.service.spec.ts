@@ -71,4 +71,21 @@ describe('OrderService', () => {
     expect(req.request.headers.get('Idempotency-Key')).toBe('checkout-attempt-1');
     req.flush(makeOrder());
   });
+
+  it('loads only the authenticated customer order history endpoint', () => {
+    service.getMyOrders().subscribe();
+
+    const req: TestRequest = httpMock.expectOne((request) => request.method === 'GET');
+    expect(req.request.url.endsWith('/orders')).toBeTrue();
+    req.flush([]);
+  });
+
+  it('uses the admin fulfillment endpoint for status transitions', () => {
+    service.updateOrderStatus('order/1', 'PAID').subscribe();
+
+    const req: TestRequest = httpMock.expectOne((request) => request.method === 'PATCH');
+    expect(req.request.url).toContain('/admin/orders/order%2F1/status');
+    expect(req.request.body).toEqual({status: 'PAID'});
+    req.flush({});
+  });
 });

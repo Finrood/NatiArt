@@ -11,6 +11,10 @@ public interface OrderManager {
 
     List<CustomerOrder> getAllOrders();
 
+    List<CustomerOrder> getOrdersForOwner(String ownerExternalId);
+
+    CustomerOrder getOrderForOwner(String orderId, String ownerExternalId);
+
     /**
      * Persists a new order owned by the authenticated user. The owner is never
      * taken from the request body — the controller passes the principal's
