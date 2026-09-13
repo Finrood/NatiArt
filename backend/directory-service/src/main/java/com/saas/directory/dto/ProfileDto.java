@@ -1,6 +1,8 @@
 package com.saas.directory.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 import com.saas.directory.model.Profile;
 
@@ -8,34 +10,45 @@ public class ProfileDto {
     private String id;
 
     @NotBlank
+    @Size(max = 100)
     private String firstname;
 
     @NotBlank
+    @Size(max = 100)
     private String lastname;
 
     @NotBlank
+    @Pattern(regexp = "(?:[0-9]{11}|[0-9]{3}\\.[0-9]{3}\\.[0-9]{3}-[0-9]{2})")
     private String cpf;
 
+    @Pattern(regexp = "(?:[0-9]{10,11}|\\([0-9]{2}\\) [0-9]{4,5}-[0-9]{4})")
     private String phone;
 
     @NotBlank
+    @Size(max = 100)
     private String country;
 
     @NotBlank
+    @Size(max = 100)
     private String state;
 
     @NotBlank
+    @Size(max = 100)
     private String city;
 
     @NotBlank
+    @Size(max = 100)
     private String neighborhood;
 
     @NotBlank
+    @Pattern(regexp = "(?:[0-9]{8}|[0-9]{5}-[0-9]{3})")
     private String zipCode;
 
     @NotBlank
+    @Size(max = 255)
     private String street;
 
+    @Size(max = 255)
     private String complement;
 
     public static ProfileDto from(Profile profile) {

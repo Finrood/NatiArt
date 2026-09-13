@@ -35,12 +35,12 @@ class UserRegistrationDtoValidationTest {
         return new ProfileDto()
                 .setFirstname("John")
                 .setLastname("Doe")
-                .setCpf("000.000.000-11")
+                .setCpf("123.456.789-09")
                 .setCountry("USA")
                 .setState("California")
                 .setCity("Los Angeles")
                 .setNeighborhood("Campinas")
-                .setZipCode("12345")
+                .setZipCode("12345678")
                 .setStreet("Main Street");
     }
 
@@ -69,6 +69,21 @@ class UserRegistrationDtoValidationTest {
         final UserRegistrationDto dto = new UserRegistrationDto("john@example.com", "  ", validProfile());
 
         assertEquals(Set.of("password"), violatedFields(dto));
+    }
+
+    @Test
+    void shortPasswordIsRejected() {
+        final UserRegistrationDto dto = new UserRegistrationDto("john@example.com", "short", validProfile());
+
+        assertEquals(Set.of("password"), violatedFields(dto));
+    }
+
+    @Test
+    void malformedCpfAndZipCodeAreRejected() {
+        final ProfileDto profile = validProfile().setCpf("abc").setZipCode("12345");
+
+        assertEquals(Set.of("profile.cpf", "profile.zipCode"), violatedFields(
+                new UserRegistrationDto("john@example.com", "Password1", profile)));
     }
 
     @Test

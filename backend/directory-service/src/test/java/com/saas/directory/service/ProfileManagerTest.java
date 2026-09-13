@@ -31,13 +31,13 @@ public class ProfileManagerTest {
         ProfileDto profileDto = new ProfileDto()
                 .setFirstname("John")
                 .setLastname("Doe")
-                .setCpf("000000000")
-                .setPhone("123456789")
+                .setCpf("12345678909")
+                .setPhone("11987654321")
                 .setCountry("USA")
                 .setState("California")
                 .setCity("Los Angeles")
                 .setNeighborhood("Campinas")
-                .setZipCode("12345")
+                .setZipCode("12345678")
                 .setStreet("Main Street")
                 .setComplement("Apartment 123");
 
@@ -45,12 +45,12 @@ public class ProfileManagerTest {
         final Profile expectedProfile = new Profile(
                 "John",
                 "Doe",
-                "00000000011",
+                "12345678909",
                 "USA",
                 "California",
                 "Los Angeles",
                 "Campinas",
-                "12345",
+                "12345678",
                 "Main Street",
                 user);
         when(profileRepository.save(any(Profile.class))).thenReturn(expectedProfile);
@@ -68,19 +68,19 @@ public class ProfileManagerTest {
         final ProfileDto profileDto = new ProfileDto()
                 .setFirstname("  John  ")
                 .setLastname("Doe")
-                .setCpf("000.000.000-11")
+                .setCpf("123.456.789-09")
                 .setCountry("USA")
                 .setState("California")
                 .setCity("Los Angeles")
                 .setNeighborhood("Campinas")
-                .setZipCode("12345")
+                .setZipCode("12345678")
                 .setStreet("Main Street");
         when(profileRepository.save(any(Profile.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         final Profile createdProfile = profileManager.createProfile(user, profileDto);
 
         assertEquals("John", createdProfile.getFirstname());
-        assertEquals("00000000011", createdProfile.getCpf());
+        assertEquals("12345678909", createdProfile.getCpf());
     }
 
     @Test
@@ -96,12 +96,12 @@ public class ProfileManagerTest {
         final ProfileDto profileDto = new ProfileDto()
                 .setFirstname("   ")
                 .setLastname("Doe")
-                .setCpf("00000000011")
+                .setCpf("12345678909")
                 .setCountry("USA")
                 .setState("California")
                 .setCity("Los Angeles")
                 .setNeighborhood("Campinas")
-                .setZipCode("12345")
+                .setZipCode("12345678")
                 .setStreet("Main Street");
 
         final IllegalArgumentException exception = assertThrows(

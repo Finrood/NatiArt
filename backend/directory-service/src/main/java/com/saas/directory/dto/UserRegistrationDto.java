@@ -8,5 +8,5 @@ import jakarta.validation.constraints.Size;
 
 public record UserRegistrationDto(
         @NotBlank @Email @Size(max = 255) String username,
-        @NotBlank @Size(max = 255) String password,
+        @NotBlank @Size(min = 8, max = 255) String password,
         @NotNull @Valid ProfileDto profile) {}
