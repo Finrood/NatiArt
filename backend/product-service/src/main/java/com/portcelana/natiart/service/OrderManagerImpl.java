@@ -15,6 +15,8 @@ import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -85,8 +87,52 @@ public class OrderManagerImpl implements OrderManager {
 
     @Override
     @Transactional(readOnly = true)
-    public List<CustomerOrder> getAllOrders() {
-        return orderRepository.findAll();
+    public List<CustomerOrder> getAllOrders(int page, int size) {
+        final List<String> orderIds =
+                orderRepository.findIds(pageRequest(page, size)).getContent();
+        return loadOrders(orderIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CustomerOrder> getOrdersForOwner(String ownerExternalId, int page, int size) {
+        requireOwner(ownerExternalId);
+        final List<String> orderIds = orderRepository
+                .findIdsByOwnerExternalId(ownerExternalId, pageRequest(page, size))
+                .getContent();
+        return loadOrders(orderIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CustomerOrder getOrderForOwner(String orderId, String ownerExternalId) {
+        requireOwner(ownerExternalId);
+        return orderRepository
+                .findByIdAndOwnerExternalIdWithItems(orderId, ownerExternalId)
+                .orElseThrow(() -> new ResourceNotFoundException("CustomerOrder with id " + orderId + " not found"));
+    }
+
+    private void requireOwner(String ownerExternalId) {
+        if (ownerExternalId == null || ownerExternalId.isBlank()) {
+            throw new IllegalArgumentException("An authenticated owner is required");
+        }
+    }
+
+    private PageRequest pageRequest(int page, int size) {
+        final int safePage = Math.max(0, page);
+        final int safeSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
+        return PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "orderDate"));
+    }
+
+    private List<CustomerOrder> loadOrders(List<String> orderIds) {
+        if (orderIds.isEmpty()) {
+            return List.of();
+        }
+        final Map<String, CustomerOrder> byId = orderRepository.findAllWithItemsByIds(orderIds).stream()
+                .collect(java.util.stream.Collectors.toMap(CustomerOrder::getId, order -> order));
+        // The IN query does not guarantee order; restore the bounded page order
+        // from the indexed id query before DTO mapping.
+        return orderIds.stream().map(byId::get).filter(Objects::nonNull).toList();
     }
 
     @Override
@@ -169,6 +215,18 @@ public class OrderManagerImpl implements OrderManager {
                 final StringBuilder itemValue = new StringBuilder();
                 append(itemValue, item == null ? null : item.getProductId());
                 append(itemValue, item == null ? null : item.getQuantity());
+                if (item == null
+                        || item.getPersonalizationDto() == null
+                        || item.getPersonalizationDto().getPersonalizationOptions() == null) {
+                    append(itemValue, null);
+                } else {
+                    item.getPersonalizationDto().getPersonalizationOptions().entrySet().stream()
+                            .sorted(Map.Entry.comparingByKey())
+                            .forEach(entry -> {
+                                append(itemValue, entry.getKey());
+                                append(itemValue, entry.getValue());
+                            });
+                }
                 items.add(itemValue.toString());
             }
         }

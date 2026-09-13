@@ -311,7 +311,13 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       if (!item.product.id) {
         throw new Error('A cart item is missing its product identifier.');
       }
-      return {productId: item.product.id, quantity: item.quantity};
+      return {
+        productId: item.product.id,
+        quantity: item.quantity,
+        personalizationDto: item.goldBorder
+          ? {personalizationOptions: {GOLDEN_BORDER: 'true'}}
+          : undefined,
+      };
     });
 
     if (items.length === 0) {

@@ -27,6 +27,7 @@ public class OrderDto {
     private BigDecimal totalAmount;
     private OrderStatus status;
     private String ownerExternalId;
+    private String paymentId;
 
     public OrderDto() {}
 
@@ -213,6 +214,15 @@ public class OrderDto {
 
     public OrderDto setOwnerExternalId(String ownerExternalId) {
         this.ownerExternalId = ownerExternalId;
+        return this;
+    }
+
+    public String getPaymentId() {
+        return paymentId;
+    }
+
+    public OrderDto setPaymentId(String paymentId) {
+        this.paymentId = paymentId;
         return this;
     }
 }

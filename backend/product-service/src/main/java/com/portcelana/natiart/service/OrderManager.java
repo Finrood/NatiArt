@@ -7,9 +7,24 @@ import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.support.OrderStatus;
 
 public interface OrderManager {
+    int DEFAULT_PAGE_SIZE = 20;
+    int MAX_PAGE_SIZE = 50;
+
     CustomerOrder getOrderById(String orderId);
 
-    List<CustomerOrder> getAllOrders();
+    default List<CustomerOrder> getAllOrders() {
+        return getAllOrders(0, DEFAULT_PAGE_SIZE);
+    }
+
+    List<CustomerOrder> getAllOrders(int page, int size);
+
+    default List<CustomerOrder> getOrdersForOwner(String ownerExternalId) {
+        return getOrdersForOwner(ownerExternalId, 0, DEFAULT_PAGE_SIZE);
+    }
+
+    List<CustomerOrder> getOrdersForOwner(String ownerExternalId, int page, int size);
+
+    CustomerOrder getOrderForOwner(String orderId, String ownerExternalId);
 
     /**
      * Persists a new order owned by the authenticated user. The owner is never

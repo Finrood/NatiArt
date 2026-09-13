@@ -8,8 +8,11 @@ public class OrderItemDto {
     private String id;
     private String orderId;
     private String productId;
+    private String productLabel;
+    private String productSku;
     private Integer quantity;
     private BigDecimal price;
+    private PersonalizationDto personalizationDto;
 
     public OrderItemDto() {}
 
@@ -18,8 +21,17 @@ public class OrderItemDto {
                 .setId(customerOrderItem.getId())
                 .setOrderId(customerOrderItem.getCustomerOrder().getId())
                 .setProductId(customerOrderItem.getProduct().getId())
+                .setProductLabel(
+                        customerOrderItem.getProductLabel() != null
+                                ? customerOrderItem.getProductLabel()
+                                : customerOrderItem.getProduct().getLabel())
+                .setProductSku(
+                        customerOrderItem.getProductSku() != null
+                                ? customerOrderItem.getProductSku()
+                                : customerOrderItem.getProduct().getId())
                 .setQuantity(customerOrderItem.getQuantity())
-                .setPrice(customerOrderItem.getPrice());
+                .setPrice(customerOrderItem.getPrice())
+                .setPersonalizationDto(PersonalizationDto.from(customerOrderItem.getPersonalization()));
     }
 
     public String getId() {
@@ -49,6 +61,24 @@ public class OrderItemDto {
         return this;
     }
 
+    public String getProductLabel() {
+        return productLabel;
+    }
+
+    public OrderItemDto setProductLabel(String productLabel) {
+        this.productLabel = productLabel;
+        return this;
+    }
+
+    public String getProductSku() {
+        return productSku;
+    }
+
+    public OrderItemDto setProductSku(String productSku) {
+        this.productSku = productSku;
+        return this;
+    }
+
     public Integer getQuantity() {
         return quantity;
     }
@@ -64,6 +94,15 @@ public class OrderItemDto {
 
     public OrderItemDto setPrice(BigDecimal price) {
         this.price = price;
+        return this;
+    }
+
+    public PersonalizationDto getPersonalizationDto() {
+        return personalizationDto;
+    }
+
+    public OrderItemDto setPersonalizationDto(PersonalizationDto personalizationDto) {
+        this.personalizationDto = personalizationDto;
         return this;
     }
 }

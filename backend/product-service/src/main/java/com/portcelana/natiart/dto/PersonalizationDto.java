@@ -14,7 +14,7 @@ public class PersonalizationDto {
         if (personalization == null) return null;
         return new PersonalizationDto()
                 .setId(personalization.getId())
-                .setPersonalizationOptions(personalization.getPersonalizationOptions());
+                .setPersonalizationOptions(new HashMap<>(personalization.getPersonalizationOptions()));
     }
 
     public String getId() {
