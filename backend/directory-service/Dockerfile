@@ -15,7 +15,7 @@ RUN ./gradlew --no-daemon dependencies
 
 # Build the application, skipping tests
 WORKDIR /app/directory-service
-RUN ../gradlew build -x test --no-daemon
+RUN ../gradlew bootJar -x test --no-daemon
 
 # Stage 2: Runtime
 FROM amazoncorretto:25-alpine
@@ -26,7 +26,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
 
 # Copy only the built JAR from the build stage
-COPY --from=build --chown=appuser:appgroup /app/directory-service/build/libs/*.jar app.jar
+COPY --from=build --chown=appuser:appgroup /app/directory-service/build/libs/directory-service.jar app.jar
 
 # Expose the application port
 EXPOSE 8081
