@@ -43,9 +43,9 @@ Options:
                           defaults: cycle 180, review 150; plain default 120)
   --simulate-quota-at N   Test: fail the first N attempts with synthetic quota
   --allowed "ARGS"        Extra permission args passed to cline (e.g. "--auto-approve true")
-  --skip SUBSTR           Skip models whose cli:model_id or label contains SUBSTR
-                          (repeatable; loop reviewers skip the PR author's model
-                          for independence; skips are ignored if they empty the list)
+  --skip SUBSTR           Skip models whose cli:model_id, label or canonical
+                          model family contains SUBSTR (repeatable; reviewers
+                          skip the PR author's complete model family)
   --check-only            Print the priority list + first model, invoke nothing
   -h, --help              Show this help
 EOF
@@ -120,7 +120,7 @@ fi
 # level silently downgrades to whatever the provider picks, so it is a loud
 # config error, not a default.
 for _conf_entry in "${PRIORITY[@]}"; do
-    IFS='|' read -r _conf_cli _conf_label _conf_model _conf_think <<< "$_conf_entry"
+    IFS='|' read -r _conf_cli _conf_label _conf_model _conf_think _conf_family <<< "$_conf_entry"
     if [[ -z "${_conf_think:-}" ]]; then
         log_err "agent-models.conf entry '$_conf_label' has no thinking level (policy: always xhigh, never provider default)."
         exit 2
@@ -137,12 +137,25 @@ done
 # INFERENCE_CAP_ERROR/429, Anthropic-style 529 overload/capacity.
 QUOTA_RE='quota|rate.?limit(ed)?|429|too many requests|insufficient[_ ]quota|(monthly|daily|usage|free tier) (quota|limit)|credits? (depleted|exhausted)|billing issu|out of (free )?usage|overloaded_error|overload(ed)?[^[:alnum:]]*(capacity|server)|529'
 
-# Reviewer/author independence: drop skipped models up front (substring match on
-# cli:model_id or label). A skip list that empties the pool is ignored — never
-# idle when a model could run.
+# Reviewer/author independence: resolve skip tokens to canonical model families,
+# then drop every gateway/CLI entry for those families. A skip list that empties
+# the pool is a hard manual-review condition, not permission to review with the
+# same weights under another alias.
 EFFECTIVE=()
+SKIP_FAMILIES=()
 for entry in "${PRIORITY[@]}"; do
-    IFS='|' read -r cli label model_id think <<< "$entry"
+    IFS='|' read -r cli label model_id think family <<< "$entry"
+    family="${family:-$label}"
+    for s in ${SKIP[@]+"${SKIP[@]}"}; do
+        if [[ "$cli:$model_id" == *"$s"* || "$label" == *"$s"* || "$family" == *"$s"* || "$s" == *"$cli:$model_id"* || "$s" == *"$label"* || "$s" == *"$family"* ]]; then
+            SKIP_FAMILIES+=("$family")
+            break
+        fi
+    done
+done
+for entry in "${PRIORITY[@]}"; do
+    IFS='|' read -r cli label model_id think family <<< "$entry"
+    family="${family:-$label}"
     case "$cli" in
         opencode) bin="opencode" ;;
         cline) bin="cline" ;;
@@ -153,10 +166,8 @@ for entry in "${PRIORITY[@]}"; do
         continue
     fi
     skip_hit=""
-    for s in ${SKIP[@]+"${SKIP[@]}"}; do
-        # Bidirectional: footers carry cli:model_id[/think] (needle longer than
-        # haystack), labels carry short names — either direction may contain.
-        if [[ "$cli:$model_id" == *"$s"* || "$label" == *"$s"* || "$s" == *"$cli:$model_id"* || "$s" == *"$label"* ]]; then skip_hit="$s"; break; fi
+    for skip_family in "${SKIP_FAMILIES[@]}"; do
+        if [[ "$family" == "$skip_family" ]]; then skip_hit="$skip_family"; break; fi
     done
     if [[ -n "$skip_hit" ]]; then
         log "Skipping $label ($model_id) for independence (matched --skip '$skip_hit')."
@@ -165,8 +176,8 @@ for entry in "${PRIORITY[@]}"; do
     fi
 done
 if [[ "${#EFFECTIVE[@]}" -eq 0 && "${#SKIP[@]}" -gt 0 ]]; then
-    log "WARNING: --skip emptied the model pool; ignoring skips."
-    EFFECTIVE=("${PRIORITY[@]}")
+    log_err "--skip removed every runnable model family; independent review is unavailable. Manual review is required."
+    exit 4
 fi
 if [[ "${#EFFECTIVE[@]}" -eq 0 ]]; then
     log_err "No runnable models: every CLI is missing (not a quota event — needs a human)."
@@ -176,8 +187,8 @@ fi
 if [[ "$CHECK_ONLY" -eq 1 ]]; then
     log "Check-only: effective priority list (first = preferred):"
     for entry in "${EFFECTIVE[@]}"; do
-        IFS='|' read -r cli label model_id think <<< "$entry"
-        log "  - [$cli] $label ($model_id${think:+, $think})"
+        IFS='|' read -r cli label model_id think family <<< "$entry"
+        log "  - [$cli] $label ($model_id${think:+, $think}; family=${family:-$label})"
     done
     printf '%s\n' "$(echo "${EFFECTIVE[0]}" | cut -d'|' -f2)"
     exit 0

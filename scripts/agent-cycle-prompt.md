@@ -155,7 +155,12 @@ machine. Every fix commit goes on your fix branch (or the existing REPAIR PR
 branch in REPAIR MODE) and is pushed
 (`git push -u origin <branch>`) before Phase 3 ends; never commit cycle work
 to master. Exiting 0 without a pushed branch is a FAILED cycle, not a
-finished one.
+finished one. The wrapper supplies `cycle_id` and `reviewed_commit` in the
+invocation. If a successful audit-only cycle genuinely opens no PR, write the
+bounded artifact `logs/cycle-<cycle_id>.audit` with that commit, the lens and
+the concrete audit outcome; the wrapper publishes a completion heartbeat only
+after checking this artifact or an open PR. Never use an ordinary PR comment as
+the completion signal.
 
 SELF-MODIFICATION BAN: PRs touching `scripts/**`, `agents/**`, any `AGENTS.md`
 (root or module), `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.github/**`,
