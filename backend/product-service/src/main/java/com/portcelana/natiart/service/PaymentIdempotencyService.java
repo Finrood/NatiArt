@@ -46,9 +46,45 @@ public class PaymentIdempotencyService {
         }
     }
 
+    /**
+     * Reserves the single payment attempt allowed for an order. The client key
+     * remains useful for replay diagnostics, but it is not the serialization
+     * key: callers using different keys for the same order receive this same
+     * server-owned reservation.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public PaymentIdempotencyReservation reserveForOrder(
+            String ownerExternalId, String orderId, String idempotencyKey, String requestFingerprint) {
+        final Optional<PaymentIdempotency> existingOrder =
+                repository.findByOwnerExternalIdAndOrderId(ownerExternalId, orderId);
+        if (existingOrder.isPresent()) {
+            return new PaymentIdempotencyReservation(existingOrder.get(), false);
+        }
+        final Optional<PaymentIdempotency> existingKey =
+                repository.findByOwnerExternalIdAndIdempotencyKey(ownerExternalId, idempotencyKey);
+        if (existingKey.isPresent()) {
+            return new PaymentIdempotencyReservation(existingKey.get(), false);
+        }
+        try {
+            final PaymentIdempotency record =
+                    new PaymentIdempotency(ownerExternalId, idempotencyKey, orderId, requestFingerprint);
+            final PaymentIdempotency saved = repository.saveAndFlush(record);
+            return new PaymentIdempotencyReservation(saved != null ? saved : record, true);
+        } catch (DataIntegrityViolationException e) {
+            // The caller leaves this failed transaction before reloading the
+            // winning order reservation.
+            throw e;
+        }
+    }
+
     @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
     public Optional<PaymentIdempotency> find(String ownerExternalId, String idempotencyKey) {
         return repository.findByOwnerExternalIdAndIdempotencyKey(ownerExternalId, idempotencyKey);
+    }
+
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    public Optional<PaymentIdempotency> findForOrder(String ownerExternalId, String orderId) {
+        return repository.findByOwnerExternalIdAndOrderId(ownerExternalId, orderId);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)

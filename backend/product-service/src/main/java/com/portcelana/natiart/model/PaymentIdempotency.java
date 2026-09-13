@@ -15,10 +15,14 @@ import jakarta.persistence.UniqueConstraint;
 /** Durable reservation that closes the check-then-charge race for payment creation. */
 @Entity
 @Table(
-        uniqueConstraints =
-                @UniqueConstraint(
-                        name = "uk_payment_idempotency_owner_key",
-                        columnNames = {"owner_external_id", "idempotency_key"}))
+        uniqueConstraints = {
+            @UniqueConstraint(
+                    name = "uk_payment_idempotency_owner_key",
+                    columnNames = {"owner_external_id", "idempotency_key"}),
+            @UniqueConstraint(
+                    name = "uk_payment_idempotency_owner_order",
+                    columnNames = {"owner_external_id", "order_id"})
+        })
 public class PaymentIdempotency {
     @Id
     private String id = UUID.randomUUID().toString();
@@ -28,6 +32,9 @@ public class PaymentIdempotency {
 
     @Column(nullable = false, length = 64)
     private String idempotencyKey;
+
+    @Column(length = 128)
+    private String orderId;
 
     @Column(nullable = false, length = 64)
     private String requestFingerprint;
@@ -48,8 +55,14 @@ public class PaymentIdempotency {
     protected PaymentIdempotency() {}
 
     public PaymentIdempotency(String ownerExternalId, String idempotencyKey, String requestFingerprint) {
+        this(ownerExternalId, idempotencyKey, null, requestFingerprint);
+    }
+
+    public PaymentIdempotency(
+            String ownerExternalId, String idempotencyKey, String orderId, String requestFingerprint) {
         this.ownerExternalId = ownerExternalId;
         this.idempotencyKey = idempotencyKey;
+        this.orderId = orderId;
         this.requestFingerprint = requestFingerprint;
         this.status = PaymentIdempotencyStatus.IN_PROGRESS;
     }
@@ -69,6 +82,10 @@ public class PaymentIdempotency {
 
     public String getIdempotencyKey() {
         return idempotencyKey;
+    }
+
+    public String getOrderId() {
+        return orderId;
     }
 
     public String getRequestFingerprint() {

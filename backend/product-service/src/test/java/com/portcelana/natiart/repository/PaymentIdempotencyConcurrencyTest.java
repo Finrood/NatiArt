@@ -2,6 +2,7 @@ package com.portcelana.natiart.repository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -82,12 +83,59 @@ class PaymentIdempotencyConcurrencyTest {
         paymentIdempotencyService.reserve("cus_ONE", "same-key", "one");
         paymentIdempotencyService.reserve("cus_TWO", "same-key", "two");
 
-        assertEquals(2, paymentIdempotencyRepository.count());
+        assertTrue(paymentIdempotencyRepository
+                .findByOwnerExternalIdAndIdempotencyKey("cus_ONE", "same-key")
+                .isPresent());
+        assertTrue(paymentIdempotencyRepository
+                .findByOwnerExternalIdAndIdempotencyKey("cus_TWO", "same-key")
+                .isPresent());
         assertEquals(
                 "one",
                 paymentIdempotencyRepository
                         .findByOwnerExternalIdAndIdempotencyKey("cus_ONE", "same-key")
                         .orElseThrow()
                         .getRequestFingerprint());
+    }
+
+    @Test
+    void orderReservationsConvergeDifferentClientKeysOnOneAttempt() throws Exception {
+        final CountDownLatch start = new CountDownLatch(1);
+        final ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            final List<Future<PaymentIdempotencyReservation>> attempts = new ArrayList<>();
+            for (int i = 0; i < 2; i++) {
+                final int attemptNumber = i;
+                attempts.add(executor.submit(() -> {
+                    start.await();
+                    return paymentIdempotencyService.reserveForOrder(
+                            "cus_MINE", "order-1", "client-key-" + attemptNumber, "same-request");
+                }));
+            }
+            start.countDown();
+
+            int acquired = 0;
+            int uniqueLosers = 0;
+            for (Future<PaymentIdempotencyReservation> attempt : attempts) {
+                try {
+                    if (attempt.get().acquired()) {
+                        acquired++;
+                    }
+                } catch (ExecutionException e) {
+                    assertInstanceOf(DataIntegrityViolationException.class, e.getCause());
+                    uniqueLosers++;
+                }
+            }
+
+            assertEquals(1, acquired);
+            assertEquals(1, uniqueLosers);
+            assertEquals(
+                    "order-1",
+                    paymentIdempotencyRepository
+                            .findByOwnerExternalIdAndOrderId("cus_MINE", "order-1")
+                            .orElseThrow()
+                            .getOrderId());
+        } finally {
+            executor.shutdownNow();
+        }
     }
 }

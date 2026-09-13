@@ -10,4 +10,6 @@ import com.portcelana.natiart.model.PaymentIdempotency;
 @Repository
 public interface PaymentIdempotencyRepository extends JpaRepository<PaymentIdempotency, String> {
     Optional<PaymentIdempotency> findByOwnerExternalIdAndIdempotencyKey(String ownerExternalId, String idempotencyKey);
+
+    Optional<PaymentIdempotency> findByOwnerExternalIdAndOrderId(String ownerExternalId, String orderId);
 }
