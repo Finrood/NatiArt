@@ -1,7 +1,7 @@
 <div class="relative space-y-1 w-full mb-4">
   <!-- Label -->
   <label
-    [for]="controlName"
+    [for]="resolvedInputId"
     class="block text-sm font-medium text-surface-contrast/85 transition-colors"
     >
     {{ label }}
@@ -54,7 +54,7 @@
 
   <!-- Error messages -->
   @if (showErrors()) {
-    <div class="text-error text-sm space-y-1">
+    <div class="text-error text-sm space-y-1" [id]="resolvedInputId + '-error'" role="alert">
       @if (control?.errors?.['required']) {
         <p>{{ label }} is required</p>
       }
