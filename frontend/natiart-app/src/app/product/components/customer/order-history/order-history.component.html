@@ -34,7 +34,7 @@
             <ul class="divide-y divide-primary-lighter/40">
               @for (item of order.items; track item.id || item.productId) {
                 <li class="flex justify-between gap-4 py-3 text-sm">
-                  <span class="text-secondary">{{ item.quantity }} × {{ item.productId }}</span>
+                  <span class="text-secondary">{{ item.quantity }} × {{ item.productLabel || item.productSku || item.productId }}</span>
                   <span class="text-secondary-light">{{ (item.price || 0) * item.quantity | currency:'BRL' }}</span>
                 </li>
               }
@@ -43,9 +43,23 @@
               <span>Total</span>
               <span>{{ order.totalAmount | currency:'BRL' }}</span>
             </div>
+            @if (order.status === 'PENDING' && order.paymentId) {
+              <a [routerLink]="['/pix-payment', order.paymentId]"
+                class="inline-block mt-4 rounded-lg bg-primary px-4 py-2 text-sm text-white hover:bg-primary-dark">
+                Continue payment
+              </a>
+            }
           </article>
         }
       </div>
+      @if (hasMore) {
+        <div class="mt-8 text-center">
+          <button type="button" (click)="loadMore()" [disabled]="loadingMore"
+            class="rounded-lg border border-primary px-5 py-3 text-primary-dark hover:bg-primary-lighter disabled:opacity-50">
+            {{ loadingMore ? 'Loading…' : 'Load more orders' }}
+          </button>
+        </div>
+      }
     }
   </main>
 </div>

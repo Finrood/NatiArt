@@ -77,6 +77,8 @@ describe('OrderService', () => {
 
     const req: TestRequest = httpMock.expectOne((request) => request.method === 'GET');
     expect(req.request.url.endsWith('/orders')).toBeTrue();
+    expect(req.request.params.get('page')).toBe('0');
+    expect(req.request.params.get('size')).toBe('20');
     req.flush([]);
   });
 

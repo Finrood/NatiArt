@@ -3,6 +3,7 @@ package com.portcelana.natiart.service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -16,6 +17,7 @@ import com.portcelana.natiart.dto.OrderDto;
 import com.portcelana.natiart.dto.OrderItemDto;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.CustomerOrderItem;
+import com.portcelana.natiart.model.Personalization;
 import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
@@ -95,10 +97,21 @@ public class OrderCreationService {
             }
             final BigDecimal unitPrice = product.getMarkedPrice().orElseGet(product::getOriginalPrice);
             totalItemsAmount = totalItemsAmount.add(unitPrice.multiply(BigDecimal.valueOf(item.getQuantity())));
-            customerOrder.addOrderItem(new CustomerOrderItem()
+            final CustomerOrderItem orderItem = new CustomerOrderItem()
                     .setProduct(product)
+                    // The current catalog has no separate SKU column, so the
+                    // immutable product id is the purchase SKU until one is
+                    // introduced. It remains stable when the product is retired.
+                    .setProductLabel(product.getLabel())
+                    .setProductSku(product.getId())
                     .setQuantity(item.getQuantity())
-                    .setPrice(unitPrice));
+                    .setPrice(unitPrice);
+            if (item.getPersonalizationDto() != null
+                    && item.getPersonalizationDto().getPersonalizationOptions() != null) {
+                orderItem.setPersonalization(new Personalization().setPersonalizationOptions(
+                        new HashMap<>(item.getPersonalizationDto().getPersonalizationOptions())));
+            }
+            customerOrder.addOrderItem(orderItem);
         }
 
         customerOrder.setTotalAmount(totalItemsAmount.add(serverDeliveryAmount));

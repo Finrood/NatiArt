@@ -18,4 +18,5 @@ export interface OrderDto {
   deliveryAmount?: number;
   totalAmount?: number;
   status?: string;
+  paymentId?: string;
 }
