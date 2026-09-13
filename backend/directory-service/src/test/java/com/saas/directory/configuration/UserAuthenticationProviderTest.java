@@ -106,6 +106,18 @@ class UserAuthenticationProviderTest {
     }
 
     @Test
+    void authenticateWithToken_missingToken_rejectsBeforeVerification() {
+        final UserAuthenticationProvider provider = providerWithSecret("missing-token-test-secret");
+
+        final IllegalAccessException exception = assertThrows(
+                IllegalAccessException.class, () -> provider.authenticateWithToken(null, TokenType.AUTH_ACCESS));
+
+        assertEquals("Authentication token is not valid", exception.getMessage());
+        verify(tokenRepository, org.mockito.Mockito.never()).findByJtiAndTokenType(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void authenticateWithToken_issuerMismatch_rejectsWithStaticMessageHidingTheToken() {
         final String secret = "disclosure-test-secret";
         final UserAuthenticationProvider provider = providerWithMocks(secret);

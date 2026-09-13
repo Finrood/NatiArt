@@ -133,6 +133,9 @@ public class UserAuthenticationProvider {
 
     @Transactional(readOnly = true)
     public Authentication authenticateWithToken(String token, TokenType tokenType) throws IllegalAccessException {
+        if (token == null || token.isBlank()) {
+            throw new IllegalAccessException("Authentication token is not valid");
+        }
         final DecodedJWT decodedJWT = decodeJWT(token);
         final String jti = decodedJWT.getId();
 
