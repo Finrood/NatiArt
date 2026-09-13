@@ -43,7 +43,7 @@ describe('ShippingEstimationComponent', () => {
 
   it('surfacesTheCheapestOptionOnceTheDebouncedCepLookupSucceeds', fakeAsync(() => {
     const component = createComponent();
-    component.shippingForm.get('cep')!.setValue('12345-678');
+    component.shippingForm.get('cep')!.setValue('12345678');
 
     tick(300);
     const req = http.expectOne(r => r.url.includes('/shipping/estimate'));
@@ -60,7 +60,7 @@ describe('ShippingEstimationComponent', () => {
 
   it('surfacesTheErrorStateWhenTheBackendFails', fakeAsync(() => {
     const component = createComponent();
-    component.shippingForm.get('cep')!.setValue('12345-678');
+    component.shippingForm.get('cep')!.setValue('12345678');
 
     tick(300);
     flushEstimateRequest({message: 'boom'}, 500);
@@ -74,7 +74,7 @@ describe('ShippingEstimationComponent', () => {
 
   it('surfacesTheNoOptionsStateWhenTheBackendReturnsNoEstimates', fakeAsync(() => {
     const component = createComponent();
-    component.shippingForm.get('cep')!.setValue('12345-678');
+    component.shippingForm.get('cep')!.setValue('12345678');
 
     tick(300);
     flushEstimateRequest([]);
