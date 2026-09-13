@@ -14,7 +14,6 @@ import org.springframework.transaction.event.TransactionalEventListener;
 import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
 import com.saas.directory.event.UserRegisteredEvent;
-import com.saas.directory.model.ExternalUser;
 import com.saas.directory.service.AsaasApiException;
 import com.saas.directory.service.AsaasUserManager;
 import com.saas.directory.service.UserManager;
@@ -64,7 +63,8 @@ public class UserRegistrationListener {
             }
             userManager.addAsaasCustomerIdToUser(userDto.getUsername(), asaasResponse.getId());
 
-            LOGGER.info("Successfully created Asaas customer [{}] for user [{}]", asaasResponse.getId(), event.username());
+            LOGGER.info(
+                    "Successfully created Asaas customer [{}] for user [{}]", asaasResponse.getId(), event.username());
         } finally {
             if (previousCorrelationId == null) {
                 MDC.remove(com.saas.directory.configuration.RequestCorrelationFilter.MDC_KEY);

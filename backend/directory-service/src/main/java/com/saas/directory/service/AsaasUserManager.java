@@ -81,8 +81,10 @@ public class AsaasUserManager {
      * the caller.
      */
     static AsaasApiException mapAsaasError(HttpClientErrorException e) {
-        LOGGER.warn("Asaas customer API error: status={}, responseBodyLength={}",
-                e.getStatusCode(), e.getResponseBodyAsByteArray().length);
+        LOGGER.warn(
+                "Asaas customer API error: status={}, responseBodyLength={}",
+                e.getStatusCode(),
+                e.getResponseBodyAsByteArray().length);
         return new AsaasApiException(
                 "Customer registration failed at the payment provider", (HttpStatus) e.getStatusCode());
     }

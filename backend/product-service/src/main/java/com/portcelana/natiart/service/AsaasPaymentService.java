@@ -485,8 +485,10 @@ public class AsaasPaymentService implements PaymentService {
      * messages to the caller.
      */
     static RuntimeException mapAsaasError(HttpStatusCodeException e) {
-        LOGGER.warn("Asaas payment API error: status={}, responseBodyLength={}",
-                e.getStatusCode(), e.getResponseBodyAsByteArray().length);
+        LOGGER.warn(
+                "Asaas payment API error: status={}, responseBodyLength={}",
+                e.getStatusCode(),
+                e.getResponseBodyAsByteArray().length);
         final HttpStatusCode statusCode = e.getStatusCode();
         if (statusCode == HttpStatus.UNAUTHORIZED || statusCode == HttpStatus.FORBIDDEN) {
             return new UserNotAllowedException("Unauthorized api call to the payment provider");
