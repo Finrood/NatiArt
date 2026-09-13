@@ -1,0 +1,15 @@
+.git
+.gitignore
+.codex
+.agents
+**/node_modules
+**/dist
+**/build
+**/target
+**/.gradle
+**/product-images
+**/logs
+**/*.local
+**/*.secrets
+**/*.secret
+**/*secrets*.json
