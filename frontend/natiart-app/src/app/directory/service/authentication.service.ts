@@ -251,7 +251,9 @@ export class AuthenticationService implements OnDestroy {
               }
             }
           });
-        } else if (this.tokenService.refreshToken && this.isRefreshTokenExpiringSoon()) {
+        } else if (this.tokenService.refreshToken
+                   && !this.isTokenExpired(this.tokenService.refreshToken)
+                   && this.isRefreshTokenExpiringSoon()) {
           this.doRefreshToken().pipe(takeUntil(this.destroy$)).subscribe({
             error: (error: unknown) => {
               if (this.isAuthenticationFailure(error)) {
