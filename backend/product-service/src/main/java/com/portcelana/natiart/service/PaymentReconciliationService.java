@@ -193,7 +193,7 @@ public class PaymentReconciliationService {
                     orderRepository.findById(localPayment.getOrderId()).orElse(null);
             // A delayed paid event must never revive cancelled fulfillment.
             if (order != null && order.getStatus() == OrderStatus.PENDING) {
-                orderManager.markOrderPaid(order.getId());
+                orderManager.markOrderPaid(localPayment.getOrderId());
             }
         }
     }
