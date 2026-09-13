@@ -434,10 +434,7 @@ git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads/sa
        { [[ -z "$REMOTE_SB_SHA" ]] || git merge-base --is-ancestor "$REMOTE_SB_SHA" origin/master 2>/dev/null; }; then
         log "Deleting old merged salvage branch $sb."
         git branch -D "$sb" 2>/dev/null || true
-        if [[ -n "$REMOTE_SB_SHA" ]] && ! git push -q \
-            --force-with-lease="refs/heads/$sb:$REMOTE_SB_SHA" origin --delete "$sb" 2>/dev/null; then
-            log "Remote salvage $sb changed during validation; preserving it."
-        fi
+        delete_merged_remote_branch "$sb" || true
     else
         log "Preserving old salvage branch $sb (local or remote tip is unmerged)."
     fi
@@ -546,19 +543,11 @@ done || true
 # dependabot/*, or unmerged work. Salvage retention uses fetched commit age and
 # verifies the remote tip is merged before deleting anything.
 git branch -r --merged origin/master 2>/dev/null | sed 's#^ *origin/##' | grep -E '^(fix|perf|chore|docs|feature)/' | sort -u | while read -r b; do
-    if git ls-remote --heads origin "$b" 2>/dev/null | grep -q .; then
-        log "Deleting merged remote branch $b."
-        git push -q origin --delete "$b" 2>/dev/null || log "Could not delete $b (likely already gone)."
-    fi
+    delete_merged_remote_branch "$b" || true
 done || true
 git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/remotes/origin/salvage/ 2>/dev/null | sed 's#^origin/##' | tail -n +6 | while read -r sb; do
     [[ -z "$sb" ]] && continue
-    if git merge-base --is-ancestor "origin/$sb" origin/master 2>/dev/null; then
-        log "Deleting old merged remote salvage branch $sb."
-        git push -q origin --delete "$sb" 2>/dev/null || log "Could not delete $sb (likely already gone)."
-    else
-        log "Preserving old unmerged remote salvage branch $sb."
-    fi
+    delete_merged_remote_branch "$sb" || true
 done || true
 
 # 6. Hand one item to the agent (non-interactive, repo permission policy applies;

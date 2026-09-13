@@ -66,6 +66,29 @@ is_loop_branch() { # $1 = branch name; true iff the loop owns it (may salvage)
     [[ "${1:-}" =~ ^(fix|perf|chore|docs|feature|salvage)/ ]]
 }
 
+delete_merged_remote_branch() { # $1 = owned branch; lease-protected deletion
+    local branch="$1" remote_tip
+    if [[ ! "$branch" =~ ^(fix|perf|chore|docs|feature|salvage)/ ]]; then
+        log "Preserving remote branch $branch (not a loop-owned prefix)."
+        return 0
+    fi
+    remote_tip="$(git ls-remote --heads origin "refs/heads/$branch" 2>/dev/null | awk 'NR == 1 {print $1}')"
+    if [[ -z "$remote_tip" ]]; then
+        return 0
+    fi
+    if [[ ! "$remote_tip" =~ ^[0-9a-f]{40}$ ]] || \
+       ! git merge-base --is-ancestor "$remote_tip" origin/master 2>/dev/null; then
+        log "Preserving remote branch $branch (tip is not fully merged into origin/master)."
+        return 0
+    fi
+    if git push -q --force-with-lease="refs/heads/$branch:$remote_tip" origin --delete "$branch"; then
+        log "Deleted merged remote branch $branch at validated tip ${remote_tip:0:8}."
+        return 0
+    fi
+    log "Remote branch $branch changed during validation; preserving its newer tip."
+    return 1
+}
+
 semver_bump() { # $1 = dependabot title; prints patch|minor|major|unknown
     # Only single-dependency "bump X from a.b.c to x.y.z" titles classify.
     # Group bumps ("across 1 directory with N updates"), multi-pair titles
