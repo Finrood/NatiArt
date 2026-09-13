@@ -62,7 +62,7 @@ is_docs_only() { # $1 = PR number; true iff every changed file is under docs/
     [[ -n "$files" ]] && ! grep -qvE '^docs/' <<<"$files"
 }
 
-is_loop_branch() { # $1 = branch name; true iff the loop owns it (may salvage)
+is_loop_branch() { # $1 = branch name; classifies naming only, never ownership
     [[ "${1:-}" =~ ^(fix|perf|chore|docs|feature|salvage)/ ]]
 }
 
