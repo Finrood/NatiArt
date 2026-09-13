@@ -168,6 +168,20 @@
               <span class="text-sm font-medium text-gray-700">Has fixed golden borders</span>
             </label>
           </div>
+          <!-- Merchandising flags -->
+          <fieldset class="mb-4 space-y-2">
+            <legend class="block text-sm font-medium text-gray-700 mb-1">Merchandising</legend>
+            <label class="flex items-center space-x-2">
+              <input type="checkbox" formControlName="newProduct" id="newProduct"
+                class="form-checkbox h-5 w-5 text-primary focus:ring-primary focus:ring-opacity-50">
+              <span class="text-sm font-medium text-gray-700">Show in New Arrivals</span>
+            </label>
+            <label class="flex items-center space-x-2">
+              <input type="checkbox" formControlName="featuredProduct" id="featuredProduct"
+                class="form-checkbox h-5 w-5 text-primary focus:ring-primary focus:ring-opacity-50">
+              <span class="text-sm font-medium text-gray-700">Show in Featured Products</span>
+            </label>
+          </fieldset>
           <!-- Personalization Options Checkboxes -->
           @for (option of availablePersonalizationOptions; track option) {
             <div class="mb-4">
