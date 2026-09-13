@@ -1,14 +1,14 @@
 package com.portcelana.natiart.repository;
 
-import java.util.Optional;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -25,8 +25,7 @@ public interface OrderRepository extends JpaRepository<CustomerOrder, String> {
     List<CustomerOrder> findAllByOwnerExternalIdWithItems(@Param("ownerExternalId") String ownerExternalId);
 
     @Query("SELECT o.id FROM CustomerOrder o WHERE o.ownerExternalId = :ownerExternalId ORDER BY o.orderDate DESC")
-    Page<String> findIdsByOwnerExternalId(
-            @Param("ownerExternalId") String ownerExternalId, Pageable pageable);
+    Page<String> findIdsByOwnerExternalId(@Param("ownerExternalId") String ownerExternalId, Pageable pageable);
 
     @Query("SELECT o.id FROM CustomerOrder o ORDER BY o.orderDate DESC")
     Page<String> findIds(Pageable pageable);

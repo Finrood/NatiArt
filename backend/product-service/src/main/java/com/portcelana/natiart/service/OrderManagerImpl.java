@@ -14,9 +14,9 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -88,9 +88,8 @@ public class OrderManagerImpl implements OrderManager {
     @Override
     @Transactional(readOnly = true)
     public List<CustomerOrder> getAllOrders(int page, int size) {
-        final List<String> orderIds = orderRepository
-                .findIds(pageRequest(page, size))
-                .getContent();
+        final List<String> orderIds =
+                orderRepository.findIds(pageRequest(page, size)).getContent();
         return loadOrders(orderIds);
     }
 
@@ -216,7 +215,8 @@ public class OrderManagerImpl implements OrderManager {
                 final StringBuilder itemValue = new StringBuilder();
                 append(itemValue, item == null ? null : item.getProductId());
                 append(itemValue, item == null ? null : item.getQuantity());
-                if (item == null || item.getPersonalizationDto() == null
+                if (item == null
+                        || item.getPersonalizationDto() == null
                         || item.getPersonalizationDto().getPersonalizationOptions() == null) {
                     append(itemValue, null);
                 } else {

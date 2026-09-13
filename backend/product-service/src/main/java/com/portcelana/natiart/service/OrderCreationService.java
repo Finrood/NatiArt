@@ -2,8 +2,8 @@ package com.portcelana.natiart.service;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.HashSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -108,8 +108,9 @@ public class OrderCreationService {
                     .setPrice(unitPrice);
             if (item.getPersonalizationDto() != null
                     && item.getPersonalizationDto().getPersonalizationOptions() != null) {
-                orderItem.setPersonalization(new Personalization().setPersonalizationOptions(
-                        new HashMap<>(item.getPersonalizationDto().getPersonalizationOptions())));
+                orderItem.setPersonalization(new Personalization()
+                        .setPersonalizationOptions(
+                                new HashMap<>(item.getPersonalizationDto().getPersonalizationOptions())));
             }
             customerOrder.addOrderItem(orderItem);
         }

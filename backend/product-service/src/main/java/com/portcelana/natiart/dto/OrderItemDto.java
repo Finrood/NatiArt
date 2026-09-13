@@ -21,12 +21,14 @@ public class OrderItemDto {
                 .setId(customerOrderItem.getId())
                 .setOrderId(customerOrderItem.getCustomerOrder().getId())
                 .setProductId(customerOrderItem.getProduct().getId())
-                .setProductLabel(customerOrderItem.getProductLabel() != null
-                        ? customerOrderItem.getProductLabel()
-                        : customerOrderItem.getProduct().getLabel())
-                .setProductSku(customerOrderItem.getProductSku() != null
-                        ? customerOrderItem.getProductSku()
-                        : customerOrderItem.getProduct().getId())
+                .setProductLabel(
+                        customerOrderItem.getProductLabel() != null
+                                ? customerOrderItem.getProductLabel()
+                                : customerOrderItem.getProduct().getLabel())
+                .setProductSku(
+                        customerOrderItem.getProductSku() != null
+                                ? customerOrderItem.getProductSku()
+                                : customerOrderItem.getProduct().getId())
                 .setQuantity(customerOrderItem.getQuantity())
                 .setPrice(customerOrderItem.getPrice())
                 .setPersonalizationDto(PersonalizationDto.from(customerOrderItem.getPersonalization()));

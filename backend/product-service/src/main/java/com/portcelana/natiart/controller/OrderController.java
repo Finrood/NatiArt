@@ -2,13 +2,13 @@ package com.portcelana.natiart.controller;
 
 import java.util.List;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -54,8 +54,7 @@ public class OrderController {
     @GetMapping("/orders/{orderId}")
     @PreAuthorize("isFullyAuthenticated()")
     public OrderDto getCustomerOrder(
-            @PathVariable String orderId,
-            @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
+            @PathVariable String orderId, @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
         return toOrderDto(orderManager.getOrderForOwner(orderId, principal.getExternalId()));
     }
 
@@ -63,13 +62,14 @@ public class OrderController {
     @PreAuthorize("hasRole('ADMIN')")
     public List<OrderDto> getFulfillmentOrders(
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
-        return orderManager.getAllOrders(page, size).stream().map(this::toOrderDto).toList();
+        return orderManager.getAllOrders(page, size).stream()
+                .map(this::toOrderDto)
+                .toList();
     }
 
     @PatchMapping("/admin/orders/{orderId}/status")
     @PreAuthorize("hasRole('ADMIN')")
-    public OrderDto updateFulfillmentStatus(
-            @PathVariable String orderId, @RequestBody OrderStatusUpdateDto update) {
+    public OrderDto updateFulfillmentStatus(@PathVariable String orderId, @RequestBody OrderStatusUpdateDto update) {
         if (update == null || update.getStatus() == null) {
             throw new IllegalArgumentException("Order status is required");
         }

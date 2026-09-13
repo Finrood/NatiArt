@@ -9,9 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +17,8 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
@@ -79,9 +78,11 @@ class OrderManagerImplTest {
         when(shippingService.getOrderShippingAmount(any())).thenReturn(new BigDecimal("5.00"));
         when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        OrderDto dto = validOrder().setDeliveryAmount(new BigDecimal("5.00")).setItems(List.of(item("p1", 2)
-                .setPersonalizationDto(new PersonalizationDto()
-                        .setPersonalizationOptions(Map.of(PersonalizationOption.GOLDEN_BORDER, "true")))));
+        OrderDto dto = validOrder()
+                .setDeliveryAmount(new BigDecimal("5.00"))
+                .setItems(List.of(item("p1", 2)
+                        .setPersonalizationDto(new PersonalizationDto()
+                                .setPersonalizationOptions(Map.of(PersonalizationOption.GOLDEN_BORDER, "true")))));
 
         CustomerOrder saved = orderManager.createOrder(dto, "user-1");
 
@@ -93,15 +94,16 @@ class OrderManagerImplTest {
         assertEquals(new BigDecimal("13.00"), line.getPrice());
         assertEquals("Plate", line.getProductLabel());
         assertEquals(plate.getId(), line.getProductSku());
-        assertEquals("true", line.getPersonalization().getPersonalizationOptions()
-                .get(PersonalizationOption.GOLDEN_BORDER));
+        assertEquals(
+                "true", line.getPersonalization().getPersonalizationOptions().get(PersonalizationOption.GOLDEN_BORDER));
         verify(orderRepository).save(any(CustomerOrder.class));
     }
 
     @Test
     void ownerOrderReadsUseTheBoundedPageAndRestoreDatabaseOrder() {
         CustomerOrder newest = new CustomerOrder().setOrderDate(java.time.Instant.now());
-        CustomerOrder older = new CustomerOrder().setOrderDate(java.time.Instant.now().minusSeconds(60));
+        CustomerOrder older =
+                new CustomerOrder().setOrderDate(java.time.Instant.now().minusSeconds(60));
         when(orderRepository.findIdsByOwnerExternalId(eq("user-1"), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(newest.getId(), older.getId())));
         when(orderRepository.findAllWithItemsByIds(List.of(newest.getId(), older.getId())))
