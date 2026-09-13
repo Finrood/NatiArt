@@ -14,7 +14,9 @@ public class PersonalizationDto {
         if (personalization == null) return null;
         return new PersonalizationDto()
                 .setId(personalization.getId())
-                .setPersonalizationOptions(personalization.getPersonalizationOptions());
+                // Force initialization while the manager transaction is open
+                // and keep Hibernate's persistent map out of the response.
+                .setPersonalizationOptions(new HashMap<>(personalization.getPersonalizationOptions()));
     }
 
     public String getId() {
