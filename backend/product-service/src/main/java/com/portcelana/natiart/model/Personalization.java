@@ -21,6 +21,10 @@ public class Personalization {
     @Column(name = "personalizationOptions")
     private final Map<PersonalizationOption, String> personalizationOptions = new HashMap<>();
 
+    /** Server-resolved artwork retained for fulfilment; never populated from a client URI. */
+    @OneToOne(fetch = FetchType.EAGER)
+    private CustomerUpload customImageUpload;
+
     public Personalization() {
         this.id = UUID.randomUUID().toString();
     }
@@ -36,6 +40,15 @@ public class Personalization {
     public Personalization setPersonalizationOptions(Map<PersonalizationOption, String> personalizationOptions) {
         this.personalizationOptions.clear();
         this.personalizationOptions.putAll(personalizationOptions);
+        return this;
+    }
+
+    public CustomerUpload getCustomImageUpload() {
+        return customImageUpload;
+    }
+
+    public Personalization setCustomImageUpload(CustomerUpload customImageUpload) {
+        this.customImageUpload = customImageUpload;
         return this;
     }
 }

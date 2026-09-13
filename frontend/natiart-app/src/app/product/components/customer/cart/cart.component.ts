@@ -101,7 +101,7 @@ export class CartComponent implements OnInit, OnDestroy {
       'Failed to remove item. Please try again.'
     );
     this.confirmationModal.title = 'Remove Item';
-    this.confirmationModal.message = `Are you sure you want to remove this instance of "${item.product.label}"${item.image ? ' (with custom image)' : ''} from your cart?`;
+    this.confirmationModal.message = `Are you sure you want to remove this instance of "${item.product.label}"${item.image || item.customImageUploadId ? ' (with custom image)' : ''} from your cart?`;
     this.confirmationModal.confirmText = 'Remove';
     this.confirmationModal.cancelText = 'Cancel';
     this.confirmationModal.isOpen = true;

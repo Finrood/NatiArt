@@ -6,5 +6,7 @@ export interface CartItem {
   product: Product;
   goldBorder?: boolean;
   image?: File; // The custom image File object
+  /** Opaque server-owned id populated when checkout uploads the artwork. */
+  customImageUploadId?: string;
   quantity: number;
 }

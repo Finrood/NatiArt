@@ -5,6 +5,7 @@ import {EmptyError, firstValueFrom, map, Observable, Subject, throwError} from '
 import {CartItem} from '../../../models/CartItem.model';
 import {OrderDto} from '../../../models/order.model';
 import {CartService} from '../../../service/cart.service';
+import {ProductService} from '../../../service/product.service';
 import {OrderService} from '../../../service/order.service';
 import {Router} from '@angular/router';
 import {PaymentService} from "../../../service/payment.service";
@@ -22,6 +23,7 @@ import {CustomCpfValidators} from "../../../../directory/validator/CustomCpfVali
 import {CustomCepValidators} from "../../../../directory/validator/CustomCepValidators";
 import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportError} from '../../../../shared/service/error-reporting.service';
+import {PersonalizationOption} from '../../../models/support/personalization-option';
 
 @Component({
   selector: 'app-checkout',
@@ -64,6 +66,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   constructor(
     private fb: FormBuilder,
     private cartService: CartService,
+    private productService: ProductService,
     private authenticationService: AuthenticationService,
     private orderService: OrderService,
     private paymentService: PaymentService,
@@ -247,7 +250,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         return;
       }
 
-      const orderRequest = this.buildOrderRequest();
+      const orderRequest = await this.buildOrderRequest();
       const fingerprint = JSON.stringify(orderRequest);
       if (this.checkoutFingerprint !== fingerprint) {
         this.currentOrder = null;
@@ -299,20 +302,45 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
     } catch (error) {
       reportError('payment', error);
+      this.clearInfoMessage();
       this.setErrorMessage('Could not process PIX payment. Please try again.');
     }
     this.cdr.detectChanges();
   }
 
-  private buildOrderRequest(): OrderDto {
+  private async buildOrderRequest(): Promise<OrderDto> {
     const userInfo = this.checkoutForm.get('userInfo')?.getRawValue();
     const shippingInfo = this.checkoutForm.get('shippingInfo')?.getRawValue();
-    const items = this.cartService.getCartItemsSnapshot().map(item => {
+    const items = await Promise.all(this.cartService.getCartItemsSnapshot().map(async item => {
       if (!item.product.id) {
         throw new Error('A cart item is missing its product identifier.');
       }
-      return {productId: item.product.id, quantity: item.quantity};
-    });
+      let uploadId = item.customImageUploadId;
+      if (item.image && !uploadId) {
+        this.setInfoMessage('Uploading your custom artwork...');
+        const upload = await firstValueFrom(this.productService.uploadCustomerImage(item.image));
+        if (!upload?.uploadId || upload.uploadId.trim().length === 0) {
+          throw new Error('The artwork upload did not return an upload identifier.');
+        }
+        uploadId = upload.uploadId;
+        await firstValueFrom(this.cartService.setCustomImageUploadId(item.cartItemId, uploadId));
+      }
+      if (item.image && !uploadId) {
+        throw new Error('A custom artwork line is missing its upload identifier.');
+      }
+
+      const personalizationOptions: Partial<Record<PersonalizationOption, string>> = {};
+      if (item.goldBorder) {
+        personalizationOptions[PersonalizationOption.GOLDEN_BORDER] = 'true';
+      }
+      if (uploadId) {
+        personalizationOptions[PersonalizationOption.CUSTOM_IMAGE] = uploadId;
+      }
+      const personalization = Object.keys(personalizationOptions).length > 0
+        ? {personalizationOptions}
+        : undefined;
+      return {productId: item.product.id, quantity: item.quantity, personalization};
+    }));
 
     if (items.length === 0) {
       throw new Error('Cannot create an order from an empty cart.');

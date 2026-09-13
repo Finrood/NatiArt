@@ -7,6 +7,7 @@ import { BehaviorSubject, of, throwError } from 'rxjs';
 
 import { CheckoutComponent } from './checkout.component';
 import { CartService } from '../../../service/cart.service';
+import { ProductService } from '../../../service/product.service';
 import { OrderService } from '../../../service/order.service';
 import { PaymentService } from '../../../service/payment.service';
 import { AuthenticationService } from '../../../../directory/service/authentication.service';
@@ -21,6 +22,16 @@ describe('CheckoutComponent', () => {
   let createOrderSpy: jasmine.Spy;
   let isLoggedInSubject: BehaviorSubject<boolean>;
   let currentUserSubject: BehaviorSubject<User | null>;
+  let cartItemsSnapshot: Array<{
+    cartItemId: string;
+    product: { id: string };
+    quantity: number;
+    goldBorder?: boolean;
+    image?: File;
+    customImageUploadId?: string;
+  }>;
+  let uploadCustomerImageSpy: jasmine.Spy;
+  let setCustomImageUploadIdSpy: jasmine.Spy;
 
   const loggedInUser: User = {
     id: 'u1',
@@ -68,6 +79,9 @@ describe('CheckoutComponent', () => {
     currentUserSubject = new BehaviorSubject<User | null>(loggedInUser);
     createPixPaymentSpy = jasmine.createSpy('createPixPayment');
     createOrderSpy = jasmine.createSpy('createOrder');
+    uploadCustomerImageSpy = jasmine.createSpy('uploadCustomerImage');
+    setCustomImageUploadIdSpy = jasmine.createSpy('setCustomImageUploadId').and.returnValue(of(undefined));
+    cartItemsSnapshot = [{cartItemId: 'line-1', product: {id: 'prod-1'}, quantity: 1}];
 
     await TestBed.configureTestingModule({
       imports: [CheckoutComponent],
@@ -81,9 +95,8 @@ describe('CheckoutComponent', () => {
             getCartItems: (): BehaviorSubject<never[]> => new BehaviorSubject<never[]>([]),
             getCartTotal: (): BehaviorSubject<number> => new BehaviorSubject<number>(0),
             getCartTotalSnapshot: (): number => 99.9,
-            getCartItemsSnapshot: (): Array<{ product: { id: string }; quantity: number }> => [
-              { product: { id: 'prod-1' }, quantity: 1 },
-            ],
+            getCartItemsSnapshot: () => cartItemsSnapshot,
+            setCustomImageUploadId: setCustomImageUploadIdSpy,
           },
         },
         {
@@ -105,6 +118,10 @@ describe('CheckoutComponent', () => {
         {
           provide: PaymentService,
           useValue: { createPixPayment: createPixPaymentSpy },
+        },
+        {
+          provide: ProductService,
+          useValue: { uploadCustomerImage: uploadCustomerImageSpy },
         },
       ],
     }).compileComponents();
@@ -135,6 +152,33 @@ describe('CheckoutComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('buildsDistinctVariantLinesAndSendsOwnedArtworkIds', async () => {
+    const artwork = new File(['art'], 'art.png', {type: 'image/png'});
+    cartItemsSnapshot = [
+      {cartItemId: 'line-gold', product: {id: 'prod-1'}, quantity: 1, goldBorder: true},
+      {cartItemId: 'line-art', product: {id: 'prod-1'}, quantity: 2, image: artwork},
+    ];
+    uploadCustomerImageSpy.and.returnValue(of({uploadId: '2b7f4d7e-6e55-4a8f-a8b2-f2b7069e4d2c'}));
+
+    const request = await (component as unknown as {buildOrderRequest: () => Promise<OrderDto>}).buildOrderRequest();
+
+    expect(request.items).toEqual([
+      jasmine.objectContaining({
+        productId: 'prod-1',
+        quantity: 1,
+        personalization: {personalizationOptions: {GOLDEN_BORDER: 'true'}},
+      }),
+      jasmine.objectContaining({
+        productId: 'prod-1',
+        quantity: 2,
+        personalization: {personalizationOptions: {CUSTOM_IMAGE: '2b7f4d7e-6e55-4a8f-a8b2-f2b7069e4d2c'}},
+      }),
+    ]);
+    expect(uploadCustomerImageSpy).toHaveBeenCalledOnceWith(artwork);
+    expect(setCustomImageUploadIdSpy).toHaveBeenCalledOnceWith(
+      'line-art', '2b7f4d7e-6e55-4a8f-a8b2-f2b7069e4d2c');
   });
 
   it('keeps checkout errors visible until dismissed (O3)', async () => {

@@ -41,4 +41,21 @@ describe('ProductService', () => {
     expect(captured.message).toBe('Missing product id');
     httpMock.expectNone(() => true);
   });
+
+  it('uploadsCustomerArtworkAsMultipartDataAndReturnsOpaqueId', () => {
+    const file = new File(['art'], 'art.png', {type: 'image/png'});
+    let uploadId: string | undefined;
+    service.uploadCustomerImage(file).subscribe(response => uploadId = response.uploadId);
+
+    const request = httpMock.expectOne('http://localhost:8082/customer/uploads');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body instanceof FormData).toBeTrue();
+    const uploaded = (request.request.body as FormData).get('file') as File;
+    expect(uploaded.name).toBe(file.name);
+    expect(uploaded.type).toBe(file.type);
+    expect(uploaded.size).toBe(file.size);
+    request.flush({uploadId: 'upload-1'});
+
+    expect(uploadId).toBe('upload-1');
+  });
 });
