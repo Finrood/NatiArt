@@ -52,14 +52,14 @@ class UserRegistrationDtoValidationTest {
 
     @Test
     void blankUsernameIsRejected() {
-        final UserRegistrationDto dto = new UserRegistrationDto("   ", "password", validProfile());
+        final UserRegistrationDto dto = new UserRegistrationDto("   ", "Password1", validProfile());
 
         assertEquals(Set.of("username"), violatedFields(dto));
     }
 
     @Test
     void nonEmailUsernameIsRejected() {
-        final UserRegistrationDto dto = new UserRegistrationDto("not-an-email", "password", validProfile());
+        final UserRegistrationDto dto = new UserRegistrationDto("not-an-email", "Password1", validProfile());
 
         assertEquals(Set.of("username"), violatedFields(dto));
     }
@@ -73,7 +73,7 @@ class UserRegistrationDtoValidationTest {
 
     @Test
     void missingProfileIsRejected() {
-        final UserRegistrationDto dto = new UserRegistrationDto("john@example.com", "password", null);
+        final UserRegistrationDto dto = new UserRegistrationDto("john@example.com", "Password1", null);
 
         assertEquals(Set.of("profile"), violatedFields(dto));
     }
@@ -81,14 +81,14 @@ class UserRegistrationDtoValidationTest {
     @Test
     void blankRequiredProfileFieldIsRejectedViaCascade() {
         final UserRegistrationDto dto = new UserRegistrationDto(
-                "john@example.com", "password", validProfile().setFirstname("   "));
+                "john@example.com", "Password1", validProfile().setFirstname("   "));
 
         assertEquals(Set.of("profile.firstname"), violatedFields(dto));
     }
 
     @Test
     void validRegistrationDtoHasNoViolations() {
-        final UserRegistrationDto dto = new UserRegistrationDto("john@example.com", "password", validProfile());
+        final UserRegistrationDto dto = new UserRegistrationDto("john@example.com", "Password1", validProfile());
 
         assertTrue(violatedFields(dto).isEmpty());
     }
