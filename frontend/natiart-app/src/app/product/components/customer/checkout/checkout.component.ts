@@ -471,8 +471,8 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         return;
       }
       this.checkoutFingerprint = attempt.fingerprint;
-      this.orderIdempotencyKey = attempt.orderIdempotencyKey;
-      this.paymentIdempotencyKey = attempt.paymentIdempotencyKey;
+      this.orderIdempotencyKey = attempt.orderIdempotencyKey as typeof this.orderIdempotencyKey;
+      this.paymentIdempotencyKey = attempt.paymentIdempotencyKey as typeof this.paymentIdempotencyKey;
       this.currentOrder = attempt.currentOrder;
     } catch (error) {
       localStorage.removeItem(this.attemptStorageKey);
