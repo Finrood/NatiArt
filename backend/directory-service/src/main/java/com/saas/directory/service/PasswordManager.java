@@ -61,7 +61,8 @@ public class PasswordManager {
 
     @Transactional
     public void notifyResetPassword(String username) {
-        final String normalizedUsername = username == null ? "" : username.trim().toLowerCase(Locale.ROOT);
+        final String normalizedUsername =
+                username == null ? "" : username.trim().toLowerCase(Locale.ROOT);
         if (!StringUtils.hasText(normalizedUsername)) {
             return;
         }
@@ -71,15 +72,16 @@ public class PasswordManager {
 
         userManager.getUser(normalizedUsername).ifPresent(user -> {
             tokenManager.clearTokensOfUserByType(user, TokenType.PASSWORD_RESET);
-            final Token token = tokenManager.generateRandomUUIDToken(
-                    user, 15, ChronoUnit.MINUTES, TokenType.PASSWORD_RESET);
+            final Token token =
+                    tokenManager.generateRandomUUIDToken(user, 15, ChronoUnit.MINUTES, TokenType.PASSWORD_RESET);
             notificationSender.send(new PasswordResetNotification(user.getUsername(), resetLink(token.getJti())));
         });
     }
 
     @Transactional
     public void doResetPassword(String jti, ResetPasswordDto resetPasswordDto) {
-        if (resetPasswordDto == null || !Objects.equals(resetPasswordDto.password(), resetPasswordDto.passwordConfirmation())) {
+        if (resetPasswordDto == null
+                || !Objects.equals(resetPasswordDto.password(), resetPasswordDto.passwordConfirmation())) {
             throw new IllegalArgumentException("Passwords must be identical");
         }
         PasswordPolicy.validate(resetPasswordDto.password());
@@ -105,8 +107,8 @@ public class PasswordManager {
 
     private String rateLimitKey(String username) {
         try {
-            final byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(username.getBytes(StandardCharsets.UTF_8));
+            final byte[] digest =
+                    MessageDigest.getInstance("SHA-256").digest(username.getBytes(StandardCharsets.UTF_8));
             final StringBuilder result = new StringBuilder("password-reset:");
             for (byte value : digest) {
                 result.append(String.format("%02x", value));

@@ -27,8 +27,7 @@ public interface TokenRepository extends JpaRepository<Token, String> {
 
     @Modifying
     @Query("DELETE FROM Token t WHERE t.jti = :jti AND t.tokenType = :tokenType AND t.expiry > :now")
-    int consumeValidToken(
-            @Param("jti") String jti, @Param("tokenType") TokenType tokenType, @Param("now") Instant now);
+    int consumeValidToken(@Param("jti") String jti, @Param("tokenType") TokenType tokenType, @Param("now") Instant now);
 
     void deleteByJti(String jti);
 

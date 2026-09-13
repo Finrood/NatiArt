@@ -26,8 +26,7 @@ public class PasswordResetController {
     }
 
     @PostMapping("/password-reset/request")
-    public ResponseEntity<PasswordResetResponse> requestReset(
-            @Valid @RequestBody PasswordResetRequestDto request) {
+    public ResponseEntity<PasswordResetResponse> requestReset(@Valid @RequestBody PasswordResetRequestDto request) {
         passwordManager.notifyResetPassword(request.username());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(new PasswordResetResponse(REQUEST_MESSAGE));
     }

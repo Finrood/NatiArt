@@ -106,7 +106,8 @@ public class PasswordManagerTest {
         final User user = new User("customer@example.com", "OldPass1");
         final Token token = new Token(
                 "reset-jti", user, TokenType.PASSWORD_RESET, Instant.now().plus(15, ChronoUnit.MINUTES));
-        when(rateLimitStore.tryAcquire(any(), org.mockito.ArgumentMatchers.eq(3))).thenReturn(true);
+        when(rateLimitStore.tryAcquire(any(), org.mockito.ArgumentMatchers.eq(3)))
+                .thenReturn(true);
         when(userManager.getUser("customer@example.com")).thenReturn(Optional.of(user));
         when(tokenManager.generateRandomUUIDToken(user, 15, ChronoUnit.MINUTES, TokenType.PASSWORD_RESET))
                 .thenReturn(token);
@@ -114,13 +115,15 @@ public class PasswordManagerTest {
         passwordManager.notifyResetPassword(" CUSTOMER@EXAMPLE.COM ");
 
         verify(tokenManager).clearTokensOfUserByType(user, TokenType.PASSWORD_RESET);
-        verify(notificationSender).send(new PasswordResetNotification(
-                "customer@example.com", "http://localhost:4200/reset-password#token=reset-jti"));
+        verify(notificationSender)
+                .send(new PasswordResetNotification(
+                        "customer@example.com", "http://localhost:4200/reset-password#token=reset-jti"));
     }
 
     @Test
     public void notifyResetPassword_doesNotRevealWhetherAnAccountExists() {
-        when(rateLimitStore.tryAcquire(any(), org.mockito.ArgumentMatchers.eq(3))).thenReturn(true);
+        when(rateLimitStore.tryAcquire(any(), org.mockito.ArgumentMatchers.eq(3)))
+                .thenReturn(true);
         when(userManager.getUser("unknown@example.com")).thenReturn(Optional.empty());
 
         passwordManager.notifyResetPassword("unknown@example.com");
@@ -131,7 +134,8 @@ public class PasswordManagerTest {
 
     @Test
     public void notifyResetPassword_doesNotLookUpAnAccountWhenThrottled() {
-        when(rateLimitStore.tryAcquire(any(), org.mockito.ArgumentMatchers.eq(3))).thenReturn(false);
+        when(rateLimitStore.tryAcquire(any(), org.mockito.ArgumentMatchers.eq(3)))
+                .thenReturn(false);
 
         passwordManager.notifyResetPassword("customer@example.com");
 
@@ -146,7 +150,8 @@ public class PasswordManagerTest {
                 "reset-jti", user, TokenType.PASSWORD_RESET, Instant.now().plus(15, ChronoUnit.MINUTES));
         when(tokenManager.getValidTokenByJtiAndTokenTypeOrDie("reset-jti", TokenType.PASSWORD_RESET))
                 .thenReturn(token);
-        when(tokenManager.consumeValidToken("reset-jti", TokenType.PASSWORD_RESET)).thenReturn(false);
+        when(tokenManager.consumeValidToken("reset-jti", TokenType.PASSWORD_RESET))
+                .thenReturn(false);
 
         assertThrows(
                 IllegalArgumentException.class,

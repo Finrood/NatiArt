@@ -91,7 +91,8 @@ public class UserManagerTest {
         profileDto.setStreet("123 Main St");
         profileDto.setComplement("Apt 101");
 
-        final UserRegistrationDto userRegistrationDto = new UserRegistrationDto("new_username", "Password1", profileDto);
+        final UserRegistrationDto userRegistrationDto =
+                new UserRegistrationDto("new_username", "Password1", profileDto);
 
         final User user = new User("new_username", "password");
         when(userRepository.existsUserByUsernameIgnoreCase("new_username")).thenReturn(false);
@@ -202,7 +203,8 @@ public class UserManagerTest {
         // Prepare test data
         final ProfileDto profileDto = new ProfileDto();
 
-        final UserRegistrationDto userRegistrationDto = new UserRegistrationDto("new_username", "Password1", profileDto);
+        final UserRegistrationDto userRegistrationDto =
+                new UserRegistrationDto("new_username", "Password1", profileDto);
 
         final User user = new User("new_username", "password");
         when(userRepository.existsUserByUsernameIgnoreCase("new_username")).thenReturn(false);

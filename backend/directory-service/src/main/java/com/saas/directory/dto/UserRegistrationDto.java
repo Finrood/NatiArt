@@ -11,7 +11,10 @@ import com.saas.directory.service.PasswordPolicy;
 
 public record UserRegistrationDto(
         @NotBlank @Email @Size(max = 255) String username,
-        @NotBlank @Size(min = PasswordPolicy.MIN_LENGTH, max = PasswordPolicy.MAX_LENGTH)
-                @Pattern(regexp = PasswordPolicy.PASSWORD_PATTERN)
-                String password,
+
+        @NotBlank
+        @Size(min = PasswordPolicy.MIN_LENGTH, max = PasswordPolicy.MAX_LENGTH)
+        @Pattern(regexp = PasswordPolicy.PASSWORD_PATTERN)
+        String password,
+
         @NotNull @Valid ProfileDto profile) {}
