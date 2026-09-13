@@ -46,14 +46,14 @@
             </div>
             <!-- Thumbnails -->
             <div class="flex mt-4 space-x-2 overflow-x-auto pb-2">
-              @for (imgEntry of imageUrls | keyvalue; track imgEntry; let i = $index) {
-                <img (click)="selectImage(i)"
+              @for (imgEntry of imageUrls | keyvalue; track imgEntry.key) {
+                <img (click)="selectImage(imgEntry.key)"
                   [src]="imgEntry.value || 'assets/img/placeholder.png'"
                   [alt]="product.label + ' Thumbnail ' + (i + 1)"
                   class="w-20 h-20 object-contain border-2 cursor-pointer transition-colors duration-200 rounded"
-                  [class.border-primary]="selectedImageIndex === i"
-                  [class.border-transparent]="selectedImageIndex !== i"
-                  [class.hover:border-primary-light]="selectedImageIndex !== i">
+                  [class.border-primary]="selectedImageIndex === imgEntry.key"
+                  [class.border-transparent]="selectedImageIndex !== imgEntry.key"
+                  [class.hover:border-primary-light]="selectedImageIndex !== imgEntry.key">
               }
             </div>
           </div>
