@@ -3,10 +3,10 @@ package com.portcelana.natiart.storage;
 import java.io.*;
 import java.net.URI;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.NoSuchFileException;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -14,7 +14,6 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.poi.util.IOUtils;
 import org.apache.poi.util.TempFile;
 import org.springframework.beans.factory.annotation.Value;
@@ -61,8 +60,7 @@ public class StorageFileSystem implements Storage {
             // The file may be removed between the existence check and opening it.
             throw new ResourceNotFoundException("Requested image is not available");
         } catch (IOException e) {
-            throw new IllegalStateException(
-                    "Error while reading the requested image from local storage.", e);
+            throw new IllegalStateException("Error while reading the requested image from local storage.", e);
         }
     }
 

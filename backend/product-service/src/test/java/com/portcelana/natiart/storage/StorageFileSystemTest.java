@@ -53,8 +53,8 @@ class StorageFileSystemTest {
         writeInside(root, "p1/img.webp", "image-bytes");
         StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
 
-        ResourceNotFoundException thrown = assertThrows(
-                ResourceNotFoundException.class, () -> storage.openFile(URI.create("file:///etc/passwd")));
+        ResourceNotFoundException thrown =
+                assertThrows(ResourceNotFoundException.class, () -> storage.openFile(URI.create("file:///etc/passwd")));
         assertEquals("Requested image is not available", thrown.getMessage());
     }
 
@@ -75,8 +75,8 @@ class StorageFileSystemTest {
         Path missing = root.resolve("retired-product/missing.webp");
         StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
 
-        ResourceNotFoundException thrown = assertThrows(
-                ResourceNotFoundException.class, () -> storage.openFile(missing.toUri()));
+        ResourceNotFoundException thrown =
+                assertThrows(ResourceNotFoundException.class, () -> storage.openFile(missing.toUri()));
 
         assertEquals("Requested image is not available", thrown.getMessage());
         assertFalse(thrown.getMessage().contains(root.toString()));
@@ -89,8 +89,8 @@ class StorageFileSystemTest {
         Files.createDirectories(directory);
         StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
 
-        ResourceNotFoundException thrown = assertThrows(
-                ResourceNotFoundException.class, () -> storage.openFile(directory.toUri()));
+        ResourceNotFoundException thrown =
+                assertThrows(ResourceNotFoundException.class, () -> storage.openFile(directory.toUri()));
 
         assertEquals("Requested image is not available", thrown.getMessage());
     }
