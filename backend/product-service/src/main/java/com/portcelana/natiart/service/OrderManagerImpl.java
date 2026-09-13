@@ -71,7 +71,8 @@ public class OrderManagerImpl implements OrderManager {
     public CustomerOrder markOrderPaid(String orderId) {
         final CustomerOrder current = getOrderById(orderId);
         if (current.getStatus() == OrderStatus.PENDING) {
-            return updateOrderStatus(orderId, OrderStatus.PAID);
+            current.setStatus(OrderStatus.PAID);
+            return current;
         }
         if (current.getStatus() == OrderStatus.PAID
                 || current.getStatus() == OrderStatus.PROCESSING
@@ -212,9 +213,11 @@ public class OrderManagerImpl implements OrderManager {
             throw new IllegalArgumentException("Order [" + orderId + "] must not transition from ["
                     + current.getStatus() + "] to [" + status + "]");
         }
-        if (orderRepository.updateStatusById(orderId, status) == 0) {
-            throw new ResourceNotFoundException("CustomerOrder with id " + orderId + " not found");
-        }
-        return getOrderById(orderId);
+        // The entity is managed by this transaction, so changing it lets JPA
+        // include its @Version predicate in the UPDATE. A concurrent transition
+        // therefore fails with an optimistic-lock conflict instead of silently
+        // overwriting the other status.
+        current.setStatus(status);
+        return current;
     }
 }
