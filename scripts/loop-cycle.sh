@@ -285,6 +285,10 @@ log "Open docs PRs:$DOCS_PRS"
 merged=0
 for n in $CODE_PRS $DOCS_PRS; do
     [[ "$merged" -ge 2 ]] && { log "Merged 2 this cycle; handing the rest to the agent/next cycle."; break; }
+    if ! pr_is_loop_owned "$n"; then
+        log "PR #$n is not explicitly owned by the authenticated loop author; leaving open."
+        continue
+    fi
     # Self-modification ban: any touch of instructions, loop scripts, loop docs,
     # module guides, or CI config stays OPEN for human review — never auto-merge
     # changes to the loop's own brain, even on green CI.
@@ -315,13 +319,17 @@ for n in $CODE_PRS $DOCS_PRS; do
         log "PR #$n is missing one or more path-required green checks; leaving open."
         continue
     fi
-    LATEST_V="$(latest_verdict "$n")"
-    if ! grep -q '^VERDICT: APPROVE' <<<"$LATEST_V"; then
+    LATEST_V="$(trusted_latest_verdict "$n" || true)"
+    if ! is_head_bound_approval "$LATEST_V"; then
         log "PR #$n latest verdict is not APPROVE; leaving open for review."
         continue
     fi
     RV_SHA="$(reviewed_sha "$LATEST_V")"
     HEAD_SHA="$(gh pr view "$n" --json headRefOid --jq .headRefOid 2>/dev/null || true)"
+    if [[ ! "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+        log "PR #$n head is unavailable or not a full SHA; leaving open."
+        continue
+    fi
     if [[ -z "$RV_SHA" ]]; then
         log "PR #$n APPROVE predates head-binding; leaving open for one binding re-review."
         continue
@@ -330,8 +338,22 @@ for n in $CODE_PRS $DOCS_PRS; do
         log "PR #$n APPROVE is for $RV_SHA but head is ${HEAD_SHA:0:8}; leaving open for re-review."
         continue
     fi
-    log "Merging healthy PR #$n (green + latest APPROVE for current head + mergeable)."
-    if gh pr merge "$n" --merge --delete-branch 2>&1 | tail -2; then
+    CURRENT_HEAD_SHA="$(gh pr view "$n" --json headRefOid --jq .headRefOid 2>/dev/null || true)"
+    if [[ "$CURRENT_HEAD_SHA" != "$HEAD_SHA" ]]; then
+        log "PR #$n head changed during validation; leaving open for a fresh review."
+        continue
+    fi
+    FINAL_LATEST_V="$(trusted_latest_verdict "$n" || true)"
+    if ! is_head_bound_approval "$FINAL_LATEST_V" || [[ "$(reviewed_sha "$FINAL_LATEST_V")" != "$HEAD_SHA" ]]; then
+        log "PR #$n approval changed or lost during validation; leaving open."
+        continue
+    fi
+    if [[ "$(pr_mergeable "$n")" != "MERGEABLE" ]]; then
+        log "PR #$n is no longer mergeable at the final validation; leaving open."
+        continue
+    fi
+    log "Merging healthy PR #$n (owned + green + trusted full-SHA APPROVE + mergeable)."
+    if gh pr merge "$n" --merge --delete-branch --match-head-commit "$HEAD_SHA" 2>&1 | tail -2; then
         merged=$((merged + 1))
     else
         log "Merge of PR #$n failed transiently; leaving open for next cycle."
@@ -380,8 +402,18 @@ while IFS=$'\t' read -r dn dcreated dtitle; do
         log "Dependabot #$dn mergeability is $D_MERGEABLE_STATE; leaving open until GitHub confirms MERGEABLE."
         continue
     fi
-    log "Merging aged green dependabot #$dn ($bump, >48h)."
-    if gh pr merge "$dn" --merge --delete-branch 2>&1 | tail -2; then
+    D_HEAD_SHA="$(gh pr view "$dn" --json headRefOid --jq .headRefOid 2>/dev/null || true)"
+    if [[ ! "$D_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+        log "Dependabot #$dn head is unavailable or not a full SHA; leaving open."
+        continue
+    fi
+    D_CURRENT_HEAD_SHA="$(gh pr view "$dn" --json headRefOid --jq .headRefOid 2>/dev/null || true)"
+    if [[ "$D_CURRENT_HEAD_SHA" != "$D_HEAD_SHA" ]]; then
+        log "Dependabot #$dn head changed during validation; leaving open."
+        continue
+    fi
+    log "Merging aged green dependabot #$dn ($bump, >48h, head-bound)."
+    if gh pr merge "$dn" --merge --delete-branch --match-head-commit "$D_HEAD_SHA" 2>&1 | tail -2; then
         merged=$((merged + 1))
     else
         log "Merge of dependabot #$dn failed transiently; leaving open for next cycle."
@@ -458,7 +490,7 @@ for n in $ALL_PRS; do
     # re-reviewer marks its verdict with the head sha it reviewed. A marked
     # verdict only spawns another round when the head moved past that sha; a
     # verdict marked with the current head means the round is spent.
-    RC_HEAD=$(git rev-parse --short=8 origin/"$(gh pr view "$n" --json headRefName --jq .headRefName)" 2>/dev/null || true)
+    RC_HEAD=$(gh pr view "$n" --json headRefOid --jq .headRefOid 2>/dev/null || true)
     LAST_RC=$(verdict_bodies "$n" | grep -oE '^VERDICT: REQUEST_CHANGES \(re-reviewed [0-9a-f]{7,40}' | tail -1 | grep -oE '[0-9a-f]{7,40}$' || true)
     VERDICTS=$(verdict_bodies "$n" | grep -c '^VERDICT:' || true)
     LATEST_V="$(latest_verdict "$n")"

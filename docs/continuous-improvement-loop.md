@@ -281,6 +281,10 @@ table above is agent discipline, enforced by the cycle prompt.
   verdict marked with the current head means the round is spent and final. The self-heal merge skips PRs touching loop machinery (scripts/,
   agents/, AGENTS.md, mirrors, loop docs) regardless of verdicts, enforcing
   the self-modification ban mechanically.
+- Merge ownership: cycle-created PR bodies carry the exact
+  `Loop-Owner: natiart-improvement-loop` marker. The merge guard verifies it
+  and the authenticated PR author against `NATIART_TRUSTED_LOGINS`; a branch
+  prefix, comment text, or self-described model is not ownership proof.
 - Remote hygiene: every cycle retries deletion of merged loop-prefix branches
   (`fix|perf|chore|docs|feature/*`) — the `--delete-branch` flag occasionally
   races GitHub auto-delete. Never touches unmerged work, `master`, or
