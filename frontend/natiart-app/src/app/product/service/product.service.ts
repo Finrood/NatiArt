@@ -15,12 +15,23 @@ export class ProductService {
   constructor(private http: HttpClient) {
   }
 
-  getProducts(): Observable<Product[]> {
-    return this.http.get<Product[]>(this.apiUrl);
+  getProducts(categoryId?: string, page = 0, size = 20): Observable<Product[]> {
+    const params: { [key: string]: string } = {
+      page: String(Math.max(0, page)),
+      size: String(Math.max(1, Math.min(100, size))),
+    };
+    if (categoryId?.trim()) {
+      params['categoryId'] = categoryId.trim();
+    }
+    return this.http.get<Product[]>(this.apiUrl, {params});
   }
 
-  getProductsByCategory(categoryId: string): Observable<Product[]> {
-    const params = {categoryId};
+  getProductsByCategory(categoryId: string, page = 0, size = 20): Observable<Product[]> {
+    const params = {
+      categoryId,
+      page: String(Math.max(0, page)),
+      size: String(Math.max(1, Math.min(100, size))),
+    };
     return this.http.get<Product[]>(this.apiUrl, {params});
   }
 
