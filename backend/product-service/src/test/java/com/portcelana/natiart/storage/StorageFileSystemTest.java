@@ -303,5 +303,4 @@ class StorageFileSystemTest {
         final byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
         return new InputFile(new ByteArrayInputStream(bytes), "image/webp", "img.webp", bytes.length);
     }
-
 }
