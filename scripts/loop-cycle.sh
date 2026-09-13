@@ -605,7 +605,7 @@ log "Invoking agent for one cycle item."
 # STATUS is preset: a failing agent run must NOT trip `set -e` before the
 # reviewer-wait and health row below (a dead reviewer wait orphans the review).
 STATUS=0
-timeout 1500 scripts/run-agent.sh --role cycle --budget 1500 --title "improvement-loop $(date +%Y%m%d-%H%M)" "$CYCLE_MSG" || STATUS=$?
+timeout 1560 scripts/run-agent.sh --role cycle --budget 1500 --title "improvement-loop $(date +%Y%m%d-%H%M)" "$CYCLE_MSG" || STATUS=$?
 if [[ "$STATUS" -eq 124 ]]; then
     log "Agent cycle hit the 25-minute timeout; leaving state for next cycle."
 fi

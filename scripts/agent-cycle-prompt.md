@@ -75,7 +75,7 @@ Phase 3 — review, then merge the green ones (max-2 budget, Phase 0):
 7. For each PR YOU opened this cycle (at most 3 — the script's mechanical
    reviewer covers backlog PRs, so never spawn for those), launch one
    independent reviewer, all in parallel in the background
-   (`timeout 360 scripts/run-agent.sh --role review --budget 360 --title
+   (`timeout 420 scripts/run-agent.sh --role review --budget 360 --title
    "review-pr-<N>" --skip "<the PR's Model: footer value>" "$(cat scripts/agent-review-prompt.md)
    ---
    Review PR <N>. Known status — Build: <your gh pr checks result>, Merge:
