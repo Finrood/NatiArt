@@ -2,7 +2,13 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@angular/common/http/testing';
 
-import { ShippingEstimate, ShippingEstimateRequest, ShippingService } from './shipping.service';
+import {
+  ShippingEstimate,
+  ShippingEstimateRequest,
+  ShippingQuote,
+  ShippingQuoteRequest,
+  ShippingService
+} from './shipping.service';
 
 describe('ShippingService', () => {
   let service: ShippingService;
@@ -43,5 +49,27 @@ describe('ShippingService', () => {
     req.flush(estimates);
 
     expect(result).toEqual(estimates);
+  });
+
+  it('createQuote posts only destination and product quantities to the quote endpoint', () => {
+    const request: ShippingQuoteRequest = {
+      zipCode: '01001000',
+      items: [{productId: 'p1', quantity: 2}],
+    };
+    const quote: ShippingQuote = {
+      quoteId: 'q1', destinationPostalCode: '01001000', serviceId: 'pac', serviceName: 'PAC',
+      expiresAt: '2099-01-01T00:00:00Z', itemAmount: 20, shippingAmount: 8, totalAmount: 28,
+      items: [{productId: 'p1', quantity: 2, unitPrice: 10, lineAmount: 20}],
+    };
+    let result: ShippingQuote | undefined;
+    service.createQuote(request).subscribe(response => result = response);
+
+    const req: TestRequest = httpMock.expectOne((testRequest) => testRequest.method === 'POST');
+    expect(req.request.url.endsWith('/shipping/quote')).toBeTrue();
+    expect(req.request.body).toEqual(request);
+    expect(req.request.body).not.toEqual(jasmine.objectContaining({weight: jasmine.anything()}));
+    req.flush(quote);
+
+    expect(result).toEqual(quote);
   });
 });

@@ -22,6 +22,7 @@ import {CustomCpfValidators} from "../../../../directory/validator/CustomCpfVali
 import {CustomCepValidators} from "../../../../directory/validator/CustomCepValidators";
 import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportError} from '../../../../shared/service/error-reporting.service';
+import {ShippingQuote, ShippingService} from '../../../service/shipping.service';
 
 @Component({
   selector: 'app-checkout',
@@ -53,9 +54,12 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   isLoading$: Observable<boolean>;
   sameShippingAsBilling = true;
   currentStep = 1;
+  shippingQuote: ShippingQuote | null = null;
+  isLoadingQuote = false;
 
   private currentOrder: OrderDto | null = null;
   private checkoutFingerprint: string | null = null;
+  private shippingQuoteFingerprint: string | null = null;
   private orderIdempotencyKey = crypto.randomUUID();
   private paymentIdempotencyKey = crypto.randomUUID();
 
@@ -67,6 +71,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     private authenticationService: AuthenticationService,
     private orderService: OrderService,
     private paymentService: PaymentService,
+    private shippingService: ShippingService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {
@@ -111,7 +116,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.isLoading$ = this.orderService.orderProcessing$;
   }
 
-  nextStep() {
+  async nextStep(): Promise<void> {
     if (this.currentStep === 1) {
       this.checkoutForm.get('userInfo')?.markAllAsTouched();
       if (this.checkoutForm.get('userInfo')?.invalid) {
@@ -120,6 +125,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     } else if (this.currentStep === 2) {
       this.checkoutForm.get('shippingInfo')?.markAllAsTouched();
       if (this.checkoutForm.get('shippingInfo')?.invalid) {
+        return;
+      }
+      if (!(await this.loadShippingQuote())) {
         return;
       }
     }
@@ -192,6 +200,15 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       )
       .subscribe();
 
+    this.checkoutForm.get('shippingInfo')?.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.shippingQuote = null;
+        this.shippingQuoteFingerprint = null;
+        this.currentOrder = null;
+        this.checkoutFingerprint = null;
+      });
+
     this.updatePaymentValidators();
     this.checkoutForm.get('paymentInfo.paymentMethod')?.valueChanges
       .pipe(takeUntil(this.destroy$))
@@ -248,6 +265,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       }
 
       const orderRequest = this.buildOrderRequest();
+      if (!this.shippingQuote || this.isShippingQuoteExpired() || this.shippingQuoteFingerprint !== this.currentShippingQuoteFingerprint()) {
+        this.setErrorMessage('The shipping total is no longer current. Return to Shipping and review the refreshed quote.');
+        return;
+      }
       const fingerprint = JSON.stringify(orderRequest);
       if (this.checkoutFingerprint !== fingerprint) {
         this.currentOrder = null;
@@ -331,8 +352,59 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       street: shippingInfo.street,
       complement: shippingInfo.complement,
       items,
-      deliveryAmount: 0,
+      shippingQuoteId: this.shippingQuote?.quoteId,
     };
+  }
+
+  private async loadShippingQuote(): Promise<boolean> {
+    const fingerprint = this.currentShippingQuoteFingerprint();
+    if (this.shippingQuote
+      && this.shippingQuoteFingerprint === fingerprint
+      && !this.isShippingQuoteExpired()) {
+      return true;
+    }
+
+    this.isLoadingQuote = true;
+    this.setInfoMessage('Calculating the shipping total...');
+    try {
+      this.shippingQuote = await firstValueFrom(this.shippingService.createQuote(this.buildShippingQuoteRequest()));
+      this.shippingQuoteFingerprint = fingerprint;
+      this.clearErrorMessage();
+      return true;
+    } catch (error) {
+      reportError('checkout-shipping-quote', error);
+      this.shippingQuote = null;
+      this.shippingQuoteFingerprint = null;
+      this.setErrorMessage('Shipping is unavailable for this address or cart. Please review the address and try again.');
+      return false;
+    } finally {
+      this.isLoadingQuote = false;
+      this.clearInfoMessage();
+      this.cdr.detectChanges();
+    }
+  }
+
+  private buildShippingQuoteRequest(): {zipCode: string; items: Array<{productId: string; quantity: number}>} {
+    const shippingInfo = this.checkoutForm.get('shippingInfo')?.getRawValue();
+    const items = this.cartService.getCartItemsSnapshot().map(item => {
+      if (!item.product.id) {
+        throw new Error('A cart item is missing its product identifier.');
+      }
+      return {productId: item.product.id, quantity: item.quantity};
+    });
+    if (items.length === 0) {
+      throw new Error('Cannot quote shipping for an empty cart.');
+    }
+    return {zipCode: shippingInfo.zipCode.replace(/\D/g, ''), items};
+  }
+
+  private currentShippingQuoteFingerprint(): string {
+    return JSON.stringify(this.buildShippingQuoteRequest());
+  }
+
+  private isShippingQuoteExpired(): boolean {
+    const expiresAt = this.shippingQuote ? Date.parse(this.shippingQuote.expiresAt) : NaN;
+    return !Number.isFinite(expiresAt) || expiresAt <= Date.now();
   }
 
   async onSubmit(): Promise<void> {

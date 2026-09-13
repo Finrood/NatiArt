@@ -1,17 +1,19 @@
 import {ChangeDetectionStrategy, Component, Input, OnDestroy, OnInit} from '@angular/core';
-import { CurrencyPipe } from "@angular/common";
+import { CurrencyPipe, DatePipe } from "@angular/common";
 import {CartItem} from "../../../../models/CartItem.model";
 import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
 import {ProductService} from "../../../../service/product.service";
 import {Subject} from "rxjs";
 import {takeUntil} from "rxjs/operators";
 import {RouterLink} from "@angular/router";
+import {ShippingQuote} from "../../../../service/shipping.service";
 
 @Component({
   selector: 'app-order-summary',
   standalone: true,
   imports: [
     CurrencyPipe,
+    DatePipe,
     RouterLink
 ],
   templateUrl: './order-summary.component.html',
@@ -21,6 +23,7 @@ import {RouterLink} from "@angular/router";
 export class OrderSummaryComponent implements OnInit, OnDestroy {
   @Input() cartItems: CartItem[] | null = null;
   @Input() cartTotal: number | null = 0;
+  @Input() shippingQuote: ShippingQuote | null = null;
 
   imageUrls: { [cartItemId: string]: SafeUrl | string } = {};
   private objectUrlsCreated: string[] = [];
@@ -98,6 +101,16 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
 
   private isCartLineLive(cartItemId: string): boolean {
     return (this.cartItems ?? []).some((item: CartItem): boolean => item.cartItemId === cartItemId);
+  }
+
+  getItemAmount(item: CartItem): number {
+    return this.shippingQuote?.items.find(quoteItem => quoteItem.productId === item.product.id)?.lineAmount
+      ?? item.product.markedPrice * item.quantity;
+  }
+
+  getDisplayedItemUnitPrice(item: CartItem): number {
+    return this.shippingQuote?.items.find(quoteItem => quoteItem.productId === item.product.id)?.unitPrice
+      ?? item.product.markedPrice;
   }
 
   ngOnDestroy(): void {

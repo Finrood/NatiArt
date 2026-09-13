@@ -37,6 +37,10 @@ public class Product {
     @Column(nullable = false)
     private int stockQuantity;
 
+    /** Net product weight in kilograms, kept separate from the configured package dimensions. */
+    @Column(precision = 8, scale = 3)
+    private BigDecimal weightKg;
+
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", referencedColumnName = "id")
     private Category category;
@@ -91,6 +95,10 @@ public class Product {
         return id;
     }
 
+    public long getVersion() {
+        return version;
+    }
+
     public String getLabel() {
         return label;
     }
@@ -133,6 +141,15 @@ public class Product {
 
     public Product setStockQuantity(int stockQuantity) {
         this.stockQuantity = stockQuantity;
+        return this;
+    }
+
+    public BigDecimal getWeightKg() {
+        return weightKg;
+    }
+
+    public Product setWeightKg(BigDecimal weightKg) {
+        this.weightKg = weightKg;
         return this;
     }
 

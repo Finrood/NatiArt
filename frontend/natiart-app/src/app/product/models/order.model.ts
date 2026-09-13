@@ -17,5 +17,9 @@ export interface OrderDto {
   items: OrderItemDto[];
   deliveryAmount?: number;
   totalAmount?: number;
+  shippingQuoteId?: string;
+  shippingServiceId?: string;
+  shippingDestinationPostalCode?: string;
+  shippingQuoteExpiresAt?: string;
   status?: string;
 }

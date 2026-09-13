@@ -12,6 +12,7 @@ import { PaymentService } from '../../../service/payment.service';
 import { AuthenticationService } from '../../../../directory/service/authentication.service';
 import { User, RoleName } from '../../../../directory/models/user.model';
 import { OrderDto } from '../../../models/order.model';
+import { ShippingQuote, ShippingService } from '../../../service/shipping.service';
 
 describe('CheckoutComponent', () => {
   let fixture: ComponentFixture<CheckoutComponent>;
@@ -113,6 +114,22 @@ describe('CheckoutComponent', () => {
     routerNavigateSpy = spyOn(router, 'navigate').and.resolveTo(true);
     fixture = TestBed.createComponent(CheckoutComponent);
     component = fixture.componentInstance;
+    const quote: ShippingQuote = {
+      quoteId: 'quote-1',
+      destinationPostalCode: '01001000',
+      serviceId: 'correios-pac',
+      serviceName: 'PAC',
+      expiresAt: '2099-01-01T00:00:00Z',
+      itemAmount: 99.9,
+      shippingAmount: 7.5,
+      totalAmount: 107.4,
+      items: [{productId: 'prod-1', quantity: 1, unitPrice: 99.9, lineAmount: 99.9}],
+    };
+    component.shippingQuote = quote;
+    (component as unknown as {shippingQuoteFingerprint: string}).shippingQuoteFingerprint = JSON.stringify({
+      zipCode: '01001000',
+      items: [{productId: 'prod-1', quantity: 1}],
+    });
     const createdOrder: OrderDto = {
       id: 'order-123',
       firstname: 'Ada',
@@ -135,6 +152,34 @@ describe('CheckoutComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('fetches an authoritative quote before entering payment', async () => {
+    const quoteService = TestBed.inject(ShippingService);
+    const quote: ShippingQuote = {
+      quoteId: 'fresh-quote',
+      destinationPostalCode: '01001000',
+      serviceId: 'correios-pac',
+      serviceName: 'PAC',
+      expiresAt: '2099-01-01T00:00:00Z',
+      itemAmount: 99.9,
+      shippingAmount: 7.5,
+      totalAmount: 107.4,
+      items: [{productId: 'prod-1', quantity: 1, unitPrice: 99.9, lineAmount: 99.9}],
+    };
+    spyOn(quoteService, 'createQuote').and.returnValue(of(quote));
+    component.shippingQuote = null;
+    (component as unknown as {shippingQuoteFingerprint: string | null}).shippingQuoteFingerprint = null;
+    component.currentStep = 2;
+
+    await component.nextStep();
+
+    expect(quoteService.createQuote).toHaveBeenCalledWith({
+      zipCode: '01001000',
+      items: [{productId: 'prod-1', quantity: 1}],
+    });
+    expect(component.shippingQuote as unknown as ShippingQuote).toEqual(quote);
+    expect(component.currentStep).toBe(3);
   });
 
   it('keeps checkout errors visible until dismissed (O3)', async () => {
@@ -178,7 +223,22 @@ describe('CheckoutComponent', () => {
       complement: '',
     });
     component.checkoutForm.get('paymentInfo.paymentMethod')?.setValue('PIX');
-    component.checkoutForm.get('billingInfo')?.patchValue({ zipCode: '01001-000' });
+    component.checkoutForm.get('billingInfo')?.patchValue({zipCode: '01001-000'});
+    component.shippingQuote = {
+      quoteId: 'quote-1',
+      destinationPostalCode: '01001000',
+      serviceId: 'correios-pac',
+      serviceName: 'PAC',
+      expiresAt: '2099-01-01T00:00:00Z',
+      itemAmount: 99.9,
+      shippingAmount: 7.5,
+      totalAmount: 107.4,
+      items: [{productId: 'prod-1', quantity: 1, unitPrice: 99.9, lineAmount: 99.9}],
+    };
+    (component as unknown as {shippingQuoteFingerprint: string}).shippingQuoteFingerprint = JSON.stringify({
+      zipCode: '01001000',
+      items: [{productId: 'prod-1', quantity: 1}],
+    });
     expect(component.checkoutForm.invalid).toBeFalse();
 
     const first: Promise<void> = component.onSubmit();

@@ -17,6 +17,7 @@ import com.portcelana.natiart.dto.OrderItemDto;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.CustomerOrderItem;
 import com.portcelana.natiart.model.Product;
+import com.portcelana.natiart.model.ShippingQuote;
 import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.ProductRepository;
@@ -36,17 +37,18 @@ public class OrderCreationService {
     private final OrderRepository orderRepository;
     private final ProductManager productManager;
     private final ProductRepository productRepository;
-    private final ShippingService shippingService;
+    private final ShippingQuoteService shippingQuoteService;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public OrderCreationService(
             OrderRepository orderRepository,
             ProductManager productManager,
             ProductRepository productRepository,
-            ShippingService shippingService) {
+            ShippingQuoteService shippingQuoteService) {
         this.orderRepository = orderRepository;
         this.productManager = productManager;
         this.productRepository = productRepository;
-        this.shippingService = shippingService;
+        this.shippingQuoteService = shippingQuoteService;
     }
 
     @Transactional
@@ -54,7 +56,14 @@ public class OrderCreationService {
             OrderDto orderDto, String ownerExternalId, String idempotencyKey, String requestFingerprint) {
         validateContactDetails(orderDto);
         validateItems(orderDto.getItems());
-        final BigDecimal serverDeliveryAmount = shippingService.getOrderShippingAmount(orderDto.getZipCode());
+        final Map<String, Product> products;
+        products = productManager.getProductsOrDie(orderDto.getItems().stream()
+                .map(OrderItemDto::getProductId)
+                .distinct()
+                .toList());
+        final ShippingQuote shippingQuote = shippingQuoteService.requireQuoteForOrder(
+                orderDto.getShippingQuoteId(), ownerExternalId, orderDto.getZipCode(), orderDto.getItems(), products);
+        final BigDecimal serverDeliveryAmount = shippingQuote.getShippingAmount();
         requireNonNegativeAmount(serverDeliveryAmount, "shipping amount");
 
         final CustomerOrder customerOrder = new CustomerOrder();
@@ -75,15 +84,15 @@ public class OrderCreationService {
                 .setZipCode(orderDto.getZipCode())
                 .setStreet(orderDto.getStreet())
                 .setComplement(orderDto.getComplement())
-                .setDeliveryAmount(serverDeliveryAmount);
+                .setDeliveryAmount(serverDeliveryAmount)
+                .setShippingQuoteId(shippingQuote.getId())
+                .setShippingServiceId(shippingQuote.getServiceId())
+                .setShippingDestinationPostalCode(shippingQuote.getDestinationPostalCode())
+                .setShippingQuoteExpiresAt(shippingQuote.getExpiresAt());
 
         BigDecimal totalItemsAmount = BigDecimal.ZERO;
         // Product reads are batched, while stock decrements remain atomic and
         // in this transaction so a failed line rolls back every reservation.
-        final Map<String, Product> products = productManager.getProductsOrDie(orderDto.getItems().stream()
-                .map(OrderItemDto::getProductId)
-                .distinct()
-                .toList());
         for (OrderItemDto item : orderDto.getItems()) {
             final Product product = products.get(item.getProductId());
             if (!product.isActive()) {
@@ -93,7 +102,8 @@ public class OrderCreationService {
             if (reserved == 0) {
                 throw new IllegalArgumentException("Insufficient stock for product [" + product.getLabel() + "]");
             }
-            final BigDecimal unitPrice = product.getMarkedPrice().orElseGet(product::getOriginalPrice);
+            final BigDecimal unitPrice =
+                    shippingQuote.getItem(item.getProductId()).getUnitPrice();
             totalItemsAmount = totalItemsAmount.add(unitPrice.multiply(BigDecimal.valueOf(item.getQuantity())));
             customerOrder.addOrderItem(new CustomerOrderItem()
                     .setProduct(product)

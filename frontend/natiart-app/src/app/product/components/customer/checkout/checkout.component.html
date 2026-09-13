@@ -53,7 +53,9 @@
                 <app-shipping-info-step [checkoutForm]="checkoutForm" (sameShippingAsBillingChange)="onSameShippingChange($event)"></app-shipping-info-step>
                 <div class="mt-8 flex justify-between">
                   <app-button type="button" (click)="prevStep()" color="secondary" size="md">Back</app-button>
-                  <app-button type="button" (click)="nextStep()" color="primary" size="md" [disabled]="checkoutForm.get('shippingInfo')?.invalid">Next: Payment</app-button>
+                  <app-button type="button" (click)="nextStep()" color="primary" size="md" [disabled]="checkoutForm.get('shippingInfo')?.invalid || isLoadingQuote">
+                    {{ isLoadingQuote ? 'Calculating shipping...' : 'Next: Payment' }}
+                  </app-button>
                 </div>
               </section>
             }
@@ -100,7 +102,7 @@
       <!-- Right Column: Order Summary -->
       <div class="lg:col-span-1">
         <div class="sticky top-12 bg-white p-6 rounded-2xl shadow-lg">
-          <app-order-summary [cartItems]="cartItems$ | async" [cartTotal]="cartTotal$ | async"></app-order-summary>
+          <app-order-summary [cartItems]="cartItems$ | async" [cartTotal]="cartTotal$ | async" [shippingQuote]="shippingQuote"></app-order-summary>
         </div>
       </div>
 
