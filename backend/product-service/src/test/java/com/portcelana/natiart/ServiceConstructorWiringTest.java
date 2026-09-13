@@ -14,6 +14,7 @@ import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.PaymentIdempotencyRepository;
 import com.portcelana.natiart.repository.PaymentRepository;
 import com.portcelana.natiart.repository.RateLimitWindowRepository;
+import com.portcelana.natiart.repository.TokenValidationCacheRepository;
 import com.portcelana.natiart.service.AsaasPaymentService;
 import com.portcelana.natiart.service.DatabaseRateLimitStore;
 import com.portcelana.natiart.service.OrderManager;
@@ -38,7 +39,9 @@ class ServiceConstructorWiringTest {
             context.registerBean(OrderRepository.class, () -> mock(OrderRepository.class));
             context.registerBean(PaymentIdempotencyRepository.class, () -> mock(PaymentIdempotencyRepository.class));
             context.registerBean(RateLimitWindowRepository.class, () -> mock(RateLimitWindowRepository.class));
-            context.registerBean(ObjectMapper.class, ObjectMapper::new);
+            context.registerBean(
+                    TokenValidationCacheRepository.class, () -> mock(TokenValidationCacheRepository.class));
+            context.registerBean(ObjectMapper.class, () -> new ObjectMapper());
             context.registerBean(PaymentIdempotencyService.class, () -> mock(PaymentIdempotencyService.class));
             context.registerBean(OrderManager.class, () -> mock(OrderManager.class));
             context.registerBean(AsaasPaymentService.class);
