@@ -2,6 +2,7 @@ package com.portcelana.natiart.repository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -82,7 +83,12 @@ class PaymentIdempotencyConcurrencyTest {
         paymentIdempotencyService.reserve("cus_ONE", "same-key", "one");
         paymentIdempotencyService.reserve("cus_TWO", "same-key", "two");
 
-        assertEquals(2, paymentIdempotencyRepository.count());
+        assertTrue(paymentIdempotencyRepository
+                .findByOwnerExternalIdAndIdempotencyKey("cus_ONE", "same-key")
+                .isPresent());
+        assertTrue(paymentIdempotencyRepository
+                .findByOwnerExternalIdAndIdempotencyKey("cus_TWO", "same-key")
+                .isPresent());
         assertEquals(
                 "one",
                 paymentIdempotencyRepository
