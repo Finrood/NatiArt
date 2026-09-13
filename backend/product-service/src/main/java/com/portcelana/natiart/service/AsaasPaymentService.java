@@ -392,17 +392,12 @@ public class AsaasPaymentService implements PaymentService {
     }
 
     public PaymentStatusResponse getPaymentStatus(String paymentId, String requesterExternalId) {
-        final Payment localPayment = getPaymentOrDie(paymentId, requesterExternalId);
+        getPaymentOrDie(paymentId, requesterExternalId);
         final AsaasPaymentCreationResponse payment = fetchPaymentOrDie(paymentId);
         requireOwnedPayment(payment.getCustomer(), requesterExternalId);
 
         final PaymentStatus status =
                 convertAsaasPaymentStatusToGeneralPaymentStatus(parseAsaasStatus(payment.getStatus()));
-        if (status == PaymentStatus.COMPLETED
-                && localPayment.getOrderId() != null
-                && !localPayment.getOrderId().isBlank()) {
-            orderManager.markOrderPaid(localPayment.getOrderId());
-        }
         return new PaymentStatusResponse(paymentId, status);
     }
 
@@ -426,6 +421,10 @@ public class AsaasPaymentService implements PaymentService {
             throw new IllegalArgumentException("Received an invalid response from " + asaasPaymentUrl);
         }
         return response.getBody();
+    }
+
+    AsaasPaymentCreationResponse fetchPaymentForReconciliation(String paymentId) {
+        return fetchPaymentOrDie(paymentId);
     }
 
     /**
