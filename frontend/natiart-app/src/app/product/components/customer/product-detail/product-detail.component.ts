@@ -145,6 +145,10 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     this.selectedImageIndex = index;
   }
 
+  toImageIndex(key: string | number): number {
+    return Number(key);
+  }
+
   incrementQuantity(product: Product) {
     if (this.quantity < product.stockQuantity) {
       this.quantity++;
