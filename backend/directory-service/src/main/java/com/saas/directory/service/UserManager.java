@@ -68,6 +68,7 @@ public class UserManager {
         if (!StringUtils.hasText(userRegistrationDto.password())) {
             throw new IllegalArgumentException("Password cannot be empty");
         }
+        PasswordPolicy.validate(userRegistrationDto.password());
         final Role role = roleRepository
                 .findRoleByLabel(RoleName.USER)
                 .orElseThrow(() -> new RoleNotFoundException(String.format("Role [%s] not found", RoleName.USER)));
