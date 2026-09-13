@@ -69,6 +69,10 @@ public class Role {
         return this;
     }
 
+    public boolean isActive() {
+        return active;
+    }
+
     @Override
     public int hashCode() {
         return Objects.hashCode(id);

@@ -151,16 +151,17 @@ public class UserAuthenticationProvider {
             throw new IllegalAccessException("Authentication token issuer mismatch");
         }
 
-        final String role = decodedJWT.getClaim("roles").asString();
-        final GrantedAuthority authority;
-        if (role != null) {
-            authority = new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
-        } else {
-            authority = new SimpleGrantedAuthority(
-                    "ROLE_" + dbToken.get().getUser().getRole().getLabel());
+        final User authenticatedUser = dbToken.get().getUser();
+        if (!authenticatedUser.isActive()
+                || authenticatedUser.getRole() == null
+                || !authenticatedUser.getRole().isActive()) {
+            LOGGER.debug("Rejected authentication token for inactive account or role");
+            throw new IllegalAccessException("Authentication token is not valid");
         }
 
-        final User authenticatedUser = dbToken.get().getUser();
+        final GrantedAuthority authority;
+        authority = new SimpleGrantedAuthority("ROLE_" + authenticatedUser.getRole().getLabel());
+
         final ExternalUser externalUser =
                 externalUserRepository.findByUser(authenticatedUser).orElse(null);
 
