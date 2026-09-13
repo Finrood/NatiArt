@@ -21,8 +21,14 @@ RUN ../gradlew build -x test --no-daemon
 FROM amazoncorretto:25-alpine
 WORKDIR /app
 
+ARG NATIART_STORAGE_ROOT=/var/lib/natiart/product-images
+ENV NATIART_STORAGE_ROOT=${NATIART_STORAGE_ROOT}
+
 # Create non-root user for security
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
+    mkdir -p "${NATIART_STORAGE_ROOT}" && \
+    chown -R appuser:appgroup "${NATIART_STORAGE_ROOT}"
+VOLUME ["/var/lib/natiart/product-images"]
 USER appuser
 
 # Copy only the built JAR from the build stage
