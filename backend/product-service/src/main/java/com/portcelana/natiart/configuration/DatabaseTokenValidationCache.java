@@ -7,6 +7,7 @@ import java.time.Clock;
 import java.util.HexFormat;
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,7 @@ public class DatabaseTokenValidationCache implements TokenValidationCache {
     private final int maxEntries;
     private final Clock clock;
 
+    @Autowired
     public DatabaseTokenValidationCache(
             TokenValidationCacheRepository repository,
             ObjectMapper objectMapper,
