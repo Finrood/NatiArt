@@ -2,12 +2,14 @@ import {Component, OnDestroy, OnInit} from '@angular/core';
 
 import {ButtonComponent} from "../../../../../shared/components/button.component";
 import {NgClass} from "@angular/common";
+import {RouterLink} from '@angular/router';
 
 @Component({
   selector: 'app-top-banner',
   imports: [
     ButtonComponent,
-    NgClass
+    NgClass,
+    RouterLink
   ],
   templateUrl: './top-banner.component.html',
   styleUrl: './top-banner.component.css'

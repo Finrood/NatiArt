@@ -2,10 +2,10 @@
   <div class="container mx-auto px-4 py-4 sm:py-6 flex flex-col sm:flex-row justify-between items-center">
     <h1 class="text-2xl sm:text-3xl font-light tracking-wider mb-4 sm:mb-0">PORCELAIN ELEGANCE</h1>
     <nav class="hidden md:flex space-x-6">
-      <a class="hover:text-primary transition-colors" href="#">Home</a>
-      <a class="hover:text-primary transition-colors" href="#">Collections</a>
-      <a class="hover:text-primary transition-colors" href="#">About</a>
-      <a class="hover:text-primary transition-colors" href="#">Contact</a>
+      <a class="hover:text-primary transition-colors" routerLink="/dashboard">Home</a>
+      <a class="hover:text-primary transition-colors" routerLink="/products">Collections</a>
+      <a class="hover:text-primary transition-colors" routerLink="/about">About</a>
+      <a class="hover:text-primary transition-colors" routerLink="/contact">Contact</a>
     </nav>
     <div class="flex items-center space-x-4">
       <svg class="w-5 h-5 text-secondary hover:text-primary cursor-pointer" fill="none"
@@ -31,10 +31,10 @@
   <!-- Mobile Menu -->
   @if (isMobileMenuOpen) {
     <div class="md:hidden bg-white px-4 py-2">
-      <a class="block py-2 hover:text-primary transition-colors" href="#">Home</a>
-      <a class="block py-2 hover:text-primary transition-colors" href="#">Collections</a>
-      <a class="block py-2 hover:text-primary transition-colors" href="#">About</a>
-      <a class="block py-2 hover:text-primary transition-colors" href="#">Contact</a>
+      <a class="block py-2 hover:text-primary transition-colors" routerLink="/dashboard">Home</a>
+      <a class="block py-2 hover:text-primary transition-colors" routerLink="/products">Collections</a>
+      <a class="block py-2 hover:text-primary transition-colors" routerLink="/about">About</a>
+      <a class="block py-2 hover:text-primary transition-colors" routerLink="/contact">Contact</a>
     </div>
   }
 </header>
