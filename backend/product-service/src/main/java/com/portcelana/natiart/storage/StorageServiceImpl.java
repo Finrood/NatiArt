@@ -45,6 +45,11 @@ public class StorageServiceImpl implements StorageService {
     }
 
     @Override
+    public void delete(URI uri) {
+        getStorage(uri).delete(uri);
+    }
+
+    @Override
     public InputStream downloadFiles(Set<URI> uriSet) {
         if (uriSet == null || uriSet.isEmpty()) {
             throw new IllegalArgumentException("File download requires at least one file URI");

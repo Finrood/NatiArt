@@ -18,6 +18,8 @@ public interface Storage {
 
     URI uploadFile(String location, String key, InputFile file);
 
+    void delete(URI uri);
+
     InputStream downloadFiles(Set<URI> uriSet);
 
     InputStream downloadDirectory(URI uri);
