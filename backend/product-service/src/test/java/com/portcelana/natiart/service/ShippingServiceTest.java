@@ -137,7 +137,7 @@ class ShippingServiceTest {
     }
 
     @Test
-    void mapShippingError_warnLogsUpstreamStatusAndBodyOnFallThrough() {
+    void mapShippingError_warnLogsUpstreamStatusAndBoundedMetadataOnly() {
         final byte[] body = "{\"errors\":[\"validation-failed-marker\"]}".getBytes(StandardCharsets.UTF_8);
         final HttpClientErrorException upstream = HttpClientErrorException.create(
                 HttpStatus.BAD_REQUEST, "Bad Request", null, body, StandardCharsets.UTF_8);
@@ -151,7 +151,8 @@ class ShippingServiceTest {
         assertEquals(Level.WARN, events.get(0).getLevel());
         final String message = events.get(0).getFormattedMessage();
         assertTrue(message.contains("400"));
-        assertTrue(message.contains("validation-failed-marker"));
+        assertTrue(message.contains("responseBodyLength=" + body.length));
+        org.junit.jupiter.api.Assertions.assertFalse(message.contains("validation-failed-marker"));
     }
 
     @Test

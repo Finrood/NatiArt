@@ -156,7 +156,10 @@ public class ShippingService {
      * messages to the caller.
      */
     static RuntimeException mapShippingError(HttpStatusCodeException e) {
-        LOGGER.warn("Shipping provider API error: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
+        LOGGER.warn(
+                "Shipping provider API error: status={}, responseBodyLength={}",
+                e.getStatusCode(),
+                e.getResponseBodyAsByteArray().length);
         final HttpStatusCode statusCode = e.getStatusCode();
         if (statusCode == HttpStatus.UNAUTHORIZED || statusCode == HttpStatus.FORBIDDEN) {
             return new UserNotAllowedException("Unauthorized api call to the shipping provider");

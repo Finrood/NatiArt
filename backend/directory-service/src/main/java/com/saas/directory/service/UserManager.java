@@ -3,6 +3,7 @@ package com.saas.directory.service;
 import java.util.Optional;
 import javax.management.relation.RoleNotFoundException;
 
+import org.slf4j.MDC;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -78,7 +79,8 @@ public class UserManager {
         newUser.setProfile(profile);
         final User savedUser = userRepository.save(newUser);
 
-        eventPublisher.publishEvent(new UserRegisteredEvent(savedUser.getUsername()));
+        eventPublisher.publishEvent(new UserRegisteredEvent(
+                savedUser.getUsername(), MDC.get(com.saas.directory.configuration.RequestCorrelationFilter.MDC_KEY)));
 
         return savedUser;
     }
