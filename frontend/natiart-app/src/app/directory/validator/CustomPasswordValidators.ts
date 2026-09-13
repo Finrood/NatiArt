@@ -1,5 +1,4 @@
 import {AbstractControl, ValidationErrors, ValidatorFn} from '@angular/forms';
-import {checkPasswordRequirements, DEFAULT_REQUIREMENTS} from '../utils/password-utils';
 
 export class CustomPasswordValidators {
   static passwordComplexity(): ValidatorFn {
@@ -9,8 +8,12 @@ export class CustomPasswordValidators {
         return null; // Don't validate empty values to allow optional controls
       }
 
-      const requirements = checkPasswordRequirements(value, DEFAULT_REQUIREMENTS);
-      const isValid = Object.values(requirements).every(Boolean);
+      const isValid = [
+        /[A-Z]/.test(value),  // has uppercase letter
+        /[a-z]/.test(value),  // has lowercase letter
+        /[0-9]/.test(value),  // has numeric digit
+        value.length >= 6     // is valid length
+      ].every(Boolean);
 
       return isValid ? null : {passwordComplexity: true};
     };

@@ -8,8 +8,6 @@ export const environment = {
         login: '/login',
         logout: '/signout',
         refreshToken: '/refresh-token',
-        passwordResetRequest: '/password-reset/request',
-        passwordReset: '/password-reset',
         registerUser: '/register-user',
         current: '/current',
         user: '/users',
