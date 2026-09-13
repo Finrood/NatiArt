@@ -71,9 +71,7 @@ public class ProductController {
                         ? productManager.getProductsByCategory(categoryManager.getCategoryOrDie(categoryId), pageable)
                         : productManager.getActiveProductsByCategory(
                                 categoryManager.getCategoryOrDie(categoryId), pageable));
-        return products.stream()
-                .map(ProductDto::from)
-                .toList();
+        return products.stream().map(ProductDto::from).toList();
     }
 
     @GetMapping("/products/new")
@@ -82,12 +80,9 @@ public class ProductController {
             @RequestParam(required = false, defaultValue = "20") int size) {
         LOGGER.debug("Getting new products page [{}] size [{}]", page, size);
         Pageable pageable = toPageable(page, size);
-        final List<Product> products = isAdmin()
-                ? productManager.getNewProducts(pageable)
-                : productManager.getActiveNewProducts(pageable);
-        return products.stream()
-                .map(ProductDto::from)
-                .toList();
+        final List<Product> products =
+                isAdmin() ? productManager.getNewProducts(pageable) : productManager.getActiveNewProducts(pageable);
+        return products.stream().map(ProductDto::from).toList();
     }
 
     @GetMapping("/products/featured")
@@ -99,9 +94,7 @@ public class ProductController {
         final List<Product> products = isAdmin()
                 ? productManager.getFeaturedProducts(pageable)
                 : productManager.getActiveFeaturedProducts(pageable);
-        return products.stream()
-                .map(ProductDto::from)
-                .toList();
+        return products.stream().map(ProductDto::from).toList();
     }
 
     @PostMapping(value = "/products/create")

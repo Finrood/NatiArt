@@ -98,7 +98,8 @@ public class ProductManagerImpl implements ProductManager {
     @Override
     @Transactional(readOnly = true)
     public Product getActiveProductWithImagesOrDie(String id) {
-        return productRepository.findActiveByIdWithImages(id)
+        return productRepository
+                .findActiveByIdWithImages(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product with id [" + id + "] not found"));
     }
 
