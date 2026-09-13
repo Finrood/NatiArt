@@ -74,6 +74,7 @@ public class OrderCreationService {
                 .setNeighborhood(orderDto.getNeighborhood())
                 .setZipCode(orderDto.getZipCode())
                 .setStreet(orderDto.getStreet())
+                .setHouseNumber(orderDto.getHouseNumber())
                 .setComplement(orderDto.getComplement())
                 .setDeliveryAmount(serverDeliveryAmount);
 

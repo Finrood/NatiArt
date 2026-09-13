@@ -51,7 +51,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   isLoggedIn$: Observable<boolean>;
   currentUser$: Observable<User | null>;
   isLoading$: Observable<boolean>;
-  sameShippingAsBilling = true;
   currentStep = 1;
 
   private currentOrder: OrderDto | null = null;
@@ -85,15 +84,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         neighborhood: ['', Validators.required],
         zipCode: ['', [Validators.required, CustomCepValidators.validCep()]],
         street: ['', Validators.required],
-        complement: [''],
-      }),
-      billingInfo: this.fb.group({
-        country: ['Brazil'],
-        state: [''],
-        city: [''],
-        neighborhood: [''],
-        zipCode: ['', Validators.pattern(/^\d{5}-\d{3}$/)],
-        street: [''],
+        houseNumber: ['', Validators.required],
         complement: [''],
       }),
       paymentInfo: this.fb.group({
@@ -173,12 +164,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
                 neighborhood: user.profile.neighborhood,
                 zipCode: user.profile.zipCode,
                 street: user.profile.street,
+                houseNumber: '',
                 complement: user.profile.complement,
               },
             });
-            if (this.sameShippingAsBilling) {
-              this.checkoutForm.get('billingInfo')?.patchValue(this.checkoutForm.get('shippingInfo')?.value);
-            }
 
             // Mark controls as touched if they are invalid after pre-filling
             if (this.checkoutForm.get('userInfo')?.invalid) {
@@ -196,11 +185,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.checkoutForm.get('paymentInfo.paymentMethod')?.valueChanges
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.updatePaymentValidators());
-  }
-
-  onSameShippingChange(isSame: boolean): void {
-    this.sameShippingAsBilling = isSame;
-    this.cdr.detectChanges();
   }
 
   updatePaymentValidators(): void {
@@ -329,6 +313,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       neighborhood: shippingInfo.neighborhood,
       zipCode: shippingInfo.zipCode.replace(/\D/g, ''),
       street: shippingInfo.street,
+      houseNumber: shippingInfo.houseNumber,
       complement: shippingInfo.complement,
       items,
       deliveryAmount: 0,

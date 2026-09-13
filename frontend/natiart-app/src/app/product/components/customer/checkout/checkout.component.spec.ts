@@ -36,6 +36,7 @@ describe('CheckoutComponent', () => {
       neighborhood: 'Centro',
       zipCode: '01001000',
       street: 'Praca da Se',
+      houseNumber: '10',
     },
     role: RoleName.USER,
     externalId: 'cus_1',
@@ -124,6 +125,7 @@ describe('CheckoutComponent', () => {
       neighborhood: 'Centro',
       zipCode: '01001000',
       street: 'Praca da Se',
+      houseNumber: '10',
       items: [],
       deliveryAmount: 7.5,
       totalAmount: 107.4,
@@ -175,10 +177,10 @@ describe('CheckoutComponent', () => {
       neighborhood: 'Centro',
       zipCode: '01001-000',
       street: 'Praca da Se',
+      houseNumber: '10',
       complement: '',
     });
     component.checkoutForm.get('paymentInfo.paymentMethod')?.setValue('PIX');
-    component.checkoutForm.get('billingInfo')?.patchValue({ zipCode: '01001-000' });
     expect(component.checkoutForm.invalid).toBeFalse();
 
     const first: Promise<void> = component.onSubmit();
@@ -248,10 +250,10 @@ describe('CheckoutComponent', () => {
       neighborhood: 'Centro',
       zipCode: '01001-000',
       street: 'Praca da Se',
+      houseNumber: '10',
       complement: '',
     });
     component.checkoutForm.get('paymentInfo.paymentMethod')?.setValue('PIX');
-    component.checkoutForm.get('billingInfo')?.patchValue({ zipCode: '01001-000' });
     expect(component.checkoutForm.invalid).toBeFalse();
 
     await component.onSubmit();

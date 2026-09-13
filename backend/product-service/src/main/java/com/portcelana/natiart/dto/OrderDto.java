@@ -20,6 +20,7 @@ public class OrderDto {
     private String neighborhood;
     private String zipCode;
     private String street;
+    private String houseNumber;
     private String complement;
     private Instant orderDate;
     private List<OrderItemDto> items = new ArrayList<>();
@@ -43,6 +44,7 @@ public class OrderDto {
                 .setNeighborhood(customerOrder.getNeighborhood())
                 .setZipCode(customerOrder.getZipCode())
                 .setStreet(customerOrder.getStreet())
+                .setHouseNumber(customerOrder.getHouseNumber())
                 .setComplement(customerOrder.getComplement())
                 .setOrderDate(customerOrder.getOrderDate())
                 .setItems(customerOrder.getItems().stream()
@@ -150,6 +152,15 @@ public class OrderDto {
 
     public OrderDto setStreet(String street) {
         this.street = street;
+        return this;
+    }
+
+    public String getHouseNumber() {
+        return houseNumber;
+    }
+
+    public OrderDto setHouseNumber(String houseNumber) {
+        this.houseNumber = houseNumber;
         return this;
     }
 

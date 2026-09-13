@@ -12,6 +12,7 @@ export interface OrderDto {
   neighborhood: string;
   zipCode: string;
   street: string;
+  houseNumber?: string;
   complement?: string;
   orderDate?: Date;
   items: OrderItemDto[];
