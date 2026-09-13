@@ -1,7 +1,6 @@
 package com.portcelana.natiart.repository;
 
 import java.util.Optional;
-import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -16,19 +15,6 @@ import com.portcelana.natiart.model.support.OrderStatus;
 @Repository
 public interface OrderRepository extends JpaRepository<CustomerOrder, String> {
     Optional<CustomerOrder> findByOwnerExternalIdAndIdempotencyKey(String ownerExternalId, String idempotencyKey);
-
-    @Query("SELECT DISTINCT o FROM CustomerOrder o LEFT JOIN FETCH o.items item "
-            + "LEFT JOIN FETCH item.product WHERE o.ownerExternalId = :ownerExternalId ORDER BY o.orderDate DESC")
-    List<CustomerOrder> findAllByOwnerExternalIdWithItems(@Param("ownerExternalId") String ownerExternalId);
-
-    @Query("SELECT DISTINCT o FROM CustomerOrder o LEFT JOIN FETCH o.items item "
-            + "LEFT JOIN FETCH item.product WHERE o.id = :orderId AND o.ownerExternalId = :ownerExternalId")
-    Optional<CustomerOrder> findByIdAndOwnerExternalIdWithItems(
-            @Param("orderId") String orderId, @Param("ownerExternalId") String ownerExternalId);
-
-    @Query("SELECT DISTINCT o FROM CustomerOrder o LEFT JOIN FETCH o.items item "
-            + "LEFT JOIN FETCH item.product ORDER BY o.orderDate DESC")
-    List<CustomerOrder> findAllWithItems();
 
     @Query(
             "SELECT CASE WHEN COUNT(item) > 0 THEN true ELSE false END FROM CustomerOrder customerOrder JOIN customerOrder.items item WHERE item.product = :product")

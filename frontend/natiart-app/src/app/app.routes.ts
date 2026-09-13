@@ -22,12 +22,6 @@ export const routes: Routes = [
     loadComponent: () => import('./product/components/customer/dashboard/dashboard.component').then(m => m.DashboardComponent)
   },
   {
-    path: 'account',
-    canActivate: [authGuard],
-    loadComponent: () => import('./product/components/customer/order-history/order-history.component')
-      .then(m => m.OrderHistoryComponent)
-  },
-  {
     path: 'product/:id',
     canActivate: [authGuard],
     canDeactivate: [productGuard],
@@ -75,11 +69,6 @@ export const routes: Routes = [
         path: 'packages',
         loadComponent: () => import('./product/components/admin/admin-package-management/admin-package-management.component')
           .then(m => m.PackageManagementComponent)
-      },
-      {
-        path: 'orders',
-        loadComponent: () => import('./product/components/admin/admin-order-management/admin-order-management.component')
-          .then(m => m.AdminOrderManagementComponent)
       },
       {path: '', redirectTo: 'categories', pathMatch: 'full'}
     ]

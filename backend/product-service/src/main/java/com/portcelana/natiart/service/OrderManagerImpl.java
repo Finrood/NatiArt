@@ -86,29 +86,7 @@ public class OrderManagerImpl implements OrderManager {
     @Override
     @Transactional(readOnly = true)
     public List<CustomerOrder> getAllOrders() {
-        return orderRepository.findAllWithItems();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<CustomerOrder> getOrdersForOwner(String ownerExternalId) {
-        requireOwner(ownerExternalId);
-        return orderRepository.findAllByOwnerExternalIdWithItems(ownerExternalId);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public CustomerOrder getOrderForOwner(String orderId, String ownerExternalId) {
-        requireOwner(ownerExternalId);
-        return orderRepository
-                .findByIdAndOwnerExternalIdWithItems(orderId, ownerExternalId)
-                .orElseThrow(() -> new ResourceNotFoundException("CustomerOrder with id " + orderId + " not found"));
-    }
-
-    private void requireOwner(String ownerExternalId) {
-        if (ownerExternalId == null || ownerExternalId.isBlank()) {
-            throw new IllegalArgumentException("An authenticated owner is required");
-        }
+        return orderRepository.findAll();
     }
 
     @Override
