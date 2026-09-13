@@ -43,7 +43,10 @@ export class AuthenticationService implements OnDestroy {
   constructor(private http: HttpClient, private router: Router, private tokenService: TokenService) {
     this.tokenClearSubscription = this.tokenService.tokensCleared$
       .pipe(takeUntil(this.destroy$))
-      .subscribe(() => this.updateState(null));
+      .subscribe(() => {
+        this.sessionGeneration++;
+        this.updateState(null);
+      });
     this.initializeAuthState()
       .pipe(finalize(() => this.authResolvedSubject.next(true)))
       .subscribe();
@@ -157,7 +160,11 @@ export class AuthenticationService implements OnDestroy {
       return this.refreshInProgress$;
     }
 
-    if (!this.tokenService.refreshToken || this.isTokenExpired(this.tokenService.refreshToken)) {
+    // The interceptor reaches this method after the API has rejected an access
+    // token. The server remains authoritative for refresh-token validity;
+    // scheduled and bootstrap paths perform local expiry checks before calling
+    // this method.
+    if (!this.tokenService.refreshToken) {
       return throwError(() => new Error('Refresh token expired or missing'));
     }
 
