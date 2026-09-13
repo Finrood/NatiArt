@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -16,9 +15,9 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.http.HttpStatus;
 
 import com.portcelana.natiart.dto.payment.asaas.AsaasWebhookRequest;
@@ -53,7 +52,12 @@ class PaymentReconciliationServiceTest {
     @BeforeEach
     void setUp() {
         reconciliationService = new PaymentReconciliationService(
-                "webhook-secret", paymentRepository, webhookEventRepository, orderRepository, orderManager, asaasPaymentService);
+                "webhook-secret",
+                paymentRepository,
+                webhookEventRepository,
+                orderRepository,
+                orderManager,
+                asaasPaymentService);
     }
 
     @Test
@@ -62,7 +66,12 @@ class PaymentReconciliationServiceTest {
         assertFalse(reconciliationService.hasValidWebhookToken("wrong-secret"));
         assertFalse(reconciliationService.hasValidWebhookToken(null));
         assertFalse(new PaymentReconciliationService(
-                        "", paymentRepository, webhookEventRepository, orderRepository, orderManager, asaasPaymentService)
+                        "",
+                        paymentRepository,
+                        webhookEventRepository,
+                        orderRepository,
+                        orderManager,
+                        asaasPaymentService)
                 .hasValidWebhookToken("webhook-secret"));
     }
 
@@ -99,8 +108,7 @@ class PaymentReconciliationServiceTest {
     @Test
     void amountMismatchIsRejectedBeforeOrderMutationOrEventPersistence() {
         when(webhookEventRepository.findByProviderEventId("evt-1")).thenReturn(Optional.empty());
-        when(paymentRepository.findById("pay-1"))
-                .thenReturn(Optional.of(new Payment("pay-1", "cus-1", "order-1")));
+        when(paymentRepository.findById("pay-1")).thenReturn(Optional.of(new Payment("pay-1", "cus-1", "order-1")));
         when(orderRepository.findById("order-1"))
                 .thenReturn(Optional.of(new CustomerOrder()
                         .setOwnerExternalId("cus-1")
@@ -109,8 +117,7 @@ class PaymentReconciliationServiceTest {
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> reconciliationService.processWebhook(
-                        webhook("evt-1", "PAYMENT_RECEIVED", "RECEIVED", "24.99")));
+                () -> reconciliationService.processWebhook(webhook("evt-1", "PAYMENT_RECEIVED", "RECEIVED", "24.99")));
 
         verifyNoInteractions(orderManager);
         verify(webhookEventRepository, never()).saveAndFlush(any(PaymentWebhookEvent.class));
@@ -119,8 +126,7 @@ class PaymentReconciliationServiceTest {
     @Test
     void paidWebhookDoesNotReviveCancelledOrder() {
         when(webhookEventRepository.findByProviderEventId("evt-1")).thenReturn(Optional.empty());
-        when(paymentRepository.findById("pay-1"))
-                .thenReturn(Optional.of(new Payment("pay-1", "cus-1", "order-1")));
+        when(paymentRepository.findById("pay-1")).thenReturn(Optional.of(new Payment("pay-1", "cus-1", "order-1")));
         when(orderRepository.findById("order-1"))
                 .thenReturn(Optional.of(new CustomerOrder()
                         .setOwnerExternalId("cus-1")
@@ -136,8 +142,7 @@ class PaymentReconciliationServiceTest {
     @Test
     void unsupportedProviderStatusFailsAsUpstreamError() {
         when(webhookEventRepository.findByProviderEventId("evt-1")).thenReturn(Optional.empty());
-        when(paymentRepository.findById("pay-1"))
-                .thenReturn(Optional.of(new Payment("pay-1", "cus-1", "order-1")));
+        when(paymentRepository.findById("pay-1")).thenReturn(Optional.of(new Payment("pay-1", "cus-1", "order-1")));
         when(orderRepository.findById("order-1"))
                 .thenReturn(Optional.of(new CustomerOrder()
                         .setOwnerExternalId("cus-1")
@@ -154,8 +159,7 @@ class PaymentReconciliationServiceTest {
         verify(webhookEventRepository, never()).saveAndFlush(any(PaymentWebhookEvent.class));
     }
 
-    private AsaasWebhookRequest webhook(
-            String eventId, String eventType, String status, String value) {
+    private AsaasWebhookRequest webhook(String eventId, String eventType, String status, String value) {
         return new AsaasWebhookRequest()
                 .setId(eventId)
                 .setEvent(eventType)

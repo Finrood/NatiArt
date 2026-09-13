@@ -71,10 +71,7 @@ public class PaymentReconciliationService {
     }
 
     public boolean hasValidWebhookToken(String suppliedToken) {
-        if (webhookToken == null
-                || webhookToken.isBlank()
-                || suppliedToken == null
-                || suppliedToken.isBlank()) {
+        if (webhookToken == null || webhookToken.isBlank() || suppliedToken == null || suppliedToken.isBlank()) {
             return false;
         }
         return MessageDigest.isEqual(
@@ -100,16 +97,15 @@ public class PaymentReconciliationService {
                 providerPayment.getStatus());
 
         applyProviderState(localPayment, providerPayment.getStatus());
-        webhookEventRepository.saveAndFlush(new PaymentWebhookEvent(
-                request.getId(), request.getEvent(), providerPayment.getId()));
+        webhookEventRepository.saveAndFlush(
+                new PaymentWebhookEvent(request.getId(), request.getEvent(), providerPayment.getId()));
     }
 
     /** Polling is recovery only; the browser status endpoint is no longer the sole paid-order transition. */
     @Scheduled(fixedDelayString = "${natiart.payment.reconciliation.fixed-delay-millis:300000}")
     public void reconcilePendingPayments() {
         paymentRepository
-                .findForReconciliation(
-                        List.of("PENDING", "AWAITING_RISK_ANALYSIS"), PageRequest.of(0, 50))
+                .findForReconciliation(List.of("PENDING", "AWAITING_RISK_ANALYSIS"), PageRequest.of(0, 50))
                 .forEach(this::reconcileOne);
     }
 
@@ -119,7 +115,10 @@ public class PaymentReconciliationService {
                     asaasPaymentService.fetchPaymentForReconciliation(localPayment.getId());
             reconcileProviderSnapshot(localPayment.getId(), providerPayment);
         } catch (RuntimeException e) {
-            LOGGER.warn("Payment reconciliation deferred for provider payment [{}]: {}", localPayment.getId(), e.getMessage());
+            LOGGER.warn(
+                    "Payment reconciliation deferred for provider payment [{}]: {}",
+                    localPayment.getId(),
+                    e.getMessage());
         }
     }
 
@@ -185,14 +184,13 @@ public class PaymentReconciliationService {
     private void applyProviderState(Payment localPayment, String providerStatus) {
         final String normalizedStatus = providerStatus.trim().toUpperCase(Locale.ROOT);
         if (statusRank(normalizedStatus) >= statusRank(localPayment.getProviderStatus())) {
-            localPayment
-                    .setProviderStatus(normalizedStatus)
-                    .setProviderUpdatedAt(Instant.now());
+            localPayment.setProviderStatus(normalizedStatus).setProviderUpdatedAt(Instant.now());
             paymentRepository.save(localPayment);
         }
         if (("RECEIVED".equals(normalizedStatus) || "CONFIRMED".equals(normalizedStatus))
                 && localPayment.getOrderId() != null) {
-            final CustomerOrder order = orderRepository.findById(localPayment.getOrderId()).orElse(null);
+            final CustomerOrder order =
+                    orderRepository.findById(localPayment.getOrderId()).orElse(null);
             // A delayed paid event must never revive cancelled fulfillment.
             if (order != null && order.getStatus() == OrderStatus.PENDING) {
                 orderManager.markOrderPaid(order.getId());

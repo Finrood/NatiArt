@@ -13,8 +13,7 @@ import jakarta.persistence.UniqueConstraint;
 @Entity
 @Table(
         uniqueConstraints =
-                @UniqueConstraint(
-                        name = "uk_payment_webhook_provider_event", columnNames = "provider_event_id"))
+                @UniqueConstraint(name = "uk_payment_webhook_provider_event", columnNames = "provider_event_id"))
 public class PaymentWebhookEvent {
     @Id
     private String id = UUID.randomUUID().toString();
