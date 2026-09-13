@@ -98,9 +98,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       }),
       paymentInfo: this.fb.group({
         paymentMethod: ['', Validators.required],
-        cardNumber: [''],
-        expirationDate: [''],
-        cvv: [''],
       }),
     });
 
@@ -204,23 +201,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   updatePaymentValidators(): void {
-    const paymentMethod = this.checkoutForm.get('paymentInfo.paymentMethod')?.value;
-    const cardNumberCtrl = this.checkoutForm.get('paymentInfo.cardNumber');
-    const expirationDateCtrl = this.checkoutForm.get('paymentInfo.expirationDate');
-    const cvvCtrl = this.checkoutForm.get('paymentInfo.cvv');
-
-    if (paymentMethod === PaymentMethod.CREDIT_CARD || paymentMethod === PaymentMethod.DEBIT_CARD) {
-      cardNumberCtrl?.setValidators([Validators.required, Validators.pattern('^[0-9]{13,19}')]);
-      expirationDateCtrl?.setValidators([Validators.required, Validators.pattern('^(0[1-9]|1[0-2])\/?([0-9]{2})')]);
-      cvvCtrl?.setValidators([Validators.required, Validators.pattern('^[0-9]{3,4}')]);
-    } else {
-      cardNumberCtrl?.clearValidators();
-      expirationDateCtrl?.clearValidators();
-      cvvCtrl?.clearValidators();
-    }
-    cardNumberCtrl?.updateValueAndValidity({ emitEvent: false });
-    expirationDateCtrl?.updateValueAndValidity({ emitEvent: false });
-    cvvCtrl?.updateValueAndValidity({ emitEvent: false });
+    // The storefront currently offers only the server-backed PIX flow.
   }
 
   createUserIfGuestCheckout(): Observable<User> {
@@ -363,13 +344,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
       if (paymentMethod === PaymentMethod.PIX) {
         await this.onProcessPixPayment(user);
-        return;
-      }
-
-      if (paymentMethod === PaymentMethod.CREDIT_CARD || paymentMethod === PaymentMethod.DEBIT_CARD) {
-        this.setInfoMessage('Processing card payment...');
-        this.setErrorMessage('Card payment is not yet implemented.');
-        this.clearInfoMessage();
         return;
       }
 

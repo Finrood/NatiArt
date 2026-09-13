@@ -8,22 +8,6 @@
     </select>
   </app-natiart-form-field>
 
-  @if (isCardPaymentSelected()) {
-    <ng-container animate.enter="payment-fade-in" animate.leave="payment-fade-out">
-      <app-natiart-form-field label="Card Number" controlName="cardNumber" [form]="paymentInfoGroup">
-        <input formControlName="cardNumber" id="cardNumber" placeholder="XXXX XXXX XXXX XXXX" type="text" class="form-input">
-      </app-natiart-form-field>
-      <div class="grid grid-cols-2 gap-4">
-        <app-natiart-form-field label="Expiration Date" controlName="expirationDate" [form]="paymentInfoGroup">
-          <input formControlName="expirationDate" id="expirationDate" placeholder="MM/YY" type="text" class="form-input">
-        </app-natiart-form-field>
-        <app-natiart-form-field label="CVV" controlName="cvv" [form]="paymentInfoGroup">
-          <input formControlName="cvv" id="cvv" placeholder="123" type="text" class="form-input">
-        </app-natiart-form-field>
-      </div>
-    </ng-container>
-  }
-
   @if (isPixSelected()) {
     <div animate.enter="payment-fade-in" animate.leave="payment-fade-out" class="pt-2">
       <p class="text-sm text-text-muted mb-3">
