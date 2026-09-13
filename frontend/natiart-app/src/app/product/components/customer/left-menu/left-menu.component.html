@@ -11,7 +11,7 @@
   <nav class="mt-4">
     <ul>
       <li>
-        <a href="#" class="flex items-center py-3 px-6 text-secondary hover:bg-primary-lighter/50 hover:text-primary-dark transition-colors duration-200">
+        <a routerLink="/products" class="flex items-center py-3 px-6 text-secondary hover:bg-primary-lighter/50 hover:text-primary-dark transition-colors duration-200">
           <svg class="h-6 w-6" [ngClass]="isOpen ? 'mr-4' : 'mx-auto'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
           @if (isOpen) {
             <span class="font-medium">All Products</span>
@@ -25,7 +25,7 @@
       }
       @for (category of categories; track category) {
         <li>
-          <a href="#" class="flex items-center py-3 px-6 text-secondary hover:bg-primary-lighter/50 hover:text-primary-dark transition-colors duration-200">
+          <a [routerLink]="['/products']" [queryParams]="{categoryId: category.id}" class="flex items-center py-3 px-6 text-secondary hover:bg-primary-lighter/50 hover:text-primary-dark transition-colors duration-200">
             <!-- Placeholder Icon -->
             <svg class="h-6 w-6" [ngClass]="isOpen ? 'mr-4' : 'mx-auto'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
             @if (isOpen) {

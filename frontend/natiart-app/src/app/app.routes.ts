@@ -22,6 +22,56 @@ export const routes: Routes = [
     loadComponent: () => import('./product/components/customer/dashboard/dashboard.component').then(m => m.DashboardComponent)
   },
   {
+    path: 'products',
+    canActivate: [authGuard],
+    loadComponent: () => import('./product/components/customer/dashboard/dashboard.component').then(m => m.DashboardComponent)
+  },
+  {
+    path: 'about',
+    data: {
+      title: 'About us',
+      message: 'We create small-batch porcelain pieces by hand, combining traditional craft with considered modern design.'
+    },
+    loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
+  },
+  {
+    path: 'contact',
+    data: {
+      title: 'Contact',
+      message: 'Contact support through your order confirmation or return to the store to continue browsing.'
+    },
+    loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
+  },
+  {
+    path: 'account',
+    canActivate: [authGuard],
+    data: {
+      title: 'My account',
+      message: 'Your account is active. Order history and profile editing are coming soon.'
+    },
+    loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
+  },
+  {
+    path: 'faq',
+    data: {title: 'Frequently asked questions', message: 'Questions about products and orders can be sent through the contact channel.'},
+    loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
+  },
+  {
+    path: 'shipping-returns',
+    data: {title: 'Shipping and returns', message: 'Shipping and return details are included with each order confirmation.'},
+    loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
+  },
+  {
+    path: 'care-instructions',
+    data: {title: 'Care instructions', message: 'Handle porcelain with clean, dry hands and avoid sudden temperature changes.'},
+    loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
+  },
+  {
+    path: 'not-found',
+    data: {title: 'Page not found', message: 'The page you requested does not exist.'},
+    loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
+  },
+  {
     path: 'product/:id',
     canActivate: [authGuard],
     canDeactivate: [productGuard],
@@ -74,5 +124,5 @@ export const routes: Routes = [
     ]
   },
   {path: '', redirectTo: '/dashboard', pathMatch: 'full'},
-  {path: '**', redirectTo: '/dashboard'}
+  {path: '**', redirectTo: '/not-found'}
 ];

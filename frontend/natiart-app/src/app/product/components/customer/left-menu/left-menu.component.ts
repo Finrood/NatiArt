@@ -3,11 +3,12 @@ import {Component, OnInit} from '@angular/core';
 import {Category} from '../../../models/category.model';
 import {CategoryService} from '../../../service/category.service';
 import {NgClass} from "@angular/common";
+import {RouterLink} from '@angular/router';
 import {reportError} from '../../../../shared/service/error-reporting.service';
 
 @Component({
     selector: 'app-left-menu',
-    imports: [NgClass],
+    imports: [NgClass, RouterLink],
     templateUrl: './left-menu.component.html',
     styles: [] // Empty styles array as we're using only Tailwind classes
 })
