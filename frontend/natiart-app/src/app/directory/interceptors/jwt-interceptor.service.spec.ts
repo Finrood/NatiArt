@@ -23,12 +23,12 @@ describe('jwtInterceptor', () => {
         {provide: Router, useValue: {navigate: jasmine.createSpy('navigate').and.returnValue(Promise.resolve(true))}},
       ],
     });
+    // Instantiate authentication before any HTTP service is resolved or
+    // tests seed tokens so its bootstrap lookup cannot remain pending.
+    TestBed.inject(AuthenticationService);
     const http = TestBed.inject(HttpClient);
     const httpTesting = TestBed.inject(HttpTestingController);
     const tokenService = TestBed.inject(TokenService);
-    // Instantiate authentication before tests seed tokens so its bootstrap
-    // lookup cannot become an unrelated pending request.
-    TestBed.inject(AuthenticationService);
     return {http, httpTesting, tokenService};
   }
 
