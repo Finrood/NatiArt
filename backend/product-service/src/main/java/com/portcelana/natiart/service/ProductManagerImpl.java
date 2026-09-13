@@ -251,7 +251,9 @@ public class ProductManagerImpl implements ProductManager {
         if (productRepository.toggleActiveById(productId) == 0) {
             throw new ResourceNotFoundException("Product with id [" + productId + "] not found");
         }
-        return getProductOrDie(productId);
+        return productRepository
+                .findByIdWithImages(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product with id [" + productId + "] not found"));
     }
 
     private List<String> processImages(Product product, List<String> existingImages, List<InputFile> newImages) {
