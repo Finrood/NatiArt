@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import com.saas.directory.model.helper.PaymentProcessor;
 
 @Entity
+@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "payment_processor"}))
 public class ExternalUser {
     @Id
     private String id;

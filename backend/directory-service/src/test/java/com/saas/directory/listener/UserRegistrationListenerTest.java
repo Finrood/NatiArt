@@ -1,101 +1,42 @@
 package com.saas.directory.listener;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.saas.directory.dto.UserDto;
-import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
 import com.saas.directory.event.UserRegisteredEvent;
-import com.saas.directory.model.Role;
-import com.saas.directory.model.RoleName;
-import com.saas.directory.model.User;
 import com.saas.directory.service.AsaasApiException;
-import com.saas.directory.service.AsaasUserManager;
-import com.saas.directory.service.UserManager;
+import com.saas.directory.service.AsaasProvisioningService;
 
 @ExtendWith(MockitoExtension.class)
 public class UserRegistrationListenerTest {
 
     @Mock
-    private UserManager userManager;
-
-    @Mock
-    private AsaasUserManager asaasUserManager;
+    private AsaasProvisioningService provisioningService;
 
     @InjectMocks
     private UserRegistrationListener userRegistrationListener;
 
-    private User testUser;
-
-    @BeforeEach
-    void setUp() {
-        Role role = new Role(RoleName.USER);
-        testUser = new User("testuser", "password");
-        testUser.setRole(role);
-    }
-
     @Test
-    void handleUserRegistration_shouldCallAsaasAndSaveExternalId_onSuccess() throws Exception {
-        // Arrange
+    void handleUserRegistration_startsDurableProvisioning() {
         UserRegisteredEvent event = new UserRegisteredEvent("testuser");
-        AsaasCustomerCreationResponse asaasResponse = new AsaasCustomerCreationResponse(
-                "customer",
-                "cus_12345",
-                "2025-01-01",
-                "Test User",
-                "test@test.com",
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                false,
-                null,
-                null,
-                false,
-                null,
-                null,
-                null,
-                false,
-                null,
-                false,
-                null,
-                0,
-                null,
-                null,
-                null);
-
-        when(userManager.getUserOrDie("testuser")).thenReturn(testUser);
-        when(asaasUserManager.registerUser(any(UserDto.class))).thenReturn(asaasResponse);
-
-        // Act
-        userRegistrationListener.handleUserRegistration(event);
-
-        // Assert
-        verify(userManager, times(1)).getUserOrDie("testuser");
-        verify(asaasUserManager, times(1)).registerUser(any(UserDto.class));
-        verify(userManager, times(1)).addAsaasCustomerIdToUser("testuser", "cus_12345");
+        assertDoesNotThrow(() -> userRegistrationListener.handleUserRegistration(event));
+        verify(provisioningService).provisionUser("testuser");
     }
 
     @Test
     void handleUserRegistration_shouldThrowException_when_AsaasCallFails() throws Exception {
         // --- Arrange ---
         UserRegisteredEvent event = new UserRegisteredEvent("testuser");
-        when(userManager.getUserOrDie("testuser")).thenReturn(testUser);
-        when(asaasUserManager.registerUser(any(UserDto.class)))
-                .thenThrow(new RuntimeException("Asaas service unavailable"));
+        doThrow(new RuntimeException("Asaas service unavailable"))
+                .when(provisioningService)
+                .provisionUser("testuser");
 
         // --- Act & Assert ---
         // This test is now correct because the listener's try-catch is removed.
@@ -105,7 +46,7 @@ public class UserRegistrationListenerTest {
         });
 
         // Verify that the process stopped before saving an ID
-        verify(userManager, never()).addAsaasCustomerIdToUser(anyString(), anyString());
+        verify(provisioningService).provisionUser("testuser");
     }
 
     @Test
@@ -119,7 +60,7 @@ public class UserRegistrationListenerTest {
         userRegistrationListener.recover(finalException, event);
 
         // Assert: retry exhaustion only logs — no manager interaction, no rethrow
-        verifyNoInteractions(userManager, asaasUserManager);
+        verifyNoInteractions(provisioningService);
     }
 
     @Test
@@ -134,6 +75,6 @@ public class UserRegistrationListenerTest {
         userRegistrationListener.recover(badRequest, event);
 
         // Assert: the unrecoverable branch also only logs
-        verifyNoInteractions(userManager, asaasUserManager);
+        verifyNoInteractions(provisioningService);
     }
 }

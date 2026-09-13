@@ -37,7 +37,8 @@ public class AsaasCustomerCreationRequest {
                 .setPostalCode(userDto.getProfile().getZipCode())
                 .setProvince(userDto.getProfile().getNeighborhood())
                 .setComplement(userDto.getProfile().getComplement())
-                .setAddress(userDto.getProfile().getStreet());
+                .setAddress(userDto.getProfile().getStreet())
+                .setExternalReference(userDto.getId());
     }
 
     public String getName() {

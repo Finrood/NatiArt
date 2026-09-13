@@ -16,10 +16,12 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationRequest;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
+import com.saas.directory.dto.asaas.AsaasCustomerSearchResponse;
 
 @Service
 public class AsaasUserManager {
@@ -71,6 +73,35 @@ public class AsaasUserManager {
             throw e;
         } catch (Exception e) {
             throw new Exception("Unexpected error during asaas user registration: " + e.getMessage(), e);
+        }
+    }
+
+    public List<AsaasCustomerCreationResponse> findCustomersByExternalReference(String externalReference)
+            throws Exception {
+        if (externalReference == null || externalReference.isBlank()) {
+            throw new IllegalArgumentException("External customer reference is required");
+        }
+        final java.net.URI requestUri = UriComponentsBuilder.fromUriString(asaasCustomerUrl)
+                .queryParam("externalReference", externalReference)
+                .build()
+                .encode()
+                .toUri();
+        try {
+            final ResponseEntity<AsaasCustomerSearchResponse> response = restTemplate.exchange(
+                    requestUri, HttpMethod.GET, new HttpEntity<>(getRequestHeaders()), AsaasCustomerSearchResponse.class);
+            final AsaasCustomerSearchResponse body = response.getBody();
+            if (body == null || body.data() == null) {
+                return List.of();
+            }
+            return body.data().stream()
+                    .filter(customer -> externalReference.equals(customer.getExternalReference()))
+                    .toList();
+        } catch (HttpClientErrorException e) {
+            throw mapAsaasError(e);
+        } catch (HttpServerErrorException | ResourceAccessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new Exception("Unexpected error while reconciling Asaas customer", e);
         }
     }
 
