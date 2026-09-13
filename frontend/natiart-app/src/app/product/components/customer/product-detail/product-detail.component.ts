@@ -97,6 +97,8 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       switchMap((params: ParamMap) => {
         const productId: string | null = params.get('id');
         if (!productId) {
+          this.loadError = 'Could not load this product. Please try again.';
+          this.isLoading = false;
           return of(null);
         }
         return this.productService.getProduct(productId).pipe(
