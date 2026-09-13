@@ -1,6 +1,6 @@
 # Frontend Guide — natiart-app
 
-Single Angular 22 application (no monorepo), Tailwind CSS 4, Adyen payments,
+Single Angular 22 application (no monorepo), Tailwind CSS 4, Asaas/PIX payments,
 Karma/Jasmine tests. Generic rules in `agents/*.md` supersede nothing here — this
 file is the frontend source of truth.
 
@@ -37,8 +37,8 @@ building blocks go in `shared/`. Keep `app.component` a thin shell.
 
 ## Payments & Security
 
-- Adyen integration (`@adyen/adyen-web`) and auth-token handling are
-  security-sensitive: never log tokens, never bypass API-provided validation.
+- Asaas/PIX payment and auth-token handling are security-sensitive: never log
+  tokens, never bypass API-provided validation.
 - Environments in `src/environments/` — API endpoints per environment; never
   hard-code URLs in components.
 

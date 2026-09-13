@@ -23,7 +23,5 @@ dependencies {
     implementation("com.auth0:java-jwt:4.6.0")
     implementation("org.postgresql:postgresql:42.7.13")
     implementation("org.apache.commons:commons-lang3:3.20.0")
-    implementation("commons-io:commons-io:2.22.0")
-    implementation("org.apache.poi:poi:5.5.1")
     implementation("org.sejda.imageio:webp-imageio:0.1.6")
 }
