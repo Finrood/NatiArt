@@ -242,13 +242,16 @@ class PaymentControllerSecurityTest {
     void authenticatedCreatePaymentWithoutOrderIdIs400BeforeServiceCall() throws Exception {
         final AuthenticationResponseDto.Principal principal = mock(AuthenticationResponseDto.Principal.class);
         when(principal.getExternalId()).thenReturn("cus_MINE");
-        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
-                principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(
+                        principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER"))));
 
         try {
-            mockMvc.perform(post("/api/payment/create")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"paymentProcessor\":\"ASAAS\",\"customerId\":\"cus_MINE\",\"value\":10.0,\"billingType\":\"PIX\"}"))
+            mockMvc.perform(
+                            post("/api/payment/create")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(
+                                            "{\"paymentProcessor\":\"ASAAS\",\"customerId\":\"cus_MINE\",\"value\":10.0,\"billingType\":\"PIX\"}"))
                     .andExpect(status().isBadRequest());
             verifyNoInteractions(paymentService);
         } finally {
