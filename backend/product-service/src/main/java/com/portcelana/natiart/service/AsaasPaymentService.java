@@ -137,11 +137,7 @@ public class AsaasPaymentService implements PaymentService {
 
         final String requestFingerprint = fingerprint(paymentCreationRequest);
         final PaymentIdempotencyReservation reservationResult =
-                reserveOrReload(
-                        requesterExternalId,
-                        orderId,
-                        normalizedIdempotencyKey,
-                        requestFingerprint);
+                reserveOrReload(requesterExternalId, orderId, normalizedIdempotencyKey, requestFingerprint);
         final PaymentIdempotency reservation = reservationResult.record();
         if (!Objects.equals(reservation.getRequestFingerprint(), requestFingerprint)) {
             throw new ResourceAlreadyExistsException("Idempotency-Key was already used for a different payment");
@@ -249,10 +245,7 @@ public class AsaasPaymentService implements PaymentService {
     }
 
     private PaymentIdempotencyReservation reserveOrReload(
-            String requesterExternalId,
-            String orderId,
-            String idempotencyKey,
-            String requestFingerprint) {
+            String requesterExternalId, String orderId, String idempotencyKey, String requestFingerprint) {
         try {
             if (hasOrder(orderId)) {
                 return paymentIdempotencyService.reserveForOrder(
@@ -263,8 +256,7 @@ public class AsaasPaymentService implements PaymentService {
             final Optional<PaymentIdempotency> record = hasOrder(orderId)
                     ? paymentIdempotencyService.findForOrder(requesterExternalId, orderId)
                     : paymentIdempotencyService.find(requesterExternalId, idempotencyKey);
-            return record
-                    .map(found -> new PaymentIdempotencyReservation(found, false))
+            return record.map(found -> new PaymentIdempotencyReservation(found, false))
                     .orElseThrow(() -> e);
         }
     }

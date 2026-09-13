@@ -621,8 +621,8 @@ class AsaasPaymentServiceTest {
                         eq(AsaasPaymentCreationResponse.class)))
                 .thenReturn(ResponseEntity.ok(upstream));
 
-        final AsaasPaymentService service = newService(
-                restTemplate, paymentRepository, orderRepository, idempotencyService);
+        final AsaasPaymentService service =
+                newService(restTemplate, paymentRepository, orderRepository, idempotencyService);
         final PaymentCreationRequest request = orderLinked(new PaymentCreationRequest(
                 PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX));
 
@@ -632,12 +632,14 @@ class AsaasPaymentServiceTest {
         assertEquals(
                 "pay-order-idempotent",
                 service.createPayment(request, "cus_MINE", "client-key-two").getPaymentId());
-        verify(restTemplate, times(1))
-                .postForEntity(eq(PAYMENTS_URL), any(), eq(AsaasPaymentCreationResponse.class));
-        final ArgumentCaptor<HttpEntity<AsaasPaymentCreationRequest>> requestCaptor = ArgumentCaptor.forClass(HttpEntity.class);
-        verify(restTemplate).postForEntity(
-                eq(PAYMENTS_URL), requestCaptor.capture(), eq(AsaasPaymentCreationResponse.class));
-        assertEquals(storedReservation.get().getId(), requestCaptor.getValue().getHeaders().getFirst("Idempotency-Key"));
+        verify(restTemplate, times(1)).postForEntity(eq(PAYMENTS_URL), any(), eq(AsaasPaymentCreationResponse.class));
+        final ArgumentCaptor<HttpEntity<AsaasPaymentCreationRequest>> requestCaptor =
+                ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate)
+                .postForEntity(eq(PAYMENTS_URL), requestCaptor.capture(), eq(AsaasPaymentCreationResponse.class));
+        assertEquals(
+                storedReservation.get().getId(),
+                requestCaptor.getValue().getHeaders().getFirst("Idempotency-Key"));
     }
 
     @Test
