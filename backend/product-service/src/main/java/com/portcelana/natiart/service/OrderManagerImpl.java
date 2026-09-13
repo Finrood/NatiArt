@@ -161,6 +161,7 @@ public class OrderManagerImpl implements OrderManager {
         append(canonical, order == null ? null : order.getNeighborhood());
         append(canonical, order == null ? null : order.getZipCode());
         append(canonical, order == null ? null : order.getStreet());
+        append(canonical, order == null ? null : order.getHouseNumber());
         append(canonical, order == null ? null : order.getComplement());
 
         final List<String> items = new ArrayList<>();
