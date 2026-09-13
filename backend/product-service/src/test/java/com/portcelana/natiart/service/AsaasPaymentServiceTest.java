@@ -232,14 +232,18 @@ class AsaasPaymentServiceTest {
     @Test
     void parsePaymentStatus_mapsKnownStatuses() {
         assertEquals(PaymentStatus.PENDING, AsaasPaymentService.parsePaymentStatus("PENDING"));
-        assertEquals(PaymentStatus.COMPLETED, AsaasPaymentService.parsePaymentStatus("COMPLETED"));
+        assertEquals(PaymentStatus.COMPLETED, AsaasPaymentService.parsePaymentStatus("RECEIVED"));
+        assertEquals(PaymentStatus.COMPLETED, AsaasPaymentService.parsePaymentStatus("CONFIRMED"));
     }
 
     @Test
     void parsePaymentStatus_rejectsUnknownOrNullStatus() {
-        assertThrows(IllegalArgumentException.class, () -> AsaasPaymentService.parsePaymentStatus("OVERDUE"));
-        assertThrows(IllegalArgumentException.class, () -> AsaasPaymentService.parsePaymentStatus(null));
-        assertThrows(IllegalArgumentException.class, () -> AsaasPaymentService.parsePaymentStatus(""));
+        assertEquals(
+                HttpStatus.BAD_GATEWAY,
+                assertThrows(AsaasApiException.class, () -> AsaasPaymentService.parsePaymentStatus("OVERDUE"))
+                        .getHttpStatus());
+        assertThrows(AsaasApiException.class, () -> AsaasPaymentService.parsePaymentStatus(null));
+        assertThrows(AsaasApiException.class, () -> AsaasPaymentService.parsePaymentStatus(""));
     }
 
     @Test
@@ -533,7 +537,7 @@ class AsaasPaymentServiceTest {
         when(upstream.getDateCreated()).thenReturn(LocalDate.of(2026, 9, 8));
         when(upstream.getCustomer()).thenReturn("cus_MINE");
         when(upstream.getBillingType()).thenReturn("PIX");
-        when(upstream.getStatus()).thenReturn("PENDING");
+        when(upstream.getStatus()).thenReturn("RECEIVED");
         when(upstream.getDueDate()).thenReturn(LocalDate.of(2026, 9, 9));
         when(upstream.getInvoiceUrl()).thenReturn("http://invoice");
         when(upstream.getInvoiceNumber()).thenReturn("004");
@@ -555,8 +559,8 @@ class AsaasPaymentServiceTest {
                 "pay-idempotent",
                 service.createPayment(request, "cus_MINE", "payment-attempt-1").getPaymentId());
         assertEquals(
-                "pay-idempotent",
-                service.createPayment(request, "cus_MINE", "payment-attempt-1").getPaymentId());
+                PaymentStatus.COMPLETED,
+                service.createPayment(request, "cus_MINE", "payment-attempt-1").getStatus());
         assertThrows(
                 ResourceAlreadyExistsException.class,
                 () -> service.createPayment(

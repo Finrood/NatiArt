@@ -396,8 +396,7 @@ public class AsaasPaymentService implements PaymentService {
         final AsaasPaymentCreationResponse payment = fetchPaymentOrDie(paymentId);
         requireOwnedPayment(payment.getCustomer(), requesterExternalId);
 
-        final PaymentStatus status =
-                convertAsaasPaymentStatusToGeneralPaymentStatus(parseAsaasStatus(payment.getStatus()));
+        final PaymentStatus status = parsePaymentStatus(payment.getStatus());
         if (status == PaymentStatus.COMPLETED
                 && localPayment.getOrderId() != null
                 && !localPayment.getOrderId().isBlank()) {
@@ -466,11 +465,12 @@ public class AsaasPaymentService implements PaymentService {
         }
     }
 
-    private AsaasPaymentStatus parseAsaasStatus(String status) {
+    private static AsaasPaymentStatus parseAsaasStatus(String status) {
         try {
             return AsaasPaymentStatus.valueOf(status);
         } catch (IllegalArgumentException | NullPointerException e) {
-            throw new IllegalArgumentException("Unexpected Asaas status: " + status);
+            LOGGER.warn("Asaas payment response has an unsupported status: {}", status);
+            throw new AsaasApiException("Invalid payment provider response", HttpStatus.BAD_GATEWAY);
         }
     }
 
@@ -565,11 +565,7 @@ public class AsaasPaymentService implements PaymentService {
      * text is never echoed into the response body.
      */
     static PaymentStatus parsePaymentStatus(String status) {
-        try {
-            return PaymentStatus.valueOf(status);
-        } catch (IllegalArgumentException | NullPointerException e) {
-            throw new IllegalArgumentException("Unexpected Asaas payment status");
-        }
+        return convertAsaasPaymentStatusToGeneralPaymentStatus(parseAsaasStatus(status));
     }
 
     private HttpHeaders getRequestHeaders() {
@@ -592,7 +588,7 @@ public class AsaasPaymentService implements PaymentService {
         return headers;
     }
 
-    private PaymentStatus convertAsaasPaymentStatusToGeneralPaymentStatus(AsaasPaymentStatus asaasPaymentStatus) {
+    private static PaymentStatus convertAsaasPaymentStatusToGeneralPaymentStatus(AsaasPaymentStatus asaasPaymentStatus) {
         switch (asaasPaymentStatus) {
             case PENDING -> {
                 return PaymentStatus.PENDING;
@@ -600,7 +596,7 @@ public class AsaasPaymentService implements PaymentService {
             case RECEIVED, CONFIRMED -> {
                 return PaymentStatus.COMPLETED;
             }
-            default -> throw new IllegalArgumentException("Unexpected AsaasPaymentStatus: " + asaasPaymentStatus);
+            default -> throw new AsaasApiException("Invalid payment provider response", HttpStatus.BAD_GATEWAY);
         }
     }
 }
