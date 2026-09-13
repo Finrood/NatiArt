@@ -66,21 +66,65 @@ is_loop_branch() { # $1 = branch name; true iff the loop owns it (may salvage)
     [[ "${1:-}" =~ ^(fix|perf|chore|docs|feature|salvage)/ ]]
 }
 
-semver_bump() { # $1 = dependabot title; prints patch|minor|major|unknown
-    # Only single-dependency "bump X from a.b.c to x.y.z" titles classify.
-    # Group bumps ("across 1 directory with N updates"), multi-pair titles
-    # ("A from x to y, B from ..."), and anything else return unknown
-    # (conservative: never auto-merge what we cannot scope to one bump).
-    local title="$1"
-    case "$title" in
-        *from\ *from*|*to\ *to*) echo unknown; return ;;
+is_loop_machinery_file() { # $1 = path that always requires human review
+    case "$1" in
+        scripts/*|agents/*|.github/*|.cursorrules|docs/continuous-improvement-loop.md|docs/loop-lenses.md|AGENTS.md|CLAUDE.md|GEMINI.md|*/AGENTS.md|*/CLAUDE.md|*/GEMINI.md) return 0 ;;
+        *) return 1 ;;
     esac
-    if [[ "$title" =~ from\ [vV]?([0-9]+)\.([0-9]+)\.([0-9]+).*to\ [vV]?([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
-        if [[ "${BASH_REMATCH[1]}" != "${BASH_REMATCH[4]}" ]]; then echo major
-        elif [[ "${BASH_REMATCH[2]}" != "${BASH_REMATCH[5]}" ]]; then echo minor
-        else echo patch; fi
-    else
+}
+
+files_touch_loop_machinery() { # $1 = newline-separated changed paths
+    local files="$1" path
+    while IFS= read -r path; do
+        [[ -z "$path" ]] && continue
+        is_loop_machinery_file "$path" && return 0
+    done <<<"$files"
+    return 1
+}
+
+dependabot_author_is_verified() { # $1 = authenticated GitHub login
+    [[ "$1" == "dependabot[bot]" ]]
+}
+
+dependabot_files_supported() { # $1 = newline-separated manifest/lockfile paths
+    local files="$1" path
+    [[ -n "$files" ]] || return 1
+    while IFS= read -r path; do
+        [[ -n "$path" ]] || return 1
+        case "$path" in
+            backend/*/build.gradle|backend/*/build.gradle.kts|backend/*/gradle.lockfile|frontend/natiart-app/package.json|frontend/natiart-app/package-lock.json|package.json|package-lock.json|gradle/libs.versions.toml|gradle/verification-metadata.xml)
+                ;;
+            *) return 1 ;;
+        esac
+    done <<<"$files"
+}
+
+semver_bump() { # $1 = dependabot title; prints patch|minor|major|unknown
+    # Only exact single-dependency "Bump X from a.b.c to x.y.z" titles
+    # classify. Group/multi-pair titles, prereleases, downgrades, and malformed
+    # values return unknown (conservative: never auto-merge what we cannot scope).
+    local title="$1"
+    local old_major old_minor old_patch new_major new_minor new_patch component
+    if [[ "${title#* from }" == *" from "* || "${title#* to }" == *" to "* ]]; then
         echo unknown
+        return
+    fi
+    if [[ ! "$title" =~ ^.*[Bb]ump[[:space:]]+.+[[:space:]]from[[:space:]]v?([0-9]+)\.([0-9]+)\.([0-9]+)[[:space:]]+to[[:space:]]v?([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+        echo unknown
+        return
+    fi
+    old_major="${BASH_REMATCH[1]}"; old_minor="${BASH_REMATCH[2]}"; old_patch="${BASH_REMATCH[3]}"
+    new_major="${BASH_REMATCH[4]}"; new_minor="${BASH_REMATCH[5]}"; new_patch="${BASH_REMATCH[6]}"
+    for component in "$old_major" "$old_minor" "$old_patch" "$new_major" "$new_minor" "$new_patch"; do
+        [[ "${#component}" -le 9 ]] || { echo unknown; return; }
+    done
+    if (( 10#$new_major < 10#$old_major ||
+          (10#$new_major == 10#$old_major && 10#$new_minor < 10#$old_minor) ||
+          (10#$new_major == 10#$old_major && 10#$new_minor == 10#$old_minor && 10#$new_patch < 10#$old_patch) )); then
+        echo unknown
+    elif (( 10#$new_major != 10#$old_major )); then echo major
+    elif (( 10#$new_minor != 10#$old_minor )); then echo minor
+    else echo patch
     fi
 }
 
