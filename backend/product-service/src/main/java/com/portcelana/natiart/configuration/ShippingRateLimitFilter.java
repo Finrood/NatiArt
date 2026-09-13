@@ -89,8 +89,7 @@ public class ShippingRateLimitFilter extends OncePerRequestFilter {
                 final String[] chain = forwarded.split(",");
                 for (int index = chain.length - 1; index >= 0; index--) {
                     final String forwardedAddress = normalizeIp(chain[index].trim());
-                    if (!"unknown".equals(forwardedAddress)
-                            && !trustedProxyAddresses.contains(forwardedAddress)) {
+                    if (!"unknown".equals(forwardedAddress) && !trustedProxyAddresses.contains(forwardedAddress)) {
                         return forwardedAddress;
                     }
                 }
