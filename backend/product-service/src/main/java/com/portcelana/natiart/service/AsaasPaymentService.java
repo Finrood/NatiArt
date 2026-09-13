@@ -588,7 +588,8 @@ public class AsaasPaymentService implements PaymentService {
         return headers;
     }
 
-    private static PaymentStatus convertAsaasPaymentStatusToGeneralPaymentStatus(AsaasPaymentStatus asaasPaymentStatus) {
+    private static PaymentStatus convertAsaasPaymentStatusToGeneralPaymentStatus(
+            AsaasPaymentStatus asaasPaymentStatus) {
         switch (asaasPaymentStatus) {
             case PENDING -> {
                 return PaymentStatus.PENDING;
