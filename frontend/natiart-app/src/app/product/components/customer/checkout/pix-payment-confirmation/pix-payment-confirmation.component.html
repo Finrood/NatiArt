@@ -22,7 +22,7 @@
       </app-button>
     </div>
   } @else {
-    @if (qrCodeData) {
+    @if (paymentStatus !== 'ERROR' && paymentStatus !== 'EXPIRED' && qrCodeData && !isQrExpired()) {
       <div>
         <h1 class="text-2xl font-bold text-gray-800 mb-2">Scan to Pay with PIX</h1>
         <p class="text-gray-600 mb-6">Your order is reserved. Complete the payment before it expires.</p>
@@ -47,9 +47,14 @@
           <p>Expires in: <strong class="font-semibold">{{ qrCodeData.expirationDate | date: 'mediumTime' }}</strong></p>
         </div>
       </div>
-    } @else if (paymentStatus === 'ERROR') {
+    } @else if (paymentStatus === 'ERROR' || paymentStatus === 'EXPIRED') {
       <div class="flex items-center justify-center">
-        <p class="ml-4 text-gray-600" role="alert">Could not load the payment details. Please go back and try again.</p>
+        <div>
+          <p class="ml-4 text-gray-600" role="alert">
+            {{ paymentStatus === 'EXPIRED' ? 'This PIX code has expired.' : 'Could not load the payment details.' }}
+          </p>
+          <app-button (click)="retryPayment()" color="primary" size="md" class="mt-4">Refresh payment</app-button>
+        </div>
       </div>
     } @else {
       <div class="flex items-center justify-center">

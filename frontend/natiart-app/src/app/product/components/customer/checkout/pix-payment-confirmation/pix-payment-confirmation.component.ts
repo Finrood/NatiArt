@@ -1,6 +1,6 @@
 import {ChangeDetectorRef, Component, OnDestroy, OnInit} from '@angular/core';
-import {map, switchMap} from "rxjs/operators";
-import {catchError, interval, of, Subscription, throwError} from "rxjs";
+import {exhaustMap, map} from "rxjs/operators";
+import {catchError, interval, of, Subscription, throwError, timeout} from "rxjs";
 import {PaymentService} from "../../../../service/payment.service";
 import {ActivatedRoute, ParamMap, Router} from "@angular/router";
 import { DatePipe, NgClass } from "@angular/common";
@@ -18,7 +18,7 @@ import {ButtonComponent} from "../../../../../shared/components/button.component
 })
 export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   paymentId: string | null = null;
-  qrCodeData!: { encodedImage: string; payload: string; expirationDate: Date };
+  qrCodeData: { encodedImage: string; payload: string; expirationDate: Date } | undefined;
   paymentStatus: string = 'PENDING';
   copyFailed: boolean = false;
   pollingInterval!: Subscription;
@@ -44,6 +44,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
       const routedId: string | null = params.get('paymentId');
       this.stopPolling();
       this.stopQrCode();
+      this.qrCodeData = undefined;
       this.copyFailed = false;
       if (routedId) {
         this.paymentId = routedId;
@@ -60,7 +61,16 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   loadQrCode(paymentId: string) {
     this.stopQrCode();
     this.qrSubscription = this.paymentService.getPixQrCode(paymentId).subscribe(
-      (data) => (this.qrCodeData = data),
+      (data) => {
+        if (!data.encodedImage || !data.payload || Number.isNaN(data.expirationDate.getTime())
+          || data.expirationDate.getTime() <= Date.now()) {
+          this.paymentStatus = 'EXPIRED';
+          this.stopPolling();
+          return;
+        }
+        this.qrCodeData = data;
+        this.changeDetectorRef.detectChanges();
+      },
       () => {
         // Status polling cannot make this screen usable without the QR code.
         // Stop it so a later PENDING status cannot replace the QR error with
@@ -85,8 +95,9 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
     this.pollCount = 0;
     this.pollingInterval = interval(5000)
       .pipe(
-        switchMap(() =>
+        exhaustMap(() =>
           this.paymentService.getPaymentStatus(paymentId).pipe(
+            timeout({each: 4500}),
             map((status) => ({ok: true as const, status: status.status})),
             catchError((error) => {
               consecutiveErrors++;
@@ -113,6 +124,11 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
               this.stopPolling();
               return;
             }
+            if (this.paymentStatus === 'EXPIRED' || this.isQrExpired()) {
+              this.stopPolling();
+              this.paymentStatus = 'EXPIRED';
+              return;
+            }
           }
           this.pollCount++;
           if (this.pollCount >= this.MAX_POLL_ATTEMPTS) {
@@ -135,7 +151,23 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   stopPolling() {
     if (this.pollingInterval) {
       this.pollingInterval.unsubscribe();
+      this.pollingInterval = undefined!;
     }
+  }
+
+  isQrExpired(): boolean {
+    return !!this.qrCodeData && this.qrCodeData.expirationDate.getTime() <= Date.now();
+  }
+
+  retryPayment(): void {
+    if (!this.paymentId) {
+      return;
+    }
+    this.qrCodeData = undefined;
+    this.paymentStatus = 'PENDING';
+    this.loadQrCode(this.paymentId);
+    this.startPolling(this.paymentId);
+    this.changeDetectorRef.detectChanges();
   }
 
   copyToClipboard(inputElement: HTMLInputElement): void {
