@@ -197,8 +197,7 @@ public class ProductManagerImpl implements ProductManager {
         final Optional<Package> pack = packageManager.getPackage(productDto.getPackageId());
         final Product product = getProductOrDie(productDto.getId());
         final List<String> previousImages = List.copyOf(product.getImages());
-        product
-                .setLabel(label)
+        product.setLabel(label)
                 .setDescription(productDto.getDescription())
                 .setCategory(category)
                 .setPackaging(pack.orElse(null))
@@ -265,8 +264,7 @@ public class ProductManagerImpl implements ProductManager {
         final List<InputFile> uploads = newImages != null ? newImages : List.of();
         final List<String> retainedImages = existingImages != null ? existingImages : List.of();
         if (retainedImages.size() + uploads.size() > MAX_IMAGES_PER_PRODUCT) {
-            throw new IllegalArgumentException(
-                    "A product may contain at most " + MAX_IMAGES_PER_PRODUCT + " images");
+            throw new IllegalArgumentException("A product may contain at most " + MAX_IMAGES_PER_PRODUCT + " images");
         }
         LOGGER.info(
                 "Processing [{}] images for product labelled [{}] with id [{}]",
@@ -279,10 +277,10 @@ public class ProductManagerImpl implements ProductManager {
         final List<String> newUris = new ArrayList<>();
         try {
             for (InputFile inputFile : uploads) {
-                    final String imagePath = IMAGE_BASE_PATH + product.getId() + "/" + UUID.randomUUID();
-                    final URI imageUri = storageService.uploadFile(
-                            imagePath, inputFile, UUID.randomUUID().toString());
-                    newUris.add(imageUri.toString());
+                final String imagePath = IMAGE_BASE_PATH + product.getId() + "/" + UUID.randomUUID();
+                final URI imageUri = storageService.uploadFile(
+                        imagePath, inputFile, UUID.randomUUID().toString());
+                newUris.add(imageUri.toString());
             }
         } catch (RuntimeException error) {
             newUris.forEach(uri -> storageService.delete(URI.create(uri)));
