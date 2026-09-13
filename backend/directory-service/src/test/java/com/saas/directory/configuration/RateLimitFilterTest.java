@@ -140,6 +140,48 @@ class RateLimitFilterTest {
     }
 
     @Test
+    void authenticatedServiceValidationUsesItsOwnQuota() throws Exception {
+        final RateLimitFilter serviceFilter = new RateLimitFilter(2, 2, List.of(), store, "service-secret", 5);
+
+        for (int i = 0; i < 5; i++) {
+            final MockHttpServletRequest request = post("/validate-token", "10.0.0.5");
+            request.addHeader(RateLimitFilter.INTERNAL_SERVICE_TOKEN_HEADER, "service-secret");
+            final MockHttpServletResponse response = new MockHttpServletResponse();
+            serviceFilter.doFilter(request, response, new MockFilterChain());
+            assertNotEquals(429, response.getStatus());
+        }
+
+        final MockHttpServletRequest blockedRequest = post("/validate-token", "10.0.0.5");
+        blockedRequest.addHeader(RateLimitFilter.INTERNAL_SERVICE_TOKEN_HEADER, "service-secret");
+        final MockHttpServletResponse blockedResponse = new MockHttpServletResponse();
+        serviceFilter.doFilter(blockedRequest, blockedResponse, new MockFilterChain());
+        assertEquals(429, blockedResponse.getStatus());
+
+        for (int i = 0; i < 2; i++) {
+            final MockHttpServletResponse response = new MockHttpServletResponse();
+            serviceFilter.doFilter(post("/login", "10.0.0.5"), response, new MockFilterChain());
+            assertNotEquals(429, response.getStatus());
+        }
+    }
+
+    @Test
+    void spoofedServiceHeaderRemainsInThePublicQuota() throws Exception {
+        final RateLimitFilter serviceFilter = new RateLimitFilter(2, 2, List.of(), store, "service-secret", 5);
+
+        for (int i = 0; i < 2; i++) {
+            final MockHttpServletRequest request = post("/validate-token", "10.0.0.6");
+            request.addHeader(RateLimitFilter.INTERNAL_SERVICE_TOKEN_HEADER, "wrong-secret");
+            serviceFilter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+        }
+
+        final MockHttpServletRequest blockedRequest = post("/validate-token", "10.0.0.6");
+        blockedRequest.addHeader(RateLimitFilter.INTERNAL_SERVICE_TOKEN_HEADER, "wrong-secret");
+        final MockHttpServletResponse blockedResponse = new MockHttpServletResponse();
+        serviceFilter.doFilter(blockedRequest, blockedResponse, new MockFilterChain());
+        assertEquals(429, blockedResponse.getStatus());
+    }
+
+    @Test
     void windowResetsAfterTheFixedWindowElapses() throws Exception {
         MutableClock clock = new MutableClock(0L);
         RateLimitFilter clockedFilter = new RateLimitFilter(3, List.of(), new FixedWindowStore(clock));
