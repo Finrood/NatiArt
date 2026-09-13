@@ -16,6 +16,7 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP_ROOT="${TMPDIR:-/tmp}"   # override with TMPDIR for tests; attempt logs are removed after each run
+umask 077
 
 # --- overridables ----------------------------------------------------------
 ROLE="cycle"          # cycle (1500s budget) | review (360s default; loop overrides to 600)
@@ -54,6 +55,27 @@ EOF
 log() { echo "[$(date -Is)] $*"; }
 log_err() { echo "[$(date -Is)] ERROR: $*" >&2; }
 
+bounded_decimal() { # $1=value $2=option $3=min $4=max; prints canonical integer
+    local raw="$1" option="$2" min="$3" max="$4" normalized value
+    if [[ ! "$raw" =~ ^[0-9]+$ ]]; then
+        log_err "$option must be a base-10 integer in [$min,$max], got '$raw'."
+        return 1
+    fi
+    normalized="${raw#${raw%%[!0]*}}"
+    normalized="${normalized:-0}"
+    # Avoid handing arbitrarily long input to shell arithmetic at all.
+    if (( ${#normalized} > ${#max} )); then
+        log_err "$option is outside [$min,$max]."
+        return 1
+    fi
+    value=$((10#$normalized))
+    if (( value < min || value > max )); then
+        log_err "$option is outside [$min,$max]."
+        return 1
+    fi
+    printf '%d\n' "$value"
+}
+
 # --- argument parsing ------------------------------------------------------
 PROMPT_ARGS=()
 while [[ $# -gt 0 ]]; do
@@ -83,10 +105,9 @@ if [[ -z "$BUDGET" ]]; then
         review) BUDGET=360 ;;
     esac
 fi
-if [[ ! "$BUDGET" =~ ^[0-9]+$ ]] || [[ "$BUDGET" -eq 0 ]]; then
-    log_err "Invalid --budget '$BUDGET'."
-    exit 2
-fi
+if ! BUDGET="$(bounded_decimal "$BUDGET" --budget 1 86400)"; then exit 2; fi
+if ! STALL_SEC="$(bounded_decimal "$STALL_SEC" --stall 1 86400)"; then exit 2; fi
+if ! SIMULATE_QUOTA_AT="$(bounded_decimal "$SIMULATE_QUOTA_AT" --simulate-quota-at 0 10000)"; then exit 2; fi
 # Role stall defaults: a review (360s total) must fail over from a silent
 # quota-dead model in seconds, while a cycle (1500s) may legitimately go quiet
 # for minutes inside Gradle/npm runs — killing a healthy attempt there would
@@ -197,6 +218,12 @@ print_tail() { # $1 = log file
     tail -n 15 "$f" 2>/dev/null || true
 }
 
+ATT_LOG=""
+cleanup_attempt_log() {
+    [[ -z "${ATT_LOG:-}" ]] || rm -f "$ATT_LOG" || true
+}
+trap cleanup_attempt_log EXIT
+
 kill_agent() { # $1 = process-group leader pid; terminate the whole attempt tree
     local pid="$1" _
     kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || return 0
@@ -260,9 +287,11 @@ while true; do
             continue
         fi
 
-        ATT_LOG="$(mktemp "$TMP_ROOT/natiart-agent-attempt-XXXXXX.log")"
         same_retry=0
         while :; do # retry-same-model loop: silence ≠ quota (see below)
+            # Allocate a new private pathname for every attempt, including a
+            # same-model retry; never recreate a removed pathname by redirect.
+            ATT_LOG="$(mktemp "$TMP_ROOT/natiart-agent-attempt-XXXXXX.log")"
             log "Attempt $attempt/${label}: $cli :: $model_id${think:+, thinking=$think} (${remaining}s left)"
             if ! launch_attempt "$cli" "$model_id" "$think"; then
                 log "Cannot spawn $label; skipping."
