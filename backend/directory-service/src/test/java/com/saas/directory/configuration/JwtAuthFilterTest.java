@@ -23,6 +23,8 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import com.auth0.jwt.exceptions.JWTVerificationException;
+
 import com.saas.directory.model.TokenType;
 
 /**
@@ -77,6 +79,22 @@ class JwtAuthFilterTest {
                 response.getContentAsString(),
                 "the filter denial must carry the same static body as the advice handler");
         assertNull(chain.getRequest(), "the chain must NOT continue after a 401");
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    void verifierFailure_returns401WithoutContinuingTheChain() throws Exception {
+        when(userAuthenticationProvider.authenticateWithToken(eq("test-token"), any(TokenType.class)))
+                .thenThrow(new JWTVerificationException("expired"));
+        final JwtAuthFilter filter = new JwtAuthFilter(userAuthenticationProvider);
+        final MockHttpServletResponse response = new MockHttpServletResponse();
+        final MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(request("GET", "/users/current"), response, chain);
+
+        assertEquals(401, response.getStatus());
+        assertEquals(ControllerAdvice.INVALID_TOKEN_MESSAGE, response.getContentAsString());
+        assertNull(chain.getRequest());
         assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 
