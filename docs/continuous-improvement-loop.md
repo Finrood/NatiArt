@@ -21,7 +21,9 @@ logs/loop-<timestamp>.log        per-cycle log (gitignored; last 480 retained)
 Laptop timer semantics: `Persistent=true` replays one catch-up run after
 suspend/off (no storm); a boot double-fire is serialized by `flock`. Exit 124
 means healthy budget exhaustion (unit stays green via `SuccessExitStatus`);
-anything else red is a real abort.
+anything else red is a real abort. Completed cycles publish a bounded,
+authenticated heartbeat issue comment containing their cycle ID, reviewed
+commit, outcome and artifacts; the cloud watchdog trusts only that signal.
 
 ## Install / control
 
@@ -62,7 +64,11 @@ Note: the timer needs a lingering user session to fire while logged out
    branch, master hard-reset to origin, newest 5 salvage branches retained),
    stray unpushed master commits (same salvage path, plus an automatic
    `[Salvage]` PR so the work is reviewable instead of orphaned),
-   non-fast-forward `master`.
+   non-fast-forward `master`. The cloud watchdog reads only successful
+   completion heartbeats, so human comments and unrelated PR movement cannot
+   mask a stopped host. A successful cycle without a PR must leave the bounded
+   audit artifact named in its cycle parameters; otherwise it publishes a failed
+   heartbeat.
    Docs-only flips and dependabot PRs are excluded from blocking — they never
    stop the loop, and green docs PRs with `VERDICT: APPROVE` are auto-merged
    like code (max 2 merges/cycle shared).
@@ -125,9 +131,10 @@ empty level loudly (exit 2) and warns on any non-`xhigh` level.
 - **Which model won** is printed (`opencode-muse` / `cline-muse` / `cline-deepseek` / `cline-glm`)
   (also echoed as `NATIART_ACTIVE_MODEL`) for the agent's cycle summary.
 - **Reviewer independence.** Review invocations pass `--skip <author's Model:
-  footer value>` (`run-agent.sh`, substring match, ignored if it would empty
-  the pool), so the reviewer is a different model than the author whenever the
-  pool allows — a fresh context in weights, not just in prompt.
+  footer value>` (`run-agent.sh` resolves that value to the canonical model-family
+  ID in `scripts/agent-models.conf`). Both Muse gateway entries therefore count
+  as one family; if skipping the author's family empties the runnable pool, no
+  automated verdict is produced and manual review is required.
 - **Buttons**: `--check-only` prints the priority list; `--simulate-quota-at N`
   fails the first N attempts synthetically (no tokens) to prove fallthrough;
   `--stall SEC` tunes the stall detector. The cline fallback needs the cline CLI
@@ -146,9 +153,10 @@ empty level loudly (exit 2) and warns on any non-`xhigh` level.
 - **Ratchets**: at most one small strictness tightening per cycle (coverage
   gate, pagination cap, one ArchUnit-style fitness rule) — green build kept,
   revertible in one commit. Each tightening breeds its own follow-ups.
-- **Red-team cadence**: every 480th slot (~10 days) is adversarial (see
-  `scripts/redteam-addendum.md`): threat-model one flow, file PoCs as backlog
-  items, fix on the spot only if trivial.
+- **Red-team cadence**: every 480 slots (~10 days at full cadence) is adversarial
+  (see `scripts/redteam-addendum.md`). The last successfully completed red-team
+  slot is persisted locally; an overdue slot runs once after suspend/offline
+  recovery instead of requiring an exact wall-clock slot.
 - **Boy-scout ledger**: every PR converts one discovered nit into a tracked
   backlog item instead of silently fixing or ignoring it.
 - **Health metrics** (read from `logs/`): `health.csv` (one row/cycle: slot,

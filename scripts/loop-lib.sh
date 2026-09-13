@@ -5,6 +5,44 @@
 # Callers run under `set -euo pipefail`; this file sets nothing itself.
 log() { printf '%s\n' "[$(date -Is)] $*"; }
 
+LOOP_HEARTBEAT_TITLE="[Watchdog] Loop heartbeat"
+LOOP_HEARTBEAT_MARKER="NATIART_LOOP_HEARTBEAT"
+
+heartbeat_issue_number() { # prints the open issue reserved for loop heartbeats
+    gh issue list --search "$LOOP_HEARTBEAT_TITLE in:title state:open" \
+        --json number --jq '.[0].number // empty' 2>/dev/null
+}
+
+latest_heartbeat() { # prints newest machine-readable heartbeat JSON, or empty
+    local issue
+    issue=$(heartbeat_issue_number) || return 1
+    [[ -n "$issue" ]] || return 0
+    gh issue view "$issue" --json comments --jq \
+        '[.comments[] | select(.body | startswith("NATIART_LOOP_HEARTBEAT")) |
+         {timestamp: .createdAt, body: .body}] | sort_by(.timestamp) | last // empty' 2>/dev/null
+}
+
+emit_cycle_heartbeat() { # cycle_id commit outcome artifacts lens red_team_slot
+    local cycle_id="$1" commit="$2" outcome="$3" artifacts="$4" lens="$5" red_team_slot="$6"
+    local issue body issue_url
+    issue=$(heartbeat_issue_number) || return 1
+    if [[ -z "$issue" ]]; then
+        issue_url=$(gh issue create --title "$LOOP_HEARTBEAT_TITLE" \
+            --body "Machine-readable completion heartbeats for the laptop improvement loop. Do not use ordinary comments as health signals." \
+            2>/dev/null) || return 1
+        issue="${issue_url##*/}"
+    fi
+    # Keep the payload bounded and single-purpose: artifacts are reduced to
+    # loop-generated PR numbers and the remaining values are local state.
+    body=$(printf '%s\ncycle_id=%s\nreviewed_commit=%s\noutcome=%s\nartifacts=%s\nlens=%s\nred_team_slot=%s\n' \
+        "$LOOP_HEARTBEAT_MARKER" "$cycle_id" "$commit" "$outcome" "$artifacts" "$lens" "$red_team_slot")
+    if [[ "${#body}" -gt 1800 ]]; then
+        body="${body:0:1799}"
+        body+=$'\n'
+    fi
+    gh issue comment "$issue" --body "$body" >/dev/null 2>&1
+}
+
 health_init_or_migrate() { # $1=file $2=current header; returns non-zero on I/O failure
     local file="$1" header="$2"
     local legacy="timestamp,slot,open_code,open_docs,repair_prs,merged,reviewed_pr,exit_status"

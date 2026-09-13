@@ -77,6 +77,7 @@ fi
 
 log "=== Improvement-loop cycle start (check-only=$CHECK_ONLY) ==="
 cd "$REPO"
+CYCLE_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
 
 # 0. Fast-fail gates: expired token or full disk must abort loudly, not waste
 #    a 25-minute agent run on calls that cannot succeed.
@@ -197,6 +198,7 @@ if ! git pull -q --ff-only origin master; then
     exit 1
 fi
 log "master at $(git rev-parse --short HEAD), tree clean."
+MASTER_SHA="$(git rev-parse HEAD)"
 # 2b. Stray-commits guard: a cycle agent that exits 0 without delivering can
 #     leave finished work committed locally on master but never pushed (seen
 #     2026-09-06 18:30). Salvage to a pushed branch + PR, then reset to
@@ -578,9 +580,25 @@ if [[ -z "$LENS_NAME" ]]; then
     exit 1
 fi
 log "Lens of the cycle: #$(( LENS_INDEX + 1 )) $LENS_NAME (slot $SLOT)."
+RED_TEAM_SLOT="none"
+RED_TEAM_DUE=0
+RED_TEAM_STATE="$LOG_DIR/last-red-team-slot"
+if [[ -f "$RED_TEAM_STATE" ]] && [[ "$(cat "$RED_TEAM_STATE")" =~ ^[0-9]+$ ]]; then
+    LAST_RED_TEAM_SLOT="$(cat "$RED_TEAM_STATE")"
+    if (( SLOT - LAST_RED_TEAM_SLOT >= 480 )); then
+        RED_TEAM_DUE=1
+    fi
+elif (( SLOT % 480 == 0 )); then
+    RED_TEAM_DUE=1
+fi
+if (( RED_TEAM_DUE == 1 )); then
+    RED_TEAM_SLOT="$SLOT"
+    log "Red-team cadence due: last completed slot is ${LAST_RED_TEAM_SLOT:-none}; running overdue red-team work."
+fi
 CYCLE_MSG="$(cat scripts/agent-cycle-prompt.md)
 ---
-Cycle parameters: lens of the cycle: $LENS_NAME. Backlog: $OPEN_COUNT OPEN (floor $FLOOR)."
+Cycle parameters: cycle_id=$CYCLE_ID; reviewed_commit=$MASTER_SHA; lens of the cycle: $LENS_NAME. Backlog: $OPEN_COUNT OPEN (floor $FLOOR).
+Completion contract: if this cycle opens no PR, a successful audit-only cycle MUST write the bounded artifact file logs/cycle-$CYCLE_ID.audit before finishing. Include the reviewed commit, findings/lens checked and concrete outcome; do not alter docs/audit-findings.md."
 if [[ "$BELOW_FLOOR" -eq 1 ]]; then
     CYCLE_MSG="$CYCLE_MSG BACKLOG BELOW FLOOR: generator duty is ON — end this cycle with new OPEN items or a fix, never with 'no work'."
 fi
@@ -590,8 +608,7 @@ fi
 if [[ -n "$REPAIR_PRS" ]]; then
     CYCLE_MSG="$CYCLE_MSG REPAIR MODE ON — build-failing:$FAILING conflicting:$CONFLICTING (union:$REPAIR_PRS). Follow the REPAIR MODE section: resolve conflicts first (merge origin/master, never rebase/force-push), then fix red checks, then address the latest VERDICT findings (read them via 'gh pr view <n> --json comments,reviews'). Push to the same branches; open zero new fix branches until all are green + mergeable."
 fi
-if (( SLOT % 480 == 0 )); then
-    log "Red-team cadence due: adversarial cycle."
+if (( RED_TEAM_DUE == 1 )); then
     CYCLE_MSG="$CYCLE_MSG
 $(cat scripts/redteam-addendum.md)"
 fi
@@ -631,6 +648,38 @@ if [[ -n "${REVIEW_PID:-}" ]]; then
     fi
 fi
 log "Agent cycle finished with status $STATUS."
+# Completion is recorded only after the cycle's actual deliverable boundary is
+# inspected. A zero exit alone is not a heartbeat: the cycle must have an open
+# PR on its current loop branch or the explicit audit-only artifact requested in
+# the prompt. Failed/timeout cycles are published as failures so the watchdog
+# can distinguish them from host inactivity.
+CURRENT_BRANCH="$(git branch --show-current 2>/dev/null || true)"
+PR_ARTIFACTS=""
+if [[ -n "$CURRENT_BRANCH" ]] && is_loop_branch "$CURRENT_BRANCH"; then
+    PR_ARTIFACTS="$(gh pr list --state open --head "$CURRENT_BRANCH" --json number --jq '[.[].number] | map("PR #" + tostring) | join(",")' 2>/dev/null || true)"
+fi
+AUDIT_ARTIFACT="logs/cycle-$CYCLE_ID.audit"
+HEARTBEAT_OUTCOME="FAILED"
+HEARTBEAT_ARTIFACTS=""
+if [[ "$STATUS" -eq 0 && -n "$PR_ARTIFACTS" ]]; then
+    HEARTBEAT_OUTCOME="PR_DELIVERED"
+    HEARTBEAT_ARTIFACTS="$PR_ARTIFACTS"
+elif [[ "$STATUS" -eq 0 && -s "$AUDIT_ARTIFACT" ]]; then
+    HEARTBEAT_OUTCOME="AUDIT_ONLY"
+    HEARTBEAT_ARTIFACTS="$AUDIT_ARTIFACT"
+elif [[ "$STATUS" -eq 0 ]]; then
+    log "Cycle returned zero without a PR or audit artifact; recording FAILED heartbeat."
+else
+    log "Cycle did not complete successfully; recording FAILED heartbeat."
+fi
+if ! emit_cycle_heartbeat "$CYCLE_ID" "$MASTER_SHA" "$HEARTBEAT_OUTCOME" "$HEARTBEAT_ARTIFACTS" "$LENS_NAME" "$RED_TEAM_SLOT"; then
+    log "WARN: could not publish completion heartbeat for cycle $CYCLE_ID."
+else
+    log "Published $HEARTBEAT_OUTCOME completion heartbeat for cycle $CYCLE_ID."
+    if [[ "$HEARTBEAT_OUTCOME" != "FAILED" && "$RED_TEAM_SLOT" != "none" ]]; then
+        printf '%s\n' "$RED_TEAM_SLOT" > "$RED_TEAM_STATE"
+    fi
+fi
 # Health row (gitignored logs/health.csv): one line per cycle for trends and
 # post-mortems — grep it for merged counts, repair frequency, idle stretches.
 HEALTH="$LOG_DIR/health.csv"
