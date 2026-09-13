@@ -113,8 +113,8 @@ class UserAuthenticationProviderTest {
                 IllegalAccessException.class, () -> provider.authenticateWithToken(null, TokenType.AUTH_ACCESS));
 
         assertEquals("Authentication token is not valid", exception.getMessage());
-        verify(tokenRepository, org.mockito.Mockito.never()).findByJtiAndTokenType(org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any());
+        verify(tokenRepository, org.mockito.Mockito.never())
+                .findByJtiAndTokenType(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
     @Test
