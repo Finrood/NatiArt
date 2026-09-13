@@ -177,11 +177,11 @@ describe('jwtInterceptor', () => {
     refresh.flush({accessToken: 'new-access', refreshToken: 'new-refresh'});
     tick();
 
-    // And the original request is retried with the new bearer + the retry guard header.
+    // And the original request is retried with the new bearer without a network retry header.
     const retried = httpTesting.expectOne('/api/secure');
     expect(retried.request.headers.get('Authorization')).toBe('Bearer new-access');
+    expect(retried.request.headers.has('X-Auth-Retried')).toBeFalse();
     // The retried request must NOT re-trigger another refresh if it also fails.
-    expect(retried.request.headers.get('X-Auth-Retried')).toBe('1');
     retried.flush({ok: true}, {status: 200, statusText: 'OK'});
     tick();
 
@@ -234,7 +234,7 @@ describe('jwtInterceptor', () => {
     refresh.flush({accessToken: 'new-access', refreshToken: 'new-refresh'});
     tick();
     const retried = httpTesting.expectOne('/api/secure');
-    expect(retried.request.headers.get('X-Auth-Retried')).toBe('1');
+    expect(retried.request.headers.has('X-Auth-Retried')).toBeFalse();
     retried.flush('', {status: 401, statusText: 'Unauthorized'});
     tick();
 
