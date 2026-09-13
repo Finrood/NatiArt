@@ -97,16 +97,19 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       switchMap((params: ParamMap) => {
         const productId: string | null = params.get('id');
         if (!productId) {
-          throw new Error('Missing product id');
+          this.loadError = 'Could not load this product. Please try again.';
+          this.isLoading = false;
+          return of(null);
         }
-        return this.productService.getProduct(productId);
-      }),
-      catchError((error: unknown) => {
-        reportError('product-loading', error);
-        this.product$.next(null);
-        this.loadError = 'Could not load this product. Please try again.';
-        this.isLoading = false;
-        return of(null);
+        return this.productService.getProduct(productId).pipe(
+          catchError((error: unknown) => {
+            reportError('product-loading', error);
+            this.product$.next(null);
+            this.loadError = 'Could not load this product. Please try again.';
+            this.isLoading = false;
+            return of(null);
+          })
+        );
       })
     ).subscribe({
       next: (product: Product | null): void => {
@@ -144,6 +147,10 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     this.selectedImageIndex = index;
   }
 
+  toImageIndex(key: string | number): number {
+    return Number(key);
+  }
+
   incrementQuantity(product: Product) {
     if (this.quantity < product.stockQuantity) {
       this.quantity++;
@@ -177,13 +184,16 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   toggleZoom(event: MouseEvent) {
     this.isZoomed = !this.isZoomed;
     if (this.isZoomed) {
-      this.updateZoomPosition(event);
+      // The lens is created by the conditional view above; wait until that
+      // view exists before reading its ElementRef.
+      queueMicrotask(() => this.updateZoomPosition(event));
     }
   }
 
   updateZoomPosition(event: MouseEvent) {
     if (!this.isZoomed) return;
 
+    if (!this.mainImage || !this.zoomLens || !this.imageContainer) return;
     const image = this.mainImage.nativeElement;
     const lens = this.zoomLens.nativeElement;
     const container = this.imageContainer.nativeElement;
