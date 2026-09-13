@@ -80,10 +80,12 @@ describe('CartService', () => {
     expect(restored.getCartTotalSnapshot()).toBe(160);
   });
 
-  it('doesNotPersistLinesThatCarryACustomImage', () => {
+  it('persistsOrdinaryLinesWhenACustomImageLineCannotBeRestored', () => {
     service.addToCart(product(), 1, false, new File([], 'art.png')).subscribe();
+    service.addToCart(product({id: 'p2'}), 2).subscribe();
 
-    expect(localStorage.getItem('natiart-cart')).toBeNull();
+    const restored = new CartService();
+    expect(restored.getCartItemsSnapshot().map(item => item.product.id)).toEqual(['p2']);
   });
 
   it('recoversToAnEmptyCartWhenThePersistedCartIsCorrupt', () => {
@@ -142,4 +144,3 @@ describe('CartService', () => {
     expect(service.getCartItemsSnapshot()).toEqual([]);
   });
 });
-

@@ -10,6 +10,7 @@ import {reportError, reportWarning} from '../../shared/service/error-reporting.s
   providedIn: 'root'
 })
 export class CartService {
+  private static readonly storageVersion = 1;
   private cartItems: CartItem[] = [];
   // Use a unique identifier for the localStorage key to avoid conflicts if needed
   private localStorageKey = 'natiart-cart';
@@ -131,12 +132,13 @@ export class CartService {
   private saveCartToLocalStorage(): void {
     try {
       const serializableCart = this.cartItems.filter(item => !item.image);
-      if (serializableCart.length === this.cartItems.length) {
-        localStorage.setItem(this.localStorageKey, JSON.stringify(serializableCart));
-      } else {
+      if (serializableCart.length !== this.cartItems.length) {
         reportWarning('storage');
-        localStorage.removeItem(this.localStorageKey);
       }
+      localStorage.setItem(this.localStorageKey, JSON.stringify({
+        version: CartService.storageVersion,
+        items: serializableCart,
+      }));
     } catch (e) {
       reportError('storage', e);
     }
@@ -150,7 +152,7 @@ export class CartService {
         // AS1: drop corrupt-but-parseable shape before emit — a missing or
         // duplicate cartItemId collapses map keys so remove/quantity ops hit
         // every line at once or none, and a null product NPEs the total.
-        const restored: CartItem[] = this.sanitizeRestoredCart(parsed);
+        const restored: CartItem[] = this.sanitizeRestoredCart(this.readPersistedItems(parsed));
         this.cartItems = restored;
         this.cartItemsSubject.next([...this.cartItems]);
         this.calculateAndEmitTotal(); // Calculate total after loading
@@ -158,7 +160,11 @@ export class CartService {
     } catch (e) {
       reportError('storage', e);
       this.cartItems = [];
-      localStorage.removeItem(this.localStorageKey);
+      try {
+        localStorage.removeItem(this.localStorageKey);
+      } catch (storageError) {
+        reportError('storage', storageError);
+      }
       this.cartItemsSubject.next([]);
       this.calculateAndEmitTotal(); // Emit 0 total
     }
@@ -185,6 +191,18 @@ export class CartService {
     return valid;
   }
 
+  private readPersistedItems(parsed: unknown): unknown {
+    if (Array.isArray(parsed)) {
+      // Accept the pre-versioned format for one migration cycle.
+      return parsed;
+    }
+    if (typeof parsed !== 'object' || parsed === null) {
+      return [];
+    }
+    const envelope = parsed as {version?: unknown; items?: unknown};
+    return envelope.version === CartService.storageVersion ? envelope.items : [];
+  }
+
   private isRestorableCartLine(entry: unknown): entry is CartItem {
     if (typeof entry !== 'object' || entry === null) {
       return false;
@@ -199,7 +217,13 @@ export class CartService {
     if (typeof line.product.id !== 'string' || line.product.id.trim().length === 0) {
       return false;
     }
-    if (typeof line.quantity !== 'number' || !Number.isInteger(line.quantity) || line.quantity < 1) {
+    if (typeof line.quantity !== 'number' || !Number.isSafeInteger(line.quantity) || line.quantity < 1) {
+      return false;
+    }
+    if (typeof line.product.markedPrice !== 'number' || !Number.isFinite(line.product.markedPrice) || line.product.markedPrice < 0) {
+      return false;
+    }
+    if (typeof line.product.stockQuantity !== 'number' || !Number.isSafeInteger(line.product.stockQuantity) || line.product.stockQuantity < 1) {
       return false;
     }
     return true;
