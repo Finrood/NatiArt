@@ -12,6 +12,7 @@ import com.portcelana.natiart.dto.PackageDto;
 import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.repository.PackageRepository;
 import com.portcelana.natiart.repository.ProductRepository;
+import com.portcelana.natiart.service.support.DomainValidation;
 
 @Service
 public class PackageManagerImpl implements PackageManager {
@@ -48,7 +49,7 @@ public class PackageManagerImpl implements PackageManager {
     @Override
     @Transactional
     public Package createPackage(PackageDto packageDto) {
-        final String label = requireNonBlankLabel(packageDto.getLabel());
+        final String label = DomainValidation.requiredText(packageDto.getLabel(), "Package label", 255);
         requirePositiveDimension(packageDto.getHeight(), "height");
         requirePositiveDimension(packageDto.getWidth(), "width");
         requirePositiveDimension(packageDto.getDepth(), "depth");
@@ -62,7 +63,7 @@ public class PackageManagerImpl implements PackageManager {
     @Override
     @Transactional
     public Package updatePackage(PackageDto packageDto) {
-        final String label = requireNonBlankLabel(packageDto.getLabel());
+        final String label = DomainValidation.requiredText(packageDto.getLabel(), "Package label", 255);
         requirePositiveDimension(packageDto.getHeight(), "height");
         requirePositiveDimension(packageDto.getWidth(), "width");
         requirePositiveDimension(packageDto.getDepth(), "depth");
@@ -88,16 +89,7 @@ public class PackageManagerImpl implements PackageManager {
         packageRepository.delete(pack);
     }
 
-    private static String requireNonBlankLabel(String label) {
-        if (label == null || label.isBlank()) {
-            throw new IllegalArgumentException("Package label must not be blank");
-        }
-        return label.trim();
-    }
-
     private static void requirePositiveDimension(float dimension, String field) {
-        if (!(dimension > 0)) {
-            throw new IllegalArgumentException("Package " + field + " must be a positive value");
-        }
+        DomainValidation.finitePositive(dimension, "Package " + field, 1000);
     }
 }
