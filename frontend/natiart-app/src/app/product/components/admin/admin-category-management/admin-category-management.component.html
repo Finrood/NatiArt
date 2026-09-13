@@ -74,7 +74,7 @@
             <app-button type="button" (click)="closeModal()" color="secondary" size="md">
               Cancel
             </app-button>
-            <app-button type="submit" color="primary" size="md">
+            <app-button type="submit" [disabled]="isSubmitting || categoryForm.invalid" color="primary" size="md">
               {{ isEditingCategory ? 'Update' : 'Add' }}
             </app-button>
           </div>

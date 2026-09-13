@@ -1,10 +1,11 @@
-import {Component, inject, OnInit, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, inject, OnInit, ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {CategoryService} from '../../../service/category.service';
 import {Category} from '../../../models/category.model';
 import {BehaviorSubject} from 'rxjs';
+import {finalize} from 'rxjs/operators';
 import {NatiartFormFieldComponent} from "../../../../shared/components/natiart-form-field/natiart-form-field.component";
 import {AlertMessageComponent} from "../../../../shared/components/alert-message/alert-message.component";
 import {ButtonComponent} from "../../../../shared/components/button.component";
@@ -17,16 +18,19 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
   templateUrl: './admin-category-management.component.html',
   styleUrls: ['./admin-category-management.component.css']
 })
-export class CategoryManagementComponent implements OnInit {
+export class CategoryManagementComponent implements OnInit, AfterViewInit {
   private _categories$ = new BehaviorSubject<Category[]>([]);
   categories$ = this._categories$.asObservable();
 
   isEditingCategory: boolean = false;
   modalVisible: boolean = false;
+  isSubmitting = false;
 
   categoryForm: FormGroup;
   private categoryService = inject(CategoryService);
   private fb = inject(FormBuilder);
+  private formGeneration = 0;
+  private pendingAlerts: Array<{message: string; type: 'success' | 'error'}> = [];
 
   @ViewChild('alertMessages') alertMessageComponent!: AlertMessageComponent;
 
@@ -43,7 +47,12 @@ export class CategoryManagementComponent implements OnInit {
     this.getCategories();
   }
 
+  ngAfterViewInit(): void {
+    this.pendingAlerts.splice(0).forEach(alert => this.showAlert(alert.message, alert.type));
+  }
+
   openModal(category?: Category): void {
+    this.formGeneration++;
     this.isEditingCategory = !!category;
     if (category) {
       this.categoryForm.setValue({
@@ -59,43 +68,65 @@ export class CategoryManagementComponent implements OnInit {
   }
 
   closeModal(): void {
+    this.formGeneration++;
     this.modalVisible = false;
     this.categoryForm.reset();
   }
 
   submitForm(): void {
+    if (this.isSubmitting) {
+      return;
+    }
     if (this.categoryForm.valid) {
-      this.isEditingCategory ? this.updateCategory() : this.addCategory();
+      this.isSubmitting = true;
+      const generation = this.formGeneration;
+      this.isEditingCategory ? this.updateCategory(generation) : this.addCategory(generation);
     } else {
       this.validateAllFormFields(this.categoryForm);
     }
   }
 
-  addCategory(): void {
+  addCategory(generation = this.formGeneration): void {
     const category: Category = this.categoryForm.value;
-    this.categoryService.addCategory(category).subscribe({
+    this.categoryService.addCategory(category).pipe(finalize(() => this.isSubmitting = false)).subscribe({
       next: (response) => {
         this._categories$.next([...this._categories$.value, response]);
-        this.closeModal();
+        if (generation === this.formGeneration) {
+          this.closeModal();
+        }
+        this.showAlert('Category created successfully', 'success');
       },
-      error: (error) => reportError('category', error)
+      error: (error) => {
+        reportError('category', error);
+        this.showAlert(this.writeErrorMessage(error), 'error');
+      }
     });
   }
 
-  updateCategory(): void {
+  updateCategory(generation = this.formGeneration): void {
     const category: Category = this.categoryForm.value;
-    this.categoryService.updateCategory(category.id!, category).subscribe({
+    this.categoryService.updateCategory(category.id!, category).pipe(finalize(() => this.isSubmitting = false)).subscribe({
       next: (response: Category) => {
         this._categories$.next(
           this._categories$.value.map(cat => cat.id === response.id ? response : cat)
         );
-        this.closeModal();
+        if (generation === this.formGeneration) {
+          this.closeModal();
+        }
+        this.showAlert('Category updated successfully', 'success');
       },
-      error: (error) => reportError('category', error)
+      error: (error) => {
+        reportError('category', error);
+        this.showAlert(this.writeErrorMessage(error), 'error');
+      }
     });
   }
 
   deleteCategory(id: string): void {
+    const category = this._categories$.value.find(item => item.id === id);
+    if (!category || !window.confirm(`Delete category "${category.label}"?`)) {
+      return;
+    }
     this.categoryService.deleteCategory(id).subscribe({
       next: () => {
         this._categories$.next(this._categories$.value.filter(cat => cat.id !== id));
@@ -123,14 +154,20 @@ export class CategoryManagementComponent implements OnInit {
           this._categories$.value.map(cat => cat.id === response.id ? response : cat)
         );
       },
-      error: (error) => reportError('category', error)
+      error: (error) => {
+        reportError('category', error);
+        this.showAlert('Unable to change category visibility. Please retry.', 'error');
+      }
     });
   }
 
   private getCategories(): void {
     this.categoryService.getCategories().subscribe({
       next: (response) => this._categories$.next(response),
-      error: (error) => reportError('category', error)
+      error: (error) => {
+        reportError('category', error);
+        this.showAlert('Unable to load categories. Please retry.', 'error');
+      }
     });
   }
 
@@ -146,6 +183,20 @@ export class CategoryManagementComponent implements OnInit {
   }
 
   private showAlert(message: string, type: 'success' | 'error'): void {
-    this.alertMessageComponent.showAlert({ message, type });
+    if (this.alertMessageComponent) {
+      this.alertMessageComponent.showAlert({ message, type });
+    } else {
+      this.pendingAlerts.push({message, type});
+    }
+  }
+
+  private writeErrorMessage(error: HttpErrorResponse): string {
+    if (error.status === 409) {
+      return 'A category with this label already exists.';
+    }
+    if (error.status === 0) {
+      return 'The category service is unavailable. Please retry.';
+    }
+    return 'Unable to save the category. Your changes are still in the form.';
   }
 }
