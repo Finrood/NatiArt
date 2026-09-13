@@ -239,8 +239,7 @@ public class OrderManagerImpl implements OrderManager {
         final CustomerOrder order = orderRepository
                 .findByIdForUpdate(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("CustomerOrder with id " + orderId + " not found"));
-        if (requesterExternalId != null
-                && !requesterExternalId.equals(order.getOwnerExternalId())) {
+        if (requesterExternalId != null && !requesterExternalId.equals(order.getOwnerExternalId())) {
             throw new com.portcelana.natiart.controller.helper.UserNotAllowedException(
                     "The authenticated user does not own this order");
         }
@@ -253,8 +252,9 @@ public class OrderManagerImpl implements OrderManager {
         if (paymentRepository.findByOrderId(orderId).isPresent()) {
             throw new IllegalArgumentException("An order with a payment must be reconciled before cancellation");
         }
-        order.getItems().forEach(item -> productRepository.restoreStock(
-                item.getProduct().getId(), item.getQuantity()));
+        order.getItems()
+                .forEach(
+                        item -> productRepository.restoreStock(item.getProduct().getId(), item.getQuantity()));
         order.setStatus(OrderStatus.CANCELLED);
         return orderRepository.save(order);
     }

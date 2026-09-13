@@ -5,8 +5,8 @@ import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -97,8 +97,7 @@ public class PaymentIdempotencyService {
     public void recoverStaleReservations() {
         final Instant cutoff = Instant.now().minusMillis(staleReservationMillis);
         repository
-                .findStaleByStatus(
-                        PaymentIdempotencyStatus.IN_PROGRESS, cutoff, PageRequest.of(0, 100))
+                .findStaleByStatus(PaymentIdempotencyStatus.IN_PROGRESS, cutoff, PageRequest.of(0, 100))
                 .forEach(record -> {
                     record.setStatus(PaymentIdempotencyStatus.FAILED_RECOVERABLE);
                     repository.save(record);

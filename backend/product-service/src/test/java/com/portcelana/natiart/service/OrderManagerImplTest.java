@@ -407,7 +407,8 @@ class OrderManagerImplTest {
 
     @Test
     void createOrderRejectsWhenOutstandingReservationCapIsReached() {
-        when(orderRepository.countByOwnerExternalIdAndStatus("user-1", OrderStatus.PENDING)).thenReturn(5L);
+        when(orderRepository.countByOwnerExternalIdAndStatus("user-1", OrderStatus.PENDING))
+                .thenReturn(5L);
         final OrderDto dto = validOrder().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p1", 1)));
 
         assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
@@ -534,10 +535,8 @@ class OrderManagerImplTest {
     @Test
     void cancelPendingOrderReleasesEachLineAndIsIdempotent() {
         final Product plate = product("p1", "Plate", new BigDecimal("15.00"), null, 10);
-        final CustomerOrderItem line = new CustomerOrderItem()
-                .setProduct(plate)
-                .setQuantity(2)
-                .setPrice(new BigDecimal("15.00"));
+        final CustomerOrderItem line =
+                new CustomerOrderItem().setProduct(plate).setQuantity(2).setPrice(new BigDecimal("15.00"));
         final CustomerOrder order = new CustomerOrder()
                 .setStatus(OrderStatus.PENDING)
                 .setOwnerExternalId("user-1")
@@ -545,7 +544,9 @@ class OrderManagerImplTest {
         when(orderRepository.findByIdForUpdate(order.getId())).thenReturn(Optional.of(order));
         when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        assertEquals(OrderStatus.CANCELLED, orderManager.cancelPendingOrder(order.getId(), "user-1").getStatus());
+        assertEquals(
+                OrderStatus.CANCELLED,
+                orderManager.cancelPendingOrder(order.getId(), "user-1").getStatus());
         assertSame(order, orderManager.cancelPendingOrder(order.getId(), "user-1"));
 
         verify(productRepository, times(1)).restoreStock(plate.getId(), 2);
@@ -554,9 +555,8 @@ class OrderManagerImplTest {
 
     @Test
     void cancelPendingOrderRejectsForeignOwnerBeforeRelease() {
-        final CustomerOrder order = new CustomerOrder()
-                .setStatus(OrderStatus.PENDING)
-                .setOwnerExternalId("user-1");
+        final CustomerOrder order =
+                new CustomerOrder().setStatus(OrderStatus.PENDING).setOwnerExternalId("user-1");
         when(orderRepository.findByIdForUpdate(order.getId())).thenReturn(Optional.of(order));
 
         assertThrows(
@@ -569,14 +569,11 @@ class OrderManagerImplTest {
 
     @Test
     void cancelPendingOrderDoesNotReleasePaidOrder() {
-        final CustomerOrder order = new CustomerOrder()
-                .setStatus(OrderStatus.PAID)
-                .setOwnerExternalId("user-1");
+        final CustomerOrder order =
+                new CustomerOrder().setStatus(OrderStatus.PAID).setOwnerExternalId("user-1");
         when(orderRepository.findByIdForUpdate(order.getId())).thenReturn(Optional.of(order));
 
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> orderManager.cancelPendingOrder(order.getId(), "user-1"));
+        assertThrows(IllegalArgumentException.class, () -> orderManager.cancelPendingOrder(order.getId(), "user-1"));
 
         verifyNoInteractions(productRepository);
         verify(orderRepository, never()).save(any(CustomerOrder.class));

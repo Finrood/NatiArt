@@ -8,8 +8,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.lang.reflect.Method;
@@ -74,8 +74,8 @@ class OrderControllerSecurityTest {
 
     @Test
     void cancelOrderRequiresFullAuthentication() throws Exception {
-        final Method cancelOrder = OrderController.class.getMethod(
-                "cancelOrder", String.class, AuthenticationResponseDto.Principal.class);
+        final Method cancelOrder =
+                OrderController.class.getMethod("cancelOrder", String.class, AuthenticationResponseDto.Principal.class);
         final PreAuthorize preAuthorize = cancelOrder.getAnnotation(PreAuthorize.class);
 
         assertEquals("isFullyAuthenticated()", preAuthorize.value());
@@ -100,7 +100,9 @@ class OrderControllerSecurityTest {
                 .setAuthentication(new UsernamePasswordAuthenticationToken(
                         principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER"))));
         when(orderManager.cancelPendingOrder("order-1", "cus_MINE"))
-                .thenReturn(new CustomerOrder().setStatus(com.portcelana.natiart.model.support.OrderStatus.CANCELLED).setItems(List.of()));
+                .thenReturn(new CustomerOrder()
+                        .setStatus(com.portcelana.natiart.model.support.OrderStatus.CANCELLED)
+                        .setItems(List.of()));
 
         try {
             mockMvc.perform(delete("/orders/order-1")).andExpect(status().isOk());
