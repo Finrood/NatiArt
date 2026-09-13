@@ -2,6 +2,7 @@ package com.portcelana.natiart.service;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -84,7 +85,13 @@ public class OrderCreationService {
                 .map(OrderItemDto::getProductId)
                 .distinct()
                 .toList());
-        for (OrderItemDto item : orderDto.getItems()) {
+        // Every multi-product reservation acquires rows in the same order so
+        // concurrent checkouts cannot deadlock by locking the same products in
+        // opposite sequences.
+        final List<OrderItemDto> reservationItems = orderDto.getItems().stream()
+                .sorted(Comparator.comparing(OrderItemDto::getProductId))
+                .toList();
+        for (OrderItemDto item : reservationItems) {
             final Product product = products.get(item.getProductId());
             if (!product.isActive()) {
                 throw new IllegalArgumentException("Product [" + product.getLabel() + "] is no longer available");
