@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -61,6 +62,7 @@ public class AsaasPaymentService implements PaymentService {
 
     private final String asaasApiKey;
 
+    @Autowired
     public AsaasPaymentService(
             @Value("${natiart.payment.asaas.apikey}") String asaasApiKey,
             @Value("${natiart.payment.asaas.payments-url:https://sandbox.asaas.com/api/v3/payments}")
