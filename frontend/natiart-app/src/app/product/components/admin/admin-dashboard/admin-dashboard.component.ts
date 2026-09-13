@@ -32,6 +32,5 @@ export class AdminDashboardComponent {
     { path: 'categories', label: 'Categories' },
     { path: 'products', label: 'Products' },
     { path: 'packages', label: 'Packages' },
-    { path: 'orders', label: 'Orders' },
   ];
 }

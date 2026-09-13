@@ -23,23 +23,4 @@ export class OrderService {
       finalize(() => this.orderProcessingSubject.next(false)),
     );
   }
-
-  getMyOrders(): Observable<OrderDto[]> {
-    return this._http.get<OrderDto[]>(this.apiUrl);
-  }
-
-  getMyOrder(orderId: string): Observable<OrderDto> {
-    return this._http.get<OrderDto>(`${this.apiUrl}/${encodeURIComponent(orderId)}`);
-  }
-
-  getFulfillmentOrders(): Observable<OrderDto[]> {
-    return this._http.get<OrderDto[]>(`${environment.api.product.url}/admin/orders`);
-  }
-
-  updateOrderStatus(orderId: string, status: string): Observable<OrderDto> {
-    return this._http.patch<OrderDto>(
-      `${environment.api.product.url}/admin/orders/${encodeURIComponent(orderId)}/status`,
-      {status},
-    );
-  }
 }
