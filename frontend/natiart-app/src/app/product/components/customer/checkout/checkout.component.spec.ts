@@ -36,7 +36,6 @@ describe('CheckoutComponent', () => {
       neighborhood: 'Centro',
       zipCode: '01001000',
       street: 'Praca da Se',
-      houseNumber: '10',
     },
     role: RoleName.USER,
     externalId: 'cus_1',
