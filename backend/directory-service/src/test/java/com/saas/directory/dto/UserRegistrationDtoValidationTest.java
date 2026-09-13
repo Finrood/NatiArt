@@ -82,8 +82,9 @@ class UserRegistrationDtoValidationTest {
     void malformedCpfAndZipCodeAreRejected() {
         final ProfileDto profile = validProfile().setCpf("abc").setZipCode("12345");
 
-        assertEquals(Set.of("profile.cpf", "profile.zipCode"), violatedFields(
-                new UserRegistrationDto("john@example.com", "Password1", profile)));
+        assertEquals(
+                Set.of("profile.cpf", "profile.zipCode"),
+                violatedFields(new UserRegistrationDto("john@example.com", "Password1", profile)));
     }
 
     @Test
