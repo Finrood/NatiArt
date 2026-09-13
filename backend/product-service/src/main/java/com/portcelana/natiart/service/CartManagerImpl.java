@@ -71,7 +71,8 @@ public class CartManagerImpl implements CartManager {
         // the locked delete decision, so a concurrent increment cannot turn a
         // one-unit line into a two-unit line after it has been inspected.
         if (cartItemRepository.decrementQuantityIfGreaterThanOne(username, productId) == 0) {
-            cartItemRepository.findCartItemByUsernameAndProductForUpdate(username, productId)
+            cartItemRepository
+                    .findCartItemByUsernameAndProductForUpdate(username, productId)
                     .filter(cartItem -> cartItem.getQuantity() == 1)
                     .ifPresent(cartItemRepository::delete);
         }
