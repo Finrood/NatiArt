@@ -10,6 +10,7 @@ public class OrderItemDto {
     private String productId;
     private Integer quantity;
     private BigDecimal price;
+    private PersonalizationDto personalization;
 
     public OrderItemDto() {}
 
@@ -19,7 +20,8 @@ public class OrderItemDto {
                 .setOrderId(customerOrderItem.getCustomerOrder().getId())
                 .setProductId(customerOrderItem.getProduct().getId())
                 .setQuantity(customerOrderItem.getQuantity())
-                .setPrice(customerOrderItem.getPrice());
+                .setPrice(customerOrderItem.getPrice())
+                .setPersonalization(PersonalizationDto.from(customerOrderItem.getPersonalization()));
     }
 
     public String getId() {
@@ -64,6 +66,15 @@ public class OrderItemDto {
 
     public OrderItemDto setPrice(BigDecimal price) {
         this.price = price;
+        return this;
+    }
+
+    public PersonalizationDto getPersonalization() {
+        return personalization;
+    }
+
+    public OrderItemDto setPersonalization(PersonalizationDto personalization) {
+        this.personalization = personalization;
         return this;
     }
 }

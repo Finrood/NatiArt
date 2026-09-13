@@ -47,6 +47,30 @@ describe('CartService', () => {
     expect(items[0].quantity).toBe(5);
   });
 
+  it('keepsPersonalizationVariantsAsSeparateStableLines', () => {
+    service.addToCart(product(), 1, true).subscribe();
+    service.addToCart(product(), 1, false, new File([], 'art.png')).subscribe();
+
+    const items = service.getCartItemsSnapshot();
+    expect(items.length).toBe(2);
+    expect(items[0].cartItemId).not.toBe(items[1].cartItemId);
+
+    service.setCustomImageUploadId(items[1].cartItemId, 'upload-1').subscribe();
+    expect(service.getCartItemsSnapshot()[1].customImageUploadId).toBe('upload-1');
+    expect(JSON.parse(localStorage.getItem('natiart-cart') ?? '[]')).toEqual([
+      jasmine.objectContaining({goldBorder: true}),
+      jasmine.objectContaining({customImageUploadId: 'upload-1'}),
+    ]);
+  });
+
+  it('preservesOrdinaryLinesWhenAnArtworkDraftCannotBeSerialized', () => {
+    service.addToCart(product(), 1).subscribe();
+    service.addToCart(product({id: 'p2'}), 1, false, new File([], 'art.png')).subscribe();
+
+    const restored = new CartService();
+    expect(restored.getCartItemsSnapshot().map(item => item.product.id)).toEqual(['p1']);
+  });
+
   it('getCartTotal_emitsTheSumOfMarkedPriceTimesQuantity', () => {
     let total: number | undefined;
     service.getCartTotal().subscribe(value => total = value);
@@ -142,4 +166,3 @@ describe('CartService', () => {
     expect(service.getCartItemsSnapshot()).toEqual([]);
   });
 });
-

@@ -15,7 +15,7 @@
               @if (item.goldBorder) {
                 <p class="text-xs text-yellow-600 font-medium">+ Gold Border</p>
               }
-              @if (item.image) {
+              @if (item.image || item.customImageUploadId) {
                 <p class="text-xs text-blue-600 font-medium">+ Custom Image</p>
               }
             </div>

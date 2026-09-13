@@ -22,6 +22,7 @@ import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.OrderDto;
 import com.portcelana.natiart.dto.OrderItemDto;
+import com.portcelana.natiart.dto.PersonalizationDto;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
@@ -169,6 +170,7 @@ public class OrderManagerImpl implements OrderManager {
                 final StringBuilder itemValue = new StringBuilder();
                 append(itemValue, item == null ? null : item.getProductId());
                 append(itemValue, item == null ? null : item.getQuantity());
+                append(itemValue, canonicalPersonalization(item == null ? null : item.getPersonalization()));
                 items.add(itemValue.toString());
             }
         }
@@ -199,6 +201,17 @@ public class OrderManagerImpl implements OrderManager {
         }
         final String text = String.valueOf(value);
         target.append(text.length()).append(':').append(text);
+    }
+
+    private String canonicalPersonalization(PersonalizationDto personalization) {
+        if (personalization == null || personalization.getPersonalizationOptions() == null) {
+            return personalization == null ? "" : "invalid";
+        }
+        return personalization.getPersonalizationOptions().entrySet().stream()
+                .sorted((left, right) -> String.valueOf(left.getKey()).compareTo(String.valueOf(right.getKey())))
+                .map(entry -> String.valueOf(entry.getKey()) + "=" + String.valueOf(entry.getValue()))
+                .reduce((left, right) -> left + "|" + right)
+                .orElse("");
     }
 
     @Override
