@@ -97,6 +97,14 @@ public class ProductManagerImpl implements ProductManager {
 
     @Override
     @Transactional(readOnly = true)
+    public Product getActiveProductWithImagesOrDie(String id) {
+        return productRepository
+                .findActiveByIdWithImages(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product with id [" + id + "] not found"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Map<String, Product> getProductsOrDie(Collection<String> ids) {
         final Map<String, Product> byId = productRepository.findAllById(ids).stream()
                 .collect(Collectors.toMap(Product::getId, Function.identity()));
@@ -116,8 +124,20 @@ public class ProductManagerImpl implements ProductManager {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Product> getActiveProducts(Pageable pageable) {
+        return fetchPageWithImages(productRepository.findAllActiveIds(pageable));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Product> getNewProducts(Pageable pageable) {
         return fetchPageWithImages(productRepository.findAllIdsByNewProduct(true, pageable));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Product> getActiveNewProducts(Pageable pageable) {
+        return fetchPageWithImages(productRepository.findAllActiveIdsByNewProduct(true, pageable));
     }
 
     @Override
@@ -128,8 +148,20 @@ public class ProductManagerImpl implements ProductManager {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Product> getActiveFeaturedProducts(Pageable pageable) {
+        return fetchPageWithImages(productRepository.findAllActiveIdsByFeaturedProduct(true, pageable));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Product> getProductsByCategory(Category category, Pageable pageable) {
         return fetchPageWithImages(productRepository.findAllIdsByCategory(category, pageable));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Product> getActiveProductsByCategory(Category category, Pageable pageable) {
+        return fetchPageWithImages(productRepository.findAllActiveIdsByCategory(category, pageable));
     }
 
     private List<Product> fetchPageWithImages(Page<String> idPage) {

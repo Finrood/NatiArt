@@ -21,6 +21,10 @@ public interface ProductRepository extends JpaRepository<Product, String> {
             "SELECT p FROM Product p LEFT JOIN FETCH p.images LEFT JOIN FETCH p.category LEFT JOIN FETCH p.packaging WHERE p.id = :id")
     Optional<Product> findByIdWithImages(String id);
 
+    @Query(
+            "SELECT p FROM Product p LEFT JOIN FETCH p.images LEFT JOIN FETCH p.category LEFT JOIN FETCH p.packaging WHERE p.id = :id AND p.active = true")
+    Optional<Product> findActiveByIdWithImages(String id);
+
     @Modifying
     @Query(
             "UPDATE Product p SET p.stockQuantity = p.stockQuantity - :quantity WHERE p.id = :id AND p.stockQuantity >= :quantity")
@@ -33,14 +37,26 @@ public interface ProductRepository extends JpaRepository<Product, String> {
     @Query("SELECT p.id FROM Product p")
     Page<String> findAllIds(Pageable pageable);
 
+    @Query("SELECT p.id FROM Product p WHERE p.active = true")
+    Page<String> findAllActiveIds(Pageable pageable);
+
     @Query("SELECT p.id FROM Product p WHERE p.newProduct = :newProduct")
     Page<String> findAllIdsByNewProduct(boolean newProduct, Pageable pageable);
+
+    @Query("SELECT p.id FROM Product p WHERE p.newProduct = :newProduct AND p.active = true")
+    Page<String> findAllActiveIdsByNewProduct(boolean newProduct, Pageable pageable);
 
     @Query("SELECT p.id FROM Product p WHERE p.featuredProduct = :featuredProduct")
     Page<String> findAllIdsByFeaturedProduct(boolean featuredProduct, Pageable pageable);
 
+    @Query("SELECT p.id FROM Product p WHERE p.featuredProduct = :featuredProduct AND p.active = true")
+    Page<String> findAllActiveIdsByFeaturedProduct(boolean featuredProduct, Pageable pageable);
+
     @Query("SELECT p.id FROM Product p WHERE p.category = :category")
     Page<String> findAllIdsByCategory(Category category, Pageable pageable);
+
+    @Query("SELECT p.id FROM Product p WHERE p.category = :category AND p.active = true")
+    Page<String> findAllActiveIdsByCategory(Category category, Pageable pageable);
 
     @Query(
             "SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.images LEFT JOIN FETCH p.category LEFT JOIN FETCH p.packaging WHERE p.id IN :ids")

@@ -49,55 +49,55 @@ class ProductControllerPaginationTest {
     @Test
     void getProducts_clampsOversizedSizeToMax() {
         final Product product = new Product("label", new BigDecimal("10.00"));
-        when(productManager.getProducts(any(Pageable.class))).thenReturn(List.of(product));
+        when(productManager.getActiveProducts(any(Pageable.class))).thenReturn(List.of(product));
 
-        productController.getProducts(0, Integer.MAX_VALUE);
+        productController.getProducts(0, Integer.MAX_VALUE, null);
 
         final ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(productManager).getProducts(captor.capture());
+        verify(productManager).getActiveProducts(captor.capture());
         assertEquals(0, captor.getValue().getPageNumber());
         assertEquals(100, captor.getValue().getPageSize());
     }
 
     @Test
     void getNewProducts_clampsNegativePageToZero() {
-        when(productManager.getNewProducts(any(Pageable.class))).thenReturn(List.of());
+        when(productManager.getActiveNewProducts(any(Pageable.class))).thenReturn(List.of());
 
         productController.getNewProducts(-5, 20);
 
         final ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(productManager).getNewProducts(captor.capture());
+        verify(productManager).getActiveNewProducts(captor.capture());
         assertEquals(0, captor.getValue().getPageNumber());
         assertEquals(20, captor.getValue().getPageSize());
     }
 
     @Test
     void getFeaturedProducts_clampsNonPositiveSizeToOne() {
-        when(productManager.getFeaturedProducts(any(Pageable.class))).thenReturn(List.of());
+        when(productManager.getActiveFeaturedProducts(any(Pageable.class))).thenReturn(List.of());
 
         productController.getFeaturedProducts(1, 0);
 
         final ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(productManager).getFeaturedProducts(captor.capture());
+        verify(productManager).getActiveFeaturedProducts(captor.capture());
         assertEquals(1, captor.getValue().getPageNumber());
         assertEquals(1, captor.getValue().getPageSize());
     }
 
     @Test
     void getProducts_passesSanePagingThrough() {
-        when(productManager.getProducts(any(Pageable.class))).thenReturn(List.of());
+        when(productManager.getActiveProducts(any(Pageable.class))).thenReturn(List.of());
 
-        productController.getProducts(2, 10);
+        productController.getProducts(2, 10, null);
 
         final ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(productManager).getProducts(captor.capture());
+        verify(productManager).getActiveProducts(captor.capture());
         assertEquals(2, captor.getValue().getPageNumber());
         assertEquals(10, captor.getValue().getPageSize());
     }
 
     @Test
     void getProducts_logsAtDebugInsteadOfInfo() {
-        when(productManager.getProducts(any(Pageable.class))).thenReturn(List.of());
+        when(productManager.getActiveProducts(any(Pageable.class))).thenReturn(List.of());
         final Logger logger = (Logger) LoggerFactory.getLogger(ProductController.class);
         final ListAppender<ILoggingEvent> appender = new ListAppender<>();
         appender.start();
@@ -106,7 +106,7 @@ class ProductControllerPaginationTest {
         logger.addAppender(appender);
 
         try {
-            productController.getProducts(2, 10);
+            productController.getProducts(2, 10, null);
 
             assertFalse(appender.list.stream().anyMatch(event -> event.getLevel() == Level.INFO));
             assertTrue(appender.list.stream().anyMatch(event -> event.getLevel() == Level.DEBUG));

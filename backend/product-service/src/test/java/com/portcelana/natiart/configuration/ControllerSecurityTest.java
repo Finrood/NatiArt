@@ -147,11 +147,11 @@ class ControllerSecurityTest {
     void anonymousProductListingServesCatalogWithoutUserResolution() throws Exception {
         // The listing is intentionally public and takes no user parameter:
         // an empty catalog must render 200 with no security rejection.
-        when(productManager.getProducts(any())).thenReturn(List.of());
+        when(productManager.getActiveProducts(any())).thenReturn(List.of());
 
         mockMvc.perform(get("/products")).andExpect(status().isOk());
 
-        verify(productManager).getProducts(any());
+        verify(productManager).getActiveProducts(any());
     }
 
     @Test
