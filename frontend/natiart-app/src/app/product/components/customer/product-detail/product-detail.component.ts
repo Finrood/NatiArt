@@ -6,7 +6,7 @@ import {catchError, switchMap, tap} from "rxjs/operators";
 import {Product} from "../../../models/product.model";
 import {ActivatedRoute, ParamMap, RouterLink} from "@angular/router";
 import {ProductService} from "../../../service/product.service";
-import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
+import {DomSanitizer, Meta, SafeUrl, Title} from "@angular/platform-browser";
 import {TopMenuComponent} from "../top-menu/top-menu.component";
 import {LeftMenuComponent} from "../left-menu/left-menu.component";
 import {CartService} from "../../../service/cart.service";
@@ -62,7 +62,9 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     private productService: ProductService,
     private sanitizer: DomSanitizer,
     private renderer: Renderer2,
-    private cartService: CartService
+    private cartService: CartService,
+    private title: Title,
+    private meta: Meta
   ) {}
 
 
@@ -77,6 +79,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     // overwrite the current view.
     const subscription = this.route.paramMap.pipe(
       tap((): void => {
+        this.setStorefrontMetadata();
         this.isLoading = true;
         this.loadError = null;
         this.product$.next(null);
@@ -114,6 +117,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
           return;
         }
         this.product$.next(product);
+        this.setProductMetadata(product);
         this.updateProductImages(product);
         this.loadRelatedProducts(product.categoryId);
         this.isLoading = false;
@@ -126,6 +130,30 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     this.subscriptions.forEach(subscription => subscription.unsubscribe());
     this.revokeImageMap(this.imageUrls);
     this.revokeImageMap(this.relatedImageUrls);
+    this.setStorefrontMetadata();
+  }
+
+  private setStorefrontMetadata(): void {
+    this.title.setTitle('Porcelain Elegance | Handmade Art');
+    this.meta.updateTag({
+      name: 'description',
+      content: 'Handmade porcelain art crafted with care for elegant everyday spaces.'
+    });
+    this.meta.updateTag({property: 'og:title', content: 'Porcelain Elegance | Handmade Art'});
+    this.meta.updateTag({property: 'og:description', content: 'Handmade porcelain art crafted with care for elegant everyday spaces.'});
+  }
+
+  private setProductMetadata(product: Product): void {
+    const title = `${product.label} | Porcelain Elegance`;
+    const description = (product.description || `Discover ${product.label}, a handmade porcelain piece from Porcelain Elegance.`)
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 160);
+    this.title.setTitle(title);
+    this.meta.updateTag({name: 'description', content: description});
+    this.meta.updateTag({property: 'og:title', content: title});
+    this.meta.updateTag({property: 'og:description', content: description});
+    this.meta.updateTag({property: 'og:type', content: 'product'});
   }
 
   private revokeImageMap(map: { [key: string]: SafeUrl | string | null }): void {
