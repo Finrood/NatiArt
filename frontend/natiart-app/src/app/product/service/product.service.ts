@@ -1,6 +1,7 @@
 import {Injectable} from '@angular/core';
 import {HttpClient} from "@angular/common/http";
 import {Observable, throwError} from "rxjs";
+import {catchError, shareReplay} from "rxjs/operators";
 import {environment} from "../../../environments/environment";
 import {Product} from "../models/product.model";
 
@@ -10,6 +11,7 @@ import {Product} from "../models/product.model";
 export class ProductService {
   private readonly apiUrl: string = `${environment.api.product.url}${environment.api.product.endpoints.product}`;
   private readonly apiUrlImages: string = `${environment.api.product.url}`;
+  private readonly imageRequests = new Map<string, Observable<Blob>>();
 
 
   constructor(private http: HttpClient) {
@@ -56,8 +58,22 @@ export class ProductService {
   }
 
   getImage(imagePath: string): Observable<Blob> {
-    return this.http.get(`${this.apiUrlImages}/images?path=${encodeURIComponent(imagePath)}`, {
+    const cached = this.imageRequests.get(imagePath);
+    if (cached) {
+      return cached;
+    }
+    const request = this.http.get(`${this.apiUrlImages}/images?path=${encodeURIComponent(imagePath)}`, {
       responseType: 'blob',
-    });
+    }).pipe(
+      catchError(error => {
+        this.imageRequests.delete(imagePath);
+        return throwError(() => error);
+      }),
+      // Keep the decoded blob reusable across cart, summary and listing
+      // consumers; each component still owns and revokes its object URL.
+      shareReplay({bufferSize: 1, refCount: false})
+    );
+    this.imageRequests.set(imagePath, request);
+    return request;
   }
 }
