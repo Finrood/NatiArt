@@ -61,6 +61,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   private objectUrlsCreated: string[] = [];
   private pendingAlerts: Array<{ message: string; type: 'success' | 'error' }> = [];
   private pendingAlertsTimer: ReturnType<typeof setTimeout> | undefined = undefined;
+  private imageSessionGeneration = 0;
 
   availablePersonalizationOptions = Object.values(PersonalizationOption);
 
@@ -130,6 +131,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   }
 
   openModal(product?: Product): void {
+    const sessionGeneration = ++this.imageSessionGeneration;
     this.isEditingProduct = !!product;
     if (product) {
       this.productForm.patchValue(product);
@@ -147,7 +149,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         isExisting: true,
         originalUrl: imagePath
       }));
-      this.loadExistingImages(product.images || []);
+      this.loadExistingImages(product.images || [], sessionGeneration);
     } else {
       this.productForm.reset({ originalPrice: 0, markedPrice: 0, stockQuantity: 0 });
       this.imagePreviews = [];
@@ -157,10 +159,12 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   }
 
   closeModal(): void {
+    this.imageSessionGeneration++;
     this.modalVisible = false;
     this.productForm.reset();
     this.imageFiles = [];
     this.imagePreviews = [];
+    this.isLoadingImages = false;
   }
 
   submitForm(): void {
@@ -344,17 +348,23 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
     this.subscriptions.push(subscription);
   }
 
-  private loadExistingImages(imagePaths: string[]): void {
+  private loadExistingImages(imagePaths: string[], sessionGeneration: number): void {
     imagePaths.forEach((path, index) => {
-      this.fetchImagePreview(path, index);
+      this.fetchImagePreview(path, index, sessionGeneration);
     });
   }
 
-  private fetchImagePreview(imagePath: string, index: number): void {
+  private fetchImagePreview(imagePath: string, index: number, sessionGeneration: number): void {
     const subscription = this.productService.getImage(imagePath).subscribe({
       next: blob => {
+        if (sessionGeneration !== this.imageSessionGeneration) {
+          return;
+        }
         const reader = new FileReader();
         reader.onloadend = () => {
+          if (sessionGeneration !== this.imageSessionGeneration) {
+            return;
+          }
           this.imagePreviews[index] = {
             url: this.sanitizer.bypassSecurityTrustResourceUrl(reader.result as string),
             isExisting: true,
@@ -364,6 +374,9 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         reader.readAsDataURL(blob);
       },
       error: error => {
+        if (sessionGeneration !== this.imageSessionGeneration) {
+          return;
+        }
         reportError('product-image', error);
         this.showAlert('Error loading product image', 'error');
       }
@@ -372,15 +385,22 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   }
 
   async onFileSelected(event: Event): Promise<void> {
+    const sessionGeneration = this.imageSessionGeneration;
     this.isLoadingImages = true;
     const element = event.target as HTMLInputElement;
     const fileList: FileList | null = element.files;
     if (fileList) {
       const newFiles = Array.from(fileList);
       for (const file of newFiles) {
+        if (sessionGeneration !== this.imageSessionGeneration) {
+          return;
+        }
         if (this.imageService.isValidImageFile(file)) {
           try {
             const preview = await this.imageService.generateImagePreview(file);
+            if (sessionGeneration !== this.imageSessionGeneration) {
+              return;
+            }
             this.imagePreviews.push({
               url: preview.url,
               isExisting: false,
@@ -395,7 +415,9 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         }
       }
     }
-    this.isLoadingImages = false;
+    if (sessionGeneration === this.imageSessionGeneration) {
+      this.isLoadingImages = false;
+    }
   }
 
   onImageDrop(event: CdkDragDrop<ImagePreview[]>): void {
