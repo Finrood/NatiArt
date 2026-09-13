@@ -69,7 +69,7 @@ class ShippingRateLimitFilterTest {
         }
 
         final MockHttpServletRequest blockedRequest = request("POST", "/shipping/estimate", "192.0.2.10");
-        blockedRequest.addHeader("X-Forwarded-For", "198.51.100.7");
+        blockedRequest.addHeader("X-Forwarded-For", "198.51.100.8, 10.0.0.1");
         final MockHttpServletResponse blocked = new MockHttpServletResponse();
         trustedFilter.doFilter(blockedRequest, blocked, new MockFilterChain());
         assertEquals(429, blocked.getStatus());
