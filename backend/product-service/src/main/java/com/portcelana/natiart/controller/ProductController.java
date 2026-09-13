@@ -22,8 +22,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.portcelana.natiart.dto.ProductDto;
 import com.portcelana.natiart.model.Product;
-import com.portcelana.natiart.service.ImageConversionService;
 import com.portcelana.natiart.service.CategoryManager;
+import com.portcelana.natiart.service.ImageConversionService;
 import com.portcelana.natiart.service.ProductManager;
 import com.portcelana.natiart.storage.InputFile;
 
@@ -63,9 +63,7 @@ public class ProductController {
         final List<Product> products = categoryId == null || categoryId.isBlank()
                 ? productManager.getProducts(pageable)
                 : productManager.getProductsByCategory(categoryManager.getCategoryOrDie(categoryId), pageable);
-        return products.stream()
-                .map(ProductDto::from)
-                .toList();
+        return products.stream().map(ProductDto::from).toList();
     }
 
     @GetMapping("/products/new")
