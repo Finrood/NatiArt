@@ -5,8 +5,8 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-WorkingDirectory=/home/finrod/Documents/Programming/Java/Personal/NatiArt
-ExecStart=/home/finrod/Documents/Programming/Java/Personal/NatiArt/scripts/loop-cycle.sh
+WorkingDirectory=%h/Documents/Programming/Java/Personal/NatiArt
+ExecStart=%h/Documents/Programming/Java/Personal/NatiArt/scripts/loop-cycle.sh
 # Timeout math: 1500s agent budget + ~300s pre/post scans and hygiene.
 # 27min SIGTERMed healthy cycles in the tail (reviewer wait, health row).
 TimeoutStartSec=35min
