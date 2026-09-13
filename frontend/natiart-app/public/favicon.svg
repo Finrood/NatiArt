@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>Porcelain Elegance</title>
+  <rect width="64" height="64" rx="16" fill="#8b5e5e"/>
+  <path d="M18 18h28v8c0 11-6 18-14 18S18 37 18 26v-8Zm-5 0h10m28 0H41M27 48h10M24 54h16" fill="none" stroke="#fff8f2" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

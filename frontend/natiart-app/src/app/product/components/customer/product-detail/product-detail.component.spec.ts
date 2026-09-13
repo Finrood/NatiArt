@@ -65,6 +65,9 @@ describe('ProductDetailComponent', () => {
     expect(component.product$.value?.id).toBe('p1');
     expect(component.isLoading).toBe(false);
     expect(component.loadError).toBeNull();
+    expect(document.title).toBe('Product p1 | Porcelain Elegance');
+    expect(document.querySelector('meta[name="description"]')?.getAttribute('content'))
+      .toBe('Discover Product p1, a handmade porcelain piece from Porcelain Elegance.');
   });
 
   it('reloads when the route id changes and resets per-product state', () => {
