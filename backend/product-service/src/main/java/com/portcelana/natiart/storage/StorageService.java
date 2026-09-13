@@ -51,6 +51,8 @@ public interface StorageService extends Serializable {
 
     URI uploadFile(String location, InputFile file, String key);
 
+    void delete(URI uri);
+
     /**
      * Store a given file in the storage
      *

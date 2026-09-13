@@ -35,7 +35,10 @@ public class ImageConversionService {
     private MultipartFile convertToWebP(MultipartFile image) throws IOException {
         validateDimensionsWithinLimit(image);
 
-        final BufferedImage bufferedImage = ImageIO.read(image.getInputStream());
+        final BufferedImage bufferedImage;
+        try (java.io.InputStream inputStream = image.getInputStream()) {
+            bufferedImage = ImageIO.read(inputStream);
+        }
 
         if (bufferedImage == null) {
             // Undecodable bytes are a client error: fail closed with 400 via IllegalArgumentException
@@ -71,7 +74,8 @@ public class ImageConversionService {
     }
 
     private void validateDimensionsWithinLimit(MultipartFile image) throws IOException {
-        try (javax.imageio.stream.ImageInputStream stream = ImageIO.createImageInputStream(image.getInputStream())) {
+        try (java.io.InputStream inputStream = image.getInputStream();
+                javax.imageio.stream.ImageInputStream stream = ImageIO.createImageInputStream(inputStream)) {
             if (stream == null) {
                 return;
             }

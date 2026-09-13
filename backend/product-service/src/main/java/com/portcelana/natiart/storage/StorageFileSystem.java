@@ -93,13 +93,24 @@ public class StorageFileSystem implements Storage {
         final File file = resolveAllowedWriteFile(location, key);
         try {
             Files.createDirectories(file.toPath().getParent());
-            try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
-                IOUtils.copy(inputFile.inputStream(), fileOutputStream);
+            try (InputStream inputStream = inputFile.inputStream();
+                    FileOutputStream fileOutputStream = new FileOutputStream(file)) {
+                IOUtils.copy(inputStream, fileOutputStream);
             }
             return file.toURI();
         } catch (IOException e) {
             throw new IllegalStateException(
                     String.format("An error has occurred while storing file [%s] in [%s]", file.getName(), key));
+        }
+    }
+
+    @Override
+    public void delete(URI path) {
+        final File file = resolveAllowedFile(path);
+        try {
+            Files.deleteIfExists(file.toPath());
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to remove a stored image", e);
         }
     }
 

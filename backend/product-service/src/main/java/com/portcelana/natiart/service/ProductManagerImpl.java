@@ -21,6 +21,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.ProductDto;
@@ -37,6 +39,7 @@ import com.portcelana.natiart.storage.StorageService;
 public class ProductManagerImpl implements ProductManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductManagerImpl.class);
     private static final String IMAGE_BASE_PATH = "product-images/";
+    private static final int MAX_IMAGES_PER_PRODUCT = 10;
 
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
@@ -192,8 +195,9 @@ public class ProductManagerImpl implements ProductManager {
         requireNonNegativeStock(productDto.getStockQuantity());
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
         final Optional<Package> pack = packageManager.getPackage(productDto.getPackageId());
-        final Product product = getProductOrDie(productDto.getId())
-                .setLabel(label)
+        final Product product = getProductOrDie(productDto.getId());
+        final List<String> previousImages = List.copyOf(product.getImages());
+        product.setLabel(label)
                 .setDescription(productDto.getDescription())
                 .setCategory(category)
                 .setPackaging(pack.orElse(null))
@@ -208,8 +212,9 @@ public class ProductManagerImpl implements ProductManager {
 
         final List<String> imagesUris = processImages(product, productDto.getImages(), imagesInput);
         product.setImages(imagesUris);
-
-        return productRepository.save(product);
+        final Product saved = productRepository.save(product);
+        deleteRemovedImagesAfterCommit(previousImages, imagesUris);
+        return saved;
     }
 
     @Override
@@ -226,6 +231,7 @@ public class ProductManagerImpl implements ProductManager {
                     "Product [" + product.getLabel() + "] is referenced by an order or cart; deactivate it instead");
         }
         productRepository.delete(product);
+        deleteRemovedImagesAfterCommit(product.getImages(), List.of());
     }
 
     @Override
@@ -256,25 +262,53 @@ public class ProductManagerImpl implements ProductManager {
 
     private List<String> processImages(Product product, List<String> existingImages, List<InputFile> newImages) {
         final List<InputFile> uploads = newImages != null ? newImages : List.of();
+        final List<String> retainedImages = existingImages != null ? existingImages : List.of();
+        if (retainedImages.size() + uploads.size() > MAX_IMAGES_PER_PRODUCT) {
+            throw new IllegalArgumentException("A product may contain at most " + MAX_IMAGES_PER_PRODUCT + " images");
+        }
         LOGGER.info(
                 "Processing [{}] images for product labelled [{}] with id [{}]",
                 uploads.size(),
                 product.getLabel(),
                 product.getId());
 
-        final List<String> imagesUris = existingImages != null ? new ArrayList<>(existingImages) : new ArrayList<>();
+        final List<String> imagesUris = new ArrayList<>(retainedImages);
 
-        List<String> newUris = uploads.parallelStream()
-                .map(inputFile -> {
-                    final String imagePath = IMAGE_BASE_PATH + product.getId() + "/" + UUID.randomUUID();
-                    final URI imageUri = storageService.uploadFile(
-                            imagePath, inputFile, UUID.randomUUID().toString());
-                    return imageUri.toString();
-                })
-                .toList();
+        final List<String> newUris = new ArrayList<>();
+        try {
+            for (InputFile inputFile : uploads) {
+                final String imagePath = IMAGE_BASE_PATH + product.getId() + "/" + UUID.randomUUID();
+                final URI imageUri = storageService.uploadFile(
+                        imagePath, inputFile, UUID.randomUUID().toString());
+                newUris.add(imageUri.toString());
+            }
+        } catch (RuntimeException error) {
+            newUris.forEach(uri -> storageService.delete(URI.create(uri)));
+            throw error;
+        }
 
         imagesUris.addAll(newUris);
         return imagesUris;
+    }
+
+    private void deleteRemovedImagesAfterCommit(List<String> previousImages, List<String> retainedImages) {
+        final List<String> removed = previousImages.stream()
+                .filter(uri -> !retainedImages.contains(uri))
+                .toList();
+        if (removed.isEmpty()) {
+            return;
+        }
+        final Runnable cleanup = () -> removed.forEach(uri -> storageService.delete(URI.create(uri)));
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    cleanup.run();
+                }
+            });
+        } else {
+            cleanup.run();
+        }
     }
 
     private static String requireNonBlankLabel(String label) {
