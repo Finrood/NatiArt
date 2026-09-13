@@ -1,9 +1,10 @@
-import {HttpClient, HttpInterceptorFn} from '@angular/common/http';
+import {HttpContextToken, HttpInterceptorFn} from '@angular/common/http';
 import {inject} from '@angular/core';
 import {Router} from "@angular/router";
-import {BehaviorSubject, catchError, filter, first, switchMap, throwError, timeout} from "rxjs";
+import {catchError, switchMap, throwError} from "rxjs";
 import {TokenService} from "../service/token.service";
 import {environment} from "../../../environments/environment";
+import {AuthenticationService} from "../service/authentication.service";
 
 const viaCepHostname = (): string => {
   try {
@@ -63,48 +64,7 @@ const isRefreshTokenRequest = (url: string): boolean =>
 const isLogoutRequest = (url: string): boolean =>
   isEndpoint(url, [environment.api.directory.endpoints.logout]);
 
-const RETRY_HEADER = 'X-Auth-Retried';
-const REFRESH_TIMEOUT_MS = 10000;
-
-let refreshInProgress$: BehaviorSubject<string | null> | null = null;
-
-const performRefresh = (http: HttpClient, tokenService: TokenService): BehaviorSubject<string | null> => {
-  if (!refreshInProgress$) {
-    const subject = new BehaviorSubject<string | null>(null);
-    refreshInProgress$ = subject;
-
-    const refreshTokenValue = tokenService.refreshToken;
-    if (!refreshTokenValue) {
-      refreshInProgress$ = null;
-      subject.error(new Error('No refresh token available'));
-      return subject;
-    }
-
-    http.post<{ accessToken: string; refreshToken: string }>(
-      `${environment.api.directory.url}${environment.api.directory.endpoints.refreshToken}`,
-      null,
-      {headers: {Authorization: `Bearer ${refreshTokenValue}`}}
-    ).pipe(timeout({first: REFRESH_TIMEOUT_MS})).subscribe({
-      next: (response) => {
-        tokenService.accessToken = response.accessToken;
-        tokenService.refreshToken = response.refreshToken;
-        subject.next(response.accessToken);
-        subject.complete();
-        if (refreshInProgress$ === subject) {
-          refreshInProgress$ = null;
-        }
-      },
-      error: (error) => {
-        tokenService.clearTokens();
-        if (refreshInProgress$ === subject) {
-          refreshInProgress$ = null;
-        }
-        subject.error(error);
-      }
-    });
-  }
-  return refreshInProgress$!;
-};
+export const AUTH_RETRY_CONTEXT = new HttpContextToken<boolean>(() => false);
 
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   if (isExcludedDomain(req.url) || isAuthRequest(req.url) || isRefreshTokenRequest(req.url)) {
@@ -113,15 +73,13 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
 
   const tokenService = inject(TokenService);
   const router = inject(Router);
-  const http = inject(HttpClient);
+  const authenticationService = inject(AuthenticationService);
 
-  const alreadyRetried = req.headers.has(RETRY_HEADER);
+  const alreadyRetried = req.context.get(AUTH_RETRY_CONTEXT);
 
   const cloned = (tokenService.accessToken && !alreadyRetried)
     ? req.clone({setHeaders: {Authorization: `Bearer ${tokenService.accessToken}`}})
-    : (alreadyRetried
-      ? req.clone({headers: req.headers.delete(RETRY_HEADER)})
-      : req);
+    : req;
 
   return next(cloned).pipe(
     catchError(error => {
@@ -137,16 +95,17 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
           router.navigate(['/login']);
           return throwError(() => error);
         }
-        return performRefresh(http, tokenService).pipe(
-          filter(token => token !== null),
-          first(),
-          switchMap(token => next(req.clone({
-            setHeaders: {Authorization: `Bearer ${token}`, [RETRY_HEADER]: '1'}
-          }))),
+        return authenticationService.refreshAccessToken().pipe(
           catchError(refreshError => {
-            router.navigate(['/login']);
+            if (refreshError.status === 401 || refreshError.status === 403) {
+              router.navigate(['/login']);
+            }
             return throwError(() => refreshError);
-          })
+          }),
+          switchMap(token => next(req.clone({
+            setHeaders: {Authorization: `Bearer ${token}`},
+            context: req.context.set(AUTH_RETRY_CONTEXT, true),
+          }))),
         );
       }
       return throwError(() => error);

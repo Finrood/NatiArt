@@ -8,6 +8,7 @@ import {fakeAsync, flush, tick} from '@angular/core/testing';
 import {jwtInterceptor} from './jwt-interceptor.service';
 import {TokenService} from '../service/token.service';
 import {environment} from '../../../environments/environment';
+import {AUTH_RETRY_CONTEXT} from './jwt-interceptor.service';
 
 describe('jwtInterceptor', () => {
   const REFRESH_URL = `${environment.api.directory.url}${environment.api.directory.endpoints.refreshToken}`;
@@ -181,7 +182,7 @@ describe('jwtInterceptor', () => {
     const retried = httpTesting.expectOne('/api/secure');
     expect(retried.request.headers.get('Authorization')).toBe('Bearer new-access');
     // The retried request must NOT re-trigger another refresh if it also fails.
-    expect(retried.request.headers.get('X-Auth-Retried')).toBe('1');
+    expect(retried.request.context.get(AUTH_RETRY_CONTEXT)).toBeTrue();
     retried.flush({ok: true}, {status: 200, statusText: 'OK'});
     tick();
 
@@ -234,7 +235,7 @@ describe('jwtInterceptor', () => {
     refresh.flush({accessToken: 'new-access', refreshToken: 'new-refresh'});
     tick();
     const retried = httpTesting.expectOne('/api/secure');
-    expect(retried.request.headers.get('X-Auth-Retried')).toBe('1');
+    expect(retried.request.context.get(AUTH_RETRY_CONTEXT)).toBeTrue();
     retried.flush('', {status: 401, statusText: 'Unauthorized'});
     tick();
 
@@ -258,8 +259,8 @@ describe('jwtInterceptor', () => {
     tick(10001);
 
     expect(firstError).toBeTruthy();
-    expect(tokenService.accessToken).toBeNull();
-    expect(tokenService.refreshToken).toBeNull();
+    expect(tokenService.accessToken).toBe('old-access');
+    expect(tokenService.refreshToken).toBe('old-refresh');
 
     tokenService.accessToken = 'second-access';
     tokenService.refreshToken = 'second-refresh';
@@ -275,6 +276,26 @@ describe('jwtInterceptor', () => {
     tick();
 
     expect(secondBody).toEqual({ok: true});
+    httpTesting.verify();
+  }));
+
+  it('does not redirect when the retried request returns a business error', fakeAsync(() => {
+    const {http, httpTesting, tokenService} = setup();
+    const router: Router = TestBed.inject(Router);
+    tokenService.accessToken = 'old-access';
+    tokenService.refreshToken = 'old-refresh';
+
+    let error: unknown;
+    http.get('/api/secure').subscribe({error: (e: unknown) => (error = e)});
+    httpTesting.expectOne('/api/secure').flush('', {status: 401, statusText: 'Unauthorized'});
+    tick();
+    httpTesting.expectOne(REFRESH_URL).flush({accessToken: 'new-access', refreshToken: 'new-refresh'});
+    tick();
+    httpTesting.expectOne('/api/secure').flush('', {status: 400, statusText: 'Bad Request'});
+    tick();
+
+    expect(error).toBeTruthy();
+    expect(router.navigate).not.toHaveBeenCalled();
     httpTesting.verify();
   }));
 
