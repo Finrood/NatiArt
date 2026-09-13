@@ -56,6 +56,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   private currentOrder: OrderDto | null = null;
   private checkoutFingerprint: string | null = null;
+  private hasPrefilledCurrentUser = false;
+  private destroyed = false;
+  private readonly attemptStorageKey = 'natiart-checkout-attempt';
   private orderIdempotencyKey = crypto.randomUUID();
   private paymentIdempotencyKey = crypto.randomUUID();
 
@@ -157,7 +160,8 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       .pipe(
         takeUntil(this.destroy$),
         tap(user => {
-          if (user && user.profile) {
+          if (user && user.profile && !this.hasPrefilledCurrentUser) {
+            this.hasPrefilledCurrentUser = true;
             this.checkoutForm.patchValue({
               userInfo: {
                 firstname: user.profile.firstname,
@@ -187,6 +191,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
             if (this.checkoutForm.get('shippingInfo')?.invalid) {
               this.checkoutForm.get('shippingInfo')?.markAllAsTouched();
             }
+            this.restoreAttempt(user.username);
           }
         })
       )
@@ -247,6 +252,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         return;
       }
 
+      if (this.destroyed) {
+        return;
+      }
+
       const orderRequest = this.buildOrderRequest();
       const fingerprint = JSON.stringify(orderRequest);
       if (this.checkoutFingerprint !== fingerprint) {
@@ -259,12 +268,16 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       if (!this.currentOrder) {
         this.setInfoMessage('Creating your order...');
         const order = await firstValueFrom(this.orderService.createOrder(orderRequest, this.orderIdempotencyKey));
+        if (this.destroyed) {
+          return;
+        }
         this.clearInfoMessage();
         if (!order?.id || order.totalAmount == null) {
           this.setErrorMessage('Could not create your order. Please try again.');
           return;
         }
         this.currentOrder = order;
+        this.persistAttempt(user.username);
       }
 
       const order = this.currentOrder;
@@ -285,19 +298,32 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         this.paymentService.createPixPayment(pixPaymentData, this.paymentIdempotencyKey)
       );
 
+      if (this.destroyed) {
+        return;
+      }
+
       const paymentId: string | undefined = paymentResponse?.paymentId;
       if (!paymentId) {
         this.setErrorMessage('Could not process PIX payment. Please try again.');
         return;
       }
 
-      this.router.navigate(['/pix-payment', paymentId]);
-      this.currentOrder = null;
-      this.checkoutFingerprint = null;
-      this.orderIdempotencyKey = crypto.randomUUID();
-      this.paymentIdempotencyKey = crypto.randomUUID();
+      const navigated = await this.router.navigate(['/pix-payment', paymentId]);
+      if (navigated) {
+        this.clearPersistedAttempt(user.username);
+        this.currentOrder = null;
+        this.checkoutFingerprint = null;
+        this.orderIdempotencyKey = crypto.randomUUID();
+        this.paymentIdempotencyKey = crypto.randomUUID();
+      } else {
+        this.persistAttempt(user.username);
+        this.setErrorMessage('Could not open the payment page. Your checkout is saved; please try again.');
+      }
 
     } catch (error) {
+      if (this.destroyed) {
+        return;
+      }
       reportError('payment', error);
       this.setErrorMessage('Could not process PIX payment. Please try again.');
     }
@@ -410,7 +436,63 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  private persistAttempt(username: string): void {
+    if (!this.currentOrder || !this.checkoutFingerprint) {
+      return;
+    }
+    try {
+      localStorage.setItem(this.attemptStorageKey, JSON.stringify({
+        username,
+        fingerprint: this.checkoutFingerprint,
+        orderIdempotencyKey: this.orderIdempotencyKey,
+        paymentIdempotencyKey: this.paymentIdempotencyKey,
+        currentOrder: this.currentOrder,
+      }));
+    } catch (error) {
+      reportError('checkout-storage', error);
+    }
+  }
+
+  private restoreAttempt(username: string): void {
+    try {
+      const raw = localStorage.getItem(this.attemptStorageKey);
+      if (!raw) {
+        return;
+      }
+      const attempt = JSON.parse(raw) as Partial<{
+        username: string;
+        fingerprint: string;
+        orderIdempotencyKey: string;
+        paymentIdempotencyKey: string;
+        currentOrder: OrderDto;
+      }>;
+      if (attempt.username !== username || !attempt.fingerprint || !attempt.orderIdempotencyKey
+        || !attempt.paymentIdempotencyKey || !attempt.currentOrder?.id) {
+        return;
+      }
+      this.checkoutFingerprint = attempt.fingerprint;
+      this.orderIdempotencyKey = attempt.orderIdempotencyKey as typeof this.orderIdempotencyKey;
+      this.paymentIdempotencyKey = attempt.paymentIdempotencyKey as typeof this.paymentIdempotencyKey;
+      this.currentOrder = attempt.currentOrder;
+    } catch (error) {
+      localStorage.removeItem(this.attemptStorageKey);
+      reportError('checkout-storage', error);
+    }
+  }
+
+  private clearPersistedAttempt(username: string): void {
+    try {
+      const raw = localStorage.getItem(this.attemptStorageKey);
+      if (!raw || (JSON.parse(raw) as {username?: string}).username === username) {
+        localStorage.removeItem(this.attemptStorageKey);
+      }
+    } catch (error) {
+      reportError('checkout-storage', error);
+    }
+  }
+
   ngOnDestroy(): void {
+    this.destroyed = true;
     this.destroy$.next();
     this.destroy$.complete();
   }
