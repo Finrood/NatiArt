@@ -139,6 +139,17 @@ public class UserManagerTest {
     }
 
     @Test
+    public void registerUser_rejectsPasswordLongerThanBcryptByteLimit() {
+        when(userRepository.existsUserByUsernameIgnoreCase("new_username")).thenReturn(false);
+        final UserRegistrationDto registration =
+                new UserRegistrationDto("new_username", "é".repeat(40), new ProfileDto());
+
+        assertThrows(IllegalArgumentException.class, () -> userManager.registerUser(registration));
+        verify(userRepository, never()).save(any(User.class));
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
     public void test_registerUser_DuplicateUsername() {
         // Prepare test data
         final ProfileDto profileDto = new ProfileDto();

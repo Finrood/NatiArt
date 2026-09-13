@@ -3,9 +3,9 @@ import {AbstractControl, ValidationErrors, ValidatorFn} from '@angular/forms';
 export class CustomCpfValidators {
   static validCpf(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
-      const cpf = control.value.replace(/\D/g, ''); // Remove non-numeric characters
+      const cpf = typeof control.value === 'string' ? control.value.replace(/\D/g, '') : '';
 
-      if (cpf === null || cpf.length === 0) {
+      if (cpf.length === 0) {
         return null; // Don't validate empty or null values, use Validators.required for that
       }
 
