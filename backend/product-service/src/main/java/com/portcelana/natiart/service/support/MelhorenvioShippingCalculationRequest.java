@@ -1,7 +1,8 @@
 package com.portcelana.natiart.service.support;
 
-import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import com.portcelana.natiart.dto.shipping.ShippingEstimateRequest;
 
@@ -12,6 +13,11 @@ public class MelhorenvioShippingCalculationRequest {
 
     public static MelhorenvioShippingCalculationRequest from(
             ShippingEstimateRequest shippingEstimateRequest, String fromPostalCode) {
+        return from(List.of(shippingEstimateRequest), fromPostalCode);
+    }
+
+    public static MelhorenvioShippingCalculationRequest from(
+            List<ShippingEstimateRequest> shippingEstimateRequests, String fromPostalCode) {
         final MelhorenvioShippingCalculationRequest request = new MelhorenvioShippingCalculationRequest();
 
         final Address fromAddress = new Address();
@@ -19,19 +25,25 @@ public class MelhorenvioShippingCalculationRequest {
         request.setFrom(fromAddress);
 
         final Address toAddress = new Address();
-        toAddress.setPostal_code(shippingEstimateRequest.getTo());
+        toAddress.setPostal_code(shippingEstimateRequests.get(0).getTo());
         request.setTo(toAddress);
 
+        request.setVolumes(shippingEstimateRequests.stream()
+                .filter(Objects::nonNull)
+                .map(MelhorenvioShippingCalculationRequest::toVolume)
+                .collect(Collectors.toList()));
+
+        return request;
+    }
+
+    private static Volume toVolume(ShippingEstimateRequest shippingEstimateRequest) {
         final Volume volume = new Volume();
         volume.setHeight(String.valueOf(shippingEstimateRequest.getHeight()));
         volume.setWidth(String.valueOf(shippingEstimateRequest.getWidth()));
         volume.setLength(String.valueOf(shippingEstimateRequest.getLength()));
         volume.setWeight(String.valueOf(shippingEstimateRequest.getWeight()));
         volume.setQntd(shippingEstimateRequest.getQuantity());
-
-        request.setVolumes(Collections.singletonList(volume));
-
-        return request;
+        return volume;
     }
 
     public Address getFrom() {

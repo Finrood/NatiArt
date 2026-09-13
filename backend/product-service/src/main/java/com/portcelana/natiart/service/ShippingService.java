@@ -31,13 +31,6 @@ import com.portcelana.natiart.service.support.MelhorenvioShippingCalculationResp
 @Service
 public class ShippingService {
     private static final Logger LOGGER = LoggerFactory.getLogger(ShippingService.class);
-    // Checkout freight is calculated from package data owned by this service;
-    // the order request cannot choose the amount that is persisted or charged.
-    private static final float ORDER_PACKAGE_WEIGHT_KG = 2;
-    private static final float ORDER_PACKAGE_LENGTH_CM = 17;
-    private static final float ORDER_PACKAGE_WIDTH_CM = 12.7f;
-    private static final float ORDER_PACKAGE_HEIGHT_CM = 2;
-    private static final int ORDER_PACKAGE_QUANTITY = 1;
 
     private final RestTemplate restTemplate;
     private final String apiUrl;
@@ -69,6 +62,19 @@ public class ShippingService {
     }
 
     public List<ShippingEstimate> getShippingEstimates(ShippingEstimateRequest shippingEstimateRequest) {
+        return getShippingEstimates(List.of(shippingEstimateRequest));
+    }
+
+    /**
+     * Calculates rates for the documented packing rule: each product line is
+     * represented by one provider volume using its configured package and the
+     * requested quantity as that volume's quantity. No client-supplied
+     * dimensions are accepted on this order path.
+     */
+    List<ShippingEstimate> getShippingEstimates(List<ShippingEstimateRequest> shippingEstimateRequests) {
+        if (shippingEstimateRequests == null || shippingEstimateRequests.isEmpty()) {
+            throw new IllegalArgumentException("At least one shipping volume is required");
+        }
         final HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("Accept", "application/json");
@@ -83,7 +89,7 @@ public class ShippingService {
             response = executeRetryable(() -> restTemplate.exchange(
                     apiUrl,
                     HttpMethod.POST,
-                    new HttpEntity<>(createMelhorEnvioRequest(shippingEstimateRequest), headers),
+                    new HttpEntity<>(createMelhorEnvioRequest(shippingEstimateRequests), headers),
                     new ParameterizedTypeReference<>() {}));
         } catch (HttpStatusCodeException e) {
             throw mapShippingError(e);
@@ -96,27 +102,9 @@ public class ShippingService {
         return estimates;
     }
 
-    /**
-     * Calculates the freight amount for an order using server-owned package
-     * dimensions and the cheapest valid provider estimate.
-     */
-    public BigDecimal getOrderShippingAmount(String destinationPostalCode) {
-        final ShippingEstimateRequest request = new ShippingEstimateRequest(
-                destinationPostalCode == null ? null : destinationPostalCode.replaceAll("\\D", ""),
-                ORDER_PACKAGE_WEIGHT_KG,
-                ORDER_PACKAGE_LENGTH_CM,
-                ORDER_PACKAGE_WIDTH_CM,
-                ORDER_PACKAGE_HEIGHT_CM,
-                ORDER_PACKAGE_QUANTITY);
-        return getShippingEstimates(request).stream()
-                .findFirst()
-                .map(ShippingEstimate::getPrice)
-                .orElseThrow(() -> new IllegalArgumentException("No shipping options are available for this address"));
-    }
-
     private MelhorenvioShippingCalculationRequest createMelhorEnvioRequest(
-            ShippingEstimateRequest shippingEstimateRequest) {
-        return MelhorenvioShippingCalculationRequest.from(shippingEstimateRequest, fromPostalCode);
+            List<ShippingEstimateRequest> shippingEstimateRequests) {
+        return MelhorenvioShippingCalculationRequest.from(shippingEstimateRequests, fromPostalCode);
     }
 
     private List<ShippingEstimate> parseAndFilterResponse(List<MelhorenvioShippingCalculationResponse> responses) {
@@ -131,14 +119,17 @@ public class ShippingService {
     }
 
     private boolean isValidResponse(MelhorenvioShippingCalculationResponse response) {
-        return "Correios".equalsIgnoreCase(response.getCompanyName())
+        return response != null
+                && response.getId() > 0
+                && "Correios".equalsIgnoreCase(response.getCompanyName())
                 && response.getError() == null
                 && response.getPrice() != null;
     }
 
     private ShippingEstimate mapToShippingEstimate(MelhorenvioShippingCalculationResponse response) {
         return new ShippingEstimate()
-                .setService(response.getCompanyName())
+                .setServiceId(String.valueOf(response.getId()))
+                .setService(response.getName() != null ? response.getName() : response.getCompanyName())
                 .setPrice(response.getPrice()
                         .add(BigDecimal.valueOf(
                                 5))) // We add 5 to compensate for differences between API prices and post office prices

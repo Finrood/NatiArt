@@ -7,6 +7,7 @@ export interface Product {
   originalPrice: number;
   markedPrice: number;
   stockQuantity: number;
+  weightKg?: number;
   categoryId: string;
   packageId?: string;
   hasFixedGoldenBorder?: boolean;

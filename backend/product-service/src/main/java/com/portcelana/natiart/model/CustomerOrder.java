@@ -61,6 +61,17 @@ public class CustomerOrder {
     @Column(precision = 10, scale = 2, nullable = false)
     private BigDecimal totalAmount;
 
+    @Column(length = 36)
+    private String shippingQuoteId;
+
+    @Column(length = 64)
+    private String shippingServiceId;
+
+    @Column(length = 8)
+    private String shippingDestinationPostalCode;
+
+    private Instant shippingQuoteExpiresAt;
+
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
 
@@ -222,6 +233,42 @@ public class CustomerOrder {
 
     public CustomerOrder setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
+        return this;
+    }
+
+    public String getShippingQuoteId() {
+        return shippingQuoteId;
+    }
+
+    public CustomerOrder setShippingQuoteId(String shippingQuoteId) {
+        this.shippingQuoteId = shippingQuoteId;
+        return this;
+    }
+
+    public String getShippingServiceId() {
+        return shippingServiceId;
+    }
+
+    public CustomerOrder setShippingServiceId(String shippingServiceId) {
+        this.shippingServiceId = shippingServiceId;
+        return this;
+    }
+
+    public String getShippingDestinationPostalCode() {
+        return shippingDestinationPostalCode;
+    }
+
+    public CustomerOrder setShippingDestinationPostalCode(String shippingDestinationPostalCode) {
+        this.shippingDestinationPostalCode = shippingDestinationPostalCode;
+        return this;
+    }
+
+    public Instant getShippingQuoteExpiresAt() {
+        return shippingQuoteExpiresAt;
+    }
+
+    public CustomerOrder setShippingQuoteExpiresAt(Instant shippingQuoteExpiresAt) {
+        this.shippingQuoteExpiresAt = shippingQuoteExpiresAt;
         return this;
     }
 

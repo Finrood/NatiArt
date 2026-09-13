@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
+import com.portcelana.natiart.controller.helper.ShippingQuoteNotValidException;
 import com.portcelana.natiart.controller.helper.UserNotAllowedException;
 import com.portcelana.natiart.service.AsaasApiException;
 import com.portcelana.natiart.service.UpstreamServiceException;
@@ -81,6 +82,12 @@ public class ControllerAdvice {
     @ExceptionHandler(ResourceAlreadyExistsException.class)
     public ResponseEntity<Object> handleResourceAlreadyExistsException(ResourceAlreadyExistsException e) {
         LOGGER.debug("Exception caught in controller: ", e);
+        return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
+    }
+
+    @ExceptionHandler(ShippingQuoteNotValidException.class)
+    public ResponseEntity<Object> handleShippingQuoteNotValidException(ShippingQuoteNotValidException e) {
+        LOGGER.debug("Shipping quote rejected: ", e);
         return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
     }
 

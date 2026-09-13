@@ -7,6 +7,7 @@ import { Subject } from 'rxjs';
 import { OrderSummaryComponent } from './order-summary.component';
 import { ProductService } from '../../../../service/product.service';
 import { Product } from '../../../../models/product.model';
+import { ShippingQuote } from '../../../../service/shipping.service';
 
 describe('OrderSummaryComponent', () => {
   beforeEach(async () => {
@@ -19,6 +20,29 @@ describe('OrderSummaryComponent', () => {
   it('should create', () => {
     const fixture = TestBed.createComponent(OrderSummaryComponent);
     expect(fixture.componentInstance).toBeTruthy();
+  });
+
+  it('displays server item, shipping, and total amounts when a quote is present', () => {
+    const fixture = TestBed.createComponent(OrderSummaryComponent);
+    const component = fixture.componentInstance;
+    const product: Product = {
+      id: 'p1', label: 'Plate', originalPrice: 100, markedPrice: 90,
+      stockQuantity: 5, categoryId: 'c1', availablePersonalizations: [],
+      tags: new Set<string>(), images: [],
+    };
+    const quote: ShippingQuote = {
+      quoteId: 'quote-1', destinationPostalCode: '01001000', serviceId: 'pac', serviceName: 'PAC',
+      expiresAt: '2099-01-01T00:00:00Z', itemAmount: 80, shippingAmount: 12.5, totalAmount: 92.5,
+      items: [{productId: 'p1', quantity: 1, unitPrice: 80, lineAmount: 80}],
+    };
+    component.cartItems = [{cartItemId: 'line-1', product, quantity: 1}];
+    component.shippingQuote = quote;
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('R$80.00');
+    expect(fixture.nativeElement.textContent).toContain('R$12.50');
+    expect(fixture.nativeElement.textContent).toContain('R$92.50');
+    expect(fixture.nativeElement.textContent).toContain('PAC');
   });
 
   it('writes the image for a live line when its GET resolves (AA3 control)', () => {

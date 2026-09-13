@@ -11,6 +11,7 @@
               class="w-20 h-20 rounded-lg object-cover border border-gray-200 p-1">
             <div>
               <p class="font-semibold text-lg text-gray-800 leading-tight">{{ item.product.label }}</p>
+              <p class="text-sm text-gray-600">Unit: {{ getDisplayedItemUnitPrice(item) | currency:'BRL' }}</p>
               <p class="text-sm text-gray-600">Qty: {{ item.quantity }}</p>
               @if (item.goldBorder) {
                 <p class="text-xs text-yellow-600 font-medium">+ Gold Border</p>
@@ -21,7 +22,7 @@
             </div>
           </div>
           <p class="font-bold text-lg text-gray-800 whitespace-nowrap tabular-nums">
-            {{ (item.product.markedPrice * item.quantity) | currency:'BRL' }}
+            {{ getItemAmount(item) | currency:'BRL' }}
           </p>
         </div>
       }
@@ -39,12 +40,23 @@
       <div class="space-y-3 text-gray-700">
         <div class="flex justify-between items-center">
           <span class="text-base">Subtotal:</span>
-          <span class="font-semibold text-base tabular-nums">{{ cartTotal | currency:'BRL' }}</span>
+          <span class="font-semibold text-base tabular-nums">
+            {{ shippingQuote ? (shippingQuote.itemAmount | currency:'BRL') : 'Calculated after shipping address' }}
+          </span>
         </div>
         <div class="flex justify-between items-center text-sm">
           <span class="text-gray-600">Shipping:</span>
-          <span class="text-gray-600">Free</span>
+          <span class="text-gray-600">
+            {{ shippingQuote ? (shippingQuote.shippingAmount | currency:'BRL') : 'Calculated after shipping address' }}
+          </span>
         </div>
+        @if (shippingQuote) {
+          <div class="flex justify-between items-center text-sm">
+            <span class="text-gray-600">Service:</span>
+            <span class="text-gray-600">{{ shippingQuote.serviceName }}</span>
+          </div>
+          <p class="text-xs text-gray-500">Quote valid until {{ shippingQuote.expiresAt | date:'short' }}. Review this total before placing payment.</p>
+        }
         <div class="flex justify-between items-center text-sm">
           <span class="text-gray-600">Taxes:</span>
           <span class="text-gray-600">Calculated at checkout</span>
@@ -52,7 +64,9 @@
       </div>
       <div class="flex justify-between items-center font-bold text-gray-900 text-xl mt-6 pt-6 border-t-2 border-gray-300">
         <p>Total:</p>
-        <p class="tabular-nums">{{ cartTotal | currency:'BRL' }}</p>
+        <p class="tabular-nums">
+          {{ shippingQuote ? (shippingQuote.totalAmount | currency:'BRL') : 'Calculated after shipping address' }}
+        </p>
       </div>
     </div>
   }
