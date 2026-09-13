@@ -91,6 +91,10 @@ public class Product {
         return id;
     }
 
+    public long getVersion() {
+        return version;
+    }
+
     public String getLabel() {
         return label;
     }
