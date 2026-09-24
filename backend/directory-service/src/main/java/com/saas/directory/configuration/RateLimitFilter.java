@@ -3,6 +3,8 @@ package com.saas.directory.configuration;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.List;
 
 import jakarta.servlet.FilterChain;
@@ -12,6 +14,8 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpMethod;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -21,14 +25,20 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import com.saas.directory.service.DatabaseRateLimitStore;
 import com.saas.directory.service.RateLimitStore;
 
+// Throttle probes before Spring Security can reject malformed or expired bearer tokens.
+@Order(Ordered.HIGHEST_PRECEDENCE)
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
+    static final String INTERNAL_SERVICE_TOKEN_HEADER = "X-Internal-Service-Token";
+    private static final String INTERNAL_VALIDATION_BUCKET = "internal-token-validation";
     private static final List<String> PROTECTED_ROUTES =
             List.of("/login", "/register-user", "/validate-token", "/refresh-token", "/client-errors");
     private final int maxRequestsPerWindow;
     private final int clientErrorMaxRequestsPerWindow;
+    private final int internalValidationMaxRequestsPerWindow;
     private final List<String> trustedProxyAddresses;
     private final RateLimitStore rateLimitStore;
+    private final String internalValidationSecret;
 
     @Autowired
     public RateLimitFilter(
@@ -36,18 +46,43 @@ public class RateLimitFilter extends OncePerRequestFilter {
             @Value("${saas.security.rate-limit.client-error-max-requests-per-minute:10}")
                     int clientErrorMaxRequestsPerWindow,
             @Value("${saas.security.rate-limit.trusted-proxies:}") List<String> trustedProxyAddresses,
-            RateLimitStore rateLimitStore) {
+            RateLimitStore rateLimitStore,
+            @Value("${saas.security.internal.validation-secret:}") String internalValidationSecret,
+            @Value("${saas.security.rate-limit.internal-validation-max-requests-per-minute:600}")
+                    int internalValidationMaxRequestsPerWindow) {
         this.maxRequestsPerWindow = maxRequestsPerWindow;
         this.clientErrorMaxRequestsPerWindow = clientErrorMaxRequestsPerWindow;
+        this.internalValidationMaxRequestsPerWindow = internalValidationMaxRequestsPerWindow;
         this.trustedProxyAddresses = trustedProxyAddresses.stream()
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .toList();
         this.rateLimitStore = rateLimitStore;
+        this.internalValidationSecret = internalValidationSecret;
     }
 
     RateLimitFilter(int maxRequestsPerWindow, List<String> trustedProxyAddresses, RateLimitStore rateLimitStore) {
-        this(maxRequestsPerWindow, maxRequestsPerWindow, trustedProxyAddresses, rateLimitStore);
+        this(
+                maxRequestsPerWindow,
+                maxRequestsPerWindow,
+                trustedProxyAddresses,
+                rateLimitStore,
+                "",
+                maxRequestsPerWindow);
+    }
+
+    RateLimitFilter(
+            int maxRequestsPerWindow,
+            int clientErrorMaxRequestsPerWindow,
+            List<String> trustedProxyAddresses,
+            RateLimitStore rateLimitStore) {
+        this(
+                maxRequestsPerWindow,
+                clientErrorMaxRequestsPerWindow,
+                trustedProxyAddresses,
+                rateLimitStore,
+                "",
+                maxRequestsPerWindow);
     }
 
     @Override
@@ -62,8 +97,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         final boolean clientErrorRequest = isClientErrorRequest(request);
-        final String clientKey = clientErrorRequest ? "client-error:" + clientIp(request) : clientIp(request);
-        final int requestLimit = clientErrorRequest ? clientErrorMaxRequestsPerWindow : maxRequestsPerWindow;
+        final boolean internalValidationRequest = isInternalValidationRequest(request);
+        final String clientKey;
+        final int requestLimit;
+        if (internalValidationRequest) {
+            clientKey = INTERNAL_VALIDATION_BUCKET;
+            requestLimit = internalValidationMaxRequestsPerWindow;
+        } else {
+            clientKey = clientErrorRequest ? "client-error:" + clientIp(request) : clientIp(request);
+            requestLimit = clientErrorRequest ? clientErrorMaxRequestsPerWindow : maxRequestsPerWindow;
+        }
         final boolean allowed;
         try {
             allowed = tryAcquireWithRetry(clientKey, requestLimit);
@@ -96,6 +139,21 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private boolean isClientErrorRequest(HttpServletRequest request) {
         return request.getRequestURI().endsWith("/client-errors");
+    }
+
+    private boolean isInternalValidationRequest(HttpServletRequest request) {
+        if (!request.getRequestURI().endsWith("/validate-token")
+                || internalValidationSecret == null
+                || internalValidationSecret.isBlank()) {
+            return false;
+        }
+        final String presentedSecret = request.getHeader(INTERNAL_SERVICE_TOKEN_HEADER);
+        if (presentedSecret == null || presentedSecret.isBlank()) {
+            return false;
+        }
+        return MessageDigest.isEqual(
+                internalValidationSecret.getBytes(StandardCharsets.UTF_8),
+                presentedSecret.getBytes(StandardCharsets.UTF_8));
     }
 
     private String clientIp(HttpServletRequest request) {

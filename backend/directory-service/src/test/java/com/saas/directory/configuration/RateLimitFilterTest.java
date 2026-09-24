@@ -140,6 +140,54 @@ class RateLimitFilterTest {
     }
 
     @Test
+    void authenticatedServiceValidationExceedsPublicTenRequestQuotaWithoutSharingLoginBucket() throws Exception {
+        final RateLimitFilter serviceFilter = new RateLimitFilter(10, 10, List.of(), store, "service-secret", 12);
+        final String address = "10.0.0.5";
+
+        for (int i = 0; i < 10; i++) {
+            final MockHttpServletResponse response = new MockHttpServletResponse();
+            serviceFilter.doFilter(post("/login", address), response, new MockFilterChain());
+            assertNotEquals(429, response.getStatus());
+        }
+        final MockHttpServletResponse blockedLogin = new MockHttpServletResponse();
+        serviceFilter.doFilter(post("/login", address), blockedLogin, new MockFilterChain());
+        assertEquals(429, blockedLogin.getStatus());
+
+        for (int i = 0; i < 12; i++) {
+            final MockHttpServletRequest request = post("/validate-token", address);
+            request.addHeader("Authorization", "Bearer synthetic-user-" + i);
+            request.addHeader(RateLimitFilter.INTERNAL_SERVICE_TOKEN_HEADER, "service-secret");
+            final MockHttpServletResponse response = new MockHttpServletResponse();
+            serviceFilter.doFilter(request, response, new MockFilterChain());
+            assertNotEquals(429, response.getStatus());
+        }
+
+        final MockHttpServletRequest blockedRequest = post("/validate-token", address);
+        blockedRequest.addHeader(RateLimitFilter.INTERNAL_SERVICE_TOKEN_HEADER, "service-secret");
+        final MockHttpServletResponse blockedResponse = new MockHttpServletResponse();
+        serviceFilter.doFilter(blockedRequest, blockedResponse, new MockFilterChain());
+        assertEquals(429, blockedResponse.getStatus());
+        assertEquals("60", blockedResponse.getHeader("Retry-After"));
+    }
+
+    @Test
+    void spoofedServiceHeaderRemainsInThePublicQuota() throws Exception {
+        final RateLimitFilter serviceFilter = new RateLimitFilter(2, 2, List.of(), store, "service-secret", 5);
+
+        for (int i = 0; i < 2; i++) {
+            final MockHttpServletRequest request = post("/validate-token", "10.0.0.6");
+            request.addHeader(RateLimitFilter.INTERNAL_SERVICE_TOKEN_HEADER, "wrong-secret");
+            serviceFilter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+        }
+
+        final MockHttpServletRequest blockedRequest = post("/validate-token", "10.0.0.6");
+        blockedRequest.addHeader(RateLimitFilter.INTERNAL_SERVICE_TOKEN_HEADER, "wrong-secret");
+        final MockHttpServletResponse blockedResponse = new MockHttpServletResponse();
+        serviceFilter.doFilter(blockedRequest, blockedResponse, new MockFilterChain());
+        assertEquals(429, blockedResponse.getStatus());
+    }
+
+    @Test
     void windowResetsAfterTheFixedWindowElapses() throws Exception {
         MutableClock clock = new MutableClock(0L);
         RateLimitFilter clockedFilter = new RateLimitFilter(3, List.of(), new FixedWindowStore(clock));
