@@ -28,6 +28,11 @@ public class PaymentController {
             @RequestBody PaymentCreationRequest paymentCreationRequest,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
+        if (paymentCreationRequest == null
+                || paymentCreationRequest.getOrderId() == null
+                || paymentCreationRequest.getOrderId().isBlank()) {
+            throw new IllegalArgumentException("Payment creation requires a non-blank orderId");
+        }
         return paymentService.createPayment(
                 paymentCreationRequest, principal != null ? principal.getExternalId() : null, idempotencyKey);
     }
