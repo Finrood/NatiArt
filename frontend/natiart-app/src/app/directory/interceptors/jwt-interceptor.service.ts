@@ -5,30 +5,38 @@ import {BehaviorSubject, catchError, filter, first, switchMap, throwError, timeo
 import {TokenService} from "../service/token.service";
 import {environment} from "../../../environments/environment";
 
-const isEndpoint = (url: string, endpoints: string[]): boolean => {
+const parsedUrl = (url: string): URL | null => {
   try {
-    const parsed = new URL(url, window.location.origin);
-    const directoryOrigin = new URL(environment.api.directory.url, window.location.origin).origin;
-    if (parsed.origin !== directoryOrigin) {
-      return false;
-    }
-    return endpoints.some(endpoint => parsed.pathname === endpoint);
+    return new URL(url, window.location.origin);
   } catch {
-    // Unparseable URL: fail closed, it is not an exempt endpoint.
-    return false;
+    return null;
   }
 };
 
-const isConfiguredApiUrl = (url: string): boolean => {
-  try {
-    const parsed = new URL(url, window.location.origin);
-    const configuredOrigins = [environment.api.directory.url, environment.api.product.url]
-      .map(apiUrl => new URL(apiUrl, window.location.origin).origin);
-    return configuredOrigins.includes(parsed.origin);
-  } catch {
-    // Unparseable URL: fail closed so credentials never leave the app.
+const basePath = (url: URL): string => url.pathname.replace(/\/+$/, '');
+
+const isWithinApi = (request: URL, apiUrl: string): boolean => {
+  const api = parsedUrl(apiUrl);
+  if (!api || request.origin !== api.origin) {
     return false;
   }
+  const path = basePath(api);
+  return path === '' || request.pathname === path || request.pathname.startsWith(`${path}/`);
+};
+
+const isEndpoint = (url: string, endpoints: string[]): boolean => {
+  const request = parsedUrl(url);
+  const directory = parsedUrl(environment.api.directory.url);
+  if (!request || !directory || !isWithinApi(request, environment.api.directory.url)) {
+    return false;
+  }
+  return endpoints.some(endpoint => request.pathname === `${basePath(directory)}/${endpoint.replace(/^\/+/, '')}`);
+};
+
+const isConfiguredApiUrl = (url: string): boolean => {
+  const request = parsedUrl(url);
+  return request !== null && [environment.api.directory.url, environment.api.product.url]
+    .some(apiUrl => isWithinApi(request, apiUrl));
 };
 
 const directoryAuthEndpoints = (): string[] => {
