@@ -127,7 +127,8 @@ class JwtAuthFilterTest {
         final String secret = "real-filter-verifier-secret";
         final String jti = UUID.randomUUID().toString();
         final String expired = signedToken(secret, jti, Instant.now().minus(1, ChronoUnit.HOURS));
-        final String badSignature = signedToken("different-secret", jti, Instant.now().plus(10, ChronoUnit.MINUTES));
+        final String badSignature =
+                signedToken("different-secret", jti, Instant.now().plus(10, ChronoUnit.MINUTES));
         final JwtAuthFilter filter = new JwtAuthFilter(realProvider(secret));
 
         for (final String token : List.of(expired, badSignature, "not.a.jwt")) {
@@ -152,12 +153,14 @@ class JwtAuthFilterTest {
         final String valid = signedToken(secret, jti, Instant.now().plus(10, ChronoUnit.MINUTES));
         final TransientDataAccessResourceException outage =
                 new TransientDataAccessResourceException("synthetic database outage");
-        when(tokenRepository.findByJtiAndTokenType(eq(jti), eq(TokenType.AUTH_ACCESS))).thenThrow(outage);
+        when(tokenRepository.findByJtiAndTokenType(eq(jti), eq(TokenType.AUTH_ACCESS)))
+                .thenThrow(outage);
         final JwtAuthFilter filter = new JwtAuthFilter(realProvider(secret));
         final MockHttpServletResponse response = new MockHttpServletResponse();
         final MockFilterChain chain = new MockFilterChain();
 
-        assertThrows(TransientDataAccessResourceException.class,
+        assertThrows(
+                TransientDataAccessResourceException.class,
                 () -> filter.doFilter(request("GET", "/users/current", valid), response, chain));
 
         assertNotEquals(401, response.getStatus());
