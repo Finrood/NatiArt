@@ -14,6 +14,8 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpMethod;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -23,6 +25,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import com.saas.directory.service.DatabaseRateLimitStore;
 import com.saas.directory.service.RateLimitStore;
 
+// Throttle probes before Spring Security can reject malformed or expired bearer tokens.
+@Order(Ordered.HIGHEST_PRECEDENCE)
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
     static final String INTERNAL_SERVICE_TOKEN_HEADER = "X-Internal-Service-Token";
