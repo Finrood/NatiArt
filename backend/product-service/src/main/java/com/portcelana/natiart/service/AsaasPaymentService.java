@@ -110,6 +110,10 @@ public class AsaasPaymentService implements PaymentService {
         if (requesterExternalId == null || requesterExternalId.isBlank()) {
             throw new UserNotAllowedException("Authenticated customer is required to create a payment");
         }
+        final String orderId = paymentCreationRequest.getOrderId();
+        if (orderId == null || orderId.isBlank()) {
+            throw new IllegalArgumentException("Payment creation requires a non-blank orderId");
+        }
         final String normalizedIdempotencyKey = normalizeIdempotencyKey(idempotencyKey);
         // Defense in depth: the DTO constructor already rejects these, but the
         // service must not trust its input shape if that ever changes.
@@ -118,21 +122,18 @@ public class AsaasPaymentService implements PaymentService {
             throw new IllegalArgumentException(
                     "Payment value must be a positive amount with at most two fraction digits");
         }
-        final String orderId = paymentCreationRequest.getOrderId();
-        if (orderId != null && !orderId.isBlank()) {
-            // Client-priced money is never trusted: an order-linked charge must
-            // match the server-computed order total exactly, or no upstream
-            // charge is created at all.
-            final CustomerOrder order = getOrderOrDie(orderId);
-            // Order-linked charges are authorization-checked before anything
-            // else: an order owned by another customer must fail closed (403,
-            // no upstream egress) even when the quoted value would match.
-            requireOwnedOrder(order.getOwnerExternalId(), requesterExternalId);
-            if (order.getTotalAmount() == null || order.getTotalAmount().compareTo(value) != 0) {
-                throw new IllegalArgumentException(String.format(
-                        "Payment value [%s] does not match the total [%s] of order [%s]",
-                        value, order.getTotalAmount(), orderId));
-            }
+        // Client-priced money is never trusted: an order-linked charge must
+        // match the server-computed order total exactly, or no upstream
+        // charge is created at all.
+        final CustomerOrder order = getOrderOrDie(orderId);
+        // Order-linked charges are authorization-checked before anything
+        // else: an order owned by another customer must fail closed (403,
+        // no upstream egress) even when the quoted value would match.
+        requireOwnedOrder(order.getOwnerExternalId(), requesterExternalId);
+        if (order.getTotalAmount() == null || order.getTotalAmount().compareTo(value) != 0) {
+            throw new IllegalArgumentException(String.format(
+                    "Payment value [%s] does not match the total [%s] of order [%s]",
+                    value, order.getTotalAmount(), orderId));
         }
 
         final String requestFingerprint = fingerprint(paymentCreationRequest);
@@ -155,9 +156,8 @@ public class AsaasPaymentService implements PaymentService {
 
         // A legacy order-linked ledger row may predate the reservation table.
         // Adopt it before any provider egress and make future retries durable.
-        final Optional<Payment> existing = orderId != null && !orderId.isBlank()
-                ? paymentRepository.findByOrderIdAndOwnerExternalId(orderId, requesterExternalId)
-                : Optional.empty();
+        final Optional<Payment> existing =
+                paymentRepository.findByOrderIdAndOwnerExternalId(orderId, requesterExternalId);
         if (existing.isPresent()) {
             paymentIdempotencyService.markSucceeded(
                     requesterExternalId,
