@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
@@ -45,6 +46,7 @@ public class ShippingService {
     private final String fromPostalCode;
     private final RetryTemplate retryTemplate;
 
+    @Autowired
     public ShippingService(
             @Value("${melhorenvio.api.url}") String apiUrl,
             @Value("${melhorenvio.api.token}") String apiToken,
