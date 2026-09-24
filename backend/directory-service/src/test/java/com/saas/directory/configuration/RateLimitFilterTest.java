@@ -140,28 +140,34 @@ class RateLimitFilterTest {
     }
 
     @Test
-    void authenticatedServiceValidationUsesItsOwnQuota() throws Exception {
-        final RateLimitFilter serviceFilter = new RateLimitFilter(2, 2, List.of(), store, "service-secret", 5);
+    void authenticatedServiceValidationExceedsPublicTenRequestQuotaWithoutSharingLoginBucket() throws Exception {
+        final RateLimitFilter serviceFilter = new RateLimitFilter(10, 10, List.of(), store, "service-secret", 12);
+        final String address = "10.0.0.5";
 
-        for (int i = 0; i < 5; i++) {
-            final MockHttpServletRequest request = post("/validate-token", "10.0.0.5");
+        for (int i = 0; i < 10; i++) {
+            final MockHttpServletResponse response = new MockHttpServletResponse();
+            serviceFilter.doFilter(post("/login", address), response, new MockFilterChain());
+            assertNotEquals(429, response.getStatus());
+        }
+        final MockHttpServletResponse blockedLogin = new MockHttpServletResponse();
+        serviceFilter.doFilter(post("/login", address), blockedLogin, new MockFilterChain());
+        assertEquals(429, blockedLogin.getStatus());
+
+        for (int i = 0; i < 12; i++) {
+            final MockHttpServletRequest request = post("/validate-token", address);
+            request.addHeader("Authorization", "Bearer synthetic-user-" + i);
             request.addHeader(RateLimitFilter.INTERNAL_SERVICE_TOKEN_HEADER, "service-secret");
             final MockHttpServletResponse response = new MockHttpServletResponse();
             serviceFilter.doFilter(request, response, new MockFilterChain());
             assertNotEquals(429, response.getStatus());
         }
 
-        final MockHttpServletRequest blockedRequest = post("/validate-token", "10.0.0.5");
+        final MockHttpServletRequest blockedRequest = post("/validate-token", address);
         blockedRequest.addHeader(RateLimitFilter.INTERNAL_SERVICE_TOKEN_HEADER, "service-secret");
         final MockHttpServletResponse blockedResponse = new MockHttpServletResponse();
         serviceFilter.doFilter(blockedRequest, blockedResponse, new MockFilterChain());
         assertEquals(429, blockedResponse.getStatus());
-
-        for (int i = 0; i < 2; i++) {
-            final MockHttpServletResponse response = new MockHttpServletResponse();
-            serviceFilter.doFilter(post("/login", "10.0.0.5"), response, new MockFilterChain());
-            assertNotEquals(429, response.getStatus());
-        }
+        assertEquals("60", blockedResponse.getHeader("Retry-After"));
     }
 
     @Test
