@@ -36,9 +36,9 @@ class UserRegistrationDtoValidationTest {
                 .setFirstname("John")
                 .setLastname("Doe")
                 .setCpf("123.456.789-09")
-                .setCountry("USA")
-                .setState("California")
-                .setCity("Los Angeles")
+                .setCountry("Brazil")
+                .setState("SP")
+                .setCity("São Paulo")
                 .setNeighborhood("Campinas")
                 .setZipCode("12345678")
                 .setStreet("Main Street");
@@ -85,6 +85,22 @@ class UserRegistrationDtoValidationTest {
         assertEquals(
                 Set.of("profile.cpf", "profile.zipCode"),
                 violatedFields(new UserRegistrationDto("john@example.com", "Password1", profile)));
+    }
+
+    @Test
+    void blankOptionalPhoneIsValid() {
+        final UserRegistrationDto dto = new UserRegistrationDto(
+                "john@example.com", "Password1", validProfile().setPhone(""));
+
+        assertTrue(violatedFields(dto).isEmpty());
+    }
+
+    @Test
+    void stateRequiresBrazilianUf() {
+        final UserRegistrationDto dto = new UserRegistrationDto(
+                "john@example.com", "Password1", validProfile().setState("California"));
+
+        assertEquals(Set.of("profile.state"), violatedFields(dto));
     }
 
     @Test

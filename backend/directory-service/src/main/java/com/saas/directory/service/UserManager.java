@@ -73,6 +73,7 @@ public class UserManager {
                 || userRegistrationDto.password().getBytes(StandardCharsets.UTF_8).length > 72) {
             throw new IllegalArgumentException("Password must be between 8 characters and 72 UTF-8 bytes");
         }
+        profileManager.validateProfile(userRegistrationDto.profile());
         final Role role = roleRepository
                 .findRoleByLabel(RoleName.USER)
                 .orElseThrow(() -> new RoleNotFoundException(String.format("Role [%s] not found", RoleName.USER)));

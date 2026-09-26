@@ -1,6 +1,7 @@
 package com.saas.directory.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -34,7 +35,7 @@ public class ProfileManagerTest {
                 .setCpf("12345678909")
                 .setPhone("11987654321")
                 .setCountry("USA")
-                .setState("California")
+                .setState("SP")
                 .setCity("Los Angeles")
                 .setNeighborhood("Campinas")
                 .setZipCode("12345678")
@@ -43,16 +44,7 @@ public class ProfileManagerTest {
 
         // Mock the repository behavior
         final Profile expectedProfile = new Profile(
-                "John",
-                "Doe",
-                "12345678909",
-                "USA",
-                "California",
-                "Los Angeles",
-                "Campinas",
-                "12345678",
-                "Main Street",
-                user);
+                "John", "Doe", "12345678909", "USA", "SP", "Los Angeles", "Campinas", "12345678", "Main Street", user);
         when(profileRepository.save(any(Profile.class))).thenReturn(expectedProfile);
 
         // Act
@@ -70,7 +62,7 @@ public class ProfileManagerTest {
                 .setLastname("Doe")
                 .setCpf("123.456.789-09")
                 .setCountry("USA")
-                .setState("California")
+                .setState("sp")
                 .setCity("Los Angeles")
                 .setNeighborhood("Campinas")
                 .setZipCode("12345678")
@@ -81,6 +73,43 @@ public class ProfileManagerTest {
 
         assertEquals("John", createdProfile.getFirstname());
         assertEquals("12345678909", createdProfile.getCpf());
+        assertEquals("SP", createdProfile.getState());
+    }
+
+    @Test
+    void createProfile_blankOptionalPhoneStoresNull() {
+        final ProfileDto profileDto = new ProfileDto()
+                .setFirstname("John")
+                .setLastname("Doe")
+                .setCpf("12345678909")
+                .setPhone("")
+                .setCountry("Brazil")
+                .setState("SP")
+                .setCity("São Paulo")
+                .setNeighborhood("Centro")
+                .setZipCode("12345678")
+                .setStreet("Main Street");
+        when(profileRepository.save(any(Profile.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        final Profile profile = profileManager.createProfile(new User("john@example.com", "password"), profileDto);
+
+        assertNull(profile.getPhone());
+    }
+
+    @Test
+    void validateProfile_rejectsUnsupportedStateBeforeSave() {
+        final ProfileDto profileDto = new ProfileDto()
+                .setFirstname("John")
+                .setLastname("Doe")
+                .setCpf("12345678909")
+                .setCountry("Brazil")
+                .setState("ZZ")
+                .setCity("São Paulo")
+                .setNeighborhood("Centro")
+                .setZipCode("12345678")
+                .setStreet("Main Street");
+
+        assertThrows(IllegalArgumentException.class, () -> profileManager.validateProfile(profileDto));
     }
 
     @Test
@@ -98,7 +127,7 @@ public class ProfileManagerTest {
                 .setLastname("Doe")
                 .setCpf("12345678909")
                 .setCountry("USA")
-                .setState("California")
+                .setState("SP")
                 .setCity("Los Angeles")
                 .setNeighborhood("Campinas")
                 .setZipCode("12345678")

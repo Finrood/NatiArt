@@ -1,5 +1,8 @@
 package com.saas.directory.service;
 
+import java.util.Locale;
+import java.util.Set;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -10,6 +13,10 @@ import com.saas.directory.repository.ProfileRepository;
 
 @Service
 public class ProfileManager {
+    private static final Set<String> BRAZILIAN_STATES = Set.of(
+            "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI",
+            "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO");
+
     private final ProfileRepository profileRepository;
 
     public ProfileManager(ProfileRepository profileRepository) {
@@ -18,6 +25,15 @@ public class ProfileManager {
 
     @Transactional
     public Profile createProfile(User user, ProfileDto profileDto) {
+        return profileRepository.save(buildProfile(user, profileDto));
+    }
+
+    /** Validates and normalizes signup input before any user row is persisted. */
+    public void validateProfile(ProfileDto profileDto) {
+        buildProfile(null, profileDto);
+    }
+
+    private Profile buildProfile(User user, ProfileDto profileDto) {
         if (profileDto == null) {
             throw new IllegalArgumentException("Profile cannot be null");
         }
@@ -29,20 +45,24 @@ public class ProfileManager {
         if (zipCode.length() != 8) {
             throw new IllegalArgumentException("Zip code is invalid");
         }
+        final String state = required(profileDto.getState(), "State", 2).toUpperCase(Locale.ROOT);
+        if (!BRAZILIAN_STATES.contains(state)) {
+            throw new IllegalArgumentException("State is invalid");
+        }
         final Profile profile = new Profile(
                 required(profileDto.getFirstname(), "Firstname", 100),
                 required(profileDto.getLastname(), "Lastname", 100),
                 cpf,
                 required(profileDto.getCountry(), "Country", 100),
-                required(profileDto.getState(), "State", 100),
+                state,
                 required(profileDto.getCity(), "City", 100),
                 required(profileDto.getNeighborhood(), "Neighborhood", 100),
                 zipCode,
                 required(profileDto.getStreet(), "Street", 255),
                 user);
-        if (profileDto.getPhone() != null) {
+        if (profileDto.getPhone() != null && !profileDto.getPhone().isBlank()) {
             final String phone = profileDto.getPhone().replaceAll("[^0-9]", "");
-            if (!phone.isEmpty() && phone.length() != 10 && phone.length() != 11) {
+            if (phone.length() != 10 && phone.length() != 11) {
                 throw new IllegalArgumentException("Phone is invalid");
             }
             profile.setPhone(phone);
@@ -51,7 +71,7 @@ public class ProfileManager {
             profile.setComplement(required(profileDto.getComplement(), "Complement", 255));
         }
 
-        return profileRepository.save(profile);
+        return profile;
     }
 
     private static String required(String value, String field, int maxLength) {

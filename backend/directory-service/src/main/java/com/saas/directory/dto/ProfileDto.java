@@ -21,7 +21,7 @@ public class ProfileDto {
     @Pattern(regexp = "(?:[0-9]{11}|[0-9]{3}\\.[0-9]{3}\\.[0-9]{3}-[0-9]{2})")
     private String cpf;
 
-    @Pattern(regexp = "(?:[0-9]{10,11}|\\([0-9]{2}\\) [0-9]{4,5}-[0-9]{4})")
+    @Pattern(regexp = "(?:|[0-9]{10,11}|\\([0-9]{2}\\) [0-9]{4,5}-[0-9]{4})")
     private String phone;
 
     @NotBlank
@@ -29,7 +29,8 @@ public class ProfileDto {
     private String country;
 
     @NotBlank
-    @Size(max = 100)
+    @Size(max = 2)
+    @Pattern(regexp = "(?i)(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)")
     private String state;
 
     @NotBlank
