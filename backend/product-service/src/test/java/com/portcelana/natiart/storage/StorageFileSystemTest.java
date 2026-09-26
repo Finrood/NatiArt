@@ -7,8 +7,10 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,6 +18,7 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -80,6 +83,27 @@ class StorageFileSystemTest {
 
         assertEquals("Requested image is not available", thrown.getMessage());
         assertFalse(thrown.getMessage().contains(root.toString()));
+    }
+
+    @Test
+    void openFilePreservesAccessDeniedAsOperationalFailure() throws IOException {
+        Path root = tempDir.resolve("product-images");
+        Path denied = Path.of(writeInside(root, "p1/denied.webp", "image-bytes"));
+        Assumptions.assumeTrue(Files.getFileStore(denied).supportsFileAttributeView("posix"));
+        Set<PosixFilePermission> originalPermissions = Files.getPosixFilePermissions(denied);
+        try {
+            Files.setPosixFilePermissions(denied, Set.of());
+            Assumptions.assumeFalse(Files.isReadable(denied));
+            StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+
+            IllegalStateException thrown =
+                    assertThrows(IllegalStateException.class, () -> storage.openFile(denied.toUri()));
+
+            assertInstanceOf(AccessDeniedException.class, thrown.getCause());
+            assertFalse(thrown.getMessage().contains(root.toString()));
+        } finally {
+            Files.setPosixFilePermissions(denied, originalPermissions);
+        }
     }
 
     @Test

@@ -4,9 +4,11 @@ import java.io.*;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.NotDirectoryException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -50,14 +52,15 @@ public class StorageFileSystem implements Storage {
 
     @Override
     public InputStream openFile(URI path) {
-        final File file = resolveAllowedFile(path);
-        if (!file.isFile()) {
-            throw new ResourceNotFoundException("Requested image is not available");
-        }
+        final Path file = resolveAllowedFile(path).toPath();
         try {
-            return Files.newInputStream(file.toPath(), StandardOpenOption.READ);
-        } catch (NoSuchFileException | FileNotFoundException e) {
-            // The file may be removed between the existence check and opening it.
+            final BasicFileAttributes attributes = Files.readAttributes(file, BasicFileAttributes.class);
+            if (!attributes.isRegularFile()) {
+                throw new ResourceNotFoundException("Requested image is not available");
+            }
+            return Files.newInputStream(file, StandardOpenOption.READ);
+        } catch (NoSuchFileException | NotDirectoryException e) {
+            // The file may also disappear between reading its attributes and opening it.
             throw new ResourceNotFoundException("Requested image is not available");
         } catch (IOException e) {
             throw new IllegalStateException("Error while reading the requested image from local storage.", e);
@@ -73,7 +76,7 @@ public class StorageFileSystem implements Storage {
         try {
             normalizedCandidate = candidate.getCanonicalFile().toPath();
         } catch (IOException e) {
-            throw new ResourceNotFoundException("Requested image is not available");
+            throw new IllegalStateException("Error while resolving the requested image in local storage.", e);
         }
         for (Path root : allowedRoots) {
             if (normalizedCandidate.startsWith(root)) {
