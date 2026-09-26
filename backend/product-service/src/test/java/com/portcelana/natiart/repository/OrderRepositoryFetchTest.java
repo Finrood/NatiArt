@@ -65,6 +65,8 @@ class OrderRepositoryFetchTest {
                 .orElseThrow();
 
         assertTrue(Hibernate.isInitialized(replay.getItems()));
+        assertTrue(Hibernate.isInitialized(replay.getItems().getFirst().getProduct()));
+        entityManager.clear();
         assertEquals(1, OrderDto.from(replay).getItems().size());
     }
 }

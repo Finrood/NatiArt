@@ -15,7 +15,7 @@ import com.portcelana.natiart.model.support.OrderStatus;
 
 @Repository
 public interface OrderRepository extends JpaRepository<CustomerOrder, String> {
-    @EntityGraph(attributePaths = "items")
+    @EntityGraph(attributePaths = {"items", "items.product"})
     Optional<CustomerOrder> findByOwnerExternalIdAndIdempotencyKey(String ownerExternalId, String idempotencyKey);
 
     @Query(
