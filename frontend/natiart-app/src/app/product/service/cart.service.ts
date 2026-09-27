@@ -33,37 +33,38 @@ export class CartService {
   }
 
   addToCart(product: Product, quantity: number, goldBorder?: boolean, image?: File): Observable<void> {
-    // If a custom image is provided, ALWAYS treat it as a new, unique item.
-    if (image) {
-      const newCartItemId = this.generateUniqueCartItemId();
-      const newItem: CartItem = { cartItemId: newCartItemId, product, quantity, goldBorder, image };
-      this.cartItems.push(newItem);
-    } else {
-      // If no custom image, check if an identical item (product + goldBorder) already exists.
-      const existingItem = this.cartItems.find(item =>
-        item.product.id === product.id &&
-        item.goldBorder === goldBorder &&
-        !item.image // Ensure we only group items *without* custom images
-      );
+    if (!Number.isSafeInteger(quantity) || quantity < 1 ||
+        typeof product.id !== 'string' || product.id.trim().length === 0 ||
+        !Number.isFinite(product.markedPrice) || product.markedPrice < 0 ||
+        !Number.isSafeInteger(product.stockQuantity) || product.stockQuantity < 1) {
+      reportWarning('cart');
+      return of(undefined);
+    }
+    const available = this.availableStock(product);
+    if (available < 1) {
+      reportWarning('cart');
+      return of(undefined);
+    }
+    const acceptedQuantity = Math.min(quantity, available);
+    if (acceptedQuantity < quantity) {
+      reportWarning('cart');
+    }
 
+    // An uploaded image keeps its own line, but every variant shares the same product stock.
+    if (image) {
+      this.cartItems.push({
+        cartItemId: this.generateUniqueCartItemId(), product, quantity: acceptedQuantity, goldBorder, image
+      });
+    } else {
+      const existingItem = this.cartItems.find(item =>
+        item.product.id === product.id && item.goldBorder === goldBorder && !item.image
+      );
       if (existingItem) {
-        // Check if adding the quantity exceeds stock
-        const newQuantity = Math.min(existingItem.quantity + quantity, product.stockQuantity);
-        existingItem.quantity = newQuantity;
+        existingItem.quantity += acceptedQuantity;
       } else {
-        // Check stock before adding as a new item
-        if (quantity > product.stockQuantity) {
-          reportWarning('cart');
-          quantity = product.stockQuantity; // Adjust quantity to max available stock
-        }
-        if (quantity > 0) { // Only add if quantity is valid
-          const newCartItemId = this.generateUniqueCartItemId();
-          const newItem: CartItem = { cartItemId: newCartItemId, product, quantity, goldBorder };
-          this.cartItems.push(newItem);
-        } else {
-          reportWarning('cart');
-          return of(undefined);
-        }
+        this.cartItems.push({
+          cartItemId: this.generateUniqueCartItemId(), product, quantity: acceptedQuantity, goldBorder
+        });
       }
     }
 
@@ -79,17 +80,23 @@ export class CartService {
 
   updateItemQuantity(cartItemId: string, quantity: number): Observable<void> {
     const itemIndex = this.cartItems.findIndex(item => item.cartItemId === cartItemId);
-    if (itemIndex > -1) {
-      const item = this.cartItems[itemIndex];
-      // Removal is removeFromCart's job: quantities floor at 1 so a 0 update
-      // can never silently mean delete (BW1 dead-branch fix).
-      const newQuantity: number = Math.max(1, Math.min(quantity, item.product.stockQuantity));
-      item.quantity = newQuantity;
-      this.cartItems[itemIndex] = item;
-      this.updateCart();
-    } else {
+    if (itemIndex < 0 || !Number.isSafeInteger(quantity)) {
       reportWarning('cart');
+      return of(undefined);
     }
+    const item = this.cartItems[itemIndex];
+    if (!Number.isSafeInteger(item.product.stockQuantity) || item.product.stockQuantity < 1) {
+      reportWarning('cart');
+      return of(undefined);
+    }
+    const available = this.availableStock(item.product, cartItemId);
+    if (available < 1) {
+      reportWarning('cart');
+      return of(undefined);
+    }
+    // Removal is removeFromCart's job; a zero update still floors at one.
+    item.quantity = Math.max(1, Math.min(quantity, available));
+    this.updateCart();
     return of(undefined);
   }
 
@@ -111,6 +118,17 @@ export class CartService {
 
   getCartItemsSnapshot(): CartItem[] {
     return [...this.cartItems];
+  }
+
+  private availableStock(product: Product, excludedCartItemId?: string): number {
+    const variants = this.cartItems.filter(item => item.product.id === product.id);
+    const stockLimit = variants.reduce(
+      (limit, item) => Math.min(limit, item.product.stockQuantity), product.stockQuantity
+    );
+    const reserved = variants.reduce(
+      (total, item) => total + (item.cartItemId === excludedCartItemId ? 0 : item.quantity), 0
+    );
+    return Math.max(0, stockLimit - reserved);
   }
 
   private generateUniqueCartItemId(): string {
@@ -174,13 +192,26 @@ export class CartService {
     if (!Array.isArray(parsed)) {
       return [];
     }
-    const seenIds: Set<string> = new Set<string>();
+    const lines = parsed.filter((entry): entry is CartItem & {product: Product & {id: string}} =>
+      this.isRestorableCartLine(entry)
+    );
+    const stockLimits = new Map<string, number>();
+    for (const line of lines) {
+      stockLimits.set(line.product.id, Math.min(
+        stockLimits.get(line.product.id) ?? line.product.stockQuantity, line.product.stockQuantity
+      ));
+    }
+    const seenIds = new Set<string>();
+    const reservedByProduct = new Map<string, number>();
     const valid: CartItem[] = [];
-    for (const entry of parsed) {
-      if (!this.isRestorableCartLine(entry)) {
+    for (const line of lines) {
+      const reserved = reservedByProduct.get(line.product.id) ?? 0;
+      const available = (stockLimits.get(line.product.id) ?? 0) - reserved;
+      if (available < 1) {
         continue;
       }
-      const line: CartItem = entry as CartItem;
+      line.quantity = Math.min(line.quantity, available);
+      reservedByProduct.set(line.product.id, reserved + line.quantity);
       if (seenIds.has(line.cartItemId)) {
         // Duplicate identity: mint a fresh id so keyed ops stay 1:1.
         line.cartItemId = this.generateUniqueCartItemId();
@@ -203,7 +234,7 @@ export class CartService {
     return envelope.version === CartService.storageVersion ? envelope.items : [];
   }
 
-  private isRestorableCartLine(entry: unknown): entry is CartItem {
+  private isRestorableCartLine(entry: unknown): entry is CartItem & {product: Product & {id: string}} {
     if (typeof entry !== 'object' || entry === null) {
       return false;
     }
