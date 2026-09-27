@@ -245,9 +245,8 @@ public class ProductManagerImpl implements ProductManager {
     @Override
     @Transactional
     public Product inverseVisibility(String productId) {
-        // Atomic in-database flip: concurrent toggles serialize in the database
-        // instead of colliding on @Version and surfacing OptimisticLockException
-        // as a generic 500.
+        // The bulk flip increments @Version and clears managed state before the
+        // complete reload, so a stale product save cannot undo this change.
         if (productRepository.toggleActiveById(productId) == 0) {
             throw new ResourceNotFoundException("Product with id [" + productId + "] not found");
         }
