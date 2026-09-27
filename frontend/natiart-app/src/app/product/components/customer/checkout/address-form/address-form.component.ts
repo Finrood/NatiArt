@@ -1,7 +1,7 @@
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit} from '@angular/core';
 import {FormGroup, ReactiveFormsModule} from '@angular/forms';
 
-import {debounceTime, distinctUntilChanged, finalize, Subject, Subscription, takeUntil} from 'rxjs';
+import {debounceTime, distinctUntilChanged, finalize, Subject, Subscription, takeUntil, tap} from 'rxjs';
 import {SignupService} from "../../../../../directory/service/signup.service";
 import {ViaCEPResponse} from "../../../../../directory/models/viaCEPResponse.model";
 import {
@@ -43,6 +43,7 @@ export class AddressFormComponent implements OnInit, OnDestroy {
     if (this.zipCodeLookupEnabled) {
       this.addressFormGroup.get('zipCode')?.valueChanges
         .pipe(
+          tap(() => this.stopLookup()),
           debounceTime(this.CEP_DEBOUNCE_MS),
           distinctUntilChanged(),
           takeUntil(this.destroy$)
@@ -52,7 +53,6 @@ export class AddressFormComponent implements OnInit, OnDestroy {
   }
 
   private onZipCodeChange(zipCode: string | null): void {
-    this.stopLookup();
     this.clearErrorMessage();
     const cleanZipCode = zipCode?.replace(/\D/g, '');
     const zipCodeControl = this.addressFormGroup.get('zipCode');
@@ -63,12 +63,8 @@ export class AddressFormComponent implements OnInit, OnDestroy {
       this.addressFormGroup.patchValue({
         street: '', city: '', neighborhood: '', state: '', country: 'Brazil'
       });
-      // Only set error if it's not empty, otherwise rely on Validators.required
-      if (cleanZipCode && cleanZipCode.length !== 8) {
-        zipCodeControl?.setErrors({ 'invalidCepLength': true });
-      } else {
-        zipCodeControl?.setErrors(null); // Clear any previous errors if empty
-      }
+      // CEP syntax belongs to the control validators, independently of lookup availability.
+      zipCodeControl?.updateValueAndValidity({emitEvent: false});
       this.addressFormGroup.updateValueAndValidity(); // Update parent form group validity
       this.cdr.markForCheck();
       return;
@@ -92,7 +88,7 @@ export class AddressFormComponent implements OnInit, OnDestroy {
             this.addressFormGroup.patchValue({
               street: '', city: '', neighborhood: '', state: '', country: 'Brazil'
             });
-            zipCodeControl?.setErrors({ 'cepNotFound': true });
+            zipCodeControl?.updateValueAndValidity({emitEvent: false});
           } else {
             this.addressFormGroup.patchValue({
               street: data.logradouro,
@@ -101,7 +97,7 @@ export class AddressFormComponent implements OnInit, OnDestroy {
               state: data.uf,
               country: "Brazil", // Assuming Brazil is default
             });
-            zipCodeControl?.setErrors(null); // Clear CEP specific errors on success
+            zipCodeControl?.updateValueAndValidity({emitEvent: false});
           }
           // Mark all relevant controls as touched and dirty to show validation messages
           ['street', 'city', 'neighborhood', 'state', 'country'].forEach(controlName => {
@@ -117,7 +113,7 @@ export class AddressFormComponent implements OnInit, OnDestroy {
           this.addressFormGroup.patchValue({
             street: '', city: '', neighborhood: '', state: '', country: 'Brazil'
           });
-          zipCodeControl?.setErrors({ 'fetchError': true });
+          zipCodeControl?.updateValueAndValidity({emitEvent: false});
           // Mark all relevant controls as touched and dirty to show validation messages
           ['street', 'city', 'neighborhood', 'state', 'country'].forEach(controlName => {
             const control = this.addressFormGroup.get(controlName);

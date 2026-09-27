@@ -138,6 +138,40 @@ describe('CheckoutComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('preserves a buyer-edited address and house number across user refreshes', () => {
+    const shipping = component.checkoutForm.get('shippingInfo')!;
+    shipping.get('street')!.setValue('Rua Escolhida');
+    shipping.get('houseNumber')!.setValue('42');
+    shipping.markAsDirty();
+
+    currentUserSubject.next({
+      ...loggedInUser,
+      profile: {...loggedInUser.profile!, street: 'Rua do Perfil', city: 'Outra Cidade'}
+    });
+
+    expect(shipping.get('street')!.value).toBe('Rua Escolhida');
+    expect(shipping.get('houseNumber')!.value).toBe('42');
+    expect(shipping.get('city')!.value).toBe('Sao Paulo');
+  });
+
+  it('does not overwrite an address typed before a delayed profile arrives', () => {
+    fixture.destroy();
+    currentUserSubject.next(null);
+    const delayedFixture = TestBed.createComponent(CheckoutComponent);
+    delayedFixture.detectChanges();
+    const shipping = delayedFixture.componentInstance.checkoutForm.get('shippingInfo')!;
+    shipping.get('street')!.setValue('Rua Manual');
+    shipping.get('houseNumber')!.setValue('15');
+    shipping.markAsDirty();
+
+    currentUserSubject.next(loggedInUser);
+
+    expect(shipping.get('street')!.value).toBe('Rua Manual');
+    expect(shipping.get('houseNumber')!.value).toBe('15');
+    expect(shipping.get('country')!.value).toBe('Brazil');
+    delayedFixture.destroy();
+  });
+
   it('keeps checkout errors visible until dismissed (O3)', async () => {
     await component.onSubmit();
 

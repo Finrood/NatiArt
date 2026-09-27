@@ -57,6 +57,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   private checkoutFingerprint: string | null = null;
   private orderIdempotencyKey = crypto.randomUUID();
   private paymentIdempotencyKey = crypto.randomUUID();
+  private hasPrefilledProfile = false;
 
   private destroy$ = new Subject<void>();
 
@@ -148,33 +149,37 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       .pipe(
         takeUntil(this.destroy$),
         tap(user => {
-          if (user && user.profile) {
-            this.checkoutForm.patchValue({
-              userInfo: {
-                firstname: user.profile.firstname,
-                lastname: user.profile.lastname,
-                email: user.username,
-                cpf: this.formatCpf(user.profile.cpf),
-                phone: user.profile.phone,
-              },
-              shippingInfo: {
-                country: user.profile.country || 'Brazil',
-                state: user.profile.state,
-                city: user.profile.city,
-                neighborhood: user.profile.neighborhood,
-                zipCode: user.profile.zipCode,
-                street: user.profile.street,
-                houseNumber: '',
-                complement: user.profile.complement,
-              },
+          if (!user?.profile || this.hasPrefilledProfile) {
+            return;
+          }
+          this.hasPrefilledProfile = true;
+          const userInfo = this.checkoutForm.get('userInfo');
+          const shippingInfo = this.checkoutForm.get('shippingInfo');
+          if (userInfo?.pristine) {
+            userInfo.patchValue({
+              firstname: user.profile.firstname,
+              lastname: user.profile.lastname,
+              email: user.username,
+              cpf: this.formatCpf(user.profile.cpf),
+              phone: user.profile.phone,
             });
-
-            // Mark controls as touched if they are invalid after pre-filling
-            if (this.checkoutForm.get('userInfo')?.invalid) {
-              this.checkoutForm.get('userInfo')?.markAllAsTouched();
+            if (userInfo.invalid) {
+              userInfo.markAllAsTouched();
             }
-            if (this.checkoutForm.get('shippingInfo')?.invalid) {
-              this.checkoutForm.get('shippingInfo')?.markAllAsTouched();
+          }
+          if (shippingInfo?.pristine) {
+            shippingInfo.patchValue({
+              country: user.profile.country || 'Brazil',
+              state: user.profile.state,
+              city: user.profile.city,
+              neighborhood: user.profile.neighborhood,
+              zipCode: user.profile.zipCode,
+              street: user.profile.street,
+              complement: user.profile.complement,
+            });
+            // House number is deliberately left to the buyer; profile has no number field.
+            if (shippingInfo.invalid) {
+              shippingInfo.markAllAsTouched();
             }
           }
         })
