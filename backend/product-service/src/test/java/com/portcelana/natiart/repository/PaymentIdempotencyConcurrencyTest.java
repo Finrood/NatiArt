@@ -2,10 +2,12 @@ package com.portcelana.natiart.repository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -114,11 +116,14 @@ class PaymentIdempotencyConcurrencyTest {
             start.countDown();
 
             int acquired = 0;
+            int existingReservations = 0;
             int uniqueLosers = 0;
             for (Future<PaymentIdempotencyReservation> attempt : attempts) {
                 try {
                     if (attempt.get().acquired()) {
                         acquired++;
+                    } else {
+                        existingReservations++;
                     }
                 } catch (ExecutionException e) {
                     assertInstanceOf(DataIntegrityViolationException.class, e.getCause());
@@ -127,7 +132,7 @@ class PaymentIdempotencyConcurrencyTest {
             }
 
             assertEquals(1, acquired);
-            assertEquals(1, uniqueLosers);
+            assertEquals(1, existingReservations + uniqueLosers);
             assertEquals(
                     "order-1",
                     paymentIdempotencyRepository
@@ -137,5 +142,17 @@ class PaymentIdempotencyConcurrencyTest {
         } finally {
             executor.shutdownNow();
         }
+    }
+
+    @Test
+    void differentOrdersKeepIndependentReservations() {
+        final PaymentIdempotencyReservation first = paymentIdempotencyService.reserveForOrder(
+                "owner-independent", "order-" + UUID.randomUUID(), "key-first", "first-request");
+        final PaymentIdempotencyReservation second = paymentIdempotencyService.reserveForOrder(
+                "owner-independent", "order-" + UUID.randomUUID(), "key-second", "second-request");
+
+        assertTrue(first.acquired());
+        assertTrue(second.acquired());
+        assertNotEquals(first.record().getId(), second.record().getId());
     }
 }
