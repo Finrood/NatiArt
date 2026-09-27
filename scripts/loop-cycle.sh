@@ -583,12 +583,8 @@ log "Lens of the cycle: #$(( LENS_INDEX + 1 )) $LENS_NAME (slot $SLOT)."
 RED_TEAM_SLOT="none"
 RED_TEAM_DUE=0
 RED_TEAM_STATE="$LOG_DIR/last-red-team-slot"
-if [[ -f "$RED_TEAM_STATE" ]] && [[ "$(cat "$RED_TEAM_STATE")" =~ ^[0-9]+$ ]]; then
-    LAST_RED_TEAM_SLOT="$(cat "$RED_TEAM_STATE")"
-    if (( SLOT - LAST_RED_TEAM_SLOT >= 480 )); then
-        RED_TEAM_DUE=1
-    fi
-elif (( SLOT % 480 == 0 )); then
+LAST_RED_TEAM_SLOT="$(cat "$RED_TEAM_STATE" 2>/dev/null || echo none)"
+if red_team_is_due "$SLOT" "$RED_TEAM_STATE"; then
     RED_TEAM_DUE=1
 fi
 if (( RED_TEAM_DUE == 1 )); then
@@ -610,7 +606,8 @@ if [[ -n "$REPAIR_PRS" ]]; then
 fi
 if (( RED_TEAM_DUE == 1 )); then
     CYCLE_MSG="$CYCLE_MSG
-$(cat scripts/redteam-addendum.md)"
+$(cat scripts/redteam-addendum.md)
+Red-team completion evidence: write logs/cycle-$CYCLE_ID.redteam with the sensitive flow, trust boundaries, attempted exploit inputs, result, and PR URL before finishing. Without that nonempty artifact, the red-team slot stays overdue."
 fi
 log "Invoking agent for one cycle item."
 # Model failover: run-agent.sh walks the priority list from
@@ -661,6 +658,7 @@ fi
 AUDIT_ARTIFACT="logs/cycle-$CYCLE_ID.audit"
 HEARTBEAT_OUTCOME="FAILED"
 HEARTBEAT_ARTIFACTS=""
+HEARTBEAT_RED_TEAM_SLOT="none"
 if [[ "$STATUS" -eq 0 && -n "$PR_ARTIFACTS" ]]; then
     HEARTBEAT_OUTCOME="PR_DELIVERED"
     HEARTBEAT_ARTIFACTS="$PR_ARTIFACTS"
@@ -672,12 +670,20 @@ elif [[ "$STATUS" -eq 0 ]]; then
 else
     log "Cycle did not complete successfully; recording FAILED heartbeat."
 fi
-if ! emit_cycle_heartbeat "$CYCLE_ID" "$MASTER_SHA" "$HEARTBEAT_OUTCOME" "$HEARTBEAT_ARTIFACTS" "$LENS_NAME" "$RED_TEAM_SLOT"; then
+RED_TEAM_ARTIFACT="logs/cycle-$CYCLE_ID.redteam"
+if [[ "$RED_TEAM_DUE" -eq 1 && "$HEARTBEAT_OUTCOME" != "FAILED" && -s "$RED_TEAM_ARTIFACT" ]]; then
+    HEARTBEAT_OUTCOME="RED_TEAM_COMPLETED"
+    HEARTBEAT_RED_TEAM_SLOT="$RED_TEAM_SLOT"
+    HEARTBEAT_ARTIFACTS="${HEARTBEAT_ARTIFACTS:+$HEARTBEAT_ARTIFACTS,}$RED_TEAM_ARTIFACT"
+elif [[ "$RED_TEAM_DUE" -eq 1 ]]; then
+    log "Red-team completion artifact is missing; slot $SLOT remains overdue."
+fi
+if ! emit_cycle_heartbeat "$CYCLE_ID" "$MASTER_SHA" "$HEARTBEAT_OUTCOME" "$HEARTBEAT_ARTIFACTS" "$LENS_NAME" "$HEARTBEAT_RED_TEAM_SLOT"; then
     log "WARN: could not publish completion heartbeat for cycle $CYCLE_ID."
 else
     log "Published $HEARTBEAT_OUTCOME completion heartbeat for cycle $CYCLE_ID."
-    if [[ "$HEARTBEAT_OUTCOME" != "FAILED" && "$RED_TEAM_SLOT" != "none" ]]; then
-        printf '%s\n' "$RED_TEAM_SLOT" > "$RED_TEAM_STATE"
+    if [[ "$HEARTBEAT_OUTCOME" == "RED_TEAM_COMPLETED" ]]; then
+        printf '%s\n' "$HEARTBEAT_RED_TEAM_SLOT" > "$RED_TEAM_STATE"
     fi
 fi
 # Health row (gitignored logs/health.csv): one line per cycle for trends and

@@ -89,8 +89,10 @@ export PATH="$WORK/fakebin:$PATH"
 export WATCHDOG_SLEEP=0
 
 NOW_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+CYCLE_ID_NOW="$(date -u +%Y%m%dT%H%M%SZ)-1"
 OLD_ISO="2020-01-01T00:00:00Z"
 export GH_CALL_LOG="$WORK/calls.log"
+export NATIART_HEARTBEAT_MACHINE_LOGIN="natiart-loop-bot"
 
 run_check() { # returns exit code in $RC, output suppressed
     : > "$GH_CALL_LOG"
@@ -104,13 +106,32 @@ cat > "$WORK/pr-active.json" <<EOF
 EOF
 echo '[{"number": 42}]' > "$WORK/heartbeat-issue.json"
 cat > "$WORK/heartbeat-active.json" <<EOF
-{"comments": [{"createdAt": "$NOW_ISO", "body": "NATIART_LOOP_HEARTBEAT\ncycle_id=20260913T000000Z-1\nreviewed_commit=abc123\noutcome=PR_DELIVERED\nartifacts=PR #1\nlens=storage\nred_team_slot=none"}]}
+{"comments": [{"createdAt": "$NOW_ISO", "author": {"login": "natiart-loop-bot"}, "body": "NATIART_LOOP_HEARTBEAT\ncycle_id=$CYCLE_ID_NOW\nreviewed_commit=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\noutcome=PR_DELIVERED\nartifacts=PR #1\nlens=storage\nred_team_slot=none"}]}
 EOF
 echo "[]" > "$WORK/issue-none.json"
 export GH_PR_JSON="$WORK/pr-active.json" GH_HEARTBEAT_ISSUE_JSON="$WORK/heartbeat-issue.json" GH_HEARTBEAT_JSON="$WORK/heartbeat-active.json" GH_ISSUE_JSON="$WORK/issue-none.json"
 run_check
 assert_eq "0" "$RC" "successful heartbeat -> exit 0"
 assert_not_contains "$GH_CALL_LOG" "create" "active loop -> no issue created"
+
+# A human can copy the marker and payload, but cannot post as the dedicated
+# machine account. Old signed-looking payloads also cannot be replayed later.
+sed 's/natiart-loop-bot/Finrood/' "$WORK/heartbeat-active.json" > "$WORK/heartbeat-forged.json"
+export GH_HEARTBEAT_JSON="$WORK/heartbeat-forged.json"
+run_check
+assert_contains "$GH_CALL_LOG" "create" "human heartbeat impersonation -> alert filed"
+sed "s/$CYCLE_ID_NOW/20200101T000000Z-1/" "$WORK/heartbeat-active.json" > "$WORK/heartbeat-replayed.json"
+export GH_HEARTBEAT_JSON="$WORK/heartbeat-replayed.json"
+run_check
+assert_contains "$GH_CALL_LOG" "create" "old cycle replay -> alert filed"
+sed 's/reviewed_commit=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/reviewed_commit=abc123/' \
+    "$WORK/heartbeat-active.json" > "$WORK/heartbeat-malformed.json"
+export GH_HEARTBEAT_JSON="$WORK/heartbeat-malformed.json"
+run_check
+assert_contains "$GH_CALL_LOG" "create" "malformed machine payload -> alert filed"
+export GH_HEARTBEAT_JSON="$WORK/heartbeat-active.json"
+NATIART_HEARTBEAT_MACHINE_LOGIN=Finrood run_check
+assert_contains "$GH_CALL_LOG" "create" "human login configured as machine -> alert filed"
 
 # Human PR/comment activity cannot mask a missing completion heartbeat.
 echo '[{"number": 42}]' > "$WORK/heartbeat-issue.json"

@@ -21,9 +21,10 @@ logs/loop-<timestamp>.log        per-cycle log (gitignored; last 480 retained)
 Laptop timer semantics: `Persistent=true` replays one catch-up run after
 suspend/off (no storm); a boot double-fire is serialized by `flock`. Exit 124
 means healthy budget exhaustion (unit stays green via `SuccessExitStatus`);
-anything else red is a real abort. Completed cycles publish a bounded,
-authenticated heartbeat issue comment containing their cycle ID, reviewed
-commit, outcome and artifacts; the cloud watchdog trusts only that signal.
+anything else red is a real abort. Completed cycles publish a bounded
+heartbeat issue comment containing their cycle ID, reviewed commit, outcome
+and artifacts. The watchdog accepts only a correctly shaped comment from a
+dedicated machine GitHub login, with a cycle time close to the comment time.
 
 ## Install / control
 
@@ -155,8 +156,9 @@ empty level loudly (exit 2) and warns on any non-`xhigh` level.
   revertible in one commit. Each tightening breeds its own follow-ups.
 - **Red-team cadence**: every 480 slots (~10 days at full cadence) is adversarial
   (see `scripts/redteam-addendum.md`). The last successfully completed red-team
-  slot is persisted locally; an overdue slot runs once after suspend/offline
-  recovery instead of requiring an exact wall-clock slot.
+  slot is persisted locally after a nonempty red-team evidence file and a
+  published completion heartbeat. Missing state runs on the next cycle, and
+  an overdue slot runs once after suspend/offline recovery.
 - **Boy-scout ledger**: every PR converts one discovered nit into a tracked
   backlog item instead of silently fixing or ignoring it.
 - **Health metrics** (read from `logs/`): `health.csv` (one row/cycle: slot,
@@ -253,11 +255,15 @@ table above is agent discipline, enforced by the cycle prompt.
   dirt anywhere else (suspected human work — the loop never touches it) aborts
   the cycle loudly. Dirt on master still salvages (killed-cycle fallout).
 - Watchdog: `loop-watchdog.yml` runs cloud-side every 6h and opens an issue
-  when no loop-branch PR (fix|perf|chore|docs|feature|salvage — human branches
-  and dependabot never count, so human activity cannot mask a dead loop) moved
-  in 24h — exits read as success and logs stay local, so without this every
-  stall class is silent. An open alert gets timestamped comments, never
-  duplicates; all logic lives in tested `scripts/loop-watchdog-check.sh`.
+  when no trusted successful completion heartbeat arrived in 24h. A dedicated
+  GitHub service account with issue write access must post heartbeats. Set
+  `NATIART_HEARTBEAT_MACHINE_LOGIN` and `NATIART_HEARTBEAT_GH_TOKEN` in the local
+  timer environment, and set the repository Actions variable
+  `NATIART_HEARTBEAT_MACHINE_LOGIN` to the same login. The service account must
+  differ from `NATIART_LOOP_OWNER_LOGIN` (default `Finrood`). Missing configuration
+  fails closed and triggers the watchdog alert. Human comments, unrelated PRs,
+  and failed cycles do not count. An open alert gets timestamped comments,
+  never duplicates; all logic lives in `scripts/loop-watchdog-check.sh`.
 - Script tests: `scripts/tests/run.sh` (zero-dep bash, stubbed `gh`) covers
   `loop-lib.sh` helpers; `loop-scripts.yml` runs shellcheck + tests on every
   `scripts/**` PR. New helper → lib + test in the same PR.
