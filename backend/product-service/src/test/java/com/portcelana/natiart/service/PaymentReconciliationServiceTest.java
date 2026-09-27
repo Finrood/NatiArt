@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -137,6 +138,28 @@ class PaymentReconciliationServiceTest {
 
         verifyNoInteractions(orderManager);
         verify(webhookEventRepository).saveAndFlush(any(PaymentWebhookEvent.class));
+    }
+
+    @Test
+    void delayedPaidWebhookDoesNotReviveRefundedPaymentOrPendingOrder() {
+        final Payment payment = new Payment("pay-1", "cus-1", "order-1");
+        final CustomerOrder order = new CustomerOrder()
+                .setOwnerExternalId("cus-1")
+                .setTotalAmount(new BigDecimal("25.00"))
+                .setStatus(OrderStatus.PENDING);
+        when(webhookEventRepository.findByProviderEventId("evt-refund")).thenReturn(Optional.empty());
+        when(webhookEventRepository.findByProviderEventId("evt-paid")).thenReturn(Optional.empty());
+        when(paymentRepository.findById("pay-1")).thenReturn(Optional.of(payment));
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+        reconciliationService.processWebhook(webhook("evt-refund", "PAYMENT_REFUNDED", "REFUNDED", "25.00"));
+        reconciliationService.processWebhook(webhook("evt-paid", "PAYMENT_RECEIVED", "RECEIVED", "25.00"));
+
+        assertEquals("REFUNDED", payment.getProviderStatus());
+        assertEquals(OrderStatus.PENDING, order.getStatus());
+        verify(paymentRepository, times(1)).save(payment);
+        verifyNoInteractions(orderManager);
+        verify(webhookEventRepository, times(2)).saveAndFlush(any(PaymentWebhookEvent.class));
     }
 
     @Test

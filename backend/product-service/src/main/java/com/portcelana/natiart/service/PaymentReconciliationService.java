@@ -183,11 +183,13 @@ public class PaymentReconciliationService {
 
     private void applyProviderState(Payment localPayment, String providerStatus) {
         final String normalizedStatus = providerStatus.trim().toUpperCase(Locale.ROOT);
-        if (statusRank(normalizedStatus) >= statusRank(localPayment.getProviderStatus())) {
+        final boolean accepted = statusRank(normalizedStatus) >= statusRank(localPayment.getProviderStatus());
+        if (accepted) {
             localPayment.setProviderStatus(normalizedStatus).setProviderUpdatedAt(Instant.now());
             paymentRepository.save(localPayment);
         }
-        if (("RECEIVED".equals(normalizedStatus) || "CONFIRMED".equals(normalizedStatus))
+        if (accepted
+                && ("RECEIVED".equals(normalizedStatus) || "CONFIRMED".equals(normalizedStatus))
                 && localPayment.getOrderId() != null) {
             final CustomerOrder order =
                     orderRepository.findById(localPayment.getOrderId()).orElse(null);
