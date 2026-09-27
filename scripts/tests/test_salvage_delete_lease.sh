@@ -10,8 +10,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck source=scripts/loop-lib.sh
 source "$REPO_ROOT/scripts/loop-lib.sh"
 
-caller_count="$(grep -Ec '^[[:space:]]*delete_merged_remote_branch "\$(b|sb)"' \
-    "$REPO_ROOT/scripts/loop-cycle.sh")"
+caller_count="$(grep -Ec '^[[:space:]]*delete_merged_remote_branch "\$(branch|sb)"' \
+    "$REPO_ROOT/scripts/loop-lib.sh")"
 if [[ "$caller_count" -ne 3 ]]; then
     echo "expected all three cleanup callers to use the lease helper" >&2
     exit 1
@@ -38,6 +38,10 @@ printf 'validated\n' >"$ROOT/a/WIP"
 git -C "$ROOT/a" add WIP
 git -C "$ROOT/a" commit -qm validated
 git -C "$ROOT/a" push -q -u origin "$branch"
+(
+    cd "$ROOT/a"
+    record_loop_branch "$branch"
+)
 
 # Simulate validation: the salvage commit is merged and its remote SHA saved.
 git -C "$ROOT/a" checkout -q master

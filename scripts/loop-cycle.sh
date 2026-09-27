@@ -129,6 +129,7 @@ salvage_wip() { # $1 = source branch label; salvages dirt to origin/salvage/*
     local B
     B="salvage/$(date +%Y%m%d-%H%M%S)-$$"
     if git checkout -q -b "$B" && git add -A && git commit -qm "[WIP] Salvaged interrupted-cycle WIP from $1 (auto-salvage)" && git push -q origin "$B"; then
+        record_loop_branch "$B" || log "Could not record ownership of $B; later cleanup will preserve it."
         git checkout -q master
         git reset -q --hard origin/master
         log "WIP salvaged to origin/$B; master reset clean."
@@ -165,6 +166,7 @@ if [[ -n "$(git status --porcelain)" ]]; then
                 git branch "$SNAP_B" 2>/dev/null || true
                 git reset -q --hard "$SNAP_BEFORE" 2>/dev/null || true
                 if git push -q origin "$SNAP_B" 2>/dev/null; then
+                    record_loop_branch "$SNAP_B" || log "Could not record ownership of $SNAP_B; later cleanup will preserve it."
                     log "WIP snapshot preserved on origin/$SNAP_B; $CUR_BRANCH rewound."
                 else
                     log "WIP snapshot kept on local $SNAP_B (push failed); $CUR_BRANCH rewound."
@@ -206,6 +208,7 @@ LOCAL_AHEAD=$(git rev-list --count origin/master..master 2>/dev/null || echo 0)
 if [[ "$LOCAL_AHEAD" -gt 0 ]]; then
     B="salvage/stray-$(date +%Y%m%d-%H%M%S)"
     if git branch "$B" && git push -q origin "$B"; then
+        record_loop_branch "$B" || log "Could not record ownership of $B; later cleanup will preserve it."
         PR_URL=$(gh pr create --base master --head "$B" \
             --title "[Salvage] $LOCAL_AHEAD unpushed master commit(s) recovered from interrupted cycle" \
             --body "Loop guard found local master ahead of origin (work never pushed by the cycle that made it). Recovered to a reviewable PR; master reset to origin. Created by the loop guard (no agent model); review like any cycle output.
@@ -428,17 +431,7 @@ git branch -vv | awk '/: gone]/{print $1}' | grep -v '^\*' | xargs -r git branch
 # Salvage retention: keep the newest 5 salvage branches, and only delete older
 # branches after proving their commits are already merged into origin/master.
 # Old unmerged salvage is still recoverable WIP and must never be force-deleted.
-git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads/salvage/ 2>/dev/null | tail -n +6 | while read -r sb; do
-    REMOTE_SB_SHA="$(git rev-parse "origin/$sb" 2>/dev/null || true)"
-    if git merge-base --is-ancestor "$sb" origin/master 2>/dev/null && \
-       { [[ -z "$REMOTE_SB_SHA" ]] || git merge-base --is-ancestor "$REMOTE_SB_SHA" origin/master 2>/dev/null; }; then
-        log "Deleting old merged salvage branch $sb."
-        git branch -D "$sb" 2>/dev/null || true
-        delete_merged_remote_branch "$sb" || true
-    else
-        log "Preserving old salvage branch $sb (local or remote tip is unmerged)."
-    fi
-done
+cleanup_old_local_salvage
 
 # 5a. Mechanical verdict production. Runs every cycle, including REPAIR MODE —
 # and reviews RED PRs too: the reviewer is the one who reports machine-readable
@@ -539,16 +532,11 @@ done || true
 
 # Remote hygiene: retry deletion of merged loop branches (the --delete-branch
 # flag occasionally races GitHub auto-delete and leaves them behind). Only
-# branches fully merged into master, only loop prefixes — never master,
+# branches fully merged into master, only recorded loop branches — never master,
 # dependabot/*, or unmerged work. Salvage retention uses fetched commit age and
 # verifies the remote tip is merged before deleting anything.
-git branch -r --merged origin/master 2>/dev/null | sed 's#^ *origin/##' | grep -E '^(fix|perf|chore|docs|feature)/' | sort -u | while read -r b; do
-    delete_merged_remote_branch "$b" || true
-done || true
-git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/remotes/origin/salvage/ 2>/dev/null | sed 's#^origin/##' | tail -n +6 | while read -r sb; do
-    [[ -z "$sb" ]] && continue
-    delete_merged_remote_branch "$sb" || true
-done || true
+cleanup_merged_remote_branches
+cleanup_old_remote_salvage
 
 # 6. Hand one item to the agent (non-interactive, repo permission policy applies;
 #    never --auto). Timeout keeps the 30-minute cadence honest. The lens rotates

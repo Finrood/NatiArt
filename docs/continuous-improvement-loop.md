@@ -281,10 +281,12 @@ table above is agent discipline, enforced by the cycle prompt.
   verdict marked with the current head means the round is spent and final. The self-heal merge skips PRs touching loop machinery (scripts/,
   agents/, AGENTS.md, mirrors, loop docs) regardless of verdicts, enforcing
   the self-modification ban mechanically.
-- Remote hygiene: every cycle retries deletion of merged loop-prefix branches
-  (`fix|perf|chore|docs|feature/*`) — the `--delete-branch` flag occasionally
-  races GitHub auto-delete. Never touches unmerged work, `master`, or
-  dependabot branches. Logs keep the last 300 cycles.
+- Remote hygiene: every cycle retries deletion of merged branches recorded when
+  this checkout's loop created them. The record lives in the common Git
+  directory and is tied to the origin URL and initial branch tip. A fresh
+  checkout preserves older unrecorded branches; operators must clean those up
+  manually after verifying ownership. Deletion also checks the merged remote
+  tip and uses a commit lease. Logs keep the last 300 cycles.
 
 ## Backlog
 

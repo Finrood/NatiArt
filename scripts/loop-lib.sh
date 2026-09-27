@@ -62,18 +62,74 @@ is_docs_only() { # $1 = PR number; true iff every changed file is under docs/
     [[ -n "$files" ]] && ! grep -qvE '^docs/' <<<"$files"
 }
 
-is_loop_branch() { # $1 = branch name; true iff the loop owns it (may salvage)
+is_loop_branch() { # $1 = eligible prefix; this alone does not prove ownership
     [[ "${1:-}" =~ ^(fix|perf|chore|docs|feature|salvage)/ ]]
+}
+
+loop_branch_registry() {
+    printf '%s/natiart-loop-owned-branches.tsv\n' "$(git rev-parse --path-format=absolute --git-common-dir)"
+}
+
+loop_origin_id() {
+    git remote get-url origin | sha256sum | awk '{print $1}'
+}
+
+# Call only immediately after this loop creates and pushes a branch. The record
+# lives in the common Git directory, so a fresh checkout preserves all unknown
+# remote branches instead of inferring ownership from their names.
+record_loop_branch() { # $1 = branch created by this loop
+    local branch="$1" tip local_tip registry origin_id
+    is_loop_branch "$branch" && git check-ref-format --branch "$branch" >/dev/null 2>&1 || return 1
+    tip="$(git ls-remote --heads origin "refs/heads/$branch" | awk 'NR == 1 {print $1}')"
+    [[ "$tip" =~ ^[0-9a-f]{40}$ ]] || return 1
+    local_tip="$(git rev-parse --verify "refs/heads/$branch" 2>/dev/null)" || return 1
+    [[ "$local_tip" == "$tip" ]] || return 1
+    registry="$(loop_branch_registry)" || return 1
+    origin_id="$(loop_origin_id)" || return 1
+    printf '%s\t%s\t%s\n' "$origin_id" "$branch" "$tip" >> "$registry"
+}
+
+loop_branch_is_recorded() { # $1 = branch, $2 = current remote tip
+    local branch="$1" tip="$2" registry origin_id created_tip recorded_origin recorded_branch
+    registry="$(loop_branch_registry)" || return 1
+    [[ -f "$registry" ]] || return 1
+    origin_id="$(loop_origin_id)" || return 1
+    while IFS=$'\t' read -r recorded_origin recorded_branch created_tip; do
+        if [[ "$recorded_origin" == "$origin_id" && "$recorded_branch" == "$branch" &&
+              "$created_tip" =~ ^[0-9a-f]{40}$ ]] &&
+           git merge-base --is-ancestor "$created_tip" "$tip" 2>/dev/null; then
+            return 0
+        fi
+    done < "$registry"
+    return 1
+}
+
+forget_loop_branch() { # $1 = successfully deleted branch
+    local registry origin_id tmp
+    registry="$(loop_branch_registry)" || return 1
+    [[ -f "$registry" ]] || return 0
+    origin_id="$(loop_origin_id)" || return 1
+    tmp="$(mktemp "${registry}.tmp.XXXXXX")" || return 1
+    if awk -F '\t' -v origin="$origin_id" -v branch="$1" \
+        '!($1 == origin && $2 == branch)' "$registry" > "$tmp" && mv "$tmp" "$registry"; then
+        return 0
+    fi
+    rm -f "$tmp"
+    return 1
 }
 
 delete_merged_remote_branch() { # $1 = owned branch; lease-protected deletion
     local branch="$1" remote_tip
-    if [[ ! "$branch" =~ ^(fix|perf|chore|docs|feature|salvage)/ ]]; then
-        log "Preserving remote branch $branch (not a loop-owned prefix)."
+    if ! is_loop_branch "$branch" || ! git check-ref-format --branch "$branch" >/dev/null 2>&1; then
+        log "Preserving remote branch $branch (invalid loop branch name)."
         return 0
     fi
     remote_tip="$(git ls-remote --heads origin "refs/heads/$branch" 2>/dev/null | awk 'NR == 1 {print $1}')"
     if [[ -z "$remote_tip" ]]; then
+        return 0
+    fi
+    if ! loop_branch_is_recorded "$branch" "$remote_tip"; then
+        log "Preserving remote branch $branch (no matching loop ownership record)."
         return 0
     fi
     if [[ ! "$remote_tip" =~ ^[0-9a-f]{40}$ ]] || \
@@ -82,11 +138,45 @@ delete_merged_remote_branch() { # $1 = owned branch; lease-protected deletion
         return 0
     fi
     if git push -q --force-with-lease="refs/heads/$branch:$remote_tip" origin --delete "$branch"; then
+        forget_loop_branch "$branch" || log "Could not clear ownership record for deleted branch $branch."
         log "Deleted merged remote branch $branch at validated tip ${remote_tip:0:8}."
         return 0
     fi
     log "Remote branch $branch changed during validation; preserving its newer tip."
     return 1
+}
+
+cleanup_old_local_salvage() {
+    local sb remote_sha
+    while read -r sb; do
+        [[ -z "$sb" ]] && continue
+        remote_sha="$(git rev-parse "origin/$sb" 2>/dev/null || true)"
+        if [[ -n "$remote_sha" ]] && loop_branch_is_recorded "$sb" "$remote_sha" &&
+           git merge-base --is-ancestor "$sb" origin/master 2>/dev/null &&
+           git merge-base --is-ancestor "$remote_sha" origin/master 2>/dev/null; then
+            log "Deleting old merged salvage branch $sb."
+            git branch -D "$sb" 2>/dev/null || true
+            delete_merged_remote_branch "$sb" || true
+        else
+            log "Preserving old salvage branch $sb (unrecorded or unmerged)."
+        fi
+    done < <(git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads/salvage/ 2>/dev/null | tail -n +6)
+}
+
+cleanup_merged_remote_branches() {
+    local branch
+    while read -r branch; do
+        [[ -z "$branch" ]] && continue
+        delete_merged_remote_branch "$branch" || true
+    done < <(git branch -r --merged origin/master 2>/dev/null | sed 's#^ *origin/##' | grep -E '^(fix|perf|chore|docs|feature)/' | sort -u)
+}
+
+cleanup_old_remote_salvage() {
+    local branch
+    while read -r branch; do
+        [[ -z "$branch" ]] && continue
+        delete_merged_remote_branch "$branch" || true
+    done < <(git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/remotes/origin/salvage/ 2>/dev/null | sed 's#^origin/##' | tail -n +6)
 }
 
 semver_bump() { # $1 = dependabot title; prints patch|minor|major|unknown
