@@ -5,11 +5,13 @@ on:
     branches: [ "master" ]
     paths:
       - "frontend/**"
+      - ".dockerignore"
       - ".github/workflows/frontend_workflow.yml"
   pull_request:
     branches: [ "master" ]
     paths:
       - "frontend/**"
+      - ".dockerignore"
       - ".github/workflows/frontend_workflow.yml"
 
 # Least privilege: the build only reads the repo.
@@ -51,3 +53,14 @@ jobs:
         env:
           CHROME_BIN: /usr/bin/google-chrome
         run: npm test -- --watch=false --browsers=ChromeHeadless
+
+  docker-context-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Verify clean and dirty Docker contexts and lockfile strictness
+        run: bash frontend/scripts/smoke_contexts.sh
