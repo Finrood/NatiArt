@@ -106,15 +106,17 @@ latest_verdict() { # $1 = PR number; prints the FIRST LINE of the newest VERDICT
     latest_verdict_body "$1" | grep -m1 '^VERDICT:' || true
 }
 
-latest_review_record() { # $1 = PR number; prints author<TAB>body for newest review verdict
-    gh pr view "$1" --json reviews --jq '[((.reviews // [])[] | {t: .submittedAt, a: (.author.login // ""), b: .body})]
+latest_review_record() { # $1 = PR; newest verdict's author, state, commit, first line
+    gh pr view "$1" --json reviews --jq '[((.reviews // [])[] | {t: .submittedAt, a: (.author.login // ""), s: (.state // ""), c: (.commit.oid // ""), b: .body})]
         | map(select(.b | type == "string")) | map(.b |= gsub("^[ \\t]+"; ""))
         | map(select(.b | startswith("VERDICT:"))) | sort_by(.t) | last
-        | "\(.a)\t\(.b | split("\\n")[0])" // empty' 2>/dev/null || true
+        | if . == null then empty else "\(.a)\t\(.s)\t\(.c)\t\(.b | split("\n")[0])" end' 2>/dev/null || true
 }
 
-login_is_allowed() { # $1 = authenticated GitHub login; comma-separated allowlist is explicit
-    local login="$1" configured="${NATIART_TRUSTED_LOGINS:-Finrood}" allowed
+login_in_list() { # $1 = authenticated login; $2 = comma-separated allowlist
+    local login="$1" configured="$2" allowed_login
+    local -a allowed
+    [[ -n "$login" && -n "$configured" ]] || return 1
     IFS=',' read -r -a allowed <<<"$configured"
     for allowed_login in "${allowed[@]}"; do
         [[ "$login" == "$allowed_login" ]] && return 0
@@ -122,13 +124,15 @@ login_is_allowed() { # $1 = authenticated GitHub login; comma-separated allowlis
     return 1
 }
 
-trusted_latest_verdict() { # $1 = PR number; review verdict only, from an allowed author
-    local record author body
+trusted_latest_verdict() { # $1 = PR, $2 = exact head SHA; formal review only
+    local record reviewer state review_sha body pr_author
     record="$(latest_review_record "$1")"
     [[ "$record" == *$'\t'* ]] || return 1
-    author="${record%%$'\t'*}"
-    body="${record#*$'\t'}"
-    login_is_allowed "$author" || return 1
+    IFS=$'\t' read -r reviewer state review_sha body <<<"$record"
+    [[ "$state" == APPROVED && "$review_sha" == "$2" && "$2" =~ ^[0-9a-f]{40}$ ]] || return 1
+    login_in_list "$reviewer" "${NATIART_TRUSTED_REVIEWERS:-}" || return 1
+    pr_author="$(gh pr view "$1" --json author --jq '.author.login // empty' 2>/dev/null)" || return 1
+    [[ -n "$pr_author" && "$reviewer" != "$pr_author" ]] || return 1
     printf '%s\n' "$body" | sed -n '1p'
 }
 
@@ -140,8 +144,16 @@ pr_is_loop_owned() { # $1 = PR number; authenticated author + exact ownership ma
     local author body
     author="$(gh pr view "$1" --json author --jq '.author.login // empty' 2>/dev/null)" || return 1
     body="$(gh pr view "$1" --json body --jq '.body // empty' 2>/dev/null)" || return 1
-    login_is_allowed "$author" || return 1
+    login_in_list "$author" "${NATIART_LOOP_AUTHORS:-Finrood}" || return 1
     grep -qxF 'Loop-Owner: natiart-improvement-loop' <<<"$body"
+}
+
+merge_pr_at_head() { # $1 = PR number; $2 = reviewed full head SHA
+    local current_head
+    [[ "${2:-}" =~ ^[0-9a-f]{40}$ ]] || return 1
+    current_head="$(gh pr view "$1" --json headRefOid --jq .headRefOid 2>/dev/null)" || return 1
+    [[ "$current_head" == "$2" ]] || return 1
+    gh pr merge "$1" --merge --delete-branch --match-head-commit "$2"
 }
 
 verdict_model() { # $1 = PR number; prints the Model: value of the newest

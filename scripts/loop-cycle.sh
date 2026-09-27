@@ -319,17 +319,17 @@ for n in $CODE_PRS $DOCS_PRS; do
         log "PR #$n is missing one or more path-required green checks; leaving open."
         continue
     fi
-    LATEST_V="$(trusted_latest_verdict "$n" || true)"
-    if ! is_head_bound_approval "$LATEST_V"; then
-        log "PR #$n latest verdict is not APPROVE; leaving open for review."
-        continue
-    fi
-    RV_SHA="$(reviewed_sha "$LATEST_V")"
     HEAD_SHA="$(gh pr view "$n" --json headRefOid --jq .headRefOid 2>/dev/null || true)"
     if [[ ! "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]; then
         log "PR #$n head is unavailable or not a full SHA; leaving open."
         continue
     fi
+    LATEST_V="$(trusted_latest_verdict "$n" "$HEAD_SHA" || true)"
+    if ! is_head_bound_approval "$LATEST_V"; then
+        log "PR #$n latest formal review is not a trusted APPROVE for this head; leaving open."
+        continue
+    fi
+    RV_SHA="$(reviewed_sha "$LATEST_V")"
     if [[ -z "$RV_SHA" ]]; then
         log "PR #$n APPROVE predates head-binding; leaving open for one binding re-review."
         continue
@@ -343,7 +343,11 @@ for n in $CODE_PRS $DOCS_PRS; do
         log "PR #$n head changed during validation; leaving open for a fresh review."
         continue
     fi
-    FINAL_LATEST_V="$(trusted_latest_verdict "$n" || true)"
+    if ! pr_is_loop_owned "$n"; then
+        log "PR #$n ownership changed during validation; leaving open."
+        continue
+    fi
+    FINAL_LATEST_V="$(trusted_latest_verdict "$n" "$HEAD_SHA" || true)"
     if ! is_head_bound_approval "$FINAL_LATEST_V" || [[ "$(reviewed_sha "$FINAL_LATEST_V")" != "$HEAD_SHA" ]]; then
         log "PR #$n approval changed or lost during validation; leaving open."
         continue
@@ -353,10 +357,10 @@ for n in $CODE_PRS $DOCS_PRS; do
         continue
     fi
     log "Merging healthy PR #$n (owned + green + trusted full-SHA APPROVE + mergeable)."
-    if gh pr merge "$n" --merge --delete-branch --match-head-commit "$HEAD_SHA" 2>&1 | tail -2; then
+    if merge_pr_at_head "$n" "$HEAD_SHA" 2>&1 | tail -2; then
         merged=$((merged + 1))
     else
-        log "Merge of PR #$n failed transiently; leaving open for next cycle."
+        log "Merge of PR #$n was skipped or failed; leaving open for next cycle."
         continue
     fi
 done
@@ -413,10 +417,10 @@ while IFS=$'\t' read -r dn dcreated dtitle; do
         continue
     fi
     log "Merging aged green dependabot #$dn ($bump, >48h, head-bound)."
-    if gh pr merge "$dn" --merge --delete-branch --match-head-commit "$D_HEAD_SHA" 2>&1 | tail -2; then
+    if merge_pr_at_head "$dn" "$D_HEAD_SHA" 2>&1 | tail -2; then
         merged=$((merged + 1))
     else
-        log "Merge of dependabot #$dn failed transiently; leaving open for next cycle."
+        log "Merge of dependabot #$dn was skipped or failed; leaving open for next cycle."
         continue
     fi
 done < <(gh_safe gh pr list --state open --limit 1000 --json number,headRefName,createdAt,title \

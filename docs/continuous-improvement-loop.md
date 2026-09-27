@@ -283,8 +283,13 @@ table above is agent discipline, enforced by the cycle prompt.
   the self-modification ban mechanically.
 - Merge ownership: cycle-created PR bodies carry the exact
   `Loop-Owner: natiart-improvement-loop` marker. The merge guard verifies it
-  and the authenticated PR author against `NATIART_TRUSTED_LOGINS`; a branch
+  and the authenticated PR author against `NATIART_LOOP_AUTHORS` (default
+  `Finrood`); a branch
   prefix, comment text, or self-described model is not ownership proof.
+- Automatic merge requires a GitHub `APPROVED` review from a different login
+  explicitly listed in `NATIART_TRUSTED_REVIEWERS` (empty by default). The
+  provider review commit and the verdict's full SHA must both match the PR
+  head. `COMMENTED`, dismissed, self, and stale reviews cannot authorize it.
 - Remote hygiene: every cycle retries deletion of merged loop-prefix branches
   (`fix|perf|chore|docs|feature/*`) — the `--delete-branch` flag occasionally
   races GitHub auto-delete. Never touches unmerged work, `master`, or
