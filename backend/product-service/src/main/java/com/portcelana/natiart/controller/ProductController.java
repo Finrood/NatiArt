@@ -70,7 +70,7 @@ public class ProductController {
                 : (isAdmin()
                         ? productManager.getProductsByCategory(categoryManager.getCategoryOrDie(categoryId), pageable)
                         : productManager.getActiveProductsByCategory(
-                                categoryManager.getCategoryOrDie(categoryId), pageable));
+                                categoryManager.getActiveCategoryOrDie(categoryId), pageable));
         return products.stream().map(ProductDto::from).toList();
     }
 
