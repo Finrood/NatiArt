@@ -65,6 +65,14 @@ if [[ "${BASH_SOURCE[0]:-}" == /tmp/natiart-loop-cycle-*.sh ]]; then
 fi
 
 if [[ "$CHECK_ONLY" -eq 0 ]]; then
+    LOOP_GIT_DIR="$(git -C "$REPO" rev-parse --absolute-git-dir 2>/dev/null)" || \
+        { printf '%s\n' "ERROR: loop checkout is not a Git repository." >&2; exit 1; }
+    if [[ ! -f "$LOOP_GIT_DIR/natiart-loop-checkout" || \
+          "$(<"$LOOP_GIT_DIR/natiart-loop-checkout")" != "$REPO" ]]; then
+        printf '%s\n' "ERROR: checkout is not enrolled as the dedicated loop clone." >&2
+        exit 1
+    fi
+    OWNERSHIP_LEDGER="$LOOP_GIT_DIR/natiart-loop-owned-branches.tsv"
     mkdir -p "$LOG_DIR"
     LOG_FILE="$LOG_DIR/loop-$(date +%Y%m%d-%H%M%S).log"
     exec > >(tee -a "$LOG_FILE") 2>&1
@@ -348,11 +356,21 @@ fi
 
 # 5. Stale-branch hygiene: prune local branches whose remote is gone.
 git fetch -q --prune origin
-git branch -vv | awk '/: gone]/{print $1}' | grep -v '^\*' | xargs -r git branch -d 2>/dev/null || true
+git branch -vv | awk '/: gone]/{print $1}' | grep -v '^\*' | while read -r gone_branch; do
+    gone_sha="$(git rev-parse "refs/heads/$gone_branch" 2>/dev/null || true)"
+    if loop_owned_tip "$gone_branch" "$gone_sha" "$OWNERSHIP_LEDGER"; then
+        git branch -d "$gone_branch" 2>/dev/null || true
+    fi
+done || true
 # Salvage retention: keep the newest 5 salvage branches, and only delete older
 # branches after proving their commits are already merged into origin/master.
 # Old unmerged salvage is still recoverable WIP and must never be force-deleted.
 git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads/salvage/ 2>/dev/null | tail -n +6 | while read -r sb; do
+    sb_sha="$(git rev-parse "refs/heads/$sb" 2>/dev/null || true)"
+    if ! loop_owned_tip "$sb" "$sb_sha" "$OWNERSHIP_LEDGER"; then
+        log "Preserving unowned salvage branch $sb."
+        continue
+    fi
     REMOTE_SB_SHA="$(git rev-parse "origin/$sb" 2>/dev/null || true)"
     if git merge-base --is-ancestor "$sb" origin/master 2>/dev/null && \
        { [[ -z "$REMOTE_SB_SHA" ]] || git merge-base --is-ancestor "$REMOTE_SB_SHA" origin/master 2>/dev/null; }; then
@@ -470,19 +488,11 @@ done || true
 # dependabot/*, or unmerged work. Salvage retention uses fetched commit age and
 # verifies the remote tip is merged before deleting anything.
 git branch -r --merged origin/master 2>/dev/null | sed 's#^ *origin/##' | grep -E '^(fix|perf|chore|docs|feature)/' | sort -u | while read -r b; do
-    if git ls-remote --heads origin "$b" 2>/dev/null | grep -q .; then
-        log "Deleting merged remote branch $b."
-        git push -q origin --delete "$b" 2>/dev/null || log "Could not delete $b (likely already gone)."
-    fi
+    loop_delete_merged_remote_branch "$b" "$OWNERSHIP_LEDGER"
 done || true
 git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/remotes/origin/salvage/ 2>/dev/null | sed 's#^origin/##' | tail -n +6 | while read -r sb; do
     [[ -z "$sb" ]] && continue
-    if git merge-base --is-ancestor "origin/$sb" origin/master 2>/dev/null; then
-        log "Deleting old merged remote salvage branch $sb."
-        git push -q origin --delete "$sb" 2>/dev/null || log "Could not delete $sb (likely already gone)."
-    else
-        log "Preserving old unmerged remote salvage branch $sb."
-    fi
+    loop_delete_merged_remote_branch "$sb" "$OWNERSHIP_LEDGER"
 done || true
 
 # 6. Hand one item to the agent (non-interactive, repo permission policy applies;
@@ -520,6 +530,9 @@ if (( SLOT % 480 == 0 )); then
 $(cat scripts/redteam-addendum.md)"
 fi
 log "Invoking agent for one cycle item."
+BEFORE_BRANCH_REFS="$(git for-each-ref --format='%(refname:short)' refs/heads/ | LC_ALL=C sort)"
+BEFORE_REMOTE_BRANCH_REFS="$(git for-each-ref --format='%(refname:short)' refs/remotes/origin/ | sed 's#^origin/##' | LC_ALL=C sort)"
+CYCLE_OWNERSHIP_ID="$(cat /proc/sys/kernel/random/uuid)"
 # Model failover: run-agent.sh walks the priority list from
 # scripts/agent-models.conf (opencode Muse free -> cline Muse -> cline DeepSeek
 # -> cline GLM),
@@ -530,6 +543,11 @@ log "Invoking agent for one cycle item."
 # reviewer-wait and health row below (a dead reviewer wait orphans the review).
 STATUS=0
 timeout 1500 scripts/run-agent.sh --role cycle --budget 1500 --title "improvement-loop $(date +%Y%m%d-%H%M)" "$CYCLE_MSG" || STATUS=$?
+if ! loop_record_new_branches "$BEFORE_BRANCH_REFS" "$BEFORE_REMOTE_BRANCH_REFS" \
+    "$OWNERSHIP_LEDGER" "$CYCLE_OWNERSHIP_ID"; then
+    log "Failed to record branch ownership; leaving all new branches untouched for manual recovery."
+    STATUS=1
+fi
 if [[ "$STATUS" -eq 124 ]]; then
     log "Agent cycle hit the 25-minute timeout; leaving state for next cycle."
 fi

@@ -56,14 +56,59 @@ gh_checks_safe() { # `gh pr checks` keeps output on non-zero check-state exits
     fi
 }
 
+is_loop_branch() { # naming classifier for watchdog only; never ownership proof
+    [[ "${1:-}" =~ ^(fix|perf|chore|docs|feature|salvage)/ ]]
+}
+
 is_docs_only() { # $1 = PR number; true iff every changed file is under docs/
     local files
     files=$(gh pr view "$1" --json files --jq '.files[].path' 2>/dev/null) || return 1
     [[ -n "$files" ]] && ! grep -qvE '^docs/' <<<"$files"
 }
 
-is_loop_branch() { # $1 = branch name; classifies naming only, never ownership
-    [[ "${1:-}" =~ ^(fix|perf|chore|docs|feature|salvage)/ ]]
+loop_owned_branch() { # $1=exact branch name $2=private ownership ledger
+    local branch="${1:-}" ledger="${2:-}"
+    [[ -n "$branch" && -f "$ledger" ]] || return 1
+    awk -F '\t' -v branch="$branch" '$1 == branch && NF == 3 { found=1 } END { exit !found }' "$ledger"
+}
+
+loop_owned_tip() { # $1=exact branch name $2=exact recorded tip $3=private ledger
+    local branch="${1:-}" sha="${2:-}" ledger="${3:-}"
+    [[ -n "$branch" && -n "$sha" && -f "$ledger" ]] || return 1
+    awk -F '\t' -v branch="$branch" -v sha="$sha" \
+        '$1 == branch && $3 == sha && NF == 3 { found=1 } END { exit !found }' "$ledger"
+}
+
+loop_record_new_branches() { # $1=before local refs $2=before remote refs $3=ledger $4=cycle id
+    local before="$1" remote_before="$2" ledger="$3" cycle_id="$4" branch sha
+    while IFS= read -r branch; do
+        [[ -n "$branch" && "$branch" != master ]] || continue
+        if grep -qxF "$branch" <<<"$remote_before"; then continue; fi
+        if loop_owned_branch "$branch" "$ledger"; then continue; fi
+        sha="$(git rev-parse "refs/heads/$branch" 2>/dev/null)" || return 1
+        printf '%s\t%s\t%s\n' "$branch" "$cycle_id" "$sha" >> "$ledger" || return 1
+    done < <(comm -13 <(printf '%s\n' "$before" | LC_ALL=C sort) \
+        <(git for-each-ref --format='%(refname:short)' refs/heads/ | LC_ALL=C sort))
+}
+
+loop_delete_merged_remote_branch() { # $1=branch $2=private ledger
+    local branch="$1" ledger="$2" remote_sha
+    if ! loop_owned_branch "$branch" "$ledger"; then
+        log "Preserving unowned remote branch $branch."
+        return 0
+    fi
+    remote_sha="$(git rev-parse "refs/remotes/origin/$branch" 2>/dev/null)" || return 0
+    if ! loop_owned_tip "$branch" "$remote_sha" "$ledger"; then
+        log "Preserving changed remote branch $branch; its tip differs from the ownership record."
+        return 0
+    fi
+    if ! git merge-base --is-ancestor "$remote_sha" origin/master 2>/dev/null; then
+        log "Preserving unmerged remote branch $branch."
+        return 0
+    fi
+    if ! git push -q --force-with-lease="refs/heads/$branch:$remote_sha" origin --delete "$branch"; then
+        log "Remote branch $branch changed after validation or push failed; preserving it."
+    fi
 }
 
 semver_bump() { # $1 = dependabot title; prints patch|minor|major|unknown
