@@ -9,12 +9,18 @@ tasks.register("npmCi", Exec) {
     commandLine(npmCommand, "ci")
 }
 
-tasks.named("build") {
+tasks.register("npmBuild", Exec) {
     dependsOn("npmCi")
-    doLast {
-        exec {
-            workingDir(projectDir)
-            commandLine(npmCommand, "run", "build")
-        }
-    }
+    workingDir(projectDir)
+    commandLine(npmCommand, "run", "build")
+}
+
+tasks.register("npmTest", Exec) {
+    dependsOn("npmCi")
+    workingDir(projectDir)
+    commandLine(npmCommand, "test", "--", "--watch=false", "--browsers=ChromeHeadless")
+}
+
+tasks.named("build") {
+    dependsOn("npmBuild", "npmTest")
 }
