@@ -141,7 +141,7 @@ public class AsaasPaymentService implements PaymentService {
 
         final String requestFingerprint = fingerprint(paymentCreationRequest);
         final PaymentIdempotencyReservation reservationResult =
-                reserveOrReload(requesterExternalId, normalizedIdempotencyKey, requestFingerprint);
+                reserveOrReload(requesterExternalId, normalizedIdempotencyKey, requestFingerprint, orderId);
         final PaymentIdempotency reservation = reservationResult.record();
         if (!Objects.equals(reservation.getRequestFingerprint(), requestFingerprint)) {
             throw new ResourceAlreadyExistsException("Idempotency-Key was already used for a different payment");
@@ -245,9 +245,9 @@ public class AsaasPaymentService implements PaymentService {
     }
 
     private PaymentIdempotencyReservation reserveOrReload(
-            String requesterExternalId, String idempotencyKey, String requestFingerprint) {
+            String requesterExternalId, String idempotencyKey, String requestFingerprint, String orderId) {
         try {
-            return paymentIdempotencyService.reserve(requesterExternalId, idempotencyKey, requestFingerprint);
+            return paymentIdempotencyService.reserve(requesterExternalId, idempotencyKey, requestFingerprint, orderId);
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             final PaymentIdempotency record = paymentIdempotencyService
                     .find(requesterExternalId, idempotencyKey)

@@ -12,8 +12,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.PaymentIdempotency;
 import com.portcelana.natiart.model.PaymentIdempotencyStatus;
+import com.portcelana.natiart.model.support.OrderStatus;
+import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.PaymentIdempotencyRepository;
 
 /**
@@ -24,13 +27,16 @@ import com.portcelana.natiart.repository.PaymentIdempotencyRepository;
 @Service
 public class PaymentIdempotencyService {
     private final PaymentIdempotencyRepository repository;
+    private final OrderRepository orderRepository;
     private final long staleReservationMillis;
 
     @Autowired
     public PaymentIdempotencyService(
             PaymentIdempotencyRepository repository,
+            OrderRepository orderRepository,
             @Value("${natiart.payment.idempotency.stale-reservation-millis:900000}") long staleReservationMillis) {
         this.repository = repository;
+        this.orderRepository = orderRepository;
         if (staleReservationMillis <= 0) {
             throw new IllegalArgumentException("The payment reservation stale interval must be positive");
         }
@@ -39,22 +45,46 @@ public class PaymentIdempotencyService {
 
     /** Test-friendly constructor with the production default interval. */
     public PaymentIdempotencyService(PaymentIdempotencyRepository repository) {
-        this(repository, 900000);
+        this(repository, null, 900000);
+    }
+
+    PaymentIdempotencyService(PaymentIdempotencyRepository repository, long staleReservationMillis) {
+        this(repository, null, staleReservationMillis);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public PaymentIdempotencyReservation reserve(
             String ownerExternalId, String idempotencyKey, String requestFingerprint) {
+        return reserve(ownerExternalId, idempotencyKey, requestFingerprint, null);
+    }
+
+    /** Locks the order before recording a payment attempt so expiry cannot race provider egress. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public PaymentIdempotencyReservation reserve(
+            String ownerExternalId, String idempotencyKey, String requestFingerprint, String orderId) {
+        if (orderId != null) {
+            final CustomerOrder order = orderRepository
+                    .findByIdForUpdate(orderId)
+                    .orElseThrow(() -> new IllegalArgumentException("Order is unavailable for payment"));
+            if (!ownerExternalId.equals(order.getOwnerExternalId()) || order.getStatus() != OrderStatus.PENDING) {
+                throw new IllegalArgumentException("Order is unavailable for payment");
+            }
+        }
         final Optional<PaymentIdempotency> existing =
                 repository.findByOwnerExternalIdAndIdempotencyKey(ownerExternalId, idempotencyKey);
         if (existing.isPresent()) {
+            final boolean legacyCompletedReplay = existing.get().getOrderId() == null
+                    && existing.get().getStatus() == PaymentIdempotencyStatus.SUCCEEDED;
+            if (!java.util.Objects.equals(existing.get().getOrderId(), orderId) && !legacyCompletedReplay) {
+                throw new IllegalArgumentException("Idempotency-Key was already used for another order");
+            }
             return new PaymentIdempotencyReservation(existing.get(), false);
         }
         // saveAndFlush makes the unique insert the serialization point before
         // any provider network call is possible.
         try {
             final PaymentIdempotency record =
-                    new PaymentIdempotency(ownerExternalId, idempotencyKey, requestFingerprint);
+                    new PaymentIdempotency(ownerExternalId, idempotencyKey, requestFingerprint, orderId);
             final PaymentIdempotency saved = repository.saveAndFlush(record);
             return new PaymentIdempotencyReservation(saved != null ? saved : record, true);
         } catch (DataIntegrityViolationException e) {

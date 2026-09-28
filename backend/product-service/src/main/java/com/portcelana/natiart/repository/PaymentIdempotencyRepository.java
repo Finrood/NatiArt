@@ -17,6 +17,11 @@ import com.portcelana.natiart.model.PaymentIdempotencyStatus;
 public interface PaymentIdempotencyRepository extends JpaRepository<PaymentIdempotency, String> {
     Optional<PaymentIdempotency> findByOwnerExternalIdAndIdempotencyKey(String ownerExternalId, String idempotencyKey);
 
+    List<PaymentIdempotency> findByOrderId(String orderId);
+
+    List<PaymentIdempotency> findByOwnerExternalIdAndOrderIdIsNullAndStatusIn(
+            String ownerExternalId, List<PaymentIdempotencyStatus> statuses);
+
     @Query(
             "SELECT p FROM PaymentIdempotency p WHERE p.status = :status AND p.updatedAt < :cutoff ORDER BY p.updatedAt ASC")
     List<PaymentIdempotency> findStaleByStatus(

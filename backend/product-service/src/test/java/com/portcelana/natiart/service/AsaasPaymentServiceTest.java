@@ -81,8 +81,13 @@ class AsaasPaymentServiceTest {
 
     private PaymentIdempotencyService newIdempotencyService() {
         final PaymentIdempotencyRepository repository = mock(PaymentIdempotencyRepository.class);
+        final OrderRepository orderRepository = mock(OrderRepository.class);
+        when(orderRepository.findByIdForUpdate(anyString()))
+                .thenAnswer(invocation -> Optional.of(new CustomerOrder()
+                        .setOwnerExternalId("cus_MINE")
+                        .setStatus(com.portcelana.natiart.model.support.OrderStatus.PENDING)));
         when(repository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        return new PaymentIdempotencyService(repository);
+        return new PaymentIdempotencyService(repository, orderRepository, 900000);
     }
 
     private AsaasPaymentService newService(RestTemplate restTemplate, PaymentRepository paymentRepository) {
@@ -507,7 +512,8 @@ class AsaasPaymentServiceTest {
         final PaymentRepository paymentRepository = mock(PaymentRepository.class);
         final PaymentIdempotencyService idempotencyService = mock(PaymentIdempotencyService.class);
         final AtomicReference<PaymentIdempotency> storedReservation = new AtomicReference<>();
-        when(idempotencyService.reserve(anyString(), eq("payment-attempt-1"), anyString()))
+        when(idempotencyService.reserve(
+                        anyString(), eq("payment-attempt-1"), anyString(), org.mockito.ArgumentMatchers.isNull()))
                 .thenAnswer(invocation -> {
                     PaymentIdempotency reservation = storedReservation.get();
                     if (reservation == null) {
@@ -930,7 +936,8 @@ class AsaasPaymentServiceTest {
         final PaymentRepository paymentRepository = mock(PaymentRepository.class);
         final PaymentIdempotencyService idempotencyService = mock(PaymentIdempotencyService.class);
         final AtomicReference<PaymentIdempotency> reservationReference = new AtomicReference<>();
-        when(idempotencyService.reserve(anyString(), eq("payment-null-body"), anyString()))
+        when(idempotencyService.reserve(
+                        anyString(), eq("payment-null-body"), anyString(), org.mockito.ArgumentMatchers.isNull()))
                 .thenAnswer(invocation -> {
                     PaymentIdempotency reservation = reservationReference.get();
                     if (reservation == null) {

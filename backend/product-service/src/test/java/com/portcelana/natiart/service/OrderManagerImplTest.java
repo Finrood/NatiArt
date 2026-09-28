@@ -27,6 +27,7 @@ import com.portcelana.natiart.model.CustomerOrderItem;
 import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
+import com.portcelana.natiart.repository.PaymentIdempotencyRepository;
 import com.portcelana.natiart.repository.PaymentRepository;
 import com.portcelana.natiart.repository.ProductRepository;
 
@@ -48,13 +49,29 @@ class OrderManagerImplTest {
     @Mock
     private PaymentRepository paymentRepository;
 
+    @Mock
+    private PaymentIdempotencyRepository paymentIdempotencyRepository;
+
+    @Mock
+    private AsaasChargeSafetyService chargeSafetyService;
+
     private OrderManagerImpl orderManager;
 
     @BeforeEach
     void setUp() {
         orderManager = new OrderManagerImpl(
-                orderRepository, productManager, productRepository, paymentRepository, shippingService);
+                orderRepository,
+                productManager,
+                productRepository,
+                paymentRepository,
+                paymentIdempotencyRepository,
+                chargeSafetyService,
+                shippingService);
         lenient().when(shippingService.getOrderShippingAmount(any())).thenReturn(BigDecimal.ZERO);
+        lenient().when(paymentIdempotencyRepository.findByOrderId(anyString())).thenReturn(List.of());
+        lenient()
+                .when(paymentIdempotencyRepository.findByOwnerExternalIdAndOrderIdIsNullAndStatusIn(anyString(), any()))
+                .thenReturn(List.of());
     }
 
     private Product product(String id, String label, BigDecimal original, BigDecimal marked, int stock) {
