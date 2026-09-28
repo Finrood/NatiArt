@@ -28,7 +28,6 @@ ENV NATIART_STORAGE_ROOT=${NATIART_STORAGE_ROOT}
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
     mkdir -p "${NATIART_STORAGE_ROOT}" && \
     chown -R appuser:appgroup "${NATIART_STORAGE_ROOT}"
-VOLUME ["/var/lib/natiart/product-images"]
 USER appuser
 
 # Copy only the built JAR from the build stage
