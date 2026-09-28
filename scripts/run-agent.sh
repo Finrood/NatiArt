@@ -141,9 +141,26 @@ fi
 # level silently downgrades to whatever the provider picks, so it is a loud
 # config error, not a default.
 for _conf_entry in "${PRIORITY[@]}"; do
+    if [[ ! "$_conf_entry" =~ ^[^\|]+\|[^\|]+\|[^\|]+\|[^\|]*$ ]]; then
+        log_err "agent-models.conf entry must contain CLI|label|model_id|thinking_level fields."
+        exit 2
+    fi
     IFS='|' read -r _conf_cli _conf_label _conf_model _conf_think <<< "$_conf_entry"
+    case "$_conf_cli" in
+        opencode|cline) ;;
+        *) log_err "agent-models.conf entry '$_conf_label' uses unsupported CLI '$_conf_cli'."; exit 2 ;;
+    esac
+    if [[ ! "$_conf_label" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ || \
+          ! "$_conf_model" =~ ^[^[:space:]\|]+$ ]]; then
+        log_err "agent-models.conf entry has an invalid label or model ID."
+        exit 2
+    fi
     if [[ -z "${_conf_think:-}" ]]; then
         log_err "agent-models.conf entry '$_conf_label' has no thinking level (policy: always xhigh, never provider default)."
+        exit 2
+    fi
+    if [[ ! "$_conf_think" =~ ^[^[:space:]\|]+$ ]]; then
+        log_err "agent-models.conf entry '$_conf_label' has an invalid thinking level."
         exit 2
     fi
     if [[ "$_conf_think" != "xhigh" ]]; then

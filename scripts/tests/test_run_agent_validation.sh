@@ -76,4 +76,22 @@ PATH="$FAKEBIN:$PATH" NATIART_MODELS_CONF="$ROOT/models.conf" \
     bash "$RUN_AGENT" --check-only --budget 00001 --stall 00001 --simulate-quota-at 00000 prompt \
     >"$ROOT/leading-zero.log" 2>&1
 grep -q 'fake' "$ROOT/leading-zero.log"
+
+for invalid_entry in \
+    '|label|fake/model|xhigh' \
+    'opencode||fake/model|xhigh' \
+    'opencode|label||xhigh' \
+    'other|label|fake/model|xhigh' \
+    'opencode|label|fake/model|xhigh|extra' \
+    'opencode|bad label|fake/model|xhigh' \
+    'opencode|label|bad model|xhigh'; do
+    printf 'PRIORITY=("%s")\n' "$invalid_entry" > "$ROOT/invalid-models.conf"
+    rc=0
+    PATH="$FAKEBIN:$PATH" NATIART_MODELS_CONF="$ROOT/invalid-models.conf" \
+        FAKE_STATE="$ROOT/invalid-state" bash "$RUN_AGENT" --check-only prompt \
+        >"$ROOT/invalid.log" 2>&1 || rc=$?
+    [[ "$rc" -eq 2 ]] || { echo "invalid registry entry '$invalid_entry' returned $rc, expected 2" >&2; exit 1; }
+    grep -q 'agent-models.conf entry' "$ROOT/invalid.log"
+done
+[[ ! -e "$ROOT/invalid-state" ]] || { echo "invalid model registry launched a worker" >&2; exit 1; }
 echo "ok: private distinct retry logs and bounded decimal option validation"
