@@ -25,10 +25,6 @@ import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 
 @Component
 public class StorageFileSystem implements Storage {
-    private static final List<String> DEFAULT_ALLOWED_ROOTS = List.of(
-            System.getProperty("java.io.tmpdir") + "/product-images",
-            System.getProperty("user.dir") + "/product-images");
-
     private final List<Path> allowedRoots;
     private final List<Path> legacyRoots;
 
@@ -36,7 +32,17 @@ public class StorageFileSystem implements Storage {
     public StorageFileSystem(
             @Value("${nati.storage.filesystem.allowed-roots:}") List<String> allowedRoots,
             @Value("${nati.storage.filesystem.legacy-roots:}") List<String> legacyRoots) {
-        this.allowedRoots = (allowedRoots == null || allowedRoots.isEmpty() ? DEFAULT_ALLOWED_ROOTS : allowedRoots)
+        this(allowedRoots, legacyRoots, Path.of(System.getProperty("user.dir")));
+    }
+
+    StorageFileSystem(List<String> allowedRoots, Path workingDirectory) {
+        this(allowedRoots, List.of(), workingDirectory);
+    }
+
+    private StorageFileSystem(List<String> allowedRoots, List<String> legacyRoots, Path workingDirectory) {
+        this.allowedRoots = (allowedRoots == null || allowedRoots.isEmpty()
+                        ? defaultAllowedRoots(workingDirectory)
+                        : allowedRoots)
                 .stream()
                         .map(Path::of)
                         .map(Path::toAbsolutePath)
@@ -54,6 +60,12 @@ public class StorageFileSystem implements Storage {
 
     public StorageFileSystem(List<String> allowedRoots) {
         this(allowedRoots, List.of());
+    }
+
+    private static List<String> defaultAllowedRoots(Path workingDirectory) {
+        return List.of(
+                Path.of(System.getProperty("java.io.tmpdir"), "product-images").toString(),
+                workingDirectory.resolve("product-images").toString());
     }
 
     @Override
