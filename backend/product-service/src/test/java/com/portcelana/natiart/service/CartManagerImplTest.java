@@ -61,8 +61,7 @@ class CartManagerImplTest {
     void createCartItem_createsNewLineWithQuantityOne() {
         final Product product = product("Plate");
         when(productManager.getProductOrDie("p1")).thenReturn(product);
-        when(cartItemRepository.incrementQuantityIfBelowCap("jane", "p1", 100)).thenReturn(0);
-        when(cartItemRepository.findCartItemByUsernameAndProduct("jane", product))
+        when(cartItemRepository.findCartItemByUsernameAndProductForUpdate("jane", "p1"))
                 .thenReturn(Optional.empty());
         when(cartItemRepository.save(any(CartItem.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -74,13 +73,11 @@ class CartManagerImplTest {
     }
 
     @Test
-    void createCartItem_incrementsAtomicallyWhenLineExists() {
+    void createCartItem_incrementsLockedLine() {
         final Product product = product("Plate");
         final CartItem existing = new CartItem("jane", product);
-        existing.increaseQuantity();
         when(productManager.getProductOrDie("p1")).thenReturn(product);
-        when(cartItemRepository.incrementQuantityIfBelowCap("jane", "p1", 100)).thenReturn(1);
-        when(cartItemRepository.findCartItemByUsernameAndProductWithDetails("jane", "p1"))
+        when(cartItemRepository.findCartItemByUsernameAndProductForUpdate("jane", "p1"))
                 .thenReturn(Optional.of(existing));
 
         final CartItemDto result = cartManager.createCartItem("jane", "p1");
@@ -97,8 +94,7 @@ class CartManagerImplTest {
             capped.increaseQuantity();
         }
         when(productManager.getProductOrDie("p1")).thenReturn(product);
-        when(cartItemRepository.incrementQuantityIfBelowCap("jane", "p1", 100)).thenReturn(0);
-        when(cartItemRepository.findCartItemByUsernameAndProduct("jane", product))
+        when(cartItemRepository.findCartItemByUsernameAndProductForUpdate("jane", "p1"))
                 .thenReturn(Optional.of(capped));
 
         assertThrows(IllegalArgumentException.class, () -> cartManager.createCartItem("jane", "p1"));
@@ -111,26 +107,29 @@ class CartManagerImplTest {
         when(productManager.getProductOrDie("p9")).thenReturn(retired);
 
         assertThrows(IllegalArgumentException.class, () -> cartManager.createCartItem("jane", "p9"));
-        verify(cartItemRepository, never()).incrementQuantityIfBelowCap(any(), any(), anyInt());
+        verify(cartItemRepository, never()).findCartItemByUsernameAndProductForUpdate(any(), any());
         verify(cartItemRepository, never()).save(any(CartItem.class));
     }
 
     @Test
-    void decreaseCartItemQuantity_decrementsAtomicallyAboveOne() {
+    void decreaseCartItemQuantity_decrementsLockedLineAboveOne() {
         final Product product = product("Plate");
+        final CartItem line = new CartItem("jane", product);
+        line.increaseQuantity();
         when(productManager.getProduct("p1")).thenReturn(Optional.of(product));
-        when(cartItemRepository.decrementQuantityIfGreaterThanOne("jane", "p1")).thenReturn(1);
+        when(cartItemRepository.findCartItemByUsernameAndProductForUpdate("jane", "p1"))
+                .thenReturn(Optional.of(line));
 
         cartManager.decreaseCartItemQuantity("jane", "p1");
 
-        verify(cartItemRepository, never()).deleteByUsernameAndProduct(any(), any());
+        assertEquals(1, line.getQuantity());
+        verify(cartItemRepository, never()).delete(any(CartItem.class));
     }
 
     @Test
     void decreaseCartItemQuantity_deletesLastRemainingUnit() {
         final Product product = product("Plate");
         when(productManager.getProduct("p1")).thenReturn(Optional.of(product));
-        when(cartItemRepository.decrementQuantityIfGreaterThanOne("jane", "p1")).thenReturn(0);
         final CartItem line = new CartItem("jane", product);
         when(cartItemRepository.findCartItemByUsernameAndProductForUpdate("jane", "p1"))
                 .thenReturn(Optional.of(line));
