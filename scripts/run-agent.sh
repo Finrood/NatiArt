@@ -18,7 +18,6 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP_ROOT="${TMPDIR:-/tmp}"   # override with TMPDIR for tests; attempt logs are removed after each run
 umask 077
 OUTCOME_DIR="${NATIART_OUTCOME_DIR:-$REPO/logs/agent-outcomes}"
-mkdir -p "$OUTCOME_DIR"
 
 # --- overridables ----------------------------------------------------------
 ROLE="cycle"          # cycle (1500s budget) | review (360s default; loop overrides to 600)
@@ -194,6 +193,7 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
     printf '%s\n' "$(echo "${EFFECTIVE[0]}" | cut -d'|' -f2)"
     exit 0
 fi
+mkdir -p "$OUTCOME_DIR"
 
 # --- quota / stall detection helpers ----------------------------------------
 quota_blocked() { # $1 = rc, $2 = log file; 0 if quota, 1 otherwise

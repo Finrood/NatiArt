@@ -83,6 +83,11 @@ common=(env "PATH=$FAKEBIN:$PATH" NATIART_MODELS_CONF="$ROOT/models.conf" NATIAR
     FAKE_HEAD=1111111111111111111111111111111111111111
     FAKE_OLD_HEAD=0000000000000000000000000000000000000000)
 
+env PATH="$FAKEBIN:$PATH" NATIART_MODELS_CONF="$ROOT/models.conf" \
+    NATIART_OUTCOME_DIR="$ROOT/check-only-outcomes" bash "$RUN_AGENT" --check-only prompt \
+    >"$ROOT/check-only.log" 2>&1
+[[ ! -e "$ROOT/check-only-outcomes" ]]
+
 # Outer timeout sends TERM to the wrapper. Its trap must terminate the detached
 # worker group before the wrapper returns.
 FAKE_MODE=hang FAKE_CHILD_FILE="$ROOT/hang-child" \
