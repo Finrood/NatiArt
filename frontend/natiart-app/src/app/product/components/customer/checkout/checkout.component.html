@@ -31,6 +31,11 @@
               Please sign in or register before checking out. Guest checkout is currently unavailable.
             </div>
           }
+          @if (hasSavedAttempt) {
+            <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-md mb-6" role="status">
+              Your saved PIX checkout will resume with its original order details. Payment progress is checked before another charge is requested.
+            </div>
+          }
           <form [formGroup]="checkoutForm" (ngSubmit)="onSubmit()">
 
             <!-- Step 1: Personal Information -->
@@ -65,9 +70,9 @@
                 <app-payment-info-step [checkoutForm]="checkoutForm"></app-payment-info-step>
                 <div class="mt-8 flex justify-between">
                   <app-button type="button" (click)="prevStep()" color="secondary" size="md">Back</app-button>
-                  <app-button type="submit" [disabled]="!checkoutForm.valid || (isLoading$ | async) === true || isSubmitting" color="primary" size="md" [block]="true">
+                  <app-button type="submit" [disabled]="(!checkoutForm.valid && !hasSavedAttempt) || (isLoading$ | async) === true || isSubmitting" color="primary" size="md" [block]="true">
                     @if (!(isLoading$ | async) && !isSubmitting) {
-                      <span>Place Order</span>
+                      <span>{{ hasSavedAttempt ? 'Resume saved checkout' : 'Place Order' }}</span>
                     }
                     @if ((isLoading$ | async) || isSubmitting) {
                       <span class="flex items-center">

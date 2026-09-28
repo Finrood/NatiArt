@@ -1,4 +1,4 @@
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnDestroy, OnInit} from '@angular/core';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {EmptyError, firstValueFrom, map, Observable, Subject, throwError} from 'rxjs';
@@ -23,6 +23,16 @@ import {CustomCepValidators} from "../../../../directory/validator/CustomCepVali
 import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportError} from '../../../../shared/service/error-reporting.service';
 
+interface CheckoutAttempt {
+  username: string;
+  fingerprint: string;
+  orderRequest: OrderDto;
+  orderIdempotencyKey: string;
+  paymentIdempotencyKey: string;
+  currentOrder: OrderDto | null;
+  paymentId: string | null;
+}
+
 @Component({
   selector: 'app-checkout',
   standalone: true,
@@ -42,6 +52,14 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CheckoutComponent implements OnInit, OnDestroy {
+  private readonly _fb: FormBuilder = inject(FormBuilder);
+  private readonly _cartService: CartService = inject(CartService);
+  private readonly _authenticationService: AuthenticationService = inject(AuthenticationService);
+  private readonly _orderService: OrderService = inject(OrderService);
+  private readonly _paymentService: PaymentService = inject(PaymentService);
+  private readonly _router: Router = inject(Router);
+  private readonly _cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
+
   checkoutForm: FormGroup;
   errorMessage = '';
   infoMessage = '';
@@ -55,33 +73,33 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   currentStep = 1;
 
   private currentOrder: OrderDto | null = null;
+  private orderRequest: OrderDto | null = null;
+  private paymentId: string | null = null;
   private checkoutFingerprint: string | null = null;
   private hasPrefilledCurrentUser = false;
+  private restoredForUsername: string | null = null;
+  private attemptStorageFailed = false;
   private destroyed = false;
-  private readonly attemptStorageKey = 'natiart-checkout-attempt';
-  private orderIdempotencyKey = crypto.randomUUID();
-  private paymentIdempotencyKey = crypto.randomUUID();
+  private readonly attemptStoragePrefix = 'natiart-checkout-attempt:';
+  private orderIdempotencyKey: string = crypto.randomUUID();
+  private paymentIdempotencyKey: string = crypto.randomUUID();
+
+  get hasSavedAttempt(): boolean {
+    return this.orderRequest !== null;
+  }
 
   private destroy$ = new Subject<void>();
 
-  constructor(
-    private fb: FormBuilder,
-    private cartService: CartService,
-    private authenticationService: AuthenticationService,
-    private orderService: OrderService,
-    private paymentService: PaymentService,
-    private router: Router,
-    private cdr: ChangeDetectorRef
-  ) {
-    this.checkoutForm = this.fb.group({
-      userInfo: this.fb.group({
+  constructor() {
+    this.checkoutForm = this._fb.group({
+      userInfo: this._fb.group({
         firstname: ['', Validators.required],
         lastname: ['', Validators.required],
         cpf: ['', [Validators.required, CustomCpfValidators.validCpf()]],
         email: ['', [Validators.required, Validators.email]],
         phone: ['', Validators.pattern('[()0-9 -]*')],
       }),
-      shippingInfo: this.fb.group({
+      shippingInfo: this._fb.group({
         country: ['Brazil', Validators.required],
         state: ['', Validators.required],
         city: ['', Validators.required],
@@ -90,7 +108,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         street: ['', Validators.required],
         complement: [''],
       }),
-      billingInfo: this.fb.group({
+      billingInfo: this._fb.group({
         country: ['Brazil'],
         state: [''],
         city: [''],
@@ -99,7 +117,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         street: [''],
         complement: [''],
       }),
-      paymentInfo: this.fb.group({
+      paymentInfo: this._fb.group({
         paymentMethod: ['', Validators.required],
         cardNumber: [''],
         expirationDate: [''],
@@ -107,11 +125,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       }),
     });
 
-    this.cartItems$ = this.cartService.getCartItems();
-    this.cartTotal$ = this.cartService.getCartTotal();
-    this.isLoggedIn$ = this.authenticationService.isLoggedIn$;
-    this.currentUser$ = this.authenticationService.currentUser$;
-    this.isLoading$ = this.orderService.orderProcessing$;
+    this.cartItems$ = this._cartService.getCartItems();
+    this.cartTotal$ = this._cartService.getCartTotal();
+    this.isLoggedIn$ = this._authenticationService.isLoggedIn$;
+    this.currentUser$ = this._authenticationService.currentUser$;
+    this.isLoading$ = this._orderService.orderProcessing$;
   }
 
   nextStep() {
@@ -152,7 +170,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.authenticationService.fetchCurrentUser()
+    this._authenticationService.fetchCurrentUser()
       .pipe(takeUntil(this.destroy$))
       .subscribe();
 
@@ -160,7 +178,12 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       .pipe(
         takeUntil(this.destroy$),
         tap(user => {
-          if (user && user.profile && !this.hasPrefilledCurrentUser) {
+          if (user && this.restoredForUsername !== user.username) {
+            this.restoredForUsername = user.username;
+            this.hasPrefilledCurrentUser = false;
+            this.restoreAttempt(user.username);
+          }
+          if (user && user.profile && !this.hasPrefilledCurrentUser && !this.hasSavedAttempt) {
             this.hasPrefilledCurrentUser = true;
             this.checkoutForm.patchValue({
               userInfo: {
@@ -191,7 +214,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
             if (this.checkoutForm.get('shippingInfo')?.invalid) {
               this.checkoutForm.get('shippingInfo')?.markAllAsTouched();
             }
-            this.restoreAttempt(user.username);
           }
         })
       )
@@ -205,7 +227,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   onSameShippingChange(isSame: boolean): void {
     this.sameShippingAsBilling = isSame;
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
 
   updatePaymentValidators(): void {
@@ -247,42 +269,70 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   async onProcessPixPayment(user: User): Promise<void> {
     this.clearErrorMessage();
     try {
+      if (this.destroyed || this.attemptStorageFailed) {
+        return;
+      }
       if (!user || !user.externalId) {
         this.setErrorMessage('Could not retrieve customer ID for payment. Please try again.');
         return;
       }
 
+      if (!this.orderRequest) {
+        const orderRequest = this.buildOrderRequest();
+        this.orderRequest = orderRequest;
+        this.checkoutFingerprint = JSON.stringify(orderRequest);
+        this.orderIdempotencyKey = crypto.randomUUID();
+        this.paymentIdempotencyKey = crypto.randomUUID();
+        // Save the immutable payload and keys before sending anything. A lost
+        // response can then replay the same order without reserving stock again.
+        if (!this.persistAttempt(user.username)) {
+          this.orderRequest = null;
+          this.checkoutFingerprint = null;
+          this.setErrorMessage('Could not save your checkout. Please free browser storage and try again.');
+          return;
+        }
+      }
+
+      this.setInfoMessage(this.currentOrder ? 'Checking your saved order...' : 'Creating your order...');
+      const order = await firstValueFrom(this._orderService
+        .createOrder(this.orderRequest, this.orderIdempotencyKey)
+        .pipe(takeUntil(this.destroy$)));
       if (this.destroyed) {
         return;
       }
+      this.clearInfoMessage();
+      if (!order?.id || order.totalAmount == null) {
+        this.setErrorMessage('Could not confirm your order. Please try again.');
+        return;
+      }
+      this.currentOrder = order;
+      this.persistAttempt(user.username);
 
-      const orderRequest = this.buildOrderRequest();
-      const fingerprint = JSON.stringify(orderRequest);
-      if (this.checkoutFingerprint !== fingerprint) {
-        this.currentOrder = null;
-        this.checkoutFingerprint = fingerprint;
-        this.orderIdempotencyKey = crypto.randomUUID();
-        this.paymentIdempotencyKey = crypto.randomUUID();
+      if (order.status === 'CANCELLED' || ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED'].includes(order.status ?? '')) {
+        if (this.clearPersistedAttempt(user.username)) {
+          this.resetAttempt();
+        }
+        this.setInfoMessage(order.status === 'CANCELLED'
+          ? 'The saved order was cancelled. You can start a new checkout.'
+          : 'The saved order has already been paid.');
+        return;
       }
 
-      if (!this.currentOrder) {
-        this.setInfoMessage('Creating your order...');
-        const order = await firstValueFrom(this.orderService.createOrder(orderRequest, this.orderIdempotencyKey));
+      if (this.paymentId) {
+        const payment = await firstValueFrom(this._paymentService
+          .getPaymentStatus(this.paymentId)
+          .pipe(takeUntil(this.destroy$)));
         if (this.destroyed) {
           return;
         }
-        this.clearInfoMessage();
-        if (!order?.id || order.totalAmount == null) {
-          this.setErrorMessage('Could not create your order. Please try again.');
+        if (payment.status === 'COMPLETED') {
+          if (this.clearPersistedAttempt(user.username)) {
+            this.resetAttempt();
+          }
+          this.setInfoMessage('Your PIX payment has already completed.');
           return;
         }
-        this.currentOrder = order;
-        this.persistAttempt(user.username);
-      }
-
-      const order = this.currentOrder;
-      if (!order?.id || order.totalAmount == null) {
-        this.setErrorMessage('Could not retrieve your order. Please try again.');
+        await this.navigateToPix(this.paymentId);
         return;
       }
 
@@ -295,45 +345,51 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       };
 
       const paymentResponse = await firstValueFrom(
-        this.paymentService.createPixPayment(pixPaymentData, this.paymentIdempotencyKey)
+        this._paymentService.createPixPayment(pixPaymentData, this.paymentIdempotencyKey)
+          .pipe(takeUntil(this.destroy$))
       );
 
       if (this.destroyed) {
         return;
       }
 
-      const paymentId: string | undefined = paymentResponse?.paymentId;
-      if (!paymentId) {
+      this.paymentId = paymentResponse?.paymentId ?? null;
+      if (!this.paymentId) {
         this.setErrorMessage('Could not process PIX payment. Please try again.');
         return;
       }
-
-      const navigated = await this.router.navigate(['/pix-payment', paymentId]);
-      if (navigated) {
-        this.clearPersistedAttempt(user.username);
-        this.currentOrder = null;
-        this.checkoutFingerprint = null;
-        this.orderIdempotencyKey = crypto.randomUUID();
-        this.paymentIdempotencyKey = crypto.randomUUID();
-      } else {
-        this.persistAttempt(user.username);
-        this.setErrorMessage('Could not open the payment page. Your checkout is saved; please try again.');
-      }
+      this.persistAttempt(user.username);
+      await this.navigateToPix(this.paymentId);
 
     } catch (error) {
       if (this.destroyed) {
         return;
       }
+      if (error instanceof EmptyError) {
+        return;
+      }
       reportError('payment', error);
-      this.setErrorMessage('Could not process PIX payment. Please try again.');
+      this.setErrorMessage('Could not confirm your saved checkout. Please retry; your attempt has been kept.');
     }
-    this.cdr.detectChanges();
+    if (!this.destroyed) {
+      this._cdr.detectChanges();
+    }
+  }
+
+  private async navigateToPix(paymentId: string): Promise<void> {
+    if (this.destroyed) {
+      return;
+    }
+    const navigated = await this._router.navigate(['/pix-payment', paymentId]);
+    if (!this.destroyed && !navigated) {
+      this.setErrorMessage('Could not open the payment page. Your checkout is saved; please try again.');
+    }
   }
 
   private buildOrderRequest(): OrderDto {
     const userInfo = this.checkoutForm.get('userInfo')?.getRawValue();
     const shippingInfo = this.checkoutForm.get('shippingInfo')?.getRawValue();
-    const items = this.cartService.getCartItemsSnapshot().map(item => {
+    const items = this._cartService.getCartItemsSnapshot().map(item => {
       if (!item.product.id) {
         throw new Error('A cart item is missing its product identifier.');
       }
@@ -362,8 +418,15 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   async onSubmit(): Promise<void> {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.attemptStorageFailed) {
+      this.setErrorMessage('Your saved checkout needs assistance before another order can be started.');
+      return;
+    }
     this.clearErrorMessage();
-    if (this.checkoutForm.invalid) {
+    if (this.checkoutForm.invalid && !this.hasSavedAttempt) {
       this.checkoutForm.markAllAsTouched();
       this.setErrorMessage('Please correct the errors in the form.');
       return;
@@ -383,11 +446,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         }
         throw error;
       }
-      if (!user) return;
+      if (this.destroyed || !user) return;
 
       const paymentMethod = this.checkoutForm.get('paymentInfo.paymentMethod')?.value;
 
-      if (paymentMethod === PaymentMethod.PIX) {
+      if (this.hasSavedAttempt || paymentMethod === PaymentMethod.PIX) {
         await this.onProcessPixPayment(user);
         return;
       }
@@ -402,93 +465,174 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       this.setErrorMessage('Invalid payment method selected.');
 
     } catch (error) {
+      if (this.destroyed) {
+        return;
+      }
       reportError('checkout', error);
       if (!this.errorMessage) {
         this.setErrorMessage('An unexpected error occurred during checkout.');
       }
     } finally {
       this.isSubmitting = false;
+      if (!this.destroyed) {
+        this._cdr.detectChanges();
+      }
     }
-    this.cdr.detectChanges();
   }
 
   private setInfoMessage(message: string): void {
+    if (this.destroyed) return;
     this.infoMessage = message;
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
   private clearInfoMessage(): void {
+    if (this.destroyed) return;
     this.infoMessage = '';
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
 
   private setErrorMessage(message: string): void {
+    if (this.destroyed) return;
     this.errorMessage = message;
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
 
   dismissError(): void {
+    if (this.destroyed) return;
     this.errorMessage = '';
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
 
   private clearErrorMessage(): void {
+    if (this.destroyed) return;
     this.errorMessage = '';
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
 
-  private persistAttempt(username: string): void {
-    if (!this.currentOrder || !this.checkoutFingerprint) {
-      return;
+  private storageKey(username: string): string {
+    return this.attemptStoragePrefix + encodeURIComponent(username.trim().toLowerCase());
+  }
+
+  private persistAttempt(username: string): boolean {
+    if (!this.orderRequest || !this.checkoutFingerprint) {
+      return false;
     }
     try {
-      localStorage.setItem(this.attemptStorageKey, JSON.stringify({
+      const attempt: CheckoutAttempt = {
         username,
         fingerprint: this.checkoutFingerprint,
+        orderRequest: this.orderRequest,
         orderIdempotencyKey: this.orderIdempotencyKey,
         paymentIdempotencyKey: this.paymentIdempotencyKey,
         currentOrder: this.currentOrder,
-      }));
+        paymentId: this.paymentId,
+      };
+      localStorage.setItem(this.storageKey(username), JSON.stringify(attempt));
+      return true;
     } catch (error) {
       reportError('checkout-storage', error);
+      return false;
     }
   }
 
   private restoreAttempt(username: string): void {
+    this.resetAttempt();
+    this.attemptStorageFailed = false;
     try {
-      const raw = localStorage.getItem(this.attemptStorageKey);
+      const raw = localStorage.getItem(this.storageKey(username))
+        ?? localStorage.getItem('natiart-checkout-attempt');
       if (!raw) {
         return;
       }
-      const attempt = JSON.parse(raw) as Partial<{
-        username: string;
-        fingerprint: string;
-        orderIdempotencyKey: string;
-        paymentIdempotencyKey: string;
-        currentOrder: OrderDto;
-      }>;
-      if (attempt.username !== username || !attempt.fingerprint || !attempt.orderIdempotencyKey
-        || !attempt.paymentIdempotencyKey || !attempt.currentOrder?.id) {
+      const attempt = JSON.parse(raw) as Partial<CheckoutAttempt>;
+      if (attempt.username !== username) {
         return;
       }
-      this.checkoutFingerprint = attempt.fingerprint;
-      this.orderIdempotencyKey = attempt.orderIdempotencyKey as typeof this.orderIdempotencyKey;
-      this.paymentIdempotencyKey = attempt.paymentIdempotencyKey as typeof this.paymentIdempotencyKey;
-      this.currentOrder = attempt.currentOrder;
+      const request = attempt.orderRequest
+        ?? (attempt.currentOrder?.id ? this.replayRequestFromOrder(attempt.currentOrder) : null);
+      if (!request || !attempt.orderIdempotencyKey || !attempt.paymentIdempotencyKey) {
+        throw new Error('Saved checkout cannot be safely resumed');
+      }
+      this.orderRequest = request;
+      this.checkoutFingerprint = JSON.stringify(request);
+      this.orderIdempotencyKey = attempt.orderIdempotencyKey;
+      this.paymentIdempotencyKey = attempt.paymentIdempotencyKey;
+      this.currentOrder = attempt.currentOrder ?? null;
+      this.paymentId = attempt.paymentId ?? null;
+      this.currentStep = 3;
+      this.checkoutForm.patchValue({
+        userInfo: {
+          firstname: request.firstname,
+          lastname: request.lastname,
+          email: request.email,
+          phone: request.phone,
+        },
+        shippingInfo: {
+          country: request.country,
+          state: request.state,
+          city: request.city,
+          neighborhood: request.neighborhood,
+          zipCode: request.zipCode,
+          street: request.street,
+          complement: request.complement,
+        },
+        paymentInfo: {paymentMethod: PaymentMethod.PIX},
+      });
+      this.setInfoMessage('A saved PIX checkout is ready to resume. Its order details are fixed.');
+      if (!this.persistAttempt(username)) {
+        throw new Error('Saved checkout could not be migrated');
+      }
+      localStorage.removeItem('natiart-checkout-attempt');
     } catch (error) {
-      localStorage.removeItem(this.attemptStorageKey);
+      this.resetAttempt();
+      this.attemptStorageFailed = true;
+      this.clearInfoMessage();
       reportError('checkout-storage', error);
+      this.setErrorMessage('Your saved checkout needs assistance before another order can be started.');
     }
   }
 
-  private clearPersistedAttempt(username: string): void {
+  private replayRequestFromOrder(order: OrderDto): OrderDto {
+    return {
+      firstname: order.firstname,
+      lastname: order.lastname,
+      email: order.email,
+      phone: order.phone,
+      country: order.country,
+      state: order.state,
+      city: order.city,
+      neighborhood: order.neighborhood,
+      zipCode: order.zipCode,
+      street: order.street,
+      complement: order.complement,
+      items: order.items.map(item => ({productId: item.productId, quantity: item.quantity})),
+      deliveryAmount: order.deliveryAmount,
+    };
+  }
+
+  private clearPersistedAttempt(username: string): boolean {
     try {
-      const raw = localStorage.getItem(this.attemptStorageKey);
+      localStorage.removeItem(this.storageKey(username));
+      const raw = localStorage.getItem('natiart-checkout-attempt');
       if (!raw || (JSON.parse(raw) as {username?: string}).username === username) {
-        localStorage.removeItem(this.attemptStorageKey);
+        localStorage.removeItem('natiart-checkout-attempt');
       }
+      return true;
     } catch (error) {
       reportError('checkout-storage', error);
+      this.attemptStorageFailed = true;
+      this.setErrorMessage('Your saved checkout needs assistance before another order can be started.');
+      return false;
     }
+  }
+
+  private resetAttempt(): void {
+    this.currentOrder = null;
+    this.orderRequest = null;
+    this.paymentId = null;
+    this.checkoutFingerprint = null;
+    this.orderIdempotencyKey = crypto.randomUUID();
+    this.paymentIdempotencyKey = crypto.randomUUID();
   }
 
   ngOnDestroy(): void {

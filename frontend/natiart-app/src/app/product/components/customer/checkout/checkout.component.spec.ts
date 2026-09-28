@@ -3,7 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { Router } from '@angular/router';
-import { BehaviorSubject, of, throwError } from 'rxjs';
+import { BehaviorSubject, of, Subject, throwError } from 'rxjs';
 
 import { CheckoutComponent } from './checkout.component';
 import { CartService } from '../../../service/cart.service';
@@ -21,6 +21,8 @@ describe('CheckoutComponent', () => {
   let createOrderSpy: jasmine.Spy;
   let isLoggedInSubject: BehaviorSubject<boolean>;
   let currentUserSubject: BehaviorSubject<User | null>;
+  let createdOrder: OrderDto;
+  const attemptKey = 'natiart-checkout-attempt:user%40example.test';
 
   const loggedInUser: User = {
     id: 'u1',
@@ -64,6 +66,8 @@ describe('CheckoutComponent', () => {
   }
 
   beforeEach(async () => {
+    localStorage.removeItem(attemptKey);
+    localStorage.removeItem('natiart-checkout-attempt');
     isLoggedInSubject = new BehaviorSubject<boolean>(true);
     currentUserSubject = new BehaviorSubject<User | null>(loggedInUser);
     createPixPaymentSpy = jasmine.createSpy('createPixPayment');
@@ -104,7 +108,10 @@ describe('CheckoutComponent', () => {
         },
         {
           provide: PaymentService,
-          useValue: { createPixPayment: createPixPaymentSpy },
+          useValue: {
+            createPixPayment: createPixPaymentSpy,
+            getPaymentStatus: jasmine.createSpy('getPaymentStatus').and.returnValue(of({paymentId: 'pay_123', status: 'PENDING'})),
+          },
         },
       ],
     }).compileComponents();
@@ -113,7 +120,7 @@ describe('CheckoutComponent', () => {
     routerNavigateSpy = spyOn(router, 'navigate').and.resolveTo(true);
     fixture = TestBed.createComponent(CheckoutComponent);
     component = fixture.componentInstance;
-    const createdOrder: OrderDto = {
+    createdOrder = {
       id: 'order-123',
       firstname: 'Ada',
       lastname: 'Lovelace',
@@ -197,7 +204,7 @@ describe('CheckoutComponent', () => {
     await component.onProcessPixPayment(loggedInUser);
 
     expect(routerNavigateSpy).not.toHaveBeenCalled();
-    expect(component.errorMessage).toContain('Could not process PIX payment');
+    expect(component.errorMessage).toContain('attempt has been kept');
     expect(component.isSubmitting).toBeFalse();
   });
 
@@ -208,7 +215,8 @@ describe('CheckoutComponent', () => {
     createPixPaymentSpy.and.returnValue(of(paymentResponseWith('pay_123')));
     await component.onProcessPixPayment(loggedInUser);
 
-    expect(createOrderSpy).toHaveBeenCalledTimes(1);
+    expect(createOrderSpy).toHaveBeenCalledTimes(2);
+    expect(createOrderSpy.calls.argsFor(1)[1]).toBe(createOrderSpy.calls.argsFor(0)[1]);
     expect(createPixPaymentSpy).toHaveBeenCalledTimes(2);
     expect(createPixPaymentSpy.calls.argsFor(0)[1]).toMatch(/^[0-9a-f-]{36}$/);
     expect(createPixPaymentSpy.calls.argsFor(1)[1]).toBe(createPixPaymentSpy.calls.argsFor(0)[1]);
@@ -259,5 +267,128 @@ describe('CheckoutComponent', () => {
     expect(component.errorMessage).toContain('Please sign in or register');
     expect(createPixPaymentSpy).not.toHaveBeenCalled();
     expect(routerNavigateSpy).not.toHaveBeenCalled();
+  });
+
+  it('replays the same order key after a lost creation response and reload', async () => {
+    createOrderSpy.and.returnValue(throwError(() => new Error('response lost')));
+    await component.onProcessPixPayment(loggedInUser);
+
+    const saved = JSON.parse(localStorage.getItem(attemptKey) ?? '{}') as {
+      currentOrder: OrderDto | null;
+      orderRequest: OrderDto;
+      orderIdempotencyKey: string;
+    };
+    expect(saved.currentOrder).toBeNull();
+    expect(saved.orderRequest.items).toEqual([{productId: 'prod-1', quantity: 1}]);
+    expect(createPixPaymentSpy).not.toHaveBeenCalled();
+
+    fixture.destroy();
+    createOrderSpy.and.returnValue(of(createdOrder));
+    fixture = TestBed.createComponent(CheckoutComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Resume saved checkout');
+    const resumeButton = fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement;
+    expect(resumeButton.disabled).toBeFalse();
+    resumeButton.click();
+    await fixture.whenStable();
+
+    expect(createOrderSpy).toHaveBeenCalledTimes(2);
+    expect(createOrderSpy.calls.argsFor(1)[1]).toBe(saved.orderIdempotencyKey);
+    expect(createOrderSpy.calls.argsFor(1)[0]).toEqual(saved.orderRequest);
+    expect(createPixPaymentSpy).toHaveBeenCalledTimes(1);
+    expect(routerNavigateSpy).toHaveBeenCalledWith(['/pix-payment', 'pay_123']);
+    expect(localStorage.getItem(attemptKey)).not.toBeNull();
+  });
+
+  it('replays the same payment key after provider acceptance with a lost response', async () => {
+    createPixPaymentSpy.and.returnValue(throwError(() => new Error('response lost')));
+    await component.onProcessPixPayment(loggedInUser);
+    const saved = JSON.parse(localStorage.getItem(attemptKey) ?? '{}') as {
+      paymentIdempotencyKey: string;
+      currentOrder: OrderDto;
+    };
+    expect(saved.currentOrder.id).toBe('order-123');
+    expect(routerNavigateSpy).not.toHaveBeenCalled();
+
+    fixture.destroy();
+    createPixPaymentSpy.and.returnValue(of(paymentResponseWith('pay_123')));
+    fixture = TestBed.createComponent(CheckoutComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    await component.onSubmit();
+
+    expect(createPixPaymentSpy).toHaveBeenCalledTimes(2);
+    expect(createPixPaymentSpy.calls.argsFor(1)[1]).toBe(saved.paymentIdempotencyKey);
+    expect(routerNavigateSpy).toHaveBeenCalledWith(['/pix-payment', 'pay_123']);
+    expect(JSON.parse(localStorage.getItem(attemptKey) ?? '{}').paymentId).toBe('pay_123');
+  });
+
+  it('retains payment identity when routing fails and checks its status before resuming', async () => {
+    routerNavigateSpy.and.resolveTo(false);
+    await component.onProcessPixPayment(loggedInUser);
+    expect(JSON.parse(localStorage.getItem(attemptKey) ?? '{}').paymentId).toBe('pay_123');
+
+    routerNavigateSpy.and.resolveTo(true);
+    await component.onProcessPixPayment(loggedInUser);
+
+    const paymentService = TestBed.inject(PaymentService);
+    expect(paymentService.getPaymentStatus).toHaveBeenCalledWith('pay_123');
+    expect(createPixPaymentSpy).toHaveBeenCalledTimes(1);
+    expect(routerNavigateSpy).toHaveBeenCalledTimes(2);
+    expect(localStorage.getItem(attemptKey)).not.toBeNull();
+  });
+
+  it('keeps the saved key and starts no payment after leaving during a delayed order response', async () => {
+    const delayedOrder = new Subject<OrderDto>();
+    createOrderSpy.and.returnValue(delayedOrder);
+    const inFlight = component.onProcessPixPayment(loggedInUser);
+    expect(localStorage.getItem(attemptKey)).not.toBeNull();
+
+    fixture.destroy();
+    delayedOrder.next(createdOrder);
+    delayedOrder.complete();
+    await inFlight;
+
+    expect(createPixPaymentSpy).not.toHaveBeenCalled();
+    expect(routerNavigateSpy).not.toHaveBeenCalled();
+    expect(localStorage.getItem(attemptKey)).not.toBeNull();
+  });
+
+  it('clears the saved attempt only after the payment is confirmed complete', async () => {
+    await component.onProcessPixPayment(loggedInUser);
+    expect(localStorage.getItem(attemptKey)).not.toBeNull();
+    const paymentService = TestBed.inject(PaymentService);
+    (paymentService.getPaymentStatus as jasmine.Spy).and.returnValue(of({paymentId: 'pay_123', status: 'COMPLETED'}));
+
+    await component.onProcessPixPayment(loggedInUser);
+
+    expect(localStorage.getItem(attemptKey)).toBeNull();
+    expect(createPixPaymentSpy).toHaveBeenCalledTimes(1);
+    expect(component.infoMessage).toContain('already completed');
+  });
+
+  it('keeps one account’s saved attempt separate when another account signs in', async () => {
+    await component.onProcessPixPayment(loggedInUser);
+    expect(localStorage.getItem(attemptKey)).not.toBeNull();
+
+    fixture.destroy();
+    currentUserSubject.next({...loggedInUser, id: 'u2', username: 'other@example.test'});
+    fixture = TestBed.createComponent(CheckoutComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    expect(component.hasSavedAttempt).toBeFalse();
+    expect(localStorage.getItem(attemptKey)).not.toBeNull();
+  });
+
+  it('does not create an order when the attempt cannot be saved first', async () => {
+    spyOn(Storage.prototype, 'setItem').and.throwError('storage unavailable');
+
+    await component.onProcessPixPayment(loggedInUser);
+
+    expect(createOrderSpy).not.toHaveBeenCalled();
+    expect(createPixPaymentSpy).not.toHaveBeenCalled();
+    expect(component.errorMessage).toContain('Could not save your checkout');
   });
 });

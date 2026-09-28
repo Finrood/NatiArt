@@ -1,0 +1,20 @@
+# Checkout attempt recovery
+
+Checkout stores an account-scoped attempt in browser storage before sending the
+first order request. It includes the original order payload and both idempotency
+keys. Repeated submissions and reloads replay the original payload and key to
+`POST /orders/create`, which returns the existing owned order without another
+stock reservation. A changed form or cart cannot silently create a second order
+while that attempt remains active.
+
+After order replay, checkout uses the saved payment key for
+`POST /payments/create`. If a payment ID has been received, it checks the owned
+payment status before routing to PIX. Routing to PIX keeps the attempt; only a
+confirmed completed payment or terminal order state clears it. Provider failures
+requiring reconciliation leave the attempt in place so the next retry cannot
+issue a new charge with a new key.
+
+Leaving the page cancels the client subscriptions and prevents later payment
+requests or navigation. A request already accepted by the server may still
+complete, so the saved key is retained for the next visit. If browser storage
+cannot preserve the attempt, checkout stops before creating an order.
