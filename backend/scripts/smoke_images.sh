@@ -43,8 +43,12 @@ copy_app_jar() { # image, destination
 
 wait_for_start() { # image, Spring Boot application class
     local id attempt
+    # Startup validates both integration tokens, but this probe performs no
+    # external requests. Supply inert values so a missing CI secret cannot
+    # mask whether the packaged application actually boots.
     id="$(docker run -d -e SPRING_PROFILES_ACTIVE=local-h2 \
-        -e NATIART_PAYMENT_ASAAS_APIKEY=ci-container-smoke-key "$1")"
+        -e NATIART_PAYMENT_ASAAS_APIKEY=ci-container-smoke-key \
+        -e MELHORENVIO_API_TOKEN=ci-container-smoke-key "$1")"
     containers+=("$id")
     for ((attempt = 0; attempt < 90; attempt++)); do
         if docker logs "$id" 2>&1 | grep -q "Started $2 in"; then
