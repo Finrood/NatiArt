@@ -1,5 +1,7 @@
 package com.portcelana.natiart.repository;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import jakarta.persistence.LockModeType;
@@ -14,6 +16,10 @@ import com.portcelana.natiart.model.CustomerUpload;
 
 @Repository
 public interface CustomerUploadRepository extends JpaRepository<CustomerUpload, String> {
+    /** Locks expired rows so a concurrent order cannot claim one during file deletion. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    List<CustomerUpload> findByConsumedAtIsNullAndCreatedAtBefore(Instant cutoff);
+
     /** Locks the upload while it is claimed so one artwork cannot fund two orders. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT upload FROM CustomerUpload upload WHERE upload.id = :id")

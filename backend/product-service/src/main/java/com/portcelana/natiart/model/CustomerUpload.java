@@ -36,6 +36,9 @@ public class CustomerUpload {
     private Instant createdAt;
 
     @Column
+    private Instant readyAt;
+
+    @Column
     private Instant consumedAt;
 
     protected CustomerUpload() {
@@ -53,6 +56,14 @@ public class CustomerUpload {
         this.contentType = contentType;
         this.size = size;
         this.createdAt = Instant.now();
+        this.readyAt = createdAt;
+    }
+
+    /** Records ownership before the file is written; pending uploads cannot be claimed. */
+    public static CustomerUpload pending(String id, String ownerExternalId, String storageUri, long size) {
+        final CustomerUpload upload = new CustomerUpload(id, ownerExternalId, storageUri, "image/webp", size);
+        upload.readyAt = null;
+        return upload;
     }
 
     public String getId() {
@@ -81,6 +92,15 @@ public class CustomerUpload {
 
     public Instant getConsumedAt() {
         return consumedAt;
+    }
+
+    public Instant getReadyAt() {
+        return readyAt;
+    }
+
+    public CustomerUpload markReady() {
+        this.readyAt = Instant.now();
+        return this;
     }
 
     public CustomerUpload setConsumedAt(Instant consumedAt) {
