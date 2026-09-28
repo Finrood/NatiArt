@@ -17,6 +17,7 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP_ROOT="${TMPDIR:-/tmp}"   # override with TMPDIR for tests; attempt logs are removed after each run
 umask 077
+OUTCOME_DIR="${NATIART_OUTCOME_DIR:-$REPO/logs/agent-outcomes}"
 
 # --- overridables ----------------------------------------------------------
 ROLE="cycle"          # cycle (1500s budget) | review (360s default; loop overrides to 600)
@@ -26,6 +27,7 @@ STALL_SEC=120          # no-output stall detection per attempt (role default app
 STALL_EXPLICIT=""      # set when --stall is passed; skips role defaults
 SIMULATE_QUOTA_AT=0    # test harness: fail the first N attempts as synthetic quota
 CHECK_ONLY=0
+REVIEW_PR=""
 SKIP=()                # model substrings to deprioritize (repeatable --skip)
 ALLOWED_ARGS=()        # extra permission args passed to cline (e.g. --auto-approve true)
 
@@ -48,6 +50,7 @@ Options:
                           (repeatable; loop reviewers skip the PR author's model
                           for independence; skips are ignored if they empty the list)
   --check-only            Print the priority list + first model, invoke nothing
+  --review-pr N           Target PR for a review deliverable (required for --role review)
   -h, --help              Show this help
 EOF
 }
@@ -87,6 +90,7 @@ while [[ $# -gt 0 ]]; do
         --simulate-quota-at) SIMULATE_QUOTA_AT="${2:-}"; [[ $# -ge 2 ]] || { log_err "Missing value for --simulate-quota-at."; usage; exit 2; }; shift 2 ;;
         --allowed) ALLOWED_ARGS=(); [[ $# -ge 2 ]] || { log_err "Missing value for --allowed."; usage; exit 2; }; read -ra ALLOWED_ARGS <<< "$2"; shift 2 ;;
         --skip) [[ $# -ge 2 ]] || { log_err "Missing value for --skip."; usage; exit 2; }; SKIP+=("$2"); shift 2 ;;
+        --review-pr) REVIEW_PR="${2:-}"; [[ $# -ge 2 ]] || { log_err "Missing value for --review-pr."; usage; exit 2; }; shift 2 ;;
         --check-only) CHECK_ONLY=1; shift ;;
         -h|--help) usage; exit 0 ;;
         --) shift; PROMPT_ARGS+=("$@"); break ;;
@@ -124,6 +128,12 @@ if [[ "${#PROMPT_ARGS[@]}" -eq 0 ]]; then
     exit 2
 fi
 PROMPT="${PROMPT_ARGS[*]}"
+if [[ "$ROLE" == review && "$CHECK_ONLY" -eq 0 ]]; then
+    if [[ ! "$REVIEW_PR" =~ ^[1-9][0-9]{0,8}$ ]]; then
+        log_err "--review-pr must be a positive PR number."
+        exit 2
+    fi
+fi
 
 # --- model registry (priority list) ----------------------------------------
 # Override with NATIART_MODELS_CONF to test with a throwaway priority list.
@@ -220,6 +230,7 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
     printf '%s\n' "$(echo "${EFFECTIVE[0]}" | cut -d'|' -f2)"
     exit 0
 fi
+mkdir -p "$OUTCOME_DIR"
 
 # --- quota / stall detection helpers ----------------------------------------
 quota_blocked() { # $1 = rc, $2 = log file; 0 if quota, 1 otherwise
@@ -235,11 +246,59 @@ print_tail() { # $1 = log file
     tail -n 15 "$f" 2>/dev/null || true
 }
 
-ATT_LOG=""
-cleanup_attempt_log() {
-    [[ -z "${ATT_LOG:-}" ]] || rm -f "$ATT_LOG" || true
+retain_outcome() { # writes a bounded, redacted recovery artifact before cleanup
+    local f="${ATT_LOG:-}" artifact tmp
+    [[ -n "$f" && -f "$f" ]] || return 0
+    artifact="$OUTCOME_DIR/$(date -u +%Y%m%d-%H%M%S)-attempt-${attempt:-0}-$$.log"
+    tmp="$(mktemp "$OUTCOME_DIR/.outcome-XXXXXX")" || {
+        log_err "Could not allocate an outcome artifact; continuing cleanup."
+        return 0
+    }
+    {
+        printf 'role=%s\nmodel=%s\nattempt=%s\nreason=%s\nrc=%s\n' \
+            "$ROLE" "${NATIART_MODEL:-unknown}" "${attempt:-0}" \
+            "${reason:-unknown}" "${rc:-unknown}"
+        tail -c 16384 "$f" | sed -E \
+            -e 's/sk-[A-Za-z0-9]+/[REDACTED]/g' \
+            -e 's/(ACCESS_KEY|SECRET|api[_-]?key|password)[=:][^[:space:]]+/\1=[REDACTED]/Ig' \
+            -e 's/(bearer )[A-Za-z0-9._-]+/\1[REDACTED]/Ig' || true
+    } >"$tmp"
+    chmod 600 "$tmp"
+    mv -f "$tmp" "$artifact"
 }
-trap cleanup_attempt_log EXIT
+
+close_attempt() { # persist recovery context, then release the private log
+    retain_outcome
+    [[ -z "${ATT_LOG:-}" ]] || rm -f "$ATT_LOG"
+    ATT_LOG=""
+}
+
+DELIVERABLE_BASELINE=""
+DELIVERABLE_AFTER=""
+capture_deliverable_state() { # $1=output file; authenticated GitHub state
+    case "$ROLE" in
+        review) gh pr view "$REVIEW_PR" --json headRefOid,reviews > "$1" ;;
+        cycle) gh pr list --state all --limit 1000 --json number,headRefOid > "$1" ;;
+    esac
+}
+
+role_deliverable_present() { # true only for a new pushed PR head or new review on the exact head
+    if ! capture_deliverable_state "$DELIVERABLE_AFTER"; then return 1; fi
+    case "$ROLE" in
+        review)
+            jq -e --slurpfile before "$DELIVERABLE_BASELINE" '
+                .headRefOid == $before[0].headRefOid and
+                any(.reviews[]; .commit.oid == $before[0].headRefOid and
+                    (.body | test("^VERDICT: (APPROVE|REQUEST_CHANGES)")) and
+                    (.id as $id | ($before[0].reviews | map(.id) | index($id) | not)))
+            ' "$DELIVERABLE_AFTER" >/dev/null ;;
+        cycle)
+            jq -e --slurpfile before "$DELIVERABLE_BASELINE" '
+                any(.[]; . as $pr |
+                    all($before[0][]; .number != $pr.number or .headRefOid != $pr.headRefOid))
+            ' "$DELIVERABLE_AFTER" >/dev/null ;;
+    esac
+}
 
 kill_agent() { # $1 = process-group leader pid; terminate the whole attempt tree
     local pid="$1" _
@@ -255,6 +314,44 @@ kill_agent() { # $1 = process-group leader pid; terminate the whole attempt tree
     kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
     return 0
 }
+
+PID=""
+ATT_LOG=""
+CLEANUP_DONE=0
+
+cleanup_runner() {
+    local status=$?
+    if [[ "$CLEANUP_DONE" -eq 1 ]]; then
+        return "$status"
+    fi
+    CLEANUP_DONE=1
+    trap - EXIT TERM INT HUP
+    if [[ -n "${PID:-}" ]] && { kill -0 "$PID" 2>/dev/null || kill -0 -- "-$PID" 2>/dev/null; }; then
+        reason="wrapper-exit"
+        log "Cleaning up active agent process group $PID before exit."
+        kill_agent "$PID"
+        wait "$PID" 2>/dev/null || true
+    fi
+    reason="${reason:-wrapper-exit}"
+    rc="$status"
+    retain_outcome
+    [[ -z "${ATT_LOG:-}" ]] || rm -f "$ATT_LOG"
+    ATT_LOG=""
+    [[ -z "${DELIVERABLE_BASELINE:-}" ]] || rm -f "$DELIVERABLE_BASELINE"
+    [[ -z "${DELIVERABLE_AFTER:-}" ]] || rm -f "$DELIVERABLE_AFTER"
+    PID=""
+    return "$status"
+}
+
+trap cleanup_runner EXIT
+trap 'exit 143' TERM INT HUP
+
+DELIVERABLE_BASELINE="$(mktemp "$TMP_ROOT/natiart-deliverable-before-XXXXXX.json")"
+DELIVERABLE_AFTER="$(mktemp "$TMP_ROOT/natiart-deliverable-after-XXXXXX.json")"
+if ! capture_deliverable_state "$DELIVERABLE_BASELINE"; then
+    log_err "Cannot inspect GitHub deliverable state before launching a worker."
+    exit 2
+fi
 
 launch_attempt() { # $1=cli $2=model_id $3=think; spawns child bg, sets $PID
     local cli="$1" model_id="$2" think="$3"
@@ -285,7 +382,14 @@ launch_attempt() { # $1=cli $2=model_id $3=think; spawns child bg, sets $PID
 }
 
 # --- main loop: walk the priority list until one model works or budget dies -
-DEADLINE=$(( $(date +%s) + BUDGET ))
+# Keep a grace window for the supervisor's TERM delivery and process-group
+# cleanup. The production supervisors allow substantially more than this.
+INTERNAL_GRACE=15
+if (( BUDGET > INTERNAL_GRACE + 10 )); then
+    DEADLINE=$(( $(date +%s) + BUDGET - INTERNAL_GRACE ))
+else
+    DEADLINE=$(( $(date +%s) + BUDGET ))
+fi
 attempt=0
 BLOCKED_ROUNDS=0 # consecutive full-pool blocked rounds (drives backoff below)
 while true; do
@@ -341,16 +445,32 @@ while true; do
             done
             wait "$PID" 2>/dev/null || rc=$?
 
+            # A CLI can exit while a descendant survives. Reap the whole
+            # process group before retry/failover so workers never overlap.
+            if kill -0 -- "-$PID" 2>/dev/null; then
+                log "Attempt $attempt/${label} left descendants; terminating its process group before continuing."
+                kill_agent "$PID"
+            fi
+            PID=""
+
             if [[ "$reason" == "timeout" ]]; then
                 log "Attempt $attempt/${label} consumed the whole budget without finishing."
                 print_tail "$ATT_LOG"
-                rm -f "$ATT_LOG"
+                rc=124
                 exit 124
             fi
 
             if (( rc == 0 )); then
+                if ! role_deliverable_present; then
+                    reason="incomplete"
+                    rc=1
+                    log_err "Attempt $attempt/${label} exited cleanly without the required $ROLE deliverable."
+                    print_tail "$ATT_LOG"
+                    close_attempt
+                    exit 1
+                fi
                 log "Attempt $attempt succeeded with $label ($model_id${think:+, $think})."
-                rm -f "$ATT_LOG"
+                close_attempt
                 echo "NATIART_ACTIVE_MODEL=$label"
                 echo "$label"
                 BLOCKED_ROUNDS=0
@@ -368,7 +488,7 @@ while true; do
                     same_retry=1
                     log "Attempt $attempt/${label} went silent for ${STALL_SEC}s (rc=$rc); retrying SAME model once before failover."
                     print_tail "$ATT_LOG"
-                    rm -f "$ATT_LOG"
+                    close_attempt
                     remaining=$(( DEADLINE - $(date +%s) ))
                     if (( remaining <= 10 )); then
                         log "Time budget exhausted during same-model retry."
@@ -379,7 +499,7 @@ while true; do
                 fi
                 log "Attempt $attempt/${label} silent again (rc=$rc); treating as quota-block; trying next model."
                 print_tail "$ATT_LOG"
-                rm -f "$ATT_LOG"
+                close_attempt
                 break
             fi
 
@@ -396,7 +516,7 @@ while true; do
                     same_retry=1
                     log "Attempt $attempt/${label} quota-blocked (rc=$rc); retrying SAME model once before failover."
                     print_tail "$ATT_LOG"
-                    rm -f "$ATT_LOG"
+                    close_attempt
                     remaining=$(( DEADLINE - $(date +%s) ))
                     if (( remaining <= 10 )); then
                         log "Time budget exhausted during same-model quota retry."
@@ -407,7 +527,7 @@ while true; do
                 fi
                 log "Attempt $attempt/${label} quota-blocked again (rc=$rc); trying next model."
                 print_tail "$ATT_LOG"
-                rm -f "$ATT_LOG"
+                close_attempt
                 break
             fi
 
@@ -418,13 +538,12 @@ while true; do
                 # a human, a vanished binary does not).
                 log "Attempt $attempt/${label}: CLI missing or unrunnable (rc=$rc); trying next model."
                 print_tail "$ATT_LOG"
-                rm -f "$ATT_LOG"
+                close_attempt
                 break
             fi
 
             log "Attempt $attempt/${label} failed with rc=$rc and no quota signal; aborting."
             print_tail "$ATT_LOG"
-            rm -f "$ATT_LOG"
             exit "$rc"
         done
     done

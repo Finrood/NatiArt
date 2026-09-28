@@ -21,6 +21,17 @@ esac
 printf '%s\n' "$path"
 EOF
 chmod +x "$FAKEBIN/mktemp"
+cat >"$FAKEBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+[[ "${1:-} ${2:-}" == 'pr list' ]] || exit 2
+if [[ -f "$FAKE_STATE" && "$(cat "$FAKE_STATE")" == 2 ]]; then
+    printf '[{"number":42,"headRefOid":"2222222222222222222222222222222222222222"}]\n'
+else
+    printf '[{"number":42,"headRefOid":"1111111111111111111111111111111111111111"}]\n'
+fi
+EOF
+chmod +x "$FAKEBIN/gh"
 cat >"$FAKEBIN/opencode" <<'EOF'
 #!/usr/bin/env bash
 set -Eeuo pipefail
@@ -40,9 +51,9 @@ PRIORITY=("opencode|fake|fake/model|xhigh")
 EOF
 
 umask 022
-PATH="$FAKEBIN:$PATH" NATIART_MODELS_CONF="$ROOT/models.conf" \
+PATH="$FAKEBIN:$PATH" NATIART_MODELS_CONF="$ROOT/models.conf" NATIART_OUTCOME_DIR="$ROOT/outcomes" \
     NATIART_LOG_TRACE="$ROOT/trace" FAKE_STATE="$ROOT/state" \
-    bash "$RUN_AGENT" --role review --budget 00030 --stall 00020 retry \
+    bash "$RUN_AGENT" --role cycle --budget 00030 --stall 00020 retry \
     >"$ROOT/run.log" 2>&1
 
 grep -q 'NATIART_ACTIVE_MODEL=fake' "$ROOT/run.log"
