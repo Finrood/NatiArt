@@ -347,8 +347,8 @@ while IFS=$'\t' read -r dn _dcreated _dtitle; do
     [[ -z "$dn" ]] && continue
     [[ "$merged" -ge 2 ]] && { log "Merged 2 this cycle; dependabot #$dn waits for next cycle."; break; }
 
-    D_META="$(gh_safe gh pr view "$dn" --json author,headRefOid,commits,title \
-        --jq '[.author.login, .headRefOid, ((.commits | last | .committedDate) // ""), .title] | @tsv')"
+    D_META="$(gh_safe gh pr view "$dn" --json author,headRefOid,updatedAt,title \
+        --jq '[.author.login, .headRefOid, .updatedAt, .title] | @tsv')"
     IFS=$'\t' read -r d_author d_head_sha d_head_updated dtitle <<<"$D_META"
     if ! dependabot_author_is_verified "${d_author:-}"; then
         log "Dependabot #$dn left open (authenticated author is not dependabot[bot])."
@@ -356,11 +356,6 @@ while IFS=$'\t' read -r dn _dcreated _dtitle; do
     fi
     if [[ -z "${d_head_sha:-}" || -z "${d_head_updated:-}" || -z "${dtitle:-}" ]]; then
         log "Dependabot #$dn metadata is unavailable; leaving open."
-        continue
-    fi
-    bump="$(semver_bump "$dtitle")"
-    if [[ "$bump" != "patch" && "$bump" != "minor" ]]; then
-        log "Dependabot #$dn left open ($bump scope needs agent/human)."
         continue
     fi
     D_FILES=""
@@ -376,10 +371,18 @@ while IFS=$'\t' read -r dn _dcreated _dtitle; do
         log "Dependabot #$dn changed files exceed supported manifest/lockfile scope; leaving open."
         continue
     fi
-    created_s=$(date -d "$d_head_updated" +%s 2>/dev/null || echo 0)
+    D_PATCH="$(gh pr diff "$dn" --patch --color never 2>/dev/null)" || {
+        log "Dependabot #$dn patch is unavailable; leaving open."
+        continue
+    }
+    bump="$(python3 "$REPO/scripts/dependabot-diff-bump.py" <<<"$D_PATCH")"
+    if [[ "$bump" != "patch" && "$bump" != "minor" ]]; then
+        log "Dependabot #$dn left open (actual dependency diff is $bump; requires review)."
+        continue
+    fi
     now_s=$(date +%s)
-    if [[ "$created_s" -le 0 || $(( (now_s - created_s) / 3600 )) -lt 48 ]]; then
-        log "Dependabot #$dn left open ($bump but younger than 48h)."
+    if ! dependabot_update_soaked "$d_head_updated" "$now_s"; then
+        log "Dependabot #$dn left open ($bump but latest PR update is younger than 48h)."
         continue
     fi
     dchecks=$(gh_checks_safe gh pr checks "$dn")

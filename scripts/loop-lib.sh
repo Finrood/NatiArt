@@ -99,6 +99,13 @@ dependabot_files_supported() { # $1 = newline-separated manifest/lockfile paths
     done <<<"$files"
 }
 
+dependabot_update_soaked() { # $1=PR updatedAt $2=epoch now; conservatively resets on any PR activity
+    local updated_at="$1" now="$2" updated_epoch
+    updated_epoch="$(date -d "$updated_at" +%s 2>/dev/null)" || return 1
+    [[ "$updated_epoch" =~ ^[0-9]+$ && "$now" =~ ^[0-9]+$ ]] || return 1
+    (( updated_epoch > 0 && now >= updated_epoch && now - updated_epoch >= 172800 ))
+}
+
 semver_bump() { # $1 = dependabot title; prints patch|minor|major|unknown
     # Only exact single-dependency "Bump X from a.b.c to x.y.z" titles
     # classify. Group/multi-pair titles, prereleases, downgrades, and malformed
