@@ -35,7 +35,6 @@ public class OrderController {
     @PreAuthorize("isFullyAuthenticated()")
     public OrderDto cancelOrder(
             @PathVariable String orderId, @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
-        return OrderDto.from(
-                orderManager.cancelPendingOrder(orderId, principal != null ? principal.getExternalId() : null));
+        return orderManager.cancelPendingOrderResponse(orderId, principal != null ? principal.getExternalId() : null);
     }
 }

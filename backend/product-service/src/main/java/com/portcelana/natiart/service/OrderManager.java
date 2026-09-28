@@ -32,4 +32,7 @@ public interface OrderManager {
 
     /** Cancels an unpaid order and releases its stock reservation exactly once. */
     CustomerOrder cancelPendingOrder(String orderId, String requesterExternalId);
+
+    /** Returns the cancelled order while its purchase details are still attached. */
+    OrderDto cancelPendingOrderResponse(String orderId, String requesterExternalId);
 }

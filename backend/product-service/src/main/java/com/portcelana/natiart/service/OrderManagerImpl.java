@@ -299,4 +299,10 @@ public class OrderManagerImpl implements OrderManager {
         order.setStatus(OrderStatus.CANCELLED);
         return orderRepository.save(order);
     }
+
+    @Override
+    @Transactional
+    public OrderDto cancelPendingOrderResponse(String orderId, String requesterExternalId) {
+        return OrderDto.from(cancelPendingOrder(orderId, requesterExternalId));
+    }
 }

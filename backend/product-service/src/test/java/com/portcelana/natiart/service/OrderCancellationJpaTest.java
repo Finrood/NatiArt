@@ -71,9 +71,10 @@ class OrderCancellationJpaTest {
     void verifiedInactivePaymentRowReleasesStockExactlyOnce() {
         final Seed seed = seed(true);
 
-        assertEquals(
-                OrderStatus.CANCELLED,
-                orderManager.cancelPendingOrder(seed.orderId(), "cus_MINE").getStatus());
+        final com.portcelana.natiart.dto.OrderDto cancelled =
+                orderManager.cancelPendingOrderResponse(seed.orderId(), "cus_MINE");
+        assertEquals(OrderStatus.CANCELLED, cancelled.getStatus());
+        assertEquals(2, cancelled.getItems().getFirst().getQuantity());
         assertEquals(
                 OrderStatus.CANCELLED,
                 orderManager.cancelPendingOrder(seed.orderId(), "cus_MINE").getStatus());

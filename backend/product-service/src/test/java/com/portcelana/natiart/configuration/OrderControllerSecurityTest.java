@@ -99,14 +99,12 @@ class OrderControllerSecurityTest {
         SecurityContextHolder.getContext()
                 .setAuthentication(new UsernamePasswordAuthenticationToken(
                         principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER"))));
-        when(orderManager.cancelPendingOrder("order-1", "cus_MINE"))
-                .thenReturn(new CustomerOrder()
-                        .setStatus(com.portcelana.natiart.model.support.OrderStatus.CANCELLED)
-                        .setItems(List.of()));
+        when(orderManager.cancelPendingOrderResponse("order-1", "cus_MINE"))
+                .thenReturn(new OrderDto().setStatus(com.portcelana.natiart.model.support.OrderStatus.CANCELLED));
 
         try {
             mockMvc.perform(delete("/orders/order-1")).andExpect(status().isOk());
-            verify(orderManager).cancelPendingOrder("order-1", "cus_MINE");
+            verify(orderManager).cancelPendingOrderResponse("order-1", "cus_MINE");
         } finally {
             SecurityContextHolder.clearContext();
         }
