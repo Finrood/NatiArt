@@ -28,6 +28,7 @@ STALL_SEC=120          # no-output stall detection per attempt (role default app
 STALL_EXPLICIT=""      # set when --stall is passed; skips role defaults
 SIMULATE_QUOTA_AT=0    # test harness: fail the first N attempts as synthetic quota
 CHECK_ONLY=0
+REVIEW_PR=""
 SKIP=()                # model substrings to deprioritize (repeatable --skip)
 ALLOWED_ARGS=()        # extra permission args passed to cline (e.g. --auto-approve true)
 
@@ -50,6 +51,7 @@ Options:
                           (repeatable; loop reviewers skip the PR author's model
                           for independence; skips are ignored if they empty the list)
   --check-only            Print the priority list + first model, invoke nothing
+  --review-pr N           Target PR for a review deliverable (required for --role review)
   -h, --help              Show this help
 EOF
 }
@@ -68,6 +70,7 @@ while [[ $# -gt 0 ]]; do
         --simulate-quota-at) SIMULATE_QUOTA_AT="${2:-}"; [[ $# -ge 2 ]] || { log_err "Missing value for --simulate-quota-at."; usage; exit 2; }; shift 2 ;;
         --allowed) ALLOWED_ARGS=(); [[ $# -ge 2 ]] || { log_err "Missing value for --allowed."; usage; exit 2; }; read -ra ALLOWED_ARGS <<< "$2"; shift 2 ;;
         --skip) [[ $# -ge 2 ]] || { log_err "Missing value for --skip."; usage; exit 2; }; SKIP+=("$2"); shift 2 ;;
+        --review-pr) REVIEW_PR="${2:-}"; [[ $# -ge 2 ]] || { log_err "Missing value for --review-pr."; usage; exit 2; }; shift 2 ;;
         --check-only) CHECK_ONLY=1; shift ;;
         -h|--help) usage; exit 0 ;;
         --) shift; PROMPT_ARGS+=("$@"); break ;;
@@ -106,6 +109,12 @@ if [[ "${#PROMPT_ARGS[@]}" -eq 0 ]]; then
     exit 2
 fi
 PROMPT="${PROMPT_ARGS[*]}"
+if [[ "$ROLE" == review && "$CHECK_ONLY" -eq 0 ]]; then
+    if [[ ! "$REVIEW_PR" =~ ^[1-9][0-9]{0,8}$ ]]; then
+        log_err "--review-pr must be a positive PR number."
+        exit 2
+    fi
+fi
 
 # --- model registry (priority list) ----------------------------------------
 # Override with NATIART_MODELS_CONF to test with a throwaway priority list.
@@ -227,12 +236,30 @@ close_attempt() { # persist recovery context, then release the private log
     ATT_LOG=""
 }
 
-role_deliverable_present() { # $1 = attempt log; true only for the role's result
+DELIVERABLE_BASELINE=""
+DELIVERABLE_AFTER=""
+capture_deliverable_state() { # $1=output file; authenticated GitHub state
+    case "$ROLE" in
+        review) gh pr view "$REVIEW_PR" --json headRefOid,reviews > "$1" ;;
+        cycle) gh pr list --state all --limit 1000 --json number,headRefOid > "$1" ;;
+    esac
+}
+
+role_deliverable_present() { # true only for a new pushed PR head or new review on the exact head
+    if ! capture_deliverable_state "$DELIVERABLE_AFTER"; then return 1; fi
     case "$ROLE" in
         review)
-            grep -Eq '^VERDICT: (APPROVE|REQUEST_CHANGES)' "$1" ;;
+            jq -e --slurpfile before "$DELIVERABLE_BASELINE" '
+                .headRefOid == $before[0].headRefOid and
+                any(.reviews[]; .commit.oid == $before[0].headRefOid and
+                    (.body | test("^VERDICT: (APPROVE|REQUEST_CHANGES)")) and
+                    (.id as $id | ($before[0].reviews | map(.id) | index($id) | not)))
+            ' "$DELIVERABLE_AFTER" >/dev/null ;;
         cycle)
-            grep -Eiq '(^|[^[:alnum:]])PR[[:space:]#]+[0-9]+|/pull/[0-9]+' "$1" ;;
+            jq -e --slurpfile before "$DELIVERABLE_BASELINE" '
+                any(.[]; . as $pr |
+                    all($before[0][]; .number != $pr.number or .headRefOid != $pr.headRefOid))
+            ' "$DELIVERABLE_AFTER" >/dev/null ;;
     esac
 }
 
@@ -273,12 +300,21 @@ cleanup_runner() {
     retain_outcome
     [[ -z "${ATT_LOG:-}" ]] || rm -f "$ATT_LOG"
     ATT_LOG=""
+    [[ -z "${DELIVERABLE_BASELINE:-}" ]] || rm -f "$DELIVERABLE_BASELINE"
+    [[ -z "${DELIVERABLE_AFTER:-}" ]] || rm -f "$DELIVERABLE_AFTER"
     PID=""
     return "$status"
 }
 
 trap cleanup_runner EXIT
 trap 'exit 143' TERM INT HUP
+
+DELIVERABLE_BASELINE="$(mktemp "$TMP_ROOT/natiart-deliverable-before-XXXXXX.json")"
+DELIVERABLE_AFTER="$(mktemp "$TMP_ROOT/natiart-deliverable-after-XXXXXX.json")"
+if ! capture_deliverable_state "$DELIVERABLE_BASELINE"; then
+    log_err "Cannot inspect GitHub deliverable state before launching a worker."
+    exit 2
+fi
 
 launch_attempt() { # $1=cli $2=model_id $3=think; spawns child bg, sets $PID
     local cli="$1" model_id="$2" think="$3"
@@ -386,7 +422,7 @@ while true; do
             fi
 
             if (( rc == 0 )); then
-                if ! role_deliverable_present "$ATT_LOG"; then
+                if ! role_deliverable_present; then
                     reason="incomplete"
                     rc=1
                     log_err "Attempt $attempt/${label} exited cleanly without the required $ROLE deliverable."

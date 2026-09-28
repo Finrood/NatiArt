@@ -10,6 +10,29 @@ trap 'rm -rf "$ROOT"' EXIT
 
 FAKEBIN="$ROOT/bin"
 mkdir -p "$FAKEBIN" "$ROOT/outcomes"
+cat >"$FAKEBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+case "${1:-} ${2:-}" in
+    'pr view')
+        if [[ -f "$FAKE_REVIEW_STATE" ]]; then
+            printf '{"headRefOid":"%s","reviews":[{"id":"new-review","body":"VERDICT: REQUEST_CHANGES (reviewed %s)","commit":{"oid":"%s"}}]}\n' \
+                "$FAKE_HEAD" "$FAKE_HEAD" "$FAKE_HEAD"
+        else
+            printf '{"headRefOid":"%s","reviews":[]}\n' "$FAKE_HEAD"
+        fi
+        ;;
+    'pr list')
+        if [[ -f "$FAKE_CYCLE_STATE" ]]; then
+            printf '[{"number":42,"headRefOid":"%s"}]\n' "$FAKE_HEAD"
+        else
+            printf '[{"number":42,"headRefOid":"%s"}]\n' "$FAKE_OLD_HEAD"
+        fi
+        ;;
+    *) exit 2 ;;
+esac
+EOF
+chmod +x "$FAKEBIN/gh"
 cat >"$FAKEBIN/opencode" <<'EOF'
 #!/usr/bin/env bash
 set -Eeuo pipefail
@@ -35,7 +58,15 @@ case "$mode" in
             printf 'OVERLAP\n'
             exit 9
         fi
-        printf 'VERDICT: REQUEST_CHANGES (reviewed deadbeef)\n'
+        touch "$FAKE_REVIEW_STATE"
+        printf 'review submitted\n'
+        ;;
+    mention)
+        printf 'VERDICT: REQUEST_CHANGES (reviewed %s)\nPR #42\n' "$FAKE_HEAD"
+        ;;
+    cycle-push)
+        touch "$FAKE_CYCLE_STATE"
+        printf 'pushed PR #42\n'
         ;;
     *)
         printf 'clean exit without a role deliverable\n'
@@ -47,15 +78,18 @@ cat >"$ROOT/models.conf" <<'EOF'
 PRIORITY=("opencode|fake|fake/model|xhigh")
 EOF
 
-common=(env "PATH=$FAKEBIN:$PATH" NATIART_MODELS_CONF="$ROOT/models.conf" NATIART_OUTCOME_DIR="$ROOT/outcomes")
+common=(env "PATH=$FAKEBIN:$PATH" NATIART_MODELS_CONF="$ROOT/models.conf" NATIART_OUTCOME_DIR="$ROOT/outcomes"
+    FAKE_REVIEW_STATE="$ROOT/review-state" FAKE_CYCLE_STATE="$ROOT/cycle-state"
+    FAKE_HEAD=1111111111111111111111111111111111111111
+    FAKE_OLD_HEAD=0000000000000000000000000000000000000000)
 
 # Outer timeout sends TERM to the wrapper. Its trap must terminate the detached
 # worker group before the wrapper returns.
 FAKE_MODE=hang FAKE_CHILD_FILE="$ROOT/hang-child" \
-    timeout --signal=TERM --kill-after=5 3 "${common[@]}" bash "$RUN_AGENT" --role review --budget 30 --stall 20 hang \
+    timeout --signal=TERM --kill-after=5 3 "${common[@]}" bash "$RUN_AGENT" --role review --review-pr 42 --budget 30 --stall 20 hang \
     >"$ROOT/hang.log" 2>&1 || hang_rc=$?
 hang_rc="${hang_rc:-0}"
-[[ "$hang_rc" -eq 124 ]] || { echo "outer timeout returned $hang_rc" >&2; exit 1; }
+[[ "$hang_rc" -eq 124 ]] || { echo "outer timeout returned $hang_rc" >&2; cat "$ROOT/hang.log" >&2; exit 1; }
 child="$(cat "$ROOT/hang-child")"
 sleep 1
 if kill -0 "$child" 2>/dev/null; then
@@ -64,16 +98,32 @@ if kill -0 "$child" 2>/dev/null; then
 fi
 
 # A clean CLI exit without the role's required result is incomplete, not success.
-if FAKE_MODE=incomplete "${common[@]}" bash "$RUN_AGENT" --role review --budget 30 incomplete \
+if FAKE_MODE=incomplete "${common[@]}" bash "$RUN_AGENT" --role review --review-pr 42 --budget 30 incomplete \
     >"$ROOT/incomplete.log" 2>&1; then
     echo "clean CLI exit without a deliverable was reported as success" >&2
     exit 1
 fi
 grep -q 'without the required review deliverable' "$ROOT/incomplete.log"
 
+# Printing a verdict or PR reference is insufficient without a new GitHub
+# review bound to the target head or a pushed PR head.
+if FAKE_MODE=mention "${common[@]}" bash "$RUN_AGENT" --role review --review-pr 42 --budget 30 mention \
+    >"$ROOT/mention.log" 2>&1; then
+    echo "printed verdict was accepted without a submitted review" >&2
+    exit 1
+fi
+if FAKE_MODE=mention "${common[@]}" bash "$RUN_AGENT" --role cycle --budget 30 mention \
+    >"$ROOT/cycle-mention.log" 2>&1; then
+    echo "printed PR number was accepted without a pushed head" >&2
+    exit 1
+fi
+FAKE_MODE=cycle-push "${common[@]}" bash "$RUN_AGENT" --role cycle --budget 30 push \
+    >"$ROOT/cycle-push.log" 2>&1
+grep -q 'NATIART_ACTIVE_MODEL=fake' "$ROOT/cycle-push.log"
+
 # A failed attempt with a surviving child must be reaped before the retry.
 FAKE_MODE=retry FAKE_COUNT_FILE="$ROOT/count" FAKE_CHILD_FILE="$ROOT/retry-child" \
-    "${common[@]}" bash "$RUN_AGENT" --role review --budget 30 retry \
+    "${common[@]}" bash "$RUN_AGENT" --role review --review-pr 42 --budget 30 retry \
     >"$ROOT/retry.log" 2>&1
 grep -q 'NATIART_ACTIVE_MODEL=fake' "$ROOT/retry.log"
 if grep -q 'OVERLAP' "$ROOT/retry.log"; then

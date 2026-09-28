@@ -495,7 +495,7 @@ for n in $ALL_PRS; do
     else
         RC_NOTE=""
     fi
-    timeout 660 scripts/run-agent.sh --role review --budget 600 --title "review-pr-$n" \
+    timeout 660 scripts/run-agent.sh --role review --review-pr "$n" --budget 600 --title "review-pr-$n" \
         ${AUTHOR_SKIP:+--skip "$AUTHOR_SKIP"} \
         "$(cat scripts/agent-review-prompt.md)
 ---
