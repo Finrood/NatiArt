@@ -42,6 +42,9 @@ public interface OrderManager {
 
     CustomerOrder updateOrderStatus(String orderId, OrderStatus status);
 
+    /** Advances fulfillment only after a payment has marked the order paid. */
+    CustomerOrder advanceFulfillmentStatus(String orderId, OrderStatus status);
+
     /** Marks a payment-backed order as paid; repeated confirmations are safe. */
     CustomerOrder markOrderPaid(String orderId);
 }

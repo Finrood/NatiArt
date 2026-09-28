@@ -270,9 +270,18 @@ public class OrderManagerImpl implements OrderManager {
             throw new IllegalArgumentException("Order [" + orderId + "] must not transition from ["
                     + current.getStatus() + "] to [" + status + "]");
         }
-        if (orderRepository.updateStatusById(orderId, status) == 0) {
-            throw new ResourceNotFoundException("CustomerOrder with id " + orderId + " not found");
+        current.setStatus(status);
+        // Flush before returning so a concurrent transition fails at this boundary.
+        // The entity version is checked and advanced by JPA.
+        return orderRepository.saveAndFlush(current);
+    }
+
+    @Override
+    @Transactional
+    public CustomerOrder advanceFulfillmentStatus(String orderId, OrderStatus status) {
+        if (status != OrderStatus.PROCESSING && status != OrderStatus.SHIPPED && status != OrderStatus.DELIVERED) {
+            throw new IllegalArgumentException("Administrators may only advance fulfillment status");
         }
-        return getOrderById(orderId);
+        return updateOrderStatus(orderId, status);
     }
 }
