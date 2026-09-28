@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -14,12 +16,17 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
+import com.portcelana.natiart.model.CustomerOrder;
+import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.service.PaymentIdempotencyReservation;
 import com.portcelana.natiart.service.PaymentIdempotencyService;
 
@@ -32,6 +39,15 @@ class PaymentIdempotencyConcurrencyTest {
 
     @Autowired
     private PaymentIdempotencyRepository paymentIdempotencyRepository;
+
+    @Autowired
+    private OrderRepository orderRepository;
+
+    @AfterEach
+    void cleanCommittedOrders() {
+        paymentIdempotencyRepository.deleteAll();
+        orderRepository.deleteAll();
+    }
 
     @Test
     void simultaneousReservationsHaveOneWinnerAndOneUniqueKeyLoser() throws Exception {
@@ -100,7 +116,9 @@ class PaymentIdempotencyConcurrencyTest {
     }
 
     @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void orderReservationsConvergeDifferentClientKeysOnOneAttempt() throws Exception {
+        final String orderId = createOrder("cus_MINE");
         final CountDownLatch start = new CountDownLatch(1);
         final ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
@@ -110,7 +128,7 @@ class PaymentIdempotencyConcurrencyTest {
                 attempts.add(executor.submit(() -> {
                     start.await();
                     return paymentIdempotencyService.reserveForOrder(
-                            "cus_MINE", "order-1", "client-key-" + attemptNumber, "same-request");
+                            "cus_MINE", orderId, "client-key-" + attemptNumber, "same-request");
                 }));
             }
             start.countDown();
@@ -134,9 +152,9 @@ class PaymentIdempotencyConcurrencyTest {
             assertEquals(1, acquired);
             assertEquals(1, existingReservations + uniqueLosers);
             assertEquals(
-                    "order-1",
+                    orderId,
                     paymentIdempotencyRepository
-                            .findByOwnerExternalIdAndOrderId("cus_MINE", "order-1")
+                            .findByOwnerExternalIdAndOrderId("cus_MINE", orderId)
                             .orElseThrow()
                             .getOrderId());
         } finally {
@@ -145,14 +163,29 @@ class PaymentIdempotencyConcurrencyTest {
     }
 
     @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void differentOrdersKeepIndependentReservations() {
         final PaymentIdempotencyReservation first = paymentIdempotencyService.reserveForOrder(
-                "owner-independent", "order-" + UUID.randomUUID(), "key-first", "first-request");
+                "owner-independent", createOrder("owner-independent"), "key-first", "first-request");
         final PaymentIdempotencyReservation second = paymentIdempotencyService.reserveForOrder(
-                "owner-independent", "order-" + UUID.randomUUID(), "key-second", "second-request");
+                "owner-independent", createOrder("owner-independent"), "key-second", "second-request");
 
         assertTrue(first.acquired());
         assertTrue(second.acquired());
         assertNotEquals(first.record().getId(), second.record().getId());
+    }
+
+    private String createOrder(String owner) {
+        return orderRepository
+                .saveAndFlush(new CustomerOrder()
+                        .setFirstname("Ada")
+                        .setLastname("Lovelace")
+                        .setEmail(UUID.randomUUID() + "@example.test")
+                        .setOrderDate(Instant.now())
+                        .setDeliveryAmount(BigDecimal.ZERO)
+                        .setTotalAmount(BigDecimal.TEN)
+                        .setStatus(OrderStatus.PENDING)
+                        .setOwnerExternalId(owner))
+                .getId();
     }
 }

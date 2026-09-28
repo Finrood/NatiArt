@@ -3,8 +3,10 @@
 BEGIN;
 SET LOCAL lock_timeout = '10s';
 
-ALTER TABLE payment_idempotency ADD COLUMN IF NOT EXISTS order_id varchar(128);
+ALTER TABLE payment_idempotency ADD COLUMN IF NOT EXISTS order_id varchar(36);
 LOCK TABLE payment_idempotency IN ACCESS EXCLUSIVE MODE;
+CREATE INDEX IF NOT EXISTS ix_payment_idempotency_order_id
+    ON payment_idempotency (order_id);
 
 -- Only the persisted provider payment ID plus owner proves the order link.
 -- Unknown or uncertain legacy attempts remain unlinked for manual review.

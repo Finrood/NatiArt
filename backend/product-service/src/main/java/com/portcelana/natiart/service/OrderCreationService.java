@@ -9,6 +9,8 @@ import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,21 +39,41 @@ public class OrderCreationService {
     private final ProductManager productManager;
     private final ProductRepository productRepository;
     private final ShippingService shippingService;
+    private final int maxOutstandingReservations;
 
+    @Autowired
     public OrderCreationService(
             OrderRepository orderRepository,
             ProductManager productManager,
             ProductRepository productRepository,
-            ShippingService shippingService) {
+            ShippingService shippingService,
+            @Value("${natiart.order.max-outstanding-reservations:5}") int maxOutstandingReservations) {
         this.orderRepository = orderRepository;
         this.productManager = productManager;
         this.productRepository = productRepository;
         this.shippingService = shippingService;
+        if (maxOutstandingReservations <= 0) {
+            throw new IllegalArgumentException("The outstanding reservation limit must be positive");
+        }
+        this.maxOutstandingReservations = maxOutstandingReservations;
+    }
+
+    /** Test-friendly constructor with the production default reservation cap. */
+    OrderCreationService(
+            OrderRepository orderRepository,
+            ProductManager productManager,
+            ProductRepository productRepository,
+            ShippingService shippingService) {
+        this(orderRepository, productManager, productRepository, shippingService, 5);
     }
 
     @Transactional
     public CustomerOrder createOrder(
             OrderDto orderDto, String ownerExternalId, String idempotencyKey, String requestFingerprint) {
+        if (orderRepository.countByOwnerExternalIdAndStatus(ownerExternalId, OrderStatus.PENDING)
+                >= maxOutstandingReservations) {
+            throw new IllegalArgumentException("Too many unpaid orders are reserved for this account");
+        }
         validateContactDetails(orderDto);
         validateItems(orderDto.getItems());
         final BigDecimal serverDeliveryAmount = shippingService.getOrderShippingAmount(orderDto.getZipCode());

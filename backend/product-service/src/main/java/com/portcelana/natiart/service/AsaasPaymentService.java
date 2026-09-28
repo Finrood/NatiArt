@@ -128,6 +128,10 @@ public class AsaasPaymentService implements PaymentService {
             // else: an order owned by another customer must fail closed (403,
             // no upstream egress) even when the quoted value would match.
             requireOwnedOrder(order.getOwnerExternalId(), requesterExternalId);
+            if (order.getStatus() != null
+                    && order.getStatus() != com.portcelana.natiart.model.support.OrderStatus.PENDING) {
+                throw new IllegalArgumentException("Only pending orders can receive a new payment");
+            }
             if (order.getTotalAmount() == null || order.getTotalAmount().compareTo(value) != 0) {
                 throw new IllegalArgumentException(String.format(
                         "Payment value [%s] does not match the total [%s] of order [%s]",
@@ -146,6 +150,9 @@ public class AsaasPaymentService implements PaymentService {
             return replay(reservation, requesterExternalId, orderId, value);
         }
         if (reservation.getStatus() == PaymentIdempotencyStatus.FAILED_RECOVERABLE) {
+            // The verified-terminal replacement path is cancellation of this
+            // order followed by a new order/attempt; never POST another charge
+            // while this attempt's provider outcome is uncertain.
             throw new UpstreamServiceException(
                     "Payment request requires reconciliation before retry", HttpStatus.SERVICE_UNAVAILABLE);
         }
@@ -405,17 +412,12 @@ public class AsaasPaymentService implements PaymentService {
     }
 
     public PaymentStatusResponse getPaymentStatus(String paymentId, String requesterExternalId) {
-        final Payment localPayment = getPaymentOrDie(paymentId, requesterExternalId);
+        getPaymentOrDie(paymentId, requesterExternalId);
         final AsaasPaymentCreationResponse payment = fetchPaymentOrDie(paymentId);
         requireOwnedPayment(payment.getCustomer(), requesterExternalId);
 
         final PaymentStatus status =
                 convertAsaasPaymentStatusToGeneralPaymentStatus(parseAsaasStatus(payment.getStatus()));
-        if (status == PaymentStatus.COMPLETED
-                && localPayment.getOrderId() != null
-                && !localPayment.getOrderId().isBlank()) {
-            orderManager.markOrderPaid(localPayment.getOrderId());
-        }
         return new PaymentStatusResponse(paymentId, status);
     }
 
@@ -439,6 +441,10 @@ public class AsaasPaymentService implements PaymentService {
             throw new IllegalArgumentException("Received an invalid response from " + asaasPaymentUrl);
         }
         return response.getBody();
+    }
+
+    AsaasPaymentCreationResponse fetchPaymentForReconciliation(String paymentId) {
+        return fetchPaymentOrDie(paymentId);
     }
 
     /**

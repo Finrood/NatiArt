@@ -45,11 +45,15 @@ existing table.
 3. Verify the final query lists both constraint names, then deploy the CA8
    application and resume payment creation. The script is safe to rerun.
 
-`IN_PROGRESS` means another attempt may still be charging. `SUCCEEDED` replays
-the recorded payment. `FAILED_RECOVERABLE` means provider outcome is uncertain
-and blocks automatic replacement. CA12 tracks reconciliation of verified
-terminal failures before releasing a reservation; a new attempt must not be
-created from an uncertain outcome.
+`IN_PROGRESS` returns an explicit in-progress conflict while the attempt may
+still be charging. `SUCCEEDED` replays the recorded payment.
+`FAILED_RECOVERABLE` blocks another provider create with a reconciliation
+response. The combined CA12 cancellation path verifies the provider charge is
+inactive (or deletes a still-pending charge with matching confirmation) before
+it releases the order's stock. The customer can then create a new order with a
+new payment attempt. A payment for the same order is not silently replaced;
+unknown, paid, or in-flight provider outcomes keep that order reserved for
+operator reconciliation.
 
 ## PostgreSQL concurrency rehearsal
 

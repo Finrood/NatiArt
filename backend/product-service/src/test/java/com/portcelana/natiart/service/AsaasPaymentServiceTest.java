@@ -81,8 +81,13 @@ class AsaasPaymentServiceTest {
 
     private PaymentIdempotencyService newIdempotencyService() {
         final PaymentIdempotencyRepository repository = mock(PaymentIdempotencyRepository.class);
+        final OrderRepository orderRepository = mock(OrderRepository.class);
+        when(orderRepository.findByIdForUpdate(anyString()))
+                .thenAnswer(invocation -> Optional.of(new CustomerOrder()
+                        .setOwnerExternalId("cus_MINE")
+                        .setStatus(com.portcelana.natiart.model.support.OrderStatus.PENDING)));
         when(repository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        return new PaymentIdempotencyService(repository);
+        return new PaymentIdempotencyService(repository, orderRepository, 900000);
     }
 
     private AsaasPaymentService newService(RestTemplate restTemplate, PaymentRepository paymentRepository) {
@@ -588,8 +593,8 @@ class AsaasPaymentServiceTest {
                         reservation = new PaymentIdempotency(
                                 invocation.getArgument(0),
                                 invocation.getArgument(2),
-                                invocation.getArgument(1),
-                                invocation.getArgument(3));
+                                invocation.getArgument(3),
+                                invocation.getArgument(1));
                         storedReservation.set(reservation);
                         return new PaymentIdempotencyReservation(reservation, true);
                     }
@@ -815,7 +820,7 @@ class AsaasPaymentServiceTest {
     }
 
     @Test
-    void getPaymentStatus_completedOrderPaymentMarksOrderPaid() {
+    void getPaymentStatus_completedOrderPaymentDoesNotMutateOrderFromBrowserPolling() {
         final RestTemplate restTemplate = mock(RestTemplate.class);
         final PaymentRepository paymentRepository = mock(PaymentRepository.class);
         final OrderRepository orderRepository = mock(OrderRepository.class);
@@ -837,7 +842,7 @@ class AsaasPaymentServiceTest {
                 .getPaymentStatus("pay-complete", "cus_MINE");
 
         assertEquals(PaymentStatus.COMPLETED, response.getStatus());
-        verify(orderManager).markOrderPaid("ord-1");
+        verifyNoInteractions(orderManager);
     }
 
     @Test

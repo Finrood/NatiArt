@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +43,7 @@ import com.portcelana.natiart.dto.payment.helper.PaymentMethod;
 import com.portcelana.natiart.dto.payment.helper.PaymentProcessor;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.PaymentIdempotencyStatus;
+import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.PaymentIdempotencyRepository;
 import com.portcelana.natiart.repository.PaymentRepository;
@@ -61,10 +63,14 @@ class OrderPaymentConcurrencyTest {
     @Autowired
     private PaymentRepository paymentRepository;
 
+    @Autowired
+    private OrderRepository realOrderRepository;
+
     @AfterEach
     void cleanCommittedWorkerRows() {
         paymentRepository.deleteAll();
         idempotencyRepository.deleteAll();
+        realOrderRepository.deleteAll();
     }
 
     @Test
@@ -80,7 +86,16 @@ class OrderPaymentConcurrencyTest {
     }
 
     private void race(String firstKey, String secondKey) throws Exception {
-        final String orderId = "order-" + UUID.randomUUID();
+        final CustomerOrder persistedOrder = realOrderRepository.saveAndFlush(new CustomerOrder()
+                .setFirstname("Ada")
+                .setLastname("Lovelace")
+                .setEmail("ada@example.test")
+                .setOrderDate(Instant.now())
+                .setDeliveryAmount(BigDecimal.ZERO)
+                .setTotalAmount(new BigDecimal("10.00"))
+                .setStatus(OrderStatus.PENDING)
+                .setOwnerExternalId("owner-a"));
+        final String orderId = persistedOrder.getId();
         final OrderRepository orderRepository = mock(OrderRepository.class);
         when(orderRepository.findById(orderId))
                 .thenReturn(Optional.of(

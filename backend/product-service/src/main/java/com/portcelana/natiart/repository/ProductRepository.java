@@ -27,6 +27,10 @@ public interface ProductRepository extends JpaRepository<Product, String> {
     int decreaseStockIfAvailable(@Param("id") String id, @Param("quantity") int quantity);
 
     @Modifying
+    @Query("UPDATE Product p SET p.stockQuantity = p.stockQuantity + :quantity WHERE p.id = :id")
+    int restoreStock(@Param("id") String id, @Param("quantity") int quantity);
+
+    @Modifying
     @Query("UPDATE Product p SET p.active = CASE WHEN p.active = true THEN false ELSE true END WHERE p.id = :id")
     int toggleActiveById(@Param("id") String id);
 
