@@ -242,8 +242,19 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   async onProcessPixPayment(user: User): Promise<void> {
     this.clearErrorMessage();
     try {
-      if (!user || !user.externalId) {
-        this.setErrorMessage('Could not retrieve customer ID for payment. Please try again.');
+      // Provisioning can finish after login; refresh before deciding checkout is blocked.
+      const paymentUser = user?.externalId
+        ? user
+        : await firstValueFrom(this.authenticationService.fetchCurrentUser());
+      if (!paymentUser.externalId) {
+        const status = paymentUser.provisioningStatus;
+        if (status === 'PENDING' || status === 'IN_PROGRESS') {
+          this.setErrorMessage('Your payment account is being prepared. Please try again shortly.');
+        } else if (status === 'FAILED') {
+          this.setErrorMessage('Your payment account needs assistance. Please contact support.');
+        } else {
+          this.setErrorMessage('Could not retrieve customer ID for payment. Please try again.');
+        }
         return;
       }
 
@@ -275,7 +286,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
       const pixPaymentData: PaymentCreationRequest = {
         paymentProcessor: 'ASAAS',
-        customerId: user.externalId,
+        customerId: paymentUser.externalId,
         billingType: PaymentMethod.PIX,
         orderId: order.id,
         value: order.totalAmount,

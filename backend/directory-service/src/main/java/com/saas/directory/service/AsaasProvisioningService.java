@@ -1,118 +1,65 @@
 package com.saas.directory.service;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
-import com.saas.directory.model.AsaasProvisioningJob;
-import com.saas.directory.model.AsaasProvisioningStatus;
-import com.saas.directory.model.ExternalUser;
-import com.saas.directory.model.User;
-import com.saas.directory.model.helper.PaymentProcessor;
-import com.saas.directory.repository.AsaasProvisioningJobRepository;
-import com.saas.directory.repository.ExternalUserRepository;
+import com.saas.directory.service.AsaasProvisioningStateService.Claim;
 
-/** Persists and processes Asaas customer provisioning work independently of registration events. */
+/** Reconciles and creates payment customers outside the job-claim transaction. */
 @Service
 public class AsaasProvisioningService {
-    private static final long MAX_RETRY_DELAY_SECONDS = 3_600L;
-
-    private final UserManager userManager;
+    private final AsaasProvisioningStateService state;
     private final AsaasUserManager asaasUserManager;
-    private final ExternalUserRepository externalUserRepository;
-    private final AsaasProvisioningJobRepository jobRepository;
-    private final Duration lease;
 
-    public AsaasProvisioningService(
-            UserManager userManager,
-            AsaasUserManager asaasUserManager,
-            ExternalUserRepository externalUserRepository,
-            AsaasProvisioningJobRepository jobRepository,
-            @Value("${saas.asaas.provisioning.lease-millis:120000}") long leaseMillis) {
-        if (leaseMillis < 1) {
-            throw new IllegalArgumentException("Asaas provisioning lease must be positive");
-        }
-        this.userManager = userManager;
+    public AsaasProvisioningService(AsaasProvisioningStateService state, AsaasUserManager asaasUserManager) {
+        this.state = state;
         this.asaasUserManager = asaasUserManager;
-        this.externalUserRepository = externalUserRepository;
-        this.jobRepository = jobRepository;
-        this.lease = Duration.ofMillis(leaseMillis);
     }
 
-    @Transactional
     public void provisionUser(String username) {
-        final User user = userManager.getUserOrDie(username);
-        final AsaasProvisioningJob job = jobRepository
-                .findByUserAndPaymentProcessor(user, PaymentProcessor.ASAAS)
-                .orElseGet(() ->
-                        jobRepository.save(new AsaasProvisioningJob(user, PaymentProcessor.ASAAS, Instant.now())));
-        processJob(job);
+        process(state.claimForUsername(username));
     }
 
     @Scheduled(fixedDelayString = "${saas.asaas.provisioning.fixed-delay-millis:30000}")
-    @Transactional
     public void processDueJobs() {
-        final Instant now = Instant.now();
-        final List<AsaasProvisioningJob> jobs =
-                jobRepository.findTop20ByStatusInAndNextAttemptAtLessThanEqualOrderByNextAttemptAtAsc(
-                        List.of(AsaasProvisioningStatus.PENDING, AsaasProvisioningStatus.IN_PROGRESS), now);
-        jobs.forEach(this::processJob);
+        for (String jobId : state.dueJobIds()) {
+            process(state.claimById(jobId));
+        }
     }
 
-    private void processJob(AsaasProvisioningJob job) {
-        final Instant now = Instant.now();
-        if (job.getStatus() == AsaasProvisioningStatus.SUCCEEDED
-                || job.getStatus() == AsaasProvisioningStatus.FAILED
-                || (job.getStatus() == AsaasProvisioningStatus.IN_PROGRESS
-                        && job.getNextAttemptAt().isAfter(now))) {
+    private void process(Claim claim) {
+        if (claim == null) {
             return;
         }
-
-        job.claim(now, now.plus(lease));
-        final User user = job.getUser();
-        final Optional<ExternalUser> mappedCustomer =
-                externalUserRepository.findByUserAndPaymentProcessor(user, PaymentProcessor.ASAAS);
-        if (mappedCustomer.isPresent()) {
-            job.markSucceeded(mappedCustomer.get().getExternalId());
-            return;
-        }
-
         try {
-            final List<AsaasCustomerCreationResponse> existingCustomers =
-                    asaasUserManager.findCustomersByExternalReference(user.getId());
-            if (existingCustomers.size() > 1) {
-                throw new IllegalStateException("Multiple payment customers match the provisioning reference");
+            final List<AsaasCustomerCreationResponse> existing =
+                    asaasUserManager.findCustomersByExternalReference(claim.userId());
+            if (existing.size() > 1) {
+                state.failed(claim, "Multiple provider customers require manual reconciliation");
+                return;
             }
-            final AsaasCustomerCreationResponse response = existingCustomers.isEmpty()
-                    ? asaasUserManager.registerUser(UserDto.from(user, null))
-                    : existingCustomers.get(0);
+            final AsaasCustomerCreationResponse response =
+                    existing.isEmpty() ? asaasUserManager.registerUser(claim.customer()) : existing.getFirst();
             if (response == null || response.getId() == null || response.getId().isBlank()) {
-                throw new IllegalStateException("Payment provider returned no customer id");
+                state.retry(claim, "Payment provider returned no customer ID");
+                return;
             }
-            userManager.addAsaasCustomerIdToUser(user.getUsername(), response.getId());
-            job.markSucceeded(response.getId());
+            state.succeeded(claim, response.getId());
         } catch (AsaasApiException exception) {
-            if (exception.getHttpStatus().is4xxClientError()) {
-                job.markFailed(exception.getMessage());
+            final HttpStatus status = exception.getHttpStatus();
+            if (status.is4xxClientError()
+                    && status != HttpStatus.REQUEST_TIMEOUT
+                    && status != HttpStatus.TOO_MANY_REQUESTS) {
+                state.failed(claim, "Payment provider rejected customer details");
             } else {
-                scheduleRetry(job, exception);
+                state.retry(claim, "Payment provider temporarily unavailable");
             }
         } catch (Exception exception) {
-            scheduleRetry(job, exception);
+            state.retry(claim, "Payment provider outcome needs reconciliation");
         }
-    }
-
-    private void scheduleRetry(AsaasProvisioningJob job, Exception exception) {
-        final long multiplier = 1L << Math.min(job.getAttemptCount(), 7);
-        final long delaySeconds = Math.min(MAX_RETRY_DELAY_SECONDS, 30L * multiplier);
-        job.retryAt(Instant.now().plusSeconds(delaySeconds), exception.getMessage());
     }
 }

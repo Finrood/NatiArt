@@ -137,6 +137,17 @@ describe('CheckoutComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('shows provisioning retry feedback before creating an order', async () => {
+    const pendingUser: User = {...loggedInUser, externalId: '', provisioningStatus: 'PENDING'};
+    currentUserSubject.next(pendingUser);
+
+    await component.onProcessPixPayment(pendingUser);
+
+    expect(component.errorMessage).toContain('payment account is being prepared');
+    expect(createOrderSpy).not.toHaveBeenCalled();
+    expect(createPixPaymentSpy).not.toHaveBeenCalled();
+  });
+
   it('keeps checkout errors visible until dismissed (O3)', async () => {
     await component.onSubmit();
 

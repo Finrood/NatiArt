@@ -8,6 +8,8 @@ import jakarta.persistence.LockModeType;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.saas.directory.model.AsaasProvisioningJob;
@@ -20,7 +22,12 @@ public interface AsaasProvisioningJobRepository extends JpaRepository<AsaasProvi
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<AsaasProvisioningJob> findByUserAndPaymentProcessor(User user, PaymentProcessor paymentProcessor);
 
+    Optional<AsaasProvisioningJob> findByUserIdAndPaymentProcessor(String userId, PaymentProcessor paymentProcessor);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select j from AsaasProvisioningJob j where j.id = :id")
+    Optional<AsaasProvisioningJob> findByIdForUpdate(@Param("id") String id);
+
     List<AsaasProvisioningJob> findTop20ByStatusInAndNextAttemptAtLessThanEqualOrderByNextAttemptAtAsc(
             List<AsaasProvisioningStatus> statuses, Instant now);
 }

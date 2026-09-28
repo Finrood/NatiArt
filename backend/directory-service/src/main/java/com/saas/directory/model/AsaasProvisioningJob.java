@@ -62,6 +62,10 @@ public class AsaasProvisioningJob {
         this.nextAttemptAt = nextAttemptAt;
     }
 
+    public String getId() {
+        return id;
+    }
+
     public User getUser() {
         return user;
     }

@@ -1,75 +1,69 @@
 package com.saas.directory.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
-import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 
+import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
-import com.saas.directory.model.AsaasProvisioningJob;
-import com.saas.directory.model.AsaasProvisioningStatus;
-import com.saas.directory.model.User;
-import com.saas.directory.model.helper.PaymentProcessor;
-import com.saas.directory.repository.AsaasProvisioningJobRepository;
-import com.saas.directory.repository.ExternalUserRepository;
+import com.saas.directory.service.AsaasProvisioningStateService.Claim;
 
 class AsaasProvisioningServiceTest {
+    private final AsaasProvisioningStateService state = mock(AsaasProvisioningStateService.class);
+    private final AsaasUserManager provider = mock(AsaasUserManager.class);
+    private final AsaasProvisioningService service = new AsaasProvisioningService(state, provider);
+    private final Claim claim = new Claim("job-1", 1, "user-1", "customer@example.com", new UserDto().setId("user-1"));
 
     @Test
-    void reconcilesExistingProviderCustomerBeforeCreatingAnother() throws Exception {
-        final UserManager userManager = mock(UserManager.class);
-        final AsaasUserManager asaasUserManager = mock(AsaasUserManager.class);
-        final ExternalUserRepository externalUserRepository = mock(ExternalUserRepository.class);
-        final AsaasProvisioningJobRepository jobRepository = mock(AsaasProvisioningJobRepository.class);
-        final User user = new User("customer@example.com", "password");
-        final AsaasProvisioningJob job = new AsaasProvisioningJob(user, PaymentProcessor.ASAAS, Instant.now());
-        final AsaasCustomerCreationResponse existing = customerResponse("cus_existing", user.getId());
+    void reconcilesExistingCustomerBeforeCreatingAnother() throws Exception {
+        when(state.claimForUsername(claim.username())).thenReturn(claim);
+        when(provider.findCustomersByExternalReference(claim.userId()))
+                .thenReturn(List.of(customerResponse("cus_existing", claim.userId())));
 
-        when(userManager.getUserOrDie(user.getUsername())).thenReturn(user);
-        when(jobRepository.findByUserAndPaymentProcessor(user, PaymentProcessor.ASAAS))
-                .thenReturn(Optional.of(job));
-        when(externalUserRepository.findByUserAndPaymentProcessor(user, PaymentProcessor.ASAAS))
-                .thenReturn(Optional.empty());
-        when(asaasUserManager.findCustomersByExternalReference(user.getId())).thenReturn(List.of(existing));
+        service.provisionUser(claim.username());
 
-        new AsaasProvisioningService(userManager, asaasUserManager, externalUserRepository, jobRepository, 60_000)
-                .provisionUser(user.getUsername());
-
-        verify(asaasUserManager).findCustomersByExternalReference(user.getId());
-        verify(userManager).addAsaasCustomerIdToUser(user.getUsername(), "cus_existing");
-        assertEquals(AsaasProvisioningStatus.SUCCEEDED, job.getStatus());
-        assertEquals("cus_existing", job.getProviderCustomerId());
+        verify(state).succeeded(claim, "cus_existing");
+        verify(provider, never()).registerUser(any());
     }
 
     @Test
-    void retryableFailureRemainsDurableAndDoesNotDisappear() throws Exception {
-        final UserManager userManager = mock(UserManager.class);
-        final AsaasUserManager asaasUserManager = mock(AsaasUserManager.class);
-        final ExternalUserRepository externalUserRepository = mock(ExternalUserRepository.class);
-        final AsaasProvisioningJobRepository jobRepository = mock(AsaasProvisioningJobRepository.class);
-        final User user = new User("customer@example.com", "password");
-        final AsaasProvisioningJob job = new AsaasProvisioningJob(user, PaymentProcessor.ASAAS, Instant.now());
+    void rateLimitRemainsRetryable() throws Exception {
+        when(state.claimForUsername(claim.username())).thenReturn(claim);
+        when(provider.findCustomersByExternalReference(claim.userId()))
+                .thenThrow(new AsaasApiException("throttled", HttpStatus.TOO_MANY_REQUESTS));
 
-        when(userManager.getUserOrDie(user.getUsername())).thenReturn(user);
-        when(jobRepository.findByUserAndPaymentProcessor(user, PaymentProcessor.ASAAS))
-                .thenReturn(Optional.of(job));
-        when(externalUserRepository.findByUserAndPaymentProcessor(user, PaymentProcessor.ASAAS))
-                .thenReturn(Optional.empty());
-        when(asaasUserManager.findCustomersByExternalReference(user.getId()))
-                .thenThrow(new RuntimeException("provider timeout"));
+        service.provisionUser(claim.username());
 
-        new AsaasProvisioningService(userManager, asaasUserManager, externalUserRepository, jobRepository, 60_000)
-                .provisionUser(user.getUsername());
+        verify(state).retry(claim, "Payment provider temporarily unavailable");
+        verify(state, never()).failed(any(), any());
+    }
 
-        assertEquals(AsaasProvisioningStatus.PENDING, job.getStatus());
-        assertEquals(1, job.getAttemptCount());
-        assertEquals("provider timeout", job.getLastError());
+    @Test
+    void terminalProviderRejectionRemainsInspectablyFailed() throws Exception {
+        when(state.claimForUsername(claim.username())).thenReturn(claim);
+        when(provider.findCustomersByExternalReference(claim.userId()))
+                .thenThrow(new AsaasApiException("bad customer", HttpStatus.BAD_REQUEST));
+
+        service.provisionUser(claim.username());
+
+        verify(state).failed(claim, "Payment provider rejected customer details");
+        verify(state, never()).retry(any(), any());
+    }
+
+    @Test
+    void duplicateProviderMatchesRequireManualReconciliation() throws Exception {
+        when(state.claimForUsername(claim.username())).thenReturn(claim);
+        when(provider.findCustomersByExternalReference(claim.userId()))
+                .thenReturn(List.of(
+                        customerResponse("cus_one", claim.userId()), customerResponse("cus_two", claim.userId())));
+
+        service.provisionUser(claim.username());
+
+        verify(state).failed(claim, "Multiple provider customers require manual reconciliation");
+        verify(provider, never()).registerUser(any());
     }
 
     private AsaasCustomerCreationResponse customerResponse(String id, String externalReference) {
