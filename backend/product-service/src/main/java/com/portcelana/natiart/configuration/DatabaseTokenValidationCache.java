@@ -87,6 +87,11 @@ public class DatabaseTokenValidationCache implements TokenValidationCache {
         if (token == null || token.isBlank() || response == null) {
             return;
         }
+        final String userId =
+                response.getPrincipal() == null ? null : response.getPrincipal().getId();
+        if (userId == null || userId.isBlank()) {
+            return;
+        }
         final String responseJson;
         try {
             responseJson = objectMapper.writeValueAsString(response);
@@ -106,8 +111,17 @@ public class DatabaseTokenValidationCache implements TokenValidationCache {
                     .findFirstByOrderByExpiresAtAsc()
                     .ifPresent(entry -> repository.deleteById(entry.getTokenDigest()));
         }
-        repository.save(
-                new TokenValidationCacheEntry(digest, responseJson, Math.min(now + ttlMillis, signedExpirationMillis)));
+        repository.save(new TokenValidationCacheEntry(
+                digest, userId, responseJson, Math.min(now + ttlMillis, signedExpirationMillis)));
+    }
+
+    @Override
+    @Transactional
+    public void evictUser(String userId) {
+        if (userId == null || userId.isBlank()) {
+            throw new IllegalArgumentException("Cache invalidation requires a user id");
+        }
+        repository.deleteByUserId(userId);
     }
 
     @Scheduled(fixedDelayString = "${directory.service.auth-cache.cleanup-delay-millis:60000}")
