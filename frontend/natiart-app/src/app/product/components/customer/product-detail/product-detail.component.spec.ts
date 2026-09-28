@@ -60,6 +60,14 @@ describe('ProductDetailComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('limits the quantity control to the server per-product cap', () => {
+    const stocked = {...makeProduct('large-stock'), stockQuantity: 200};
+    expect(component.maxSelectableQuantity(stocked)).toBe(100);
+    component.quantity = 100;
+    component.incrementQuantity(stocked);
+    expect(component.quantity).toBe(100);
+  });
+
   it('loads the routed product on init', () => {
     expect(getProduct).toHaveBeenCalledWith('p1');
     expect(component.product$.value?.id).toBe('p1');

@@ -10,6 +10,7 @@ import {reportError, reportWarning} from '../../shared/service/error-reporting.s
   providedIn: 'root'
 })
 export class CartService {
+  private readonly maxProductQuantity = 100;
   private cartItems: CartItem[] = [];
   // Use a unique identifier for the localStorage key to avoid conflicts if needed
   private localStorageKey = 'natiart-cart';
@@ -32,10 +33,19 @@ export class CartService {
   }
 
   addToCart(product: Product, quantity: number, goldBorder?: boolean, image?: File): Observable<void> {
+    const alreadyInCart = this.cartItems
+      .filter(item => item.product.id === product.id)
+      .reduce((total, item) => total + item.quantity, 0);
+    const available = Math.max(0, this.quantityLimit(product) - alreadyInCart);
+    const accepted = Math.min(Number.isFinite(quantity) ? Math.floor(quantity) : 0, available);
+    if (accepted <= 0) {
+      reportWarning('cart');
+      return of(undefined);
+    }
     // If a custom image is provided, ALWAYS treat it as a new, unique item.
     if (image) {
       const newCartItemId = this.generateUniqueCartItemId();
-      const newItem: CartItem = { cartItemId: newCartItemId, product, quantity, goldBorder, image };
+      const newItem: CartItem = { cartItemId: newCartItemId, product, quantity: accepted, goldBorder, image };
       this.cartItems.push(newItem);
     } else {
       // If no custom image, check if an identical item (product + goldBorder) already exists.
@@ -46,23 +56,11 @@ export class CartService {
       );
 
       if (existingItem) {
-        // Check if adding the quantity exceeds stock
-        const newQuantity = Math.min(existingItem.quantity + quantity, product.stockQuantity);
-        existingItem.quantity = newQuantity;
+        existingItem.quantity += accepted;
       } else {
-        // Check stock before adding as a new item
-        if (quantity > product.stockQuantity) {
-          reportWarning('cart');
-          quantity = product.stockQuantity; // Adjust quantity to max available stock
-        }
-        if (quantity > 0) { // Only add if quantity is valid
-          const newCartItemId = this.generateUniqueCartItemId();
-          const newItem: CartItem = { cartItemId: newCartItemId, product, quantity, goldBorder };
-          this.cartItems.push(newItem);
-        } else {
-          reportWarning('cart');
-          return of(undefined);
-        }
+        const newCartItemId = this.generateUniqueCartItemId();
+        const newItem: CartItem = { cartItemId: newCartItemId, product, quantity: accepted, goldBorder };
+        this.cartItems.push(newItem);
       }
     }
 
@@ -82,7 +80,11 @@ export class CartService {
       const item = this.cartItems[itemIndex];
       // Removal is removeFromCart's job: quantities floor at 1 so a 0 update
       // can never silently mean delete (BW1 dead-branch fix).
-      const newQuantity: number = Math.max(1, Math.min(quantity, item.product.stockQuantity));
+      const otherQuantity = this.cartItems
+        .filter(other => other.cartItemId !== cartItemId && other.product.id === item.product.id)
+        .reduce((total, other) => total + other.quantity, 0);
+      const maximum = this.quantityLimit(item.product) - otherQuantity;
+      const newQuantity: number = Math.max(1, Math.min(Number.isFinite(quantity) ? Math.floor(quantity) : 1, maximum));
       item.quantity = newQuantity;
       this.cartItems[itemIndex] = item;
       this.updateCart();
@@ -114,6 +116,12 @@ export class CartService {
 
   private generateUniqueCartItemId(): string {
     return Date.now().toString(36) + Math.random().toString(36).substring(2);
+  }
+
+  private quantityLimit(product: Product): number {
+    return Number.isFinite(product.stockQuantity)
+      ? Math.min(this.maxProductQuantity, Math.max(0, Math.floor(product.stockQuantity)))
+      : 0;
   }
 
   private calculateAndEmitTotal(): void {
@@ -175,6 +183,14 @@ export class CartService {
         continue;
       }
       const line: CartItem = entry as CartItem;
+      const alreadyRestored = valid
+        .filter(item => item.product.id === line.product.id)
+        .reduce((total, item) => total + item.quantity, 0);
+      const available = this.quantityLimit(line.product) - alreadyRestored;
+      if (available < 1) {
+        continue;
+      }
+      line.quantity = Math.min(line.quantity, Math.floor(available));
       if (seenIds.has(line.cartItemId)) {
         // Duplicate identity: mint a fresh id so keyed ops stay 1:1.
         line.cartItemId = this.generateUniqueCartItemId();

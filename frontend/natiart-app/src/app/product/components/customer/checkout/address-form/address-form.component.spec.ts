@@ -71,6 +71,22 @@ describe('AddressFormComponent', () => {
     fixture.destroy();
   }));
 
+  it('does not look up a malformed CEP with eight embedded digits', fakeAsync(() => {
+    const signupService: SignupService = TestBed.inject(SignupService);
+    const lookupSpy = spyOn(signupService, 'getAddressFromZipCode');
+    const fixture = TestBed.createComponent(AddressFormComponent);
+    fixture.componentInstance.addressFormGroup = makeAddressForm(TestBed.inject(FormBuilder));
+    fixture.detectChanges();
+
+    const zip = fixture.componentInstance.addressFormGroup.get('zipCode')!;
+    zip.setValue('abc88010000');
+    tick(400);
+
+    expect(zip.hasError('invalidCep')).toBeTrue();
+    expect(lookupSpy).not.toHaveBeenCalled();
+    fixture.destroy();
+  }));
+
   it('drops a stale lookup response when a newer CEP is entered', fakeAsync(() => {
     const first$: Subject<ViaCEPResponse> = new Subject<ViaCEPResponse>();
     const second$: Subject<ViaCEPResponse> = new Subject<ViaCEPResponse>();

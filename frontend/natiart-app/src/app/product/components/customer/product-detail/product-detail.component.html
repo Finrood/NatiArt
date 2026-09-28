@@ -80,13 +80,13 @@
                 <input
                   id="quantityInput"
                   [(ngModel)]="quantity"
-                  [max]="product.stockQuantity"
+                  [max]="maxSelectableQuantity(product)"
                   min="1"
                   type="number"
                   aria-label="Current quantity"
                   class="w-16 text-center border-l border-r border-gray-300 py-1 focus:outline-none focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   >
-                <app-button (click)="incrementQuantity(product)" [disabled]="quantity >= product.stockQuantity" aria-label="Increase quantity" color="light" size="sm">
+                <app-button (click)="incrementQuantity(product)" [disabled]="quantity >= maxSelectableQuantity(product)" aria-label="Increase quantity" color="light" size="sm">
                   ＋
                 </app-button> <!-- Changed from plus sign -->
               </div>

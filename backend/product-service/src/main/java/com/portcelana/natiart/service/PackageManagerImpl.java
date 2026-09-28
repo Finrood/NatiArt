@@ -49,7 +49,7 @@ public class PackageManagerImpl implements PackageManager {
     @Override
     @Transactional
     public Package createPackage(PackageDto packageDto) {
-        final String label = DomainValidation.requiredText(packageDto.getLabel(), "Package label", 255);
+        final String label = DomainValidation.requiredText(packageDto.getLabel(), "label", 255);
         requirePositiveDimension(packageDto.getHeight(), "height");
         requirePositiveDimension(packageDto.getWidth(), "width");
         requirePositiveDimension(packageDto.getDepth(), "depth");
@@ -63,7 +63,7 @@ public class PackageManagerImpl implements PackageManager {
     @Override
     @Transactional
     public Package updatePackage(PackageDto packageDto) {
-        final String label = DomainValidation.requiredText(packageDto.getLabel(), "Package label", 255);
+        final String label = DomainValidation.requiredText(packageDto.getLabel(), "label", 255);
         requirePositiveDimension(packageDto.getHeight(), "height");
         requirePositiveDimension(packageDto.getWidth(), "width");
         requirePositiveDimension(packageDto.getDepth(), "depth");
@@ -90,6 +90,6 @@ public class PackageManagerImpl implements PackageManager {
     }
 
     private static void requirePositiveDimension(float dimension, String field) {
-        DomainValidation.finitePositive(dimension, "Package " + field, 1000);
+        DomainValidation.finitePositive(dimension, field, 200);
     }
 }

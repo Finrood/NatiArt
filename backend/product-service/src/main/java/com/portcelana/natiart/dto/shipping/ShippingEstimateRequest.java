@@ -1,6 +1,7 @@
 package com.portcelana.natiart.dto.shipping;
 
 import com.portcelana.natiart.service.support.DomainValidation;
+import com.portcelana.natiart.service.support.InputValidationException;
 
 public class ShippingEstimateRequest {
     private final String to;
@@ -12,12 +13,12 @@ public class ShippingEstimateRequest {
 
     public ShippingEstimateRequest(String to, float weight, float length, float width, float height, int quantity) {
         this.to = DomainValidation.cep(to);
-        DomainValidation.finitePositive(weight, "Shipping weight", 1000);
-        DomainValidation.finitePositive(length, "Shipping length", 1000);
-        DomainValidation.finitePositive(width, "Shipping width", 1000);
-        DomainValidation.finitePositive(height, "Shipping height", 1000);
+        DomainValidation.finitePositive(weight, "weight", 100);
+        DomainValidation.finitePositive(length, "length", 200);
+        DomainValidation.finitePositive(width, "width", 200);
+        DomainValidation.finitePositive(height, "height", 200);
         if (quantity < 1 || quantity > 100) {
-            throw new IllegalArgumentException("Shipping quantity must be between 1 and 100");
+            throw new InputValidationException("quantity", "quantity must be between 1 and 100");
         }
         this.weight = weight;
         this.length = length;

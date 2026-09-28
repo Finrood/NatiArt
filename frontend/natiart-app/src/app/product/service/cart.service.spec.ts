@@ -47,6 +47,29 @@ describe('CartService', () => {
     expect(items[0].quantity).toBe(5);
   });
 
+  it('caps combined personalized variants at the server per-product quantity', () => {
+    const stocked = product({stockQuantity: 200});
+    service.addToCart(stocked, 75, false).subscribe();
+    service.addToCart(stocked, 50, true).subscribe();
+
+    const items = service.getCartItemsSnapshot();
+    expect(items.map(item => item.quantity)).toEqual([75, 25]);
+    service.updateItemQuantity(items[0].cartItemId, 100).subscribe();
+    expect(service.getCartItemsSnapshot().reduce((total, item) => total + item.quantity, 0)).toBe(100);
+  });
+
+  it('caps a restored cart that predates the quantity boundary', () => {
+    const stocked = product({stockQuantity: 200});
+    localStorage.setItem('natiart-cart', JSON.stringify([
+      {cartItemId: 'one', product: stocked, quantity: 75, goldBorder: false},
+      {cartItemId: 'two', product: stocked, quantity: 75, goldBorder: true},
+    ]));
+
+    const restored = new CartService();
+
+    expect(restored.getCartItemsSnapshot().map(item => item.quantity)).toEqual([75, 25]);
+  });
+
   it('getCartTotal_emitsTheSumOfMarkedPriceTimesQuantity', () => {
     let total: number | undefined;
     service.getCartTotal().subscribe(value => total = value);
@@ -142,4 +165,3 @@ describe('CartService', () => {
     expect(service.getCartItemsSnapshot()).toEqual([]);
   });
 });
-

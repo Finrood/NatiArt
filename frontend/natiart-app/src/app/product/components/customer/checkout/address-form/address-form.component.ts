@@ -56,6 +56,13 @@ export class AddressFormComponent implements OnInit, OnDestroy {
     const cleanZipCode = zipCode?.replace(/\D/g, '');
     const zipCodeControl = this.addressFormGroup.get('zipCode');
 
+    if (zipCode && !/^(?:[0-9]{8}|[0-9]{5}-[0-9]{3})$/.test(zipCode)) {
+      this.stopLookup();
+      this.addressFormGroup.patchValue({street: '', city: '', neighborhood: '', state: '', country: ''});
+      zipCodeControl?.setErrors({invalidCep: true});
+      return;
+    }
+
     if (!cleanZipCode || cleanZipCode.length !== 8) {
       // If CEP is not 8 digits or empty, clear address fields and mark zipCode as invalid
       this.addressFormGroup.patchValue({
@@ -65,7 +72,7 @@ export class AddressFormComponent implements OnInit, OnDestroy {
       if (cleanZipCode && cleanZipCode.length !== 8) {
         zipCodeControl?.setErrors({ 'invalidCepLength': true });
       } else {
-        zipCodeControl?.setErrors(null); // Clear any previous errors if empty
+        zipCodeControl?.updateValueAndValidity({emitEvent: false});
       }
       this.addressFormGroup.updateValueAndValidity(); // Update parent form group validity
       return;
@@ -97,7 +104,7 @@ export class AddressFormComponent implements OnInit, OnDestroy {
               state: data.uf,
               country: "Brazil", // Assuming Brazil is default
             });
-            zipCodeControl?.setErrors(null); // Clear CEP specific errors on success
+            zipCodeControl?.updateValueAndValidity({emitEvent: false});
           }
           // Mark all relevant controls as touched and dirty to show validation messages
           ['street', 'city', 'neighborhood', 'state', 'country'].forEach(controlName => {

@@ -102,38 +102,50 @@
           <!-- Label -->
           <div class="mb-4">
             <label for="productLabel" class="block text-sm font-medium text-gray-700 mb-1">Label</label>
-            <input id="productLabel" name="productLabel" type="text" formControlName="label"
+            <input id="productLabel" name="productLabel" type="text" formControlName="label" maxlength="255"
               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
             @if (productForm.get('label')?.invalid && productForm.get('label')?.touched) {
               <div
                 class="text-red-600 text-sm mt-1">
-                Label is required.
+                Enter a label of 1–255 characters.
               </div>
             }
           </div>
           <!-- Description -->
           <div class="mb-4">
             <label for="productDescription" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea id="productDescription" name="productDescription" formControlName="description" rows="3"
+            <textarea id="productDescription" name="productDescription" formControlName="description" rows="3" maxlength="255"
             class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm"></textarea>
+            @if (productForm.get('description')?.invalid && productForm.get('description')?.touched) {
+              <div class="text-red-600 text-sm mt-1">Description must be at most 255 characters.</div>
+            }
           </div>
           <!-- Original Price -->
           <div class="mb-4">
             <label for="productOriginalPrice" class="block text-sm font-medium text-gray-700 mb-1">Original Price</label>
-            <input id="productOriginalPrice" name="productOriginalPrice" type="number" formControlName="originalPrice"
+            <input id="productOriginalPrice" name="productOriginalPrice" type="number" formControlName="originalPrice" min="0.01" max="99999999.99" step="0.01"
               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
+            @if (productForm.get('originalPrice')?.invalid && productForm.get('originalPrice')?.touched) {
+              <div class="text-red-600 text-sm mt-1">Enter a price from R$0.01 to R$99,999,999.99 with at most two decimal places.</div>
+            }
           </div>
           <!-- Marked Price -->
           <div class="mb-4">
             <label for="productMarkedPrice" class="block text-sm font-medium text-gray-700 mb-1">Marked Price</label>
-            <input id="productMarkedPrice" name="productMarkedPrice" type="number" formControlName="markedPrice"
+            <input id="productMarkedPrice" name="productMarkedPrice" type="number" formControlName="markedPrice" min="0.01" max="99999999.99" step="0.01"
               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
+            @if (productForm.get('markedPrice')?.invalid && productForm.get('markedPrice')?.touched) {
+              <div class="text-red-600 text-sm mt-1">Leave this blank or enter a price from R$0.01 to R$99,999,999.99 with at most two decimal places.</div>
+            }
           </div>
           <!-- Stock Quantity -->
           <div class="mb-4">
             <label for="productStockQuantity" class="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
-            <input id="productStockQuantity" name="productStockQuantity" type="number" formControlName="stockQuantity"
+            <input id="productStockQuantity" name="productStockQuantity" type="number" formControlName="stockQuantity" min="0" step="1"
               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
+            @if (productForm.get('stockQuantity')?.invalid && productForm.get('stockQuantity')?.touched) {
+              <div class="text-red-600 text-sm mt-1">Enter a whole number of items, zero or greater.</div>
+            }
           </div>
           <!-- Category Select -->
           <div class="mb-4">

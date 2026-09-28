@@ -72,20 +72,20 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   ) {
     this.checkoutForm = this.fb.group({
       userInfo: this.fb.group({
-        firstname: ['', Validators.required],
-        lastname: ['', Validators.required],
+        firstname: ['', [Validators.required, Validators.maxLength(255)]],
+        lastname: ['', [Validators.required, Validators.maxLength(255)]],
         cpf: ['', [Validators.required, CustomCpfValidators.validCpf()]],
-        email: ['', [Validators.required, Validators.email]],
-        phone: ['', Validators.pattern('[()0-9 -]*')],
+        email: ['', [Validators.required, Validators.email, Validators.maxLength(255)]],
+        phone: ['', [Validators.pattern('[()0-9 -]*'), Validators.maxLength(255)]],
       }),
       shippingInfo: this.fb.group({
-        country: ['Brazil', Validators.required],
-        state: ['', Validators.required],
-        city: ['', Validators.required],
-        neighborhood: ['', Validators.required],
+        country: ['Brazil', [Validators.required, Validators.maxLength(255)]],
+        state: ['', [Validators.required, Validators.maxLength(255)]],
+        city: ['', [Validators.required, Validators.maxLength(255)]],
+        neighborhood: ['', [Validators.required, Validators.maxLength(255)]],
         zipCode: ['', [Validators.required, CustomCepValidators.validCep()]],
-        street: ['', Validators.required],
-        complement: [''],
+        street: ['', [Validators.required, Validators.maxLength(255)]],
+        complement: ['', Validators.maxLength(255)],
       }),
       billingInfo: this.fb.group({
         country: ['Brazil'],

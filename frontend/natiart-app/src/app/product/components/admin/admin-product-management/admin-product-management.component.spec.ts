@@ -24,6 +24,33 @@ describe('ProductManagementComponent', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
+  it('keeps catalog price and text boundaries aligned with the server', () => {
+    const fixture = TestBed.createComponent(ProductManagementComponent);
+    const form = fixture.componentInstance.productForm;
+    const original = form.get('originalPrice')!;
+    const marked = form.get('markedPrice')!;
+
+    original.setValue(0);
+    expect(original.invalid).toBeTrue();
+    original.setValue(0.01);
+    expect(original.valid).toBeTrue();
+    original.setValue(99999999.99);
+    expect(original.valid).toBeTrue();
+    original.setValue(100000000);
+    expect(original.invalid).toBeTrue();
+    original.setValue(10.001);
+    expect(original.invalid).toBeTrue();
+
+    marked.setValue(null);
+    expect(marked.valid).toBeTrue();
+    marked.setValue(0);
+    expect(marked.invalid).toBeTrue();
+    form.get('label')!.setValue('x'.repeat(256));
+    expect(form.get('label')!.invalid).toBeTrue();
+    form.get('description')!.setValue('x'.repeat(256));
+    expect(form.get('description')!.invalid).toBeTrue();
+  });
+
   it('tracks the golden-border valueChanges subscription so destroy unsubscribes it (P1)', () => {
     const fixture = TestBed.createComponent(ProductManagementComponent);
     const component = fixture.componentInstance;

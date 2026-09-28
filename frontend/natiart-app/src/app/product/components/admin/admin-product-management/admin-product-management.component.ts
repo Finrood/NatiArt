@@ -67,11 +67,11 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   constructor() {
     this.productForm = this.fb.group({
       id: [''],
-      label: ['', Validators.required],
-      description: [''],
-      originalPrice: [0, [Validators.required, Validators.min(0)]],
-      markedPrice: [0, Validators.min(0)],
-      stockQuantity: [0, [Validators.required, Validators.min(0)]],
+      label: ['', [Validators.required, Validators.maxLength(255), Validators.pattern(/\S/)]],
+      description: ['', Validators.maxLength(255)],
+      originalPrice: [null, [Validators.required, Validators.min(0.01), Validators.max(99999999.99), Validators.pattern(/^\d{1,8}(\.\d{1,2})?$/)]],
+      markedPrice: [null, [Validators.min(0.01), Validators.max(99999999.99), Validators.pattern(/^\d{1,8}(\.\d{1,2})?$/)]],
+      stockQuantity: [0, [Validators.required, Validators.min(0), Validators.pattern(/^\d+$/)]],
       categoryId: ['', Validators.required],
       packageId: [''],
       hasFixedGoldenBorder: [''],
@@ -149,7 +149,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
       }));
       this.loadExistingImages(product.images || []);
     } else {
-      this.productForm.reset({ originalPrice: 0, markedPrice: 0, stockQuantity: 0 });
+      this.productForm.reset({ originalPrice: null, markedPrice: null, stockQuantity: 0 });
       this.imagePreviews = [];
     }
     this.imageFiles = [];

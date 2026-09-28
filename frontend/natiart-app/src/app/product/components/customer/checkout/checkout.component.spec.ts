@@ -137,6 +137,14 @@ describe('CheckoutComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('rejects an address longer than the stored column before checkout', () => {
+    const street = component.checkoutForm.get('shippingInfo.street')!;
+    street.setValue('x'.repeat(256));
+    expect(street.invalid).toBeTrue();
+    street.setValue('x'.repeat(255));
+    expect(street.valid).toBeTrue();
+  });
+
   it('keeps checkout errors visible until dismissed (O3)', async () => {
     await component.onSubmit();
 
