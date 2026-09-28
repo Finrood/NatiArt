@@ -6,7 +6,8 @@ import {ProductService} from "../../../../service/product.service";
 import {Subject} from "rxjs";
 import {takeUntil} from "rxjs/operators";
 import {RouterLink} from "@angular/router";
-import {ShippingQuote} from "../../../../service/shipping.service";
+import {ShippingQuote, ShippingQuoteItem} from "../../../../service/shipping.service";
+import {PersonalizationOption} from '../../../../models/support/personalization-option';
 
 @Component({
   selector: 'app-order-summary',
@@ -104,13 +105,26 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
   }
 
   getItemAmount(item: CartItem): number {
-    return this.shippingQuote?.items.find(quoteItem => quoteItem.productId === item.product.id)?.lineAmount
+    return this.quoteItemFor(item)?.lineAmount
       ?? item.product.markedPrice * item.quantity;
   }
 
   getDisplayedItemUnitPrice(item: CartItem): number {
-    return this.shippingQuote?.items.find(quoteItem => quoteItem.productId === item.product.id)?.unitPrice
+    return this.quoteItemFor(item)?.unitPrice
       ?? item.product.markedPrice;
+  }
+
+  private quoteItemFor(item: CartItem): ShippingQuoteItem | undefined {
+    const options: string[] = [];
+    if (item.goldBorder) {
+      options.push(`${PersonalizationOption.GOLDEN_BORDER}=true`);
+    }
+    if (item.customImageUploadId) {
+      options.push(`${PersonalizationOption.CUSTOM_IMAGE}=${item.customImageUploadId}`);
+    }
+    const personalizationKey = options.sort().join('|');
+    return this.shippingQuote?.items.find(quoted => quoted.productId === item.product.id
+      && (quoted.personalizationKey ?? '') === personalizationKey);
   }
 
   ngOnDestroy(): void {

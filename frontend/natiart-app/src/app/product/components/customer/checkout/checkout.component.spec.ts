@@ -13,6 +13,7 @@ import { AuthenticationService } from '../../../../directory/service/authenticat
 import { User, RoleName } from '../../../../directory/models/user.model';
 import { OrderDto } from '../../../models/order.model';
 import { ShippingQuote, ShippingService } from '../../../service/shipping.service';
+import { ProductService } from '../../../service/product.service';
 
 describe('CheckoutComponent', () => {
   let fixture: ComponentFixture<CheckoutComponent>;
@@ -22,6 +23,16 @@ describe('CheckoutComponent', () => {
   let createOrderSpy: jasmine.Spy;
   let isLoggedInSubject: BehaviorSubject<boolean>;
   let currentUserSubject: BehaviorSubject<User | null>;
+  let cartItemsSnapshot: Array<{
+    cartItemId: string;
+    product: { id: string };
+    quantity: number;
+    goldBorder?: boolean;
+    image?: File;
+    customImageUploadId?: string;
+  }>;
+  let uploadCustomerImageSpy: jasmine.Spy;
+  let setCustomImageUploadIdSpy: jasmine.Spy;
 
   const loggedInUser: User = {
     id: 'u1',
@@ -69,6 +80,9 @@ describe('CheckoutComponent', () => {
     currentUserSubject = new BehaviorSubject<User | null>(loggedInUser);
     createPixPaymentSpy = jasmine.createSpy('createPixPayment');
     createOrderSpy = jasmine.createSpy('createOrder');
+    uploadCustomerImageSpy = jasmine.createSpy('uploadCustomerImage');
+    setCustomImageUploadIdSpy = jasmine.createSpy('setCustomImageUploadId').and.returnValue(of(undefined));
+    cartItemsSnapshot = [{cartItemId: 'line-1', product: {id: 'prod-1'}, quantity: 1}];
 
     await TestBed.configureTestingModule({
       imports: [CheckoutComponent],
@@ -82,9 +96,8 @@ describe('CheckoutComponent', () => {
             getCartItems: (): BehaviorSubject<never[]> => new BehaviorSubject<never[]>([]),
             getCartTotal: (): BehaviorSubject<number> => new BehaviorSubject<number>(0),
             getCartTotalSnapshot: (): number => 99.9,
-            getCartItemsSnapshot: (): Array<{ product: { id: string }; quantity: number }> => [
-              { product: { id: 'prod-1' }, quantity: 1 },
-            ],
+            getCartItemsSnapshot: () => cartItemsSnapshot,
+            setCustomImageUploadId: setCustomImageUploadIdSpy,
           },
         },
         {
@@ -106,6 +119,10 @@ describe('CheckoutComponent', () => {
         {
           provide: PaymentService,
           useValue: { createPixPayment: createPixPaymentSpy },
+        },
+        {
+          provide: ProductService,
+          useValue: { uploadCustomerImage: uploadCustomerImageSpy },
         },
       ],
     }).compileComponents();
@@ -180,6 +197,46 @@ describe('CheckoutComponent', () => {
     });
     expect(component.shippingQuote as unknown as ShippingQuote).toEqual(quote);
     expect(component.currentStep).toBe(3);
+  });
+
+  it('quotes two personalized variants and uses owned artwork ids in the order', async () => {
+    const artwork = new File(['art'], 'art.png', {type: 'image/png'});
+    const uploadId = '2b7f4d7e-6e55-4a8f-a8b2-f2b7069e4d2c';
+    cartItemsSnapshot = [
+      {cartItemId: 'line-gold', product: {id: 'prod-1'}, quantity: 1, goldBorder: true},
+      {cartItemId: 'line-art', product: {id: 'prod-1'}, quantity: 2, image: artwork},
+    ];
+    uploadCustomerImageSpy.and.returnValue(of({uploadId}));
+    const quoteService = TestBed.inject(ShippingService);
+    spyOn(quoteService, 'createQuote').and.returnValue(of({
+      quoteId: 'variant-quote', destinationPostalCode: '01001000', serviceId: 'pac', serviceName: 'PAC',
+      expiresAt: '2099-01-01T00:00:00Z', itemAmount: 37.5, shippingAmount: 8, totalAmount: 45.5,
+      items: [
+        {productId: 'prod-1', personalizationKey: 'GOLDEN_BORDER=true', quantity: 1, unitPrice: 12.5, lineAmount: 12.5},
+        {productId: 'prod-1', personalizationKey: `CUSTOM_IMAGE=${uploadId}`, quantity: 2, unitPrice: 12.5, lineAmount: 25},
+      ],
+    }));
+    component.shippingQuote = null;
+    component.currentStep = 2;
+
+    await component.nextStep();
+
+    expect(quoteService.createQuote).toHaveBeenCalledWith({
+      zipCode: '01001000',
+      items: [
+        {productId: 'prod-1', quantity: 1, personalization: {personalizationOptions: {GOLDEN_BORDER: 'true'}}},
+        {productId: 'prod-1', quantity: 2, personalization: {personalizationOptions: {CUSTOM_IMAGE: uploadId}}},
+      ],
+    });
+    expect(component.currentStep).toBe(3);
+    const orderRequest = await (component as unknown as {buildOrderRequest: () => Promise<OrderDto>}).buildOrderRequest();
+    expect(orderRequest.items).toEqual([
+      jasmine.objectContaining({productId: 'prod-1', quantity: 1, personalization: {personalizationOptions: {GOLDEN_BORDER: 'true'}}}),
+      jasmine.objectContaining({productId: 'prod-1', quantity: 2, personalization: {personalizationOptions: {CUSTOM_IMAGE: uploadId}}}),
+    ]);
+    expect(orderRequest.shippingQuoteId).toBe('variant-quote');
+    expect(uploadCustomerImageSpy).toHaveBeenCalledOnceWith(artwork);
+    expect(setCustomImageUploadIdSpy).toHaveBeenCalledOnceWith('line-art', uploadId);
   });
 
   it('keeps checkout errors visible until dismissed (O3)', async () => {

@@ -13,6 +13,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,15 +24,21 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.portcelana.natiart.controller.helper.ShippingQuoteNotValidException;
+import com.portcelana.natiart.dto.OrderDto;
 import com.portcelana.natiart.dto.OrderItemDto;
+import com.portcelana.natiart.dto.PersonalizationDto;
 import com.portcelana.natiart.dto.shipping.ShippingEstimate;
 import com.portcelana.natiart.dto.shipping.ShippingEstimateRequest;
 import com.portcelana.natiart.dto.shipping.ShippingQuoteItemRequest;
 import com.portcelana.natiart.dto.shipping.ShippingQuoteRequest;
 import com.portcelana.natiart.dto.shipping.ShippingQuoteResponse;
+import com.portcelana.natiart.model.CustomerOrder;
+import com.portcelana.natiart.model.CustomerUpload;
 import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.model.ShippingQuote;
+import com.portcelana.natiart.model.support.PersonalizationOption;
+import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.ProductRepository;
 import com.portcelana.natiart.repository.ShippingQuoteRepository;
 
@@ -47,6 +54,15 @@ class ShippingQuoteServiceTest {
 
     @Mock
     private ShippingService shippingService;
+
+    @Mock
+    private CustomerUploadService customerUploadService;
+
+    @Mock
+    private ProductManager productManager;
+
+    @Mock
+    private OrderRepository orderRepository;
 
     private ShippingQuoteService quoteService;
 
@@ -94,6 +110,117 @@ class ShippingQuoteServiceTest {
         assertEquals(new BigDecimal("69.47"), response.getTotalAmount());
         assertEquals(NOW.plusSeconds(900), response.getExpiresAt());
         assertEquals("correios-1", response.getServiceId());
+    }
+
+    @Test
+    void twoPersonalizedVariantsShareFreightVolumeAndKeepQuotedLinePrices() {
+        final Product plate = product("p1", "Plate", "10.00", "0.40", new Package("box", 10, 10, 10));
+        plate.setAvailablePersonalizations(
+                Set.of(PersonalizationOption.GOLDEN_BORDER, PersonalizationOption.CUSTOM_IMAGE));
+        final String uploadId = "2b7f4d7e-6e55-4a8f-a8b2-f2b7069e4d2c";
+        when(productRepository.findAllWithShippingDataByIds(List.of("p1"))).thenReturn(List.of(plate));
+        when(shippingService.getShippingEstimates(anyList()))
+                .thenReturn(List.of(new ShippingEstimate()
+                        .setServiceId("pac")
+                        .setService("PAC")
+                        .setPrice(new BigDecimal("8.00"))));
+        when(shippingQuoteRepository.save(org.mockito.ArgumentMatchers.any(ShippingQuote.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        quoteService = new ShippingQuoteService(
+                productRepository,
+                shippingQuoteRepository,
+                shippingService,
+                customerUploadService,
+                Clock.fixed(NOW, ZoneOffset.UTC),
+                900,
+                new BigDecimal("2.50"));
+
+        final ShippingQuoteResponse response = quoteService.createQuote(
+                new ShippingQuoteRequest()
+                        .setZipCode("01001000")
+                        .setItems(List.of(
+                                new ShippingQuoteItemRequest()
+                                        .setProductId("p1")
+                                        .setQuantity(1)
+                                        .setPersonalization(
+                                                personalization(PersonalizationOption.GOLDEN_BORDER, "true")),
+                                new ShippingQuoteItemRequest()
+                                        .setProductId("p1")
+                                        .setQuantity(2)
+                                        .setPersonalization(
+                                                personalization(PersonalizationOption.CUSTOM_IMAGE, uploadId)))),
+                "owner-1");
+
+        final ArgumentCaptor<List<ShippingEstimateRequest>> volumes = ArgumentCaptor.forClass(List.class);
+        verify(shippingService).getShippingEstimates(volumes.capture());
+        assertEquals(1, volumes.getValue().size());
+        assertEquals(3, volumes.getValue().getFirst().getQuantity());
+        assertEquals(new BigDecimal("37.50"), response.getItemAmount());
+        assertEquals(new BigDecimal("45.50"), response.getTotalAmount());
+        assertEquals(2, response.getItems().size());
+        assertEquals("GOLDEN_BORDER=true", response.getItems().getFirst().getPersonalizationKey());
+        verify(customerUploadService).requireClaimableForQuote(uploadId, "owner-1");
+
+        final ShippingQuote saved = capturedQuote();
+        when(shippingQuoteRepository.findByIdAndOwnerExternalIdForUse(saved.getId(), "owner-1"))
+                .thenReturn(Optional.of(saved));
+        assertEquals(
+                saved,
+                quoteService.requireQuoteForOrder(
+                        saved.getId(),
+                        "owner-1",
+                        "01001000",
+                        List.of(
+                                new OrderItemDto()
+                                        .setProductId("p1")
+                                        .setQuantity(2)
+                                        .setPersonalization(
+                                                personalization(PersonalizationOption.CUSTOM_IMAGE, uploadId)),
+                                new OrderItemDto()
+                                        .setProductId("p1")
+                                        .setQuantity(1)
+                                        .setPersonalization(
+                                                personalization(PersonalizationOption.GOLDEN_BORDER, "true"))),
+                        Map.of("p1", plate)));
+
+        when(productManager.getProductsOrDie(List.of("p1"))).thenReturn(Map.of("p1", plate));
+        when(productRepository.decreaseStockIfAvailable("p1", 3)).thenReturn(1);
+        when(orderRepository.save(org.mockito.ArgumentMatchers.any(CustomerOrder.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(customerUploadService.claimForOrder(uploadId, "owner-1"))
+                .thenReturn(new CustomerUpload(uploadId, "owner-1", "file:customer-uploads/art.webp", "image/webp", 3));
+        final CustomerOrder order = new OrderCreationService(
+                        orderRepository,
+                        productManager,
+                        productRepository,
+                        quoteService,
+                        customerUploadService,
+                        new BigDecimal("2.50"))
+                .createOrder(
+                        new OrderDto()
+                                .setFirstname("Ada")
+                                .setLastname("Lovelace")
+                                .setEmail("ada@example.test")
+                                .setZipCode("01001000")
+                                .setShippingQuoteId(saved.getId())
+                                .setItems(List.of(
+                                        new OrderItemDto()
+                                                .setProductId("p1")
+                                                .setQuantity(1)
+                                                .setPersonalization(
+                                                        personalization(PersonalizationOption.GOLDEN_BORDER, "true")),
+                                        new OrderItemDto()
+                                                .setProductId("p1")
+                                                .setQuantity(2)
+                                                .setPersonalization(personalization(
+                                                        PersonalizationOption.CUSTOM_IMAGE, uploadId)))),
+                        "owner-1",
+                        "key-1",
+                        "fingerprint");
+        assertEquals(2, order.getItems().size());
+        assertEquals(new BigDecimal("12.50"), order.getItems().getFirst().getPrice());
+        assertEquals(new BigDecimal("45.50"), order.getTotalAmount());
+        verify(productRepository).decreaseStockIfAvailable("p1", 3);
     }
 
     @Test
@@ -178,5 +305,9 @@ class ShippingQuoteServiceTest {
                 .setPackaging(packaging);
         ReflectionTestUtils.setField(product, "id", id);
         return product;
+    }
+
+    private PersonalizationDto personalization(PersonalizationOption option, String value) {
+        return new PersonalizationDto().setPersonalizationOptions(Map.of(option, value));
     }
 }

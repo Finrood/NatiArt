@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -32,6 +33,7 @@ import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.model.ShippingQuote;
 import com.portcelana.natiart.model.ShippingQuoteItem;
+import com.portcelana.natiart.model.support.PersonalizationOption;
 import com.portcelana.natiart.repository.ProductRepository;
 import com.portcelana.natiart.repository.ShippingQuoteRepository;
 
@@ -44,16 +46,27 @@ public class ShippingQuoteService {
     private final ProductRepository productRepository;
     private final ShippingQuoteRepository shippingQuoteRepository;
     private final ShippingService shippingService;
+    private final CustomerUploadService customerUploadService;
     private final Clock clock;
     private final Duration quoteTtl;
+    private final BigDecimal personalizationSurcharge;
 
     @Autowired
     public ShippingQuoteService(
             ProductRepository productRepository,
             ShippingQuoteRepository shippingQuoteRepository,
             ShippingService shippingService,
-            @Value("${natiart.shipping.quote-ttl-seconds:900}") long quoteTtlSeconds) {
-        this(productRepository, shippingQuoteRepository, shippingService, Clock.systemUTC(), quoteTtlSeconds);
+            CustomerUploadService customerUploadService,
+            @Value("${natiart.shipping.quote-ttl-seconds:900}") long quoteTtlSeconds,
+            @Value("${natiart.order.personalization-surcharge:0.00}") BigDecimal personalizationSurcharge) {
+        this(
+                productRepository,
+                shippingQuoteRepository,
+                shippingService,
+                customerUploadService,
+                Clock.systemUTC(),
+                quoteTtlSeconds,
+                personalizationSurcharge);
     }
 
     ShippingQuoteService(
@@ -62,14 +75,28 @@ public class ShippingQuoteService {
             ShippingService shippingService,
             Clock clock,
             long quoteTtlSeconds) {
+        this(productRepository, shippingQuoteRepository, shippingService, null, clock, quoteTtlSeconds, ZERO);
+    }
+
+    ShippingQuoteService(
+            ProductRepository productRepository,
+            ShippingQuoteRepository shippingQuoteRepository,
+            ShippingService shippingService,
+            CustomerUploadService customerUploadService,
+            Clock clock,
+            long quoteTtlSeconds,
+            BigDecimal personalizationSurcharge) {
         if (quoteTtlSeconds < 1) {
             throw new IllegalArgumentException("Shipping quote TTL must be positive");
         }
         this.productRepository = productRepository;
         this.shippingQuoteRepository = shippingQuoteRepository;
         this.shippingService = shippingService;
+        this.customerUploadService = customerUploadService;
         this.clock = clock;
         this.quoteTtl = Duration.ofSeconds(quoteTtlSeconds);
+        requireMoney(personalizationSurcharge, "personalization surcharge");
+        this.personalizationSurcharge = personalizationSurcharge;
     }
 
     @Transactional
@@ -80,22 +107,54 @@ public class ShippingQuoteService {
                 validateItems(request == null ? null : request.getItems());
         final List<String> productIds = requestedItems.stream()
                 .map(ShippingQuoteItemRequest::getProductId)
+                .distinct()
                 .toList();
         final Map<String, Product> products = loadProducts(productIds);
 
         final List<ShippingQuoteItem> quoteItems = new ArrayList<>();
         final List<ShippingEstimateRequest> volumes = new ArrayList<>();
+        final Map<String, Integer> quantitiesByProduct = new LinkedHashMap<>();
+        final Set<String> lineIdentities = new HashSet<>();
+        final Set<String> artworkIds = new HashSet<>();
         BigDecimal itemAmount = ZERO;
         for (ShippingQuoteItemRequest requestedItem : requestedItems) {
             final Product product = products.get(requestedItem.getProductId());
             requireProductShippingData(product);
-            final BigDecimal unitPrice = product.getMarkedPrice().orElseGet(product::getOriginalPrice);
+            final Map<PersonalizationOption, String> options =
+                    PersonalizationRules.validatedOptions(requestedItem.getPersonalization(), product);
+            final String personalizationKey = PersonalizationRules.canonical(options);
+            if (!lineIdentities.add(product.getId() + "\u0000" + personalizationKey)) {
+                throw new IllegalArgumentException("A shipping quote must not contain duplicate fulfillment lines");
+            }
+            if (options.containsKey(PersonalizationOption.CUSTOM_IMAGE)) {
+                final String uploadId = options.get(PersonalizationOption.CUSTOM_IMAGE);
+                if (!artworkIds.add(uploadId)) {
+                    throw new IllegalArgumentException("An artwork upload can only be used once per order");
+                }
+                if (customerUploadService == null) {
+                    throw new IllegalArgumentException("Custom artwork uploads are unavailable");
+                }
+                customerUploadService.requireClaimableForQuote(uploadId, ownerExternalId);
+            }
+            final BigDecimal basePrice = product.getMarkedPrice().orElseGet(product::getOriginalPrice);
+            final BigDecimal unitPrice = options.isEmpty() ? basePrice : basePrice.add(personalizationSurcharge);
             requireMoney(unitPrice, "product price");
             final int quantity = requestedItem.getQuantity();
             quoteItems.add(new ShippingQuoteItem(
-                    product.getId(), quantity, money(unitPrice, "product price"), product.getVersion()));
+                    product.getId(),
+                    personalizationKey,
+                    quantity,
+                    money(unitPrice, "product price"),
+                    product.getVersion()));
             itemAmount = itemAmount.add(unitPrice.multiply(BigDecimal.valueOf(quantity)));
-
+            final int aggregate = quantitiesByProduct.getOrDefault(product.getId(), 0) + quantity;
+            if (aggregate > MAX_ITEM_QUANTITY) {
+                throw new IllegalArgumentException("The combined quantity for a product exceeds " + MAX_ITEM_QUANTITY);
+            }
+            quantitiesByProduct.put(product.getId(), aggregate);
+        }
+        for (Map.Entry<String, Integer> entry : quantitiesByProduct.entrySet()) {
+            final Product product = products.get(entry.getKey());
             final Package packaging = product.getPackaging()
                     .orElseThrow(() -> new IllegalArgumentException(
                             "Product [" + product.getLabel() + "] has no shipping package configured"));
@@ -105,7 +164,7 @@ public class ShippingQuoteService {
                     packaging.getDepth(),
                     packaging.getWidth(),
                     packaging.getHeight(),
-                    quantity));
+                    entry.getValue()));
         }
 
         final ShippingEstimate estimate = shippingService.getShippingEstimates(volumes).stream()
@@ -182,15 +241,11 @@ public class ShippingQuoteService {
             throw new IllegalArgumentException(
                     "A shipping quote must not contain more than " + MAX_ORDER_LINES + " items");
         }
-        final Set<String> productIds = new HashSet<>();
         for (ShippingQuoteItemRequest item : items) {
             if (item == null
                     || item.getProductId() == null
                     || item.getProductId().isBlank()) {
                 throw new IllegalArgumentException("Every shipping quote item must reference a product");
-            }
-            if (!productIds.add(item.getProductId())) {
-                throw new IllegalArgumentException("A shipping quote must not contain duplicate product lines");
             }
             if (item.getQuantity() == null || item.getQuantity() < 1 || item.getQuantity() > MAX_ITEM_QUANTITY) {
                 throw new IllegalArgumentException(
@@ -205,18 +260,29 @@ public class ShippingQuoteService {
             throw new ShippingQuoteNotValidException("The shipping quote does not match an empty order");
         }
         final List<ShippingQuoteItem> currentItems = new ArrayList<>();
-        final Set<String> productIds = new HashSet<>();
+        final Set<String> lineIdentities = new HashSet<>();
         for (OrderItemDto item : orderItems) {
-            if (item == null || item.getProductId() == null || !productIds.add(item.getProductId())) {
+            if (item == null || item.getProductId() == null) {
                 throw new ShippingQuoteNotValidException("The shipping quote does not match the order items");
             }
             final Product product = products.get(item.getProductId());
             if (product == null || item.getQuantity() == null || item.getQuantity() < 1) {
                 throw new ShippingQuoteNotValidException("The shipping quote does not match the order items");
             }
-            final BigDecimal unitPrice = product.getMarkedPrice().orElseGet(product::getOriginalPrice);
+            final Map<PersonalizationOption, String> options =
+                    PersonalizationRules.validatedOptions(item.getPersonalization(), product);
+            final String personalizationKey = PersonalizationRules.canonical(options);
+            if (!lineIdentities.add(product.getId() + "\u0000" + personalizationKey)) {
+                throw new ShippingQuoteNotValidException("The shipping quote does not match the order items");
+            }
+            final BigDecimal basePrice = product.getMarkedPrice().orElseGet(product::getOriginalPrice);
+            final BigDecimal unitPrice = options.isEmpty() ? basePrice : basePrice.add(personalizationSurcharge);
             currentItems.add(new ShippingQuoteItem(
-                    product.getId(), item.getQuantity(), money(unitPrice, "product price"), product.getVersion()));
+                    product.getId(),
+                    personalizationKey,
+                    item.getQuantity(),
+                    money(unitPrice, "product price"),
+                    product.getVersion()));
         }
         return currentItems;
     }
@@ -247,8 +313,11 @@ public class ShippingQuoteService {
 
     private static String fingerprint(String destination, List<ShippingQuoteItem> items) {
         final String canonicalItems = items.stream()
-                .sorted(java.util.Comparator.comparing(ShippingQuoteItem::getProductId))
+                .sorted(java.util.Comparator.comparing(ShippingQuoteItem::getProductId)
+                        .thenComparing(ShippingQuoteItem::getPersonalizationKey))
                 .map(item -> item.getProductId()
+                        + ":"
+                        + item.getPersonalizationKey()
                         + ":"
                         + item.getQuantity()
                         + ":"

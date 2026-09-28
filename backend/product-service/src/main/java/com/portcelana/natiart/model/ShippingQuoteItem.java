@@ -11,6 +11,9 @@ public class ShippingQuoteItem {
     @Column(nullable = false)
     private String productId;
 
+    @Column(nullable = false, length = 512)
+    private String personalizationKey;
+
     @Column(nullable = false)
     private int quantity;
 
@@ -23,7 +26,13 @@ public class ShippingQuoteItem {
     protected ShippingQuoteItem() {}
 
     public ShippingQuoteItem(String productId, int quantity, BigDecimal unitPrice, long productVersion) {
+        this(productId, "", quantity, unitPrice, productVersion);
+    }
+
+    public ShippingQuoteItem(
+            String productId, String personalizationKey, int quantity, BigDecimal unitPrice, long productVersion) {
         this.productId = productId;
+        this.personalizationKey = personalizationKey;
         this.quantity = quantity;
         this.unitPrice = unitPrice;
         this.productVersion = productVersion;
@@ -31,6 +40,10 @@ public class ShippingQuoteItem {
 
     public String getProductId() {
         return productId;
+    }
+
+    public String getPersonalizationKey() {
+        return personalizationKey;
     }
 
     public int getQuantity() {
@@ -53,11 +66,12 @@ public class ShippingQuoteItem {
         return quantity == that.quantity
                 && productVersion == that.productVersion
                 && Objects.equals(productId, that.productId)
+                && Objects.equals(personalizationKey, that.personalizationKey)
                 && Objects.equals(unitPrice, that.unitPrice);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(productId, quantity, unitPrice, productVersion);
+        return Objects.hash(productId, personalizationKey, quantity, unitPrice, productVersion);
     }
 }

@@ -6,6 +6,7 @@ import com.portcelana.natiart.model.ShippingQuoteItem;
 
 public class ShippingQuoteItemResponse {
     private String productId;
+    private String personalizationKey;
     private int quantity;
     private BigDecimal unitPrice;
     private BigDecimal lineAmount;
@@ -13,6 +14,7 @@ public class ShippingQuoteItemResponse {
     public static ShippingQuoteItemResponse from(ShippingQuoteItem item) {
         return new ShippingQuoteItemResponse()
                 .setProductId(item.getProductId())
+                .setPersonalizationKey(item.getPersonalizationKey())
                 .setQuantity(item.getQuantity())
                 .setUnitPrice(item.getUnitPrice())
                 .setLineAmount(item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
@@ -20,6 +22,15 @@ public class ShippingQuoteItemResponse {
 
     public String getProductId() {
         return productId;
+    }
+
+    public String getPersonalizationKey() {
+        return personalizationKey;
+    }
+
+    public ShippingQuoteItemResponse setPersonalizationKey(String personalizationKey) {
+        this.personalizationKey = personalizationKey;
+        return this;
     }
 
     public ShippingQuoteItemResponse setProductId(String productId) {

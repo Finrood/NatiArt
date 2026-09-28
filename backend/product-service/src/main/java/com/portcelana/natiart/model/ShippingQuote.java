@@ -152,8 +152,13 @@ public class ShippingQuote {
     }
 
     public ShippingQuoteItem getItem(String productId) {
+        return getItem(productId, "");
+    }
+
+    public ShippingQuoteItem getItem(String productId, String personalizationKey) {
         return items.stream()
-                .filter(item -> Objects.equals(item.getProductId(), productId))
+                .filter(item -> Objects.equals(item.getProductId(), productId)
+                        && Objects.equals(item.getPersonalizationKey(), personalizationKey))
                 .findFirst()
                 .orElse(null);
     }

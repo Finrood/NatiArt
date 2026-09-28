@@ -45,6 +45,30 @@ describe('OrderSummaryComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('PAC');
   });
 
+  it('matches quoted prices to personalized lines of the same product', () => {
+    const component = TestBed.createComponent(OrderSummaryComponent).componentInstance;
+    const product: Product = {
+      id: 'p1', label: 'Plate', originalPrice: 10, markedPrice: 10,
+      stockQuantity: 5, categoryId: 'c1', availablePersonalizations: [],
+      tags: new Set<string>(), images: [],
+    };
+    const uploadId = '2b7f4d7e-6e55-4a8f-a8b2-f2b7069e4d2c';
+    component.shippingQuote = {
+      quoteId: 'q1', destinationPostalCode: '01001000', serviceId: 'pac', serviceName: 'PAC',
+      expiresAt: '2099-01-01T00:00:00Z', itemAmount: 37.5, shippingAmount: 8, totalAmount: 45.5,
+      items: [
+        {productId: 'p1', personalizationKey: `CUSTOM_IMAGE=${uploadId}`, quantity: 2, unitPrice: 12.5, lineAmount: 25},
+        {productId: 'p1', personalizationKey: 'GOLDEN_BORDER=true', quantity: 1, unitPrice: 12.5, lineAmount: 12.5},
+      ],
+    };
+    const golden = {cartItemId: 'gold', product, quantity: 1, goldBorder: true};
+    const artwork = {cartItemId: 'art', product, quantity: 2, customImageUploadId: uploadId};
+
+    expect(component.getDisplayedItemUnitPrice(golden)).toBe(12.5);
+    expect(component.getItemAmount(golden)).toBe(12.5);
+    expect(component.getItemAmount(artwork)).toBe(25);
+  });
+
   it('writes the image for a live line when its GET resolves (AA3 control)', () => {
     const fixture = TestBed.createComponent(OrderSummaryComponent);
     const component = fixture.componentInstance;

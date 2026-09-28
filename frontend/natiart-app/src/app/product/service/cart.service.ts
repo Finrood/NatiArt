@@ -32,6 +32,12 @@ export class CartService {
   }
 
   addToCart(product: Product, quantity: number, goldBorder?: boolean, image?: File): Observable<void> {
+    if (!Number.isInteger(quantity) || quantity <= 0 || product.stockQuantity <= 0) {
+      reportWarning('cart');
+      return of(undefined);
+    }
+    quantity = Math.min(quantity, product.stockQuantity);
+
     // If a custom image is provided, ALWAYS treat it as a new, unique item.
     if (image) {
       const newCartItemId = this.generateUniqueCartItemId();
@@ -42,7 +48,8 @@ export class CartService {
       const existingItem = this.cartItems.find(item =>
         item.product.id === product.id &&
         item.goldBorder === goldBorder &&
-        !item.image // Ensure we only group items *without* custom images
+        !item.image &&
+        !item.customImageUploadId // Uploaded artwork remains its own fulfillment line.
       );
 
       if (existingItem) {
@@ -66,6 +73,21 @@ export class CartService {
       }
     }
 
+    this.updateCart();
+    return of(undefined);
+  }
+
+  setCustomImageUploadId(cartItemId: string, uploadId: string): Observable<void> {
+    if (!uploadId || uploadId.trim().length === 0) {
+      reportWarning('cart');
+      return of(undefined);
+    }
+    const item = this.cartItems.find(candidate => candidate.cartItemId === cartItemId);
+    if (!item) {
+      reportWarning('cart');
+      return of(undefined);
+    }
+    item.customImageUploadId = uploadId;
     this.updateCart();
     return of(undefined);
   }
@@ -130,8 +152,12 @@ export class CartService {
 
   private saveCartToLocalStorage(): void {
     try {
-      const serializableCart = this.cartItems.filter(item => !item.image);
-      if (serializableCart.length === this.cartItems.length) {
+      // Files cannot survive a reload. Keep ordinary lines and already-uploaded
+      // artwork lines, while leaving an in-memory draft out of storage.
+      const serializableCart = this.cartItems
+        .filter(item => !item.image || !!item.customImageUploadId)
+        .map(({image: _image, ...item}) => item);
+      if (serializableCart.length > 0 || this.cartItems.length === 0) {
         localStorage.setItem(this.localStorageKey, JSON.stringify(serializableCart));
       } else {
         reportWarning('storage');
@@ -200,6 +226,10 @@ export class CartService {
       return false;
     }
     if (typeof line.quantity !== 'number' || !Number.isInteger(line.quantity) || line.quantity < 1) {
+      return false;
+    }
+    if (line.customImageUploadId !== undefined
+      && (typeof line.customImageUploadId !== 'string' || line.customImageUploadId.trim().length === 0)) {
       return false;
     }
     return true;

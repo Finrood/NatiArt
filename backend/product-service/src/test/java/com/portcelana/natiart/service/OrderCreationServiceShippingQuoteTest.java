@@ -41,7 +41,7 @@ class OrderCreationServiceShippingQuoteTest {
 
     @Test
     void createOrder_usesQuoteSnapshotAndIgnoresClientDeliveryAmount() {
-        final Product product = new Product("Plate", new BigDecimal("9.00"));
+        final Product product = new Product("Plate", new BigDecimal("10.00"));
         final ShippingQuote quote = new ShippingQuote()
                 .setOwnerExternalId("owner-1")
                 .setDestinationPostalCode("01001000")

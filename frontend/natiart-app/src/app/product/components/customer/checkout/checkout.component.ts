@@ -4,7 +4,9 @@ import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} fr
 import {EmptyError, firstValueFrom, map, Observable, Subject, throwError} from 'rxjs';
 import {CartItem} from '../../../models/CartItem.model';
 import {OrderDto} from '../../../models/order.model';
+import {OrderItemDto} from '../../../models/orderItem.model';
 import {CartService} from '../../../service/cart.service';
+import {ProductService} from '../../../service/product.service';
 import {OrderService} from '../../../service/order.service';
 import {Router} from '@angular/router';
 import {PaymentService} from "../../../service/payment.service";
@@ -22,7 +24,8 @@ import {CustomCpfValidators} from "../../../../directory/validator/CustomCpfVali
 import {CustomCepValidators} from "../../../../directory/validator/CustomCepValidators";
 import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportError} from '../../../../shared/service/error-reporting.service';
-import {ShippingQuote, ShippingService} from '../../../service/shipping.service';
+import {ShippingQuote, ShippingQuoteRequest, ShippingService} from '../../../service/shipping.service';
+import {PersonalizationOption} from '../../../models/support/personalization-option';
 
 @Component({
   selector: 'app-checkout',
@@ -68,6 +71,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   constructor(
     private fb: FormBuilder,
     private cartService: CartService,
+    private productService: ProductService,
     private authenticationService: AuthenticationService,
     private orderService: OrderService,
     private paymentService: PaymentService,
@@ -264,11 +268,22 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         return;
       }
 
-      const orderRequest = this.buildOrderRequest();
-      if (!this.shippingQuote || this.isShippingQuoteExpired() || this.shippingQuoteFingerprint !== this.currentShippingQuoteFingerprint()) {
+      if (!this.shippingQuote || this.isShippingQuoteExpired()) {
         this.setErrorMessage('The shipping total is no longer current. Return to Shipping and review the refreshed quote.');
         return;
       }
+      let currentQuoteFingerprint: string;
+      try {
+        currentQuoteFingerprint = this.currentShippingQuoteFingerprint();
+      } catch {
+        this.setErrorMessage('The shipping total is no longer current. Return to Shipping and review the refreshed quote.');
+        return;
+      }
+      if (this.shippingQuoteFingerprint !== currentQuoteFingerprint) {
+        this.setErrorMessage('The shipping total is no longer current. Return to Shipping and review the refreshed quote.');
+        return;
+      }
+      const orderRequest = await this.buildOrderRequest();
       const fingerprint = JSON.stringify(orderRequest);
       if (this.checkoutFingerprint !== fingerprint) {
         this.currentOrder = null;
@@ -325,19 +340,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  private buildOrderRequest(): OrderDto {
+  private async buildOrderRequest(): Promise<OrderDto> {
     const userInfo = this.checkoutForm.get('userInfo')?.getRawValue();
     const shippingInfo = this.checkoutForm.get('shippingInfo')?.getRawValue();
-    const items = this.cartService.getCartItemsSnapshot().map(item => {
-      if (!item.product.id) {
-        throw new Error('A cart item is missing its product identifier.');
-      }
-      return {productId: item.product.id, quantity: item.quantity};
-    });
-
-    if (items.length === 0) {
-      throw new Error('Cannot create an order from an empty cart.');
-    }
+    const items = await this.buildOrderItems();
 
     return {
       firstname: userInfo.firstname,
@@ -356,18 +362,58 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     };
   }
 
-  private async loadShippingQuote(): Promise<boolean> {
-    const fingerprint = this.currentShippingQuoteFingerprint();
-    if (this.shippingQuote
-      && this.shippingQuoteFingerprint === fingerprint
-      && !this.isShippingQuoteExpired()) {
-      return true;
+  private async buildOrderItems(): Promise<OrderItemDto[]> {
+    const items = await Promise.all(this.cartService.getCartItemsSnapshot().map(async item => {
+      if (item.image && !item.customImageUploadId) {
+        this.setInfoMessage('Uploading your custom artwork...');
+        const upload = await firstValueFrom(this.productService.uploadCustomerImage(item.image));
+        if (!upload?.uploadId || upload.uploadId.trim().length === 0) {
+          throw new Error('The artwork upload did not return an upload identifier.');
+        }
+        item.customImageUploadId = upload.uploadId;
+        await firstValueFrom(this.cartService.setCustomImageUploadId(item.cartItemId, upload.uploadId));
+      }
+      return this.orderItemFromCart(item);
+    }));
+    if (items.length === 0) {
+      throw new Error('Cannot create an order from an empty cart.');
     }
+    return items;
+  }
 
+  private orderItemFromCart(item: CartItem): OrderItemDto {
+      if (!item.product.id) {
+        throw new Error('A cart item is missing its product identifier.');
+      }
+      if (item.image && !item.customImageUploadId) {
+        throw new Error('A custom artwork line is missing its upload identifier.');
+      }
+      const personalizationOptions: Partial<Record<PersonalizationOption, string>> = {};
+      if (item.goldBorder) {
+        personalizationOptions[PersonalizationOption.GOLDEN_BORDER] = 'true';
+      }
+      if (item.customImageUploadId) {
+        personalizationOptions[PersonalizationOption.CUSTOM_IMAGE] = item.customImageUploadId;
+      }
+      const personalization = Object.keys(personalizationOptions).length > 0
+        ? {personalizationOptions}
+        : undefined;
+      return {productId: item.product.id, quantity: item.quantity, personalization};
+  }
+
+  private async loadShippingQuote(): Promise<boolean> {
     this.isLoadingQuote = true;
-    this.setInfoMessage('Calculating the shipping total...');
     try {
-      this.shippingQuote = await firstValueFrom(this.shippingService.createQuote(this.buildShippingQuoteRequest()));
+      const items = await this.buildOrderItems();
+      const request = this.buildShippingQuoteRequest(items);
+      const fingerprint = JSON.stringify(request);
+      if (this.shippingQuote
+        && this.shippingQuoteFingerprint === fingerprint
+        && !this.isShippingQuoteExpired()) {
+        return true;
+      }
+      this.setInfoMessage('Calculating the shipping total...');
+      this.shippingQuote = await firstValueFrom(this.shippingService.createQuote(request));
       this.shippingQuoteFingerprint = fingerprint;
       this.clearErrorMessage();
       return true;
@@ -384,18 +430,18 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     }
   }
 
-  private buildShippingQuoteRequest(): {zipCode: string; items: Array<{productId: string; quantity: number}>} {
+  private buildShippingQuoteRequest(items?: OrderItemDto[]): ShippingQuoteRequest {
     const shippingInfo = this.checkoutForm.get('shippingInfo')?.getRawValue();
-    const items = this.cartService.getCartItemsSnapshot().map(item => {
-      if (!item.product.id) {
-        throw new Error('A cart item is missing its product identifier.');
-      }
-      return {productId: item.product.id, quantity: item.quantity};
-    });
-    if (items.length === 0) {
+    const quoteItems = items ?? this.cartService.getCartItemsSnapshot().map(item => this.orderItemFromCart(item));
+    if (quoteItems.length === 0) {
       throw new Error('Cannot quote shipping for an empty cart.');
     }
-    return {zipCode: shippingInfo.zipCode.replace(/\D/g, ''), items};
+    return {
+      zipCode: shippingInfo.zipCode.replace(/\D/g, ''),
+      items: quoteItems.map(item => item.personalization
+        ? {productId: item.productId, quantity: item.quantity, personalization: item.personalization}
+        : {productId: item.productId, quantity: item.quantity}),
+    };
   }
 
   private currentShippingQuoteFingerprint(): string {

@@ -2,6 +2,7 @@ import {Injectable} from '@angular/core';
 import {HttpClient} from "@angular/common/http";
 import {Observable} from "rxjs";
 import {environment} from "../../../environments/environment";
+import {PersonalizationDto} from '../models/orderItem.model';
 
 export interface ShippingEstimate {
   serviceId?: string;
@@ -13,6 +14,7 @@ export interface ShippingEstimate {
 export interface ShippingQuoteItemRequest {
   productId: string;
   quantity: number;
+  personalization?: PersonalizationDto;
 }
 
 export interface ShippingQuoteRequest {
@@ -22,6 +24,7 @@ export interface ShippingQuoteRequest {
 
 export interface ShippingQuoteItem {
   productId: string;
+  personalizationKey?: string;
   quantity: number;
   unitPrice: number;
   lineAmount: number;
