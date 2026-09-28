@@ -50,6 +50,7 @@ import com.portcelana.natiart.repository.PaymentRepository;
 public class AsaasPaymentService implements PaymentService {
     private static final Logger LOGGER = LoggerFactory.getLogger(AsaasPaymentService.class);
     private static final Pattern IDEMPOTENCY_KEY_PATTERN = Pattern.compile("[A-Za-z0-9._-]{1,64}");
+    private static final Pattern SAFE_LOG_ID = Pattern.compile("[A-Za-z0-9._-]{1,128}");
 
     private final String asaasPaymentUrl;
     private final RestTemplate restTemplate;
@@ -211,19 +212,12 @@ public class AsaasPaymentService implements PaymentService {
                 final PaymentCreationResponse paymentResponse = toCreationResponse(responseBody);
                 paymentIdempotencyService.markSucceeded(
                         requesterExternalId, normalizedIdempotencyKey, responseBody.getId());
-                LOGGER.info(
-                        "Payment created: providerPaymentId=[{}], owner=[{}], order=[{}], amount=[{}]",
-                        responseBody.getId(),
-                        requesterExternalId,
-                        orderId,
-                        value);
+                LOGGER.info("Payment created: providerPaymentId=[{}]", safeLogId(responseBody.getId()));
                 return paymentResponse;
             } catch (RuntimeException e) {
                 LOGGER.warn(
-                        "Upstream charge [{}] for owner [{}] (order [{}]) requires reconciliation after local failure",
-                        responseBody.getId(),
-                        requesterExternalId,
-                        orderId);
+                        "Upstream charge [{}] requires reconciliation after local failure",
+                        safeLogId(responseBody.getId()));
                 paymentIdempotencyService.markRecoverableFailure(requesterExternalId, normalizedIdempotencyKey);
                 throw e;
             }
@@ -260,12 +254,7 @@ public class AsaasPaymentService implements PaymentService {
                     "Payment request requires reconciliation before retry", HttpStatus.SERVICE_UNAVAILABLE);
         }
         final PaymentCreationResponse replay = toCreationResponse(fetchPaymentOrDie(providerPaymentId));
-        LOGGER.info(
-                "Payment replayed: providerPaymentId=[{}], owner=[{}], order=[{}], amount=[{}]",
-                providerPaymentId,
-                requesterExternalId,
-                orderId,
-                value);
+        LOGGER.info("Payment replayed: providerPaymentId=[{}]", safeLogId(providerPaymentId));
         return replay;
     }
 
@@ -319,7 +308,7 @@ public class AsaasPaymentService implements PaymentService {
      */
     private static PaymentCreationResponse toCreationResponse(AsaasPaymentCreationResponse responseBody) {
         if (responseBody.getDateCreated() == null || responseBody.getDueDate() == null) {
-            LOGGER.warn("Asaas payment [{}] has null date fields: failing closed", responseBody.getId());
+            LOGGER.warn("Asaas payment response has null date fields: failing closed");
             throw new AsaasApiException("Invalid payment provider response", HttpStatus.BAD_GATEWAY);
         }
         return new PaymentCreationResponse(
@@ -386,7 +375,7 @@ public class AsaasPaymentService implements PaymentService {
         try {
             return LocalDateTime.parse(expirationDate, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         } catch (DateTimeParseException e) {
-            LOGGER.debug("Asaas PIX QR response has an unparseable expiration date [{}]", expirationDate);
+            LOGGER.debug("Asaas PIX QR response has an unparseable expiration date");
             throw new AsaasApiException("Invalid payment provider response", HttpStatus.BAD_GATEWAY);
         }
     }
@@ -480,15 +469,13 @@ public class AsaasPaymentService implements PaymentService {
      * 4xx/5xx responses, so the status-code branches above would otherwise be
      * dead code and every Asaas 401/404 would surface as a 500.
      *
-     * The raw upstream body is logged server-side only -- it is never embedded
-     * in the exception message because the product advice reflects mapped
-     * messages to the caller.
+     * The upstream body is neither logged nor reflected to the caller.
      */
     static RuntimeException mapAsaasError(HttpStatusCodeException e) {
         LOGGER.warn(
-                "Asaas payment API error: status={}, responseBodyLength={}",
-                e.getStatusCode(),
-                e.getResponseBodyAsByteArray().length);
+                "Asaas payment API error: providerStatusCode={}, responseBodyBytes={}",
+                e.getStatusCode().value(),
+                Math.min(e.getResponseBodyAsByteArray().length, 8192));
         final HttpStatusCode statusCode = e.getStatusCode();
         if (statusCode == HttpStatus.UNAUTHORIZED || statusCode == HttpStatus.FORBIDDEN) {
             return new UserNotAllowedException("Unauthorized api call to the payment provider");
@@ -504,7 +491,7 @@ public class AsaasPaymentService implements PaymentService {
     }
 
     static UpstreamServiceException mapAsaasTransportError(ResourceAccessException e) {
-        LOGGER.warn("Asaas payment API transport failure: {}", e.getMessage());
+        LOGGER.warn("Asaas payment API transport failure: type={}", e.getClass().getSimpleName());
         return new UpstreamServiceException("Payment provider unavailable", HttpStatus.SERVICE_UNAVAILABLE);
     }
 
@@ -573,6 +560,10 @@ public class AsaasPaymentService implements PaymentService {
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new IllegalArgumentException("Unexpected Asaas payment status");
         }
+    }
+
+    private static String safeLogId(String candidate) {
+        return candidate != null && SAFE_LOG_ID.matcher(candidate).matches() ? candidate : "invalid-provider-id";
     }
 
     private HttpHeaders getRequestHeaders() {

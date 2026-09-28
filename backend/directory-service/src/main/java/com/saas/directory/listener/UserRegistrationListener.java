@@ -3,114 +3,46 @@ package com.saas.directory.listener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import org.springframework.retry.annotation.Recover;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-import com.saas.directory.dto.UserDto;
-import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
+import com.saas.directory.configuration.RequestCorrelationFilter;
 import com.saas.directory.event.UserRegisteredEvent;
-import com.saas.directory.service.AsaasApiException;
-import com.saas.directory.service.AsaasUserManager;
-import com.saas.directory.service.UserManager;
-import com.saas.directory.service.support.RetryExternalApiCall;
+import com.saas.directory.service.AsaasProvisioningService;
 
 @Component
 public class UserRegistrationListener {
     private static final Logger LOGGER = LoggerFactory.getLogger(UserRegistrationListener.class);
 
-    private final UserManager userManager;
-    private final AsaasUserManager asaasUserManager;
+    private final AsaasProvisioningService provisioningService;
 
-    public UserRegistrationListener(UserManager userManager, AsaasUserManager asaasUserManager) {
-        this.userManager = userManager;
-        this.asaasUserManager = asaasUserManager;
+    public UserRegistrationListener(AsaasProvisioningService provisioningService) {
+        this.provisioningService = provisioningService;
     }
 
-    /**
-     * Handles the user registration event asynchronously.
-     * This method is triggered after a new user is committed to the database.
-     * It registers the user with the external Asaas payment service and updates
-     * the user record with the external customer ID.
-     *
-     * @param event The event containing the newly registered user's username.
-     */
+    /** Starts the durable provisioning job after registration; the scheduler recovers missed wake-ups. */
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    @RetryExternalApiCall
-    public void handleUserRegistration(UserRegisteredEvent event) throws Exception {
-        final String previousCorrelationId = MDC.get(com.saas.directory.configuration.RequestCorrelationFilter.MDC_KEY);
-        if (event.correlationId() != null) {
-            MDC.put(com.saas.directory.configuration.RequestCorrelationFilter.MDC_KEY, event.correlationId());
-        }
+    public void handleUserRegistration(UserRegisteredEvent event) {
+        final String previous = MDC.get(RequestCorrelationFilter.MDC_KEY);
+        final String requestId = RequestCorrelationFilter.safeCorrelationId(event.correlationId());
+        MDC.put(RequestCorrelationFilter.MDC_KEY, requestId);
         try {
-            LOGGER.info("Asynchronously handling registration for user [{}]", event.username());
-
-            final UserDto userDto = UserDto.from(userManager.getUserOrDie(event.username()), null);
-            final AsaasCustomerCreationResponse asaasResponse;
-            try {
-                asaasResponse = asaasUserManager.registerUser(userDto);
-            } catch (AsaasApiException e) {
-                if (e.getHttpStatus().is4xxClientError()) {
-                    logPermanentFailure(event, e);
-                }
-                throw e;
-            }
-            userManager.addAsaasCustomerIdToUser(userDto.getUsername(), asaasResponse.getId());
-
-            LOGGER.info(
-                    "Successfully created Asaas customer [{}] for user [{}]", asaasResponse.getId(), event.username());
+            LOGGER.info("Provisioning wake-up started requestId={}", requestId);
+            provisioningService.provisionUser(event.username());
+        } catch (Exception exception) {
+            LOGGER.warn(
+                    "Provisioning wake-up failed requestId={} failureType={}; durable job remains retryable",
+                    requestId,
+                    exception.getClass().getSimpleName());
         } finally {
-            if (previousCorrelationId == null) {
-                MDC.remove(com.saas.directory.configuration.RequestCorrelationFilter.MDC_KEY);
+            if (previous == null) {
+                MDC.remove(RequestCorrelationFilter.MDC_KEY);
             } else {
-                MDC.put(com.saas.directory.configuration.RequestCorrelationFilter.MDC_KEY, previousCorrelationId);
+                MDC.put(RequestCorrelationFilter.MDC_KEY, previous);
             }
         }
-    }
-
-    /**
-     * Recovery method for handleUserRegistration. This is called when all retry attempts fail.
-     * It specifically handles Exception to catch anything the @Retryable annotation was configured for.
-     *
-     * @param e     The final exception that caused the failure.
-     * @param event The original event that was being processed.
-     */
-    @Recover
-    public void recover(Exception e, UserRegisteredEvent event) {
-        if (isPermanentProviderFailure(e)) {
-            logPermanentFailure(event, e);
-            return;
-        }
-
-        LOGGER.error(
-                "CRITICAL: All retry attempts to register user [{}] with Asaas failed. Manual intervention may be required. Final error: {}",
-                event.username(),
-                e.getMessage());
-        // We could add logic to alert an admin or add to a persistent "dead-letter" queue.
-    }
-
-    private void logPermanentFailure(UserRegisteredEvent event, Exception e) {
-        LOGGER.error(
-                "Unrecoverable payment-provider request for user [{}] will not be retried. Error: {}",
-                event.username(),
-                e.getMessage());
-    }
-
-    private static boolean isPermanentProviderFailure(Throwable failure) {
-        Throwable current = failure;
-        while (current != null) {
-            if (current instanceof AsaasApiException asaasApiException
-                    && asaasApiException.getHttpStatus().is4xxClientError()) {
-                return true;
-            }
-            current = current.getCause();
-        }
-        return false;
     }
 }
