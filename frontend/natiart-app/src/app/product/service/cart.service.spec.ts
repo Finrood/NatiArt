@@ -15,7 +15,7 @@ describe('CartService', () => {
     stockQuantity: 5,
     categoryId: 'cat-1',
     availablePersonalizations: [],
-    tags: new Set<string>(),
+    tags: [],
     images: [],
     ...overrides
   });

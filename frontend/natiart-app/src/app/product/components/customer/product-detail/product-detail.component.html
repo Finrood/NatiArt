@@ -18,22 +18,20 @@
               (mousemove)="updateZoomPosition($event)"
               (mouseleave)="isZoomed = false"
               (click)="toggleZoom($event)">
-              <img #mainImage
-                [src]="imageUrls[selectedImageIndex] || 'assets/img/placeholder.png'"
+              <img (error)="imageFailed($productImages()[selectedImageIndex]?.key || '')" #mainImage
+                [src]="imageUrls[selectedImageIndex] || emptyImage"
                 alt="{{product.label}} - Main Image"
                 class="w-full h-auto object-contain transition-transform duration-200 ease-in-out block"
                  [ngStyle]="{
                          'transform': isZoomed ? transformScale : 'scale(1)',
-                         'transform-origin': isZoomed ? 'var(--zoom-origin, center center)' : 'center center'
+                         'transform-origin': isZoomed ? $zoomOrigin() : 'center center'
                      }">
               <!-- Zoom Lens (visible only when zoomed) -->
-              @if (isZoomed) {
-                <div #zoomLens
+                <div #zoomLens [hidden]="!isZoomed"
                   class="absolute border-2 border-primary rounded-md pointer-events-none"
                   [style.width.px]="lensSize"
                   [style.height.px]="lensSize">
                 </div>
-              }
               <!-- Zoom Icon Overlay (visible only when not zoomed) -->
               @if (!isZoomed) {
                 <div
@@ -46,14 +44,14 @@
             </div>
             <!-- Thumbnails -->
             <div class="flex mt-4 space-x-2 overflow-x-auto pb-2">
-              @for (imgEntry of imageUrls | keyvalue; track imgEntry.key; let i = $index) {
-                <img (click)="selectImage(toImageIndex(imgEntry.key))"
-                  [src]="imgEntry.value || 'assets/img/placeholder.png'"
+              @for (imgEntry of $productImages(); track imgEntry.key; let i = $index) {
+                <img (error)="imageFailed(imgEntry.key)" (click)="selectImage(imgEntry.key)"
+                  [src]="imgEntry.url || emptyImage"
                   [alt]="product.label + ' Thumbnail ' + (i + 1)"
                   class="w-20 h-20 object-contain border-2 cursor-pointer transition-colors duration-200 rounded"
-                  [class.border-primary]="selectedImageIndex === toImageIndex(imgEntry.key)"
-                  [class.border-transparent]="selectedImageIndex !== toImageIndex(imgEntry.key)"
-                  [class.hover:border-primary-light]="selectedImageIndex !== toImageIndex(imgEntry.key)">
+                  [class.border-primary]="selectedImageIndex === i"
+                  [class.border-transparent]="selectedImageIndex !== i"
+                  [class.hover:border-primary-light]="selectedImageIndex !== i">
               }
             </div>
           </div>
@@ -103,10 +101,10 @@
               <h2 class="text-xl font-semibold mb-4 text-[#333333]">Product Details</h2>
               <ul class="space-y-2 text-gray-600">
                 <!-- Display Category Label if available -->
-                <li><strong class="font-medium">Category:</strong> {{ product.categoryId }}</li> <!-- Placeholder, replace with actual category name -->
+                <li><strong class="font-medium">Category:</strong> {{ product.categoryLabel || 'Category unavailable' }}</li>
                 <li><strong class="font-medium">Stock:</strong> {{ product.stockQuantity }} available</li>
                 <!-- Display Tags if available -->
-                @if (product.tags && product.tags.size > 0) {
+                @if (product.tags && product.tags.length > 0) {
                   <li>
                     <strong class="font-medium">Tags:</strong>
                     @for (tag of product.tags; track tag; let isLast = $last) {
@@ -118,8 +116,8 @@
                 }
                 <!-- Display Package Label if available -->
                 @if (product.packageId) {
-                  <li><strong class="font-medium">Package:</strong> {{ product.packageId }}</li>
-                  } <!-- Placeholder, replace with actual package name -->
+                  <li><strong class="font-medium">Package:</strong> {{ product.packageLabel || 'Package unavailable' }}</li>
+                  }
                   <!-- Display personalization info -->
                   @if (product.hasFixedGoldenBorder) {
                     <li>
@@ -153,8 +151,8 @@
                   <div class="group border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
                     <a [routerLink]="['/product', relatedProduct.id]" class="block">
                       <div class="relative aspect-square bg-gray-100"> <!-- Use aspect-square for consistent shape -->
-                        <img [alt]="relatedProduct.label"
-                          [src]="relatedImageUrls[relatedProduct.id!] || 'assets/img/placeholder.png'"
+                        <img (error)="relatedImageFailed(relatedProduct.id!)" [alt]="relatedProduct.label"
+                          [src]="relatedImageUrls[relatedProduct.id!] || emptyImage"
                           class="absolute top-0 left-0 w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 p-2"> <!-- Added padding -->
                         </div>
                         <div class="p-4">

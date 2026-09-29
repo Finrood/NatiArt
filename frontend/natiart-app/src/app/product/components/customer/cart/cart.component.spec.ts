@@ -48,7 +48,7 @@ describe('CartComponent', () => {
     const product: Product = {
       id: 'p1', label: 'Vase', originalPrice: 100, markedPrice: 80,
       stockQuantity: 5, categoryId: 'c1', availablePersonalizations: [],
-      tags: new Set<string>(), images: ['a.jpg'],
+      tags: [], images: ['a.jpg'],
     };
     const item: CartItem = { cartItemId: 'line-1', product, quantity: 1 };
     spyOn(cartService, 'getCartItemsSnapshot').and.returnValue([item]);

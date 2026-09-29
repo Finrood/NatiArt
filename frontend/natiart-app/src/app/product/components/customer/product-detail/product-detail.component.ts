@@ -1,12 +1,11 @@
-import {Component, ElementRef, OnDestroy, OnInit, Renderer2, ViewChild} from '@angular/core';
-import { AsyncPipe, CurrencyPipe, KeyValuePipe, NgStyle } from "@angular/common";
+import {inject, signal, WritableSignal, Component, ElementRef, OnDestroy, OnInit, Renderer2, ViewChild} from '@angular/core';
+import { AsyncPipe, CurrencyPipe, NgStyle } from "@angular/common";
 import {FormsModule} from "@angular/forms";
 import {BehaviorSubject, Subscription, of} from "rxjs";
 import {catchError, switchMap, tap} from "rxjs/operators";
 import {Product} from "../../../models/product.model";
 import {ActivatedRoute, ParamMap, RouterLink} from "@angular/router";
 import {ProductService} from "../../../service/product.service";
-import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
 import {TopMenuComponent} from "../top-menu/top-menu.component";
 import {LeftMenuComponent} from "../left-menu/left-menu.component";
 import {CartService} from "../../../service/cart.service";
@@ -16,16 +15,17 @@ import {AddToCartButtonComponent} from "../add-to-cart-button/add-to-cart-button
 import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportError} from '../../../../shared/service/error-reporting.service';
 
+interface DetailImage { key: string; url: string | null; rawUrl: string | null; state: 'loading' | 'loaded' | 'error'; }
+const EMPTY_IMAGE: string = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160"><rect width="160" height="160" fill="#eee"/><text x="80" y="80" text-anchor="middle" fill="#555">No image</text></svg>');
+
 @Component({
   selector: 'app-product-detail',
-  standalone: true, // Add standalone: true if not already
   imports: [
     AsyncPipe,
     FormsModule,
     CurrencyPipe,
     TopMenuComponent,
     LeftMenuComponent,
-    KeyValuePipe,
     NgStyle,
     PersonalizationModalComponent,
     RouterLink,
@@ -40,7 +40,16 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   quantity: number = 1;
   relatedProducts$ = new BehaviorSubject<Product[]>([]);
   selectedImageIndex: number = 0;
-  imageUrls: { [index: number]: SafeUrl | null } = {};
+  readonly $productImages: WritableSignal<DetailImage[]> = signal([]);
+  readonly $relatedImageUrls: WritableSignal<Record<string, string>> = signal({});
+  readonly emptyImage: string = EMPTY_IMAGE;
+  get imageUrls(): Record<number, string | undefined> {
+    return Object.fromEntries(this.$productImages().map((entry: DetailImage, index: number): [number, string | undefined] => [index, entry.url ?? undefined]));
+  }
+  get relatedImageUrls(): Record<string, string> { return this.$relatedImageUrls(); }
+  private readonly rawRelatedUrls: Map<string, string> = new Map();
+  private imageSubscriptions: Subscription[] = [];
+  readonly $zoomOrigin: WritableSignal<string> = signal('center center');
   isZoomed: boolean = false;
   zoomFactor: number = 5;
   lensSize: number = 100;
@@ -49,6 +58,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   @ViewChild('mainImage') mainImage!: ElementRef<HTMLImageElement>;
   private subscriptions: Subscription[] = [];
   private relatedSubscription: Subscription | null = null;
+  private personalizationSubscription: Subscription | null = null;
   private imageRequestToken: number = 0;
   isLoading: boolean = true;
   loadError: string | null = null;
@@ -57,13 +67,10 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   selectedProductForModal: Product | null = null;
   triggerElementForModal: HTMLElement | null = null;
 
-  constructor(
-    private route: ActivatedRoute,
-    private productService: ProductService,
-    private sanitizer: DomSanitizer,
-    private renderer: Renderer2,
-    private cartService: CartService
-  ) {}
+  private readonly _route: ActivatedRoute = inject(ActivatedRoute);
+  private readonly _productService: ProductService = inject(ProductService);
+  private readonly _renderer: Renderer2 = inject(Renderer2);
+  private readonly _cartService: CartService = inject(CartService);
 
 
   get transformScale(): string {
@@ -75,24 +82,19 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     // component when navigating between related products, and the inner
     // switchMap cancels any in-flight product fetch so stale responses cannot
     // overwrite the current view.
-    const subscription = this.route.paramMap.pipe(
+    const subscription = this._route.paramMap.pipe(
       tap((): void => {
         this.isLoading = true;
         this.loadError = null;
         this.product$.next(null);
         this.quantity = 1;
         this.selectedImageIndex = 0;
-        // Revoke before dropping: resetting the maps without revoking leaks
-        // one blob URL per image for the rest of the session (AG1).
-        this.revokeImageMap(this.imageUrls);
-        this.imageUrls = {};
+        this.clearImages();
+        this.closePersonalizationModal();
+        this.relatedSubscription?.unsubscribe();
+        this.relatedSubscription = null;
         this.relatedProducts$.next([]);
-        this.revokeImageMap(this.relatedImageUrls);
-        this.relatedImageUrls = {};
-        // Invalidate in-flight main-image fetches for the previous product:
-        // image slots are index-keyed, so a stale resolution must not write
-        // into the newly reset map (see fetchImage).
-        this.imageRequestToken++;
+        this.isZoomed = false;
       }),
       switchMap((params: ParamMap) => {
         const productId: string | null = params.get('id');
@@ -101,7 +103,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
           this.isLoading = false;
           return of(null);
         }
-        return this.productService.getProduct(productId).pipe(
+        return this._productService.getProduct(productId).pipe(
           catchError((error: unknown) => {
             reportError('product-loading', error);
             this.product$.next(null);
@@ -125,45 +127,45 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     this.subscriptions.push(subscription);
   }
 
-  ngOnDestroy() {
-    this.subscriptions.forEach(subscription => subscription.unsubscribe());
-    this.revokeImageMap(this.imageUrls);
-    this.revokeImageMap(this.relatedImageUrls);
+  ngOnDestroy(): void {
+    this.subscriptions.forEach((subscription: Subscription): void => subscription.unsubscribe());
+    this.clearImages();
+    this.closePersonalizationModal();
   }
 
-  private revokeImageMap(map: { [key: string]: SafeUrl | string | null }): void {
-    Object.values(map).forEach((url: SafeUrl | string | null): void => {
-      if (!url) {
-        return;
-      }
-      const raw: string | null = typeof url === 'string' ? url : this.sanitizer.sanitize(4, url);
-      if (raw && raw.startsWith('blob:')) {
-        URL.revokeObjectURL(raw);
-      }
-    });
+  private clearImages(): void {
+    this.imageRequestToken++;
+    this.imageSubscriptions.forEach((subscription: Subscription): void => subscription.unsubscribe());
+    this.imageSubscriptions = [];
+    this.$productImages().forEach((entry: DetailImage): void => { if (entry.rawUrl) URL.revokeObjectURL(entry.rawUrl); });
+    this.rawRelatedUrls.forEach((url: string): void => URL.revokeObjectURL(url));
+    this.rawRelatedUrls.clear();
+    this.$productImages.set([]);
+    this.$relatedImageUrls.set({});
   }
 
-  selectImage(index: number) {
+  selectImage(key: string | number): void {
+    const index: number = typeof key === 'number' ? key : this.$productImages().findIndex((entry: DetailImage): boolean => entry.key === key);
+    if (index < 0 || index >= this.$productImages().length) return;
     this.selectedImageIndex = index;
+    this.isZoomed = false;
   }
 
-  toImageIndex(key: string | number): number {
-    return Number(key);
-  }
 
-  incrementQuantity(product: Product) {
+
+  incrementQuantity(product: Product): void {
     if (this.quantity < product.stockQuantity) {
       this.quantity++;
     }
   }
 
-  decrementQuantity() {
+  decrementQuantity(): void {
     if (this.quantity > 1) {
       this.quantity--;
     }
   }
 
-  addToCart(product: Product, event?: MouseEvent) { // Added optional event parameter
+  addToCart(product: Product, event?: MouseEvent): void {
     // Check if personalization is needed
     const needsPersonalization = product.availablePersonalizations?.some(
       p => p === PersonalizationOption.GOLDEN_BORDER || p === PersonalizationOption.CUSTOM_IMAGE
@@ -174,23 +176,20 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     if (needsPersonalization) {
       this.openPersonalizationModal(product, triggerElement);
     } else {
-      this.cartService.addToCart(product, this.quantity);
+      this._cartService.addToCart(product, this.quantity);
       if (triggerElement) {
         this.triggerFlyAnimation(triggerElement);
       }
     }
   }
 
-  toggleZoom(event: MouseEvent) {
+  toggleZoom(event: MouseEvent): void {
+    if (!this.$productImages().length || this.$productImages()[this.selectedImageIndex]?.state !== 'loaded') return;
     this.isZoomed = !this.isZoomed;
-    if (this.isZoomed) {
-      // The lens is created by the conditional view above; wait until that
-      // view exists before reading its ElementRef.
-      queueMicrotask(() => this.updateZoomPosition(event));
-    }
+    if (this.isZoomed) this.updateZoomPosition(event);
   }
 
-  updateZoomPosition(event: MouseEvent) {
+  updateZoomPosition(event: MouseEvent): void {
     if (!this.isZoomed) return;
 
     if (!this.mainImage || !this.zoomLens || !this.imageContainer) return;
@@ -198,6 +197,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     const lens = this.zoomLens.nativeElement;
     const container = this.imageContainer.nativeElement;
 
+    if (!container.offsetWidth || !container.offsetHeight || !image.isConnected || !lens.isConnected) return;
     const rect = container.getBoundingClientRect();
     let x = event.clientX - rect.left;
     let y = event.clientY - rect.top;
@@ -208,29 +208,31 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     const lensLeft = x - this.lensSize / 2;
     const lensTop = y - this.lensSize / 2;
 
-    this.renderer.setStyle(lens, 'left', `${lensLeft}px`);
-    this.renderer.setStyle(lens, 'top', `${lensTop}px`);
+    this._renderer.setStyle(lens, 'left', `${lensLeft}px`);
+    this._renderer.setStyle(lens, 'top', `${lensTop}px`);
 
     const zoomX = (x / container.offsetWidth) * 100;
     const zoomY = (y / container.offsetHeight) * 100;
 
-    this.renderer.setStyle(image, 'transform-origin', `${zoomX}% ${zoomY}%`);
+    this.$zoomOrigin.set(`${zoomX}% ${zoomY}%`);
   }
 
 
-  openPersonalizationModal(product: Product, triggerElement?: HTMLElement) {
+  openPersonalizationModal(product: Product, triggerElement?: HTMLElement): void {
     this.selectedProductForModal = product;
     this.triggerElementForModal = triggerElement || null;
     this.showPersonalizationModal = true;
   }
 
-  closePersonalizationModal() {
+  closePersonalizationModal(): void {
+    this.personalizationSubscription?.unsubscribe();
+    this.personalizationSubscription = null;
     this.showPersonalizationModal = false;
     this.selectedProductForModal = null;
     this.triggerElementForModal = null;
   }
 
-  onPersonalizationComplete(result: { goldBorder?: boolean, customImage?: File }) {
+  onPersonalizationComplete(result: { goldBorder?: boolean, customImage?: File }): void {
     const selectedProduct: Product | null = this.selectedProductForModal;
     const triggerElement: HTMLElement | null = this.triggerElementForModal;
     if (!selectedProduct?.id) {
@@ -238,14 +240,15 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.productService.getProduct(selectedProduct.id).subscribe({
+    this.personalizationSubscription?.unsubscribe();
+    this.personalizationSubscription = this._productService.getProduct(selectedProduct.id).subscribe({
       next: (currentProduct: Product): void => {
         const quantity: number = Math.min(this.quantity, currentProduct.stockQuantity);
         if (currentProduct.active === false || quantity <= 0) {
           this.closePersonalizationModal();
           return;
         }
-        this.cartService.addToCart(currentProduct, quantity, result.goldBorder, result.customImage);
+        this._cartService.addToCart(currentProduct, quantity, result.goldBorder, result.customImage);
         if (triggerElement) {
           this.triggerFlyAnimation(triggerElement);
         }
@@ -271,76 +274,68 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     }
     const cartRect = cartContainer.getBoundingClientRect();
 
-    const flyEl = this.renderer.createElement('div');
-    this.renderer.setStyle(flyEl, 'position', 'fixed');
-    this.renderer.setStyle(flyEl, 'top', `${buttonRect.top + buttonRect.height / 2}px`); // Start from button center
-    this.renderer.setStyle(flyEl, 'left', `${buttonRect.left + buttonRect.width / 2}px`); // Start from button center
-    this.renderer.setStyle(flyEl, 'width', `15px`);
-    this.renderer.setStyle(flyEl, 'height', `15px`);
-    this.renderer.setStyle(flyEl, 'backgroundColor', 'var(--color-primary)'); // Use theme color
-    this.renderer.setStyle(flyEl, 'borderRadius', '50%');
-    this.renderer.setStyle(flyEl, 'opacity', '0.8');
-    this.renderer.setStyle(flyEl, 'zIndex', '1000');
-    this.renderer.setStyle(flyEl, 'transition', 'all 0.7s cubic-bezier(0.29, 0.56, 0.41, 1.31)'); // Ease-out-back like effect
-    this.renderer.setStyle(flyEl, 'pointerEvents', 'none');
+    const flyEl = this._renderer.createElement('div');
+    this._renderer.setStyle(flyEl, 'position', 'fixed');
+    this._renderer.setStyle(flyEl, 'top', `${buttonRect.top + buttonRect.height / 2}px`); // Start from button center
+    this._renderer.setStyle(flyEl, 'left', `${buttonRect.left + buttonRect.width / 2}px`); // Start from button center
+    this._renderer.setStyle(flyEl, 'width', `15px`);
+    this._renderer.setStyle(flyEl, 'height', `15px`);
+    this._renderer.setStyle(flyEl, 'backgroundColor', 'var(--color-primary)'); // Use theme color
+    this._renderer.setStyle(flyEl, 'borderRadius', '50%');
+    this._renderer.setStyle(flyEl, 'opacity', '0.8');
+    this._renderer.setStyle(flyEl, 'zIndex', '1000');
+    this._renderer.setStyle(flyEl, 'transition', 'all 0.7s cubic-bezier(0.29, 0.56, 0.41, 1.31)'); // Ease-out-back like effect
+    this._renderer.setStyle(flyEl, 'pointerEvents', 'none');
 
-    this.renderer.appendChild(document.body, flyEl);
+    this._renderer.appendChild(document.body, flyEl);
 
     flyEl.offsetWidth;
 
     const targetX = cartRect.left + cartRect.width / 2;
     const targetY = cartRect.top + cartRect.height / 2;
 
-    this.renderer.setStyle(flyEl, 'top', `${targetY}px`);
-    this.renderer.setStyle(flyEl, 'left', `${targetX}px`);
-    this.renderer.setStyle(flyEl, 'transform', 'scale(0.1)'); // Shrink
-    this.renderer.setStyle(flyEl, 'opacity', '0');
+    this._renderer.setStyle(flyEl, 'top', `${targetY}px`);
+    this._renderer.setStyle(flyEl, 'left', `${targetX}px`);
+    this._renderer.setStyle(flyEl, 'transform', 'scale(0.1)'); // Shrink
+    this._renderer.setStyle(flyEl, 'opacity', '0');
 
     setTimeout(() => {
       if (flyEl.parentNode === document.body) {
-        this.renderer.removeChild(document.body, flyEl);
+        this._renderer.removeChild(document.body, flyEl);
       }
     }, 700);
   }
 
   private updateProductImages(product: Product): void {
-    this.imageUrls = {};
-    (product.images || []).forEach((imagePath, index) => {
-      this.fetchImage(index, imagePath);
-    });
+    const paths: string[] = Array.from(new Set(product.images ?? []));
+    this.$productImages.set(paths.map((key: string): DetailImage => ({key, url: null, rawUrl: null, state: 'loading'})));
+    paths.forEach((path: string): void => this.fetchImage(path));
     this.selectedImageIndex = 0;
   }
 
-
-  private fetchImage(index: number, imagePath: string): void {
-    // Prevent memory leaks by revoking old URLs if overwriting
-    if (this.imageUrls[index]) {
-      const oldUrl = this.sanitizer.sanitize(4, this.imageUrls[index]);
-      if (oldUrl) URL.revokeObjectURL(oldUrl);
-    }
-
-    // Drop resolutions that arrive after a route-param reset: they belong to
-    // the previously viewed product, and slots are index-keyed (not identity-keyed).
+  private fetchImage(path: string): void {
     const token: number = this.imageRequestToken;
-    const subscription = this.productService.getImage(imagePath).subscribe({
-      next: blob => {
-        if (token !== this.imageRequestToken) {
-          return;
-        }
-        const objectUrl = URL.createObjectURL(blob);
-        this.imageUrls[index] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
-        // Trigger change detection if necessary, though BehaviorSubject should handle it
-        // this.product$.next(this.product$.value);
+    const subscription: Subscription = this._productService.getImage(path).subscribe({
+      next: (blob: Blob): void => {
+        if (token !== this.imageRequestToken) return;
+        const rawUrl: string = URL.createObjectURL(blob);
+        this.$productImages.update((entries: DetailImage[]): DetailImage[] => entries.map((entry: DetailImage): DetailImage => entry.key === path ? {...entry, url: rawUrl, rawUrl, state: 'loaded'} : entry));
       },
-      error: err => {
-        if (token !== this.imageRequestToken) {
-          return;
-        }
-        reportError('product-image', err);
-        this.imageUrls[index] = 'assets/img/placeholder.png'; // Fallback image URL
+      error: (): void => {
+        if (token !== this.imageRequestToken) return;
+        this.$productImages.update((entries: DetailImage[]): DetailImage[] => entries.map((entry: DetailImage): DetailImage => entry.key === path ? {...entry, url: EMPTY_IMAGE, state: 'error'} : entry));
       }
     });
-    this.subscriptions.push(subscription);
+    this.imageSubscriptions.push(subscription);
+  }
+
+  imageFailed(key: string): void {
+    this.$productImages.update((entries: DetailImage[]): DetailImage[] => entries.map((entry: DetailImage): DetailImage => {
+      if (entry.key !== key || entry.state === 'error') return entry;
+      if (entry.rawUrl) URL.revokeObjectURL(entry.rawUrl);
+      return {...entry, rawUrl: null, url: EMPTY_IMAGE, state: 'error'};
+    }));
+    this.isZoomed = false;
   }
 
   private loadRelatedProducts(categoryId: string | undefined): void {
@@ -353,8 +348,8 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     if (!categoryId) {
       this.relatedProducts$.next([]);
       return;
-    };
-    const subscription = this.productService.getProductsByCategory(categoryId).subscribe({
+    }
+    const subscription = this._productService.getProductsByCategory(categoryId).subscribe({
       next: (products: Product[]) => {
         const currentProductId = this.product$.value?.id;
         const related = products
@@ -374,37 +369,30 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     this.subscriptions.push(subscription);
   }
 
-  // You might need a separate map for related product image URLs
-  relatedImageUrls: { [productId: string]: SafeUrl | string } = {};
 
   private fetchRelatedProductImage(productId: string, imagePath: string): void {
-    // Avoid re-fetching if URL already exists
-    if (this.relatedImageUrls[productId]) return;
-
-    // Drop resolutions that arrive after a route-param reset: they belong to
-    // the previously viewed product (same mechanism as fetchImage, AA5).
     const token: number = this.imageRequestToken;
-    const subscription = this.productService.getImage(imagePath).subscribe({
+    const subscription: Subscription = this._productService.getImage(imagePath).subscribe({
       next: (blob: Blob): void => {
-        if (token !== this.imageRequestToken) {
-          return;
-        }
-        const objectUrl: string = URL.createObjectURL(blob);
-        this.relatedImageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
-        // The template binds images via the relatedImageUrls map; emit a new
-        // array identity so the async pipe picks up the resolved image.
-        this.relatedProducts$.next([...this.relatedProducts$.value]);
+        if (token !== this.imageRequestToken) return;
+        const rawUrl: string = URL.createObjectURL(blob);
+        this.rawRelatedUrls.set(productId, rawUrl);
+        this.$relatedImageUrls.update((urls: Record<string, string>): Record<string, string> => ({...urls, [productId]: rawUrl}));
       },
-      error: (err: unknown): void => {
-        if (token !== this.imageRequestToken) {
-          return;
-        }
-        reportError('product-image', err);
-        this.relatedImageUrls[productId] = 'assets/img/placeholder.png'; // Fallback
-        this.relatedProducts$.next([...this.relatedProducts$.value]); // Trigger update even on error
+      error: (): void => {
+        if (token !== this.imageRequestToken) return;
+        this.$relatedImageUrls.update((urls: Record<string, string>): Record<string, string> => ({...urls, [productId]: EMPTY_IMAGE}));
       }
     });
-    this.subscriptions.push(subscription);
+    this.imageSubscriptions.push(subscription);
+  }
+
+  relatedImageFailed(id: string): void {
+    if (this.$relatedImageUrls()[id] === EMPTY_IMAGE) return;
+    const rawUrl: string | undefined = this.rawRelatedUrls.get(id);
+    if (rawUrl) URL.revokeObjectURL(rawUrl);
+    this.rawRelatedUrls.delete(id);
+    this.$relatedImageUrls.update((urls: Record<string, string>): Record<string, string> => ({...urls, [id]: EMPTY_IMAGE}));
   }
 
   protected readonly PersonalizationOption = PersonalizationOption;

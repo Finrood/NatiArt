@@ -6,6 +6,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.hibernate.Hibernate;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.model.Product;
@@ -18,6 +22,13 @@ public class ProductDto {
     private BigDecimal originalPrice;
     private BigDecimal markedPrice;
     private int stockQuantity;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private String categoryLabel;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private String packageLabel;
+
     private String categoryId;
     private String packageId;
     private Boolean hasFixedGoldenBorder;
@@ -35,7 +46,7 @@ public class ProductDto {
 
     public static ProductDto from(Product product) {
         if (product == null) return null;
-        return new ProductDto(product.getLabel(), product.getOriginalPrice())
+        final ProductDto dto = new ProductDto(product.getLabel(), product.getOriginalPrice())
                 .setId(product.getId())
                 .setDescription(product.getDescription().orElse(null))
                 .setMarkedPrice(product.getMarkedPrice().orElseGet(product::getOriginalPrice))
@@ -49,6 +60,16 @@ public class ProductDto {
                 .setNewProduct(product.isNewProduct())
                 .setFeaturedProduct(product.isFeaturedProduct())
                 .setActive(product.isActive());
+        // Detail/list fetches initialize references; older detached DTO callers may not.
+        dto.categoryLabel = product.getCategory()
+                .filter(Hibernate::isInitialized)
+                .map(Category::getLabel)
+                .orElse(null);
+        dto.packageLabel = product.getPackaging()
+                .filter(Hibernate::isInitialized)
+                .map(Package::getLabel)
+                .orElse(null);
+        return dto;
     }
 
     public String getId() {
@@ -103,6 +124,14 @@ public class ProductDto {
     public ProductDto setStockQuantity(int stockQuantity) {
         this.stockQuantity = stockQuantity;
         return this;
+    }
+
+    public String getCategoryLabel() {
+        return categoryLabel;
+    }
+
+    public String getPackageLabel() {
+        return packageLabel;
     }
 
     public String getCategoryId() {

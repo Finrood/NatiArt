@@ -19,7 +19,7 @@ function makeProduct(): Product {
     stockQuantity: 10,
     categoryId: 'cat-1',
     availablePersonalizations: [],
-    tags: new Set<string>(),
+    tags: [],
     images: []
   };
 }

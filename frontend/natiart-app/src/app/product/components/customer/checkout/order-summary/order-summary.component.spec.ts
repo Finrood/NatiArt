@@ -28,7 +28,7 @@ describe('OrderSummaryComponent', () => {
     const product: Product = {
       id: 'p1', label: 'Vase', originalPrice: 100, markedPrice: 80,
       stockQuantity: 5, categoryId: 'c1', availablePersonalizations: [],
-      tags: new Set<string>(), images: ['a.jpg'],
+      tags: [], images: ['a.jpg'],
     };
     component.cartItems = [{ cartItemId: 'line-1', product, quantity: 1 }];
     const image$: Subject<Blob> = new Subject<Blob>();
