@@ -54,7 +54,7 @@
 
   <!-- Modal (shown when modalVisible) -->
   @if (modalVisible) {
-    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <app-accessible-dialog label="Category editor" (dismiss)="closeModal()">
       <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4 transform transition-transform duration-300 ease-in-out">
         <h3 class="text-2xl mb-4 font-light">
           {{ isEditingCategory ? 'Edit Category' : 'Add Category' }}
@@ -80,6 +80,6 @@
           </div>
         </form>
       </div>
-    </div>
+    </app-accessible-dialog>
   }
 </div>

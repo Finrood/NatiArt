@@ -11,7 +11,7 @@
           <strong class="font-bold">Error!</strong>
           <span class="block sm:inline ml-2">{{ errorMessage }}</span>
         </div>
-        <app-button (click)="setError(null)" color="link" customClass="ml-4 text-red-700 hover:text-red-900 focus:outline-none">
+        <app-button aria-label="Dismiss cart error" (click)="setError(null)" color="link" customClass="ml-4 text-red-700 hover:text-red-900 focus:outline-none">
           <span class="sr-only">Close</span>
           <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
         </app-button>
