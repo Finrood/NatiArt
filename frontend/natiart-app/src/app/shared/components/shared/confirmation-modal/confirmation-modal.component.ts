@@ -10,7 +10,7 @@ import {ButtonComponent} from "../../button.component";
   template: `
     @if (isOpen) {
       <div
-        class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300 ease-out"
+        class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 transition-opacity duration-300 ease-out"
         id="modal-overlay"
         (click)="onCancel()"> <!-- Optional: Close on overlay click -->
         <div class="bg-surface rounded-lg shadow-xl w-full max-w-md m-4 p-6 transform transition-transform duration-300 ease-out scale-95 opacity-0"
@@ -38,9 +38,7 @@ import {ButtonComponent} from "../../button.component";
         </div>
       </div>
     }
-    `,
-  // Add styleUrl if you have separate CSS, otherwise keep empty/remove
-  // styleUrl: './confirmation-modal.component.css'
+    `
 })
 export class ConfirmationModalComponent {
   @Input() isOpen = false;

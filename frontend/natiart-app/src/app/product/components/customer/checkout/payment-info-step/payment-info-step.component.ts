@@ -11,10 +11,10 @@ import {PaymentMethod} from "../../../../models/paymentMethod.model";
   standalone: true,
   imports: [
     ReactiveFormsModule,
-    NatiartFormFieldComponent,
     NatiartFormFieldComponent
 ],
   templateUrl: './payment-info-step.component.html',
+  styleUrl: './payment-info-step.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PaymentInfoStepComponent {

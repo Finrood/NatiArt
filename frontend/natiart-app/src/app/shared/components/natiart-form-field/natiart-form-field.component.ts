@@ -1,4 +1,6 @@
-import {Component, EventEmitter, Input, OnInit, Output} from '@angular/core';
+import {ChangeDetectorRef, DestroyRef, inject, Component, EventEmitter, Input, OnInit, Output} from '@angular/core';
+import {merge} from 'rxjs';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {AbstractControl, FormGroup} from "@angular/forms";
 
 import {ButtonComponent} from "../button.component";
@@ -19,12 +21,16 @@ export class NatiartFormFieldComponent implements OnInit {
   @Input() form!: FormGroup;
   @Input() isPassword: boolean = false;
 
+  private readonly _changeDetector = inject(ChangeDetectorRef);
+  private readonly _destroyed = inject(DestroyRef);
   showPassword = false;
   @Output() showPasswordEmitter = new EventEmitter<void>();
   @Input() isOptional!: boolean;
 
   ngOnInit() {
     this.control = this.form.get(this.controlName);
+    merge(this.form.events, ...(this.control ? [this.control.events] : [])).pipe(takeUntilDestroyed(this._destroyed))
+      .subscribe((): void => this._changeDetector.markForCheck());
   }
 
   togglePasswordVisibility() {
