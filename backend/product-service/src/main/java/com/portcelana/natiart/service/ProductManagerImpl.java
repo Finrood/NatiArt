@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
+import com.portcelana.natiart.dto.PagedResponseDto;
 import com.portcelana.natiart.dto.ProductDto;
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Package;
@@ -151,6 +152,29 @@ public class ProductManagerImpl implements ProductManager {
     @Transactional(readOnly = true)
     public boolean existsByCategory(Category category) {
         return productRepository.existsByCategory(category);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PagedResponseDto<ProductDto> getProductsPage(
+            String categoryId, String query, Pageable pageable, boolean includeInactive) {
+        final String normalizedCategory = categoryId == null || categoryId.isBlank() ? null : categoryId.trim();
+        final String normalizedQuery = query == null ? "" : query.trim().toLowerCase(java.util.Locale.ROOT);
+        if (normalizedQuery.length() > 200) throw new IllegalArgumentException("Search is limited to 200 characters");
+        final Page<String> ids =
+                productRepository.findCatalogIds(normalizedCategory, normalizedQuery, includeInactive, pageable);
+        final Map<String, Product> products =
+                fetchPageWithImages(ids).stream().collect(Collectors.toMap(Product::getId, Function.identity()));
+        return new PagedResponseDto<>(
+                ids.getContent().stream()
+                        .map(products::get)
+                        .filter(Objects::nonNull)
+                        .map(ProductDto::from)
+                        .toList(),
+                ids.getTotalElements(),
+                ids.getNumber(),
+                ids.getSize(),
+                ids.hasNext());
     }
 
     @Override

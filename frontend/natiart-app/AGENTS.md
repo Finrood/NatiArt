@@ -24,7 +24,7 @@ building blocks go in `shared/`. Keep `app.component` a thin shell.
   dependencies in the `imports: []` array.
 - **Control flow**: `@if` / `@for`. Never `*ngIf` / `*ngFor` (already 100% migrated).
 - **DI**: `private readonly _x = inject(X)` for new code; convert constructor
-  injections when touching (currently 9 non-spec files converted; keep this
+  injections when touching (currently 14 non-spec files converted; keep this
   count synchronized when changing the migration).
 - **Signals**: adopt `signal()`/`computed()` for new component state; prefix with
   `$` (e.g. `$user`). RxJS `BehaviorSubject`/streams remain acceptable for
@@ -47,7 +47,7 @@ building blocks go in `shared/`. Keep `app.component` a thin shell.
 - Runner: **Karma + Jasmine** (`npm test -- --watch=false
   --browsers=ChromeHeadless`, ChromeHeadless in CI —
   `.github/workflows/frontend_workflow.yml`).
-- 176 passing specs in the current Angular suite. Policy: **test complex logic**
+- 199 passing specs in the current Angular suite. Policy: **test complex logic**
   (services, pipes, state handling);
   obvious markup needs no spec. Boilerplate "should create" specs must keep passing
   (they run in CI).

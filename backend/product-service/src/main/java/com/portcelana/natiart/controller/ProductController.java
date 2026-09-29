@@ -20,6 +20,7 @@ import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.portcelana.natiart.dto.PagedResponseDto;
 import com.portcelana.natiart.dto.ProductDto;
 import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.service.CategoryManager;
@@ -139,10 +140,29 @@ public class ProductController {
                 .body(productManager.getProductImage(path));
     }
 
+    @GetMapping("/products/page")
+    public PagedResponseDto<ProductDto> getProductsPage(
+            @RequestParam(required = false) String categoryId,
+            @RequestParam(required = false, defaultValue = "") String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return productManager.getProductsPage(categoryId, query, toPageable(page, size), false);
+    }
+
+    @GetMapping("/admin/products/page")
+    @PreAuthorize("hasRole('ADMIN')")
+    public PagedResponseDto<ProductDto> getAdminProductsPage(
+            @RequestParam(required = false) String categoryId,
+            @RequestParam(required = false, defaultValue = "") String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return productManager.getProductsPage(categoryId, query, toPageable(page, size), true);
+    }
+
     private static Pageable toPageable(int page, int size) {
         final int safePage = Math.max(0, page);
         final int safeSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
-        return PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "label"));
+        return PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "label", "id"));
     }
 
     private List<InputFile> processImages(List<MultipartFile> images) throws IOException {

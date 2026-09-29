@@ -1,4 +1,4 @@
-import {Component, OnInit, ViewChild} from '@angular/core';
+import {inject, DestroyRef, Component, OnInit, ViewChild} from '@angular/core';
 import {HttpErrorResponse} from '@angular/common/http';
 import {PackageService} from '../../../service/package.service';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
@@ -7,6 +7,8 @@ import {Package} from '../../../models/package.model';
 import { AsyncPipe, NgClass } from '@angular/common';
 import {AlertMessageComponent} from "../../../../shared/components/alert-message/alert-message.component";
 import {NatiartFormFieldComponent} from "../../../../shared/components/natiart-form-field/natiart-form-field.component";
+import {PagedList} from '../../../../shared/service/paged-list';
+import {PageControlsComponent} from '../../../../shared/components/page-controls.component';
 import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportError} from '../../../../shared/service/error-reporting.service';
 
@@ -19,7 +21,8 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
     NgClass,
     AlertMessageComponent,
     NatiartFormFieldComponent,
-    ButtonComponent
+    ButtonComponent,
+    PageControlsComponent
 ],
   templateUrl: './admin-package-management.component.html',
   styleUrls: ['./admin-package-management.component.css']
@@ -32,8 +35,11 @@ export class PackageManagementComponent implements OnInit {
 
   @ViewChild('alertMessages') alertMessagesComponent!: AlertMessageComponent;
 
-  constructor(private packageService: PackageService, private fb: FormBuilder) {
-    this.packageForm = this.fb.group({
+  private readonly _packageService = inject(PackageService);
+  private readonly _fb = inject(FormBuilder);
+
+  constructor() {
+    this.packageForm = this._fb.group({
       id: [''],
       label: ['', Validators.required],
       height: ['', [Validators.required, Validators.min(0)]],
@@ -42,6 +48,9 @@ export class PackageManagementComponent implements OnInit {
       active: [true]
     });
   }
+
+  readonly pages = new PagedList<Package>((page: number) => this._packageService.getPackagesPage(page, 20, true),
+    (items: Package[]): void => {this.packages.next(items);}, inject(DestroyRef));
 
   ngOnInit() {
     this.getPackages();
@@ -84,8 +93,9 @@ export class PackageManagementComponent implements OnInit {
 
   addPackage(): void {
     const pack: Package = this.packageForm.value;
-    this.packageService.addPackage(pack).subscribe({
+    this._packageService.addPackage(pack).subscribe({
       next: (response) => {
+        this.pages.load(this.pages.$page());
         this.packages.next([...this.packages.value, response]);
         this.closeModal();
       },
@@ -95,8 +105,9 @@ export class PackageManagementComponent implements OnInit {
 
   updatePackage(): void {
     const pack: Package = this.packageForm.value;
-    this.packageService.updatePackage(pack.id!, pack).subscribe({
+    this._packageService.updatePackage(pack.id!, pack).subscribe({
       next: (response: Package) => {
+        this.pages.load(this.pages.$page());
         this.packages.next(
           this.packages.value.map(p => p.id === response.id ? response : p)
         );
@@ -107,8 +118,9 @@ export class PackageManagementComponent implements OnInit {
   }
 
   deletePackage(id: string): void {
-    this.packageService.deletePackage(id).subscribe({
+    this._packageService.deletePackage(id).subscribe({
       next: () => {
+        this.pages.load(this.pages.$page());
         this.packages.next(this.packages.value.filter(p => p.id !== id));
         this.showAlert('Package deleted successfully', 'success');
       },
@@ -127,12 +139,7 @@ export class PackageManagementComponent implements OnInit {
     });
   }
 
-  private getPackages(): void {
-    this.packageService.getPackages().subscribe({
-      next: (response) => this.packages.next(response),
-      error: (error) => reportError('package', error)
-    });
-  }
+  private getPackages(): void { this.pages.load(0); }
 
   private validateAllFormFields(formGroup: FormGroup): void {
     Object.keys(formGroup.controls).forEach(field => {

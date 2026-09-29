@@ -1,4 +1,4 @@
-<aside class="bg-surface text-secondary transition-all duration-300 ease-in-out hidden lg:block border-r border-primary-lighter/30" [ngClass]="isOpen ? 'w-64' : 'w-20'">
+<aside class="bg-surface text-secondary transition-all duration-300 ease-in-out block border-r border-primary-lighter/30" [ngClass]="isOpen ? 'w-64' : 'w-20'">
   <div class="flex items-center h-20 px-6" [ngClass]="isOpen ? 'justify-between' : 'justify-center'">
     @if (isOpen) {
       <span class="text-lg font-semibold font-serif">Categories</span>
@@ -11,21 +11,21 @@
   <nav class="mt-4">
     <ul>
       <li>
-        <a href="#" class="flex items-center py-3 px-6 text-secondary hover:bg-primary-lighter/50 hover:text-primary-dark transition-colors duration-200">
+        <a routerLink="/products" [queryParams]="{page: 0}" class="flex items-center py-3 px-6 text-secondary hover:bg-primary-lighter/50 hover:text-primary-dark transition-colors duration-200">
           <svg class="h-6 w-6" [ngClass]="isOpen ? 'mr-4' : 'mx-auto'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
           @if (isOpen) {
             <span class="font-medium">All Products</span>
           }
         </a>
       </li>
-      @if (categoryLoadFailed) {
+      @if (pages.$error()) {
         <li class="px-6 py-3 text-sm text-secondary" role="status">
           Categories are temporarily unavailable.
         </li>
       }
       @for (category of categories; track category) {
         <li>
-          <a href="#" class="flex items-center py-3 px-6 text-secondary hover:bg-primary-lighter/50 hover:text-primary-dark transition-colors duration-200">
+          <a routerLink="/products" [queryParams]="{categoryId: category.id, page: 0}" class="flex items-center py-3 px-6 text-secondary hover:bg-primary-lighter/50 hover:text-primary-dark transition-colors duration-200">
             <!-- Placeholder Icon -->
             <svg class="h-6 w-6" [ngClass]="isOpen ? 'mr-4' : 'mx-auto'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
             @if (isOpen) {
@@ -35,5 +35,7 @@
         </li>
       }
     </ul>
+    @if (isOpen) { <app-page-controls [page]="pages.$page()" [total]="pages.$total()" [hasNext]="pages.$hasNext()"
+      [loading]="pages.$loading()" [error]="pages.$error()" (pageChange)="pages.load($event)"></app-page-controls> }
   </nav>
 </aside>

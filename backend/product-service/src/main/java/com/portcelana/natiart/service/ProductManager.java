@@ -9,6 +9,7 @@ import java.util.Optional;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.Pageable;
 
+import com.portcelana.natiart.dto.PagedResponseDto;
 import com.portcelana.natiart.dto.ProductDto;
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Product;
@@ -29,6 +30,11 @@ public interface ProductManager {
     Map<String, Product> getProductsOrDie(Collection<String> ids);
 
     List<Product> getProducts(Pageable pageable);
+
+    /** Returns bounded items and page metadata; public discovery filters inactive entries before paging. */
+    /** Returns a filtered page; inactive records are available only to authorized admin callers. */
+    PagedResponseDto<ProductDto> getProductsPage(
+            String categoryId, String query, Pageable pageable, boolean includeInactive);
 
     List<Product> getNewProducts(Pageable pageable);
 
