@@ -1,7 +1,7 @@
-import {Injectable} from '@angular/core';
+import {Injectable, inject} from '@angular/core';
 import {HttpClient} from "@angular/common/http";
-import {Observable, throwError} from "rxjs";
-import {catchError, shareReplay} from "rxjs/operators";
+import {Observable, Subject, throwError} from "rxjs";
+import {finalize, shareReplay, tap} from "rxjs/operators";
 import {environment} from "../../../environments/environment";
 import {Product} from "../models/product.model";
 
@@ -14,66 +14,64 @@ export class ProductService {
   private readonly imageRequests = new Map<string, Observable<Blob>>();
 
 
-  constructor(private http: HttpClient) {
-  }
+  private readonly _http: HttpClient = inject(HttpClient);
+  private readonly invalidations: Subject<void> = new Subject<void>();
+  readonly imageInvalidations: Observable<void> = this.invalidations.asObservable();
+
+  invalidateImages(): void { this.imageRequests.clear(); this.invalidations.next(); }
 
   getProducts(): Observable<Product[]> {
-    return this.http.get<Product[]>(this.apiUrl);
+    return this._http.get<Product[]>(this.apiUrl);
   }
 
   getProductsByCategory(categoryId: string): Observable<Product[]> {
     const params = {categoryId};
-    return this.http.get<Product[]>(this.apiUrl, {params});
+    return this._http.get<Product[]>(this.apiUrl, {params});
   }
 
   getFeaturedProducts(): Observable<Product[]> {
-    return this.http.get<Product[]>(`${this.apiUrl}/featured`);
+    return this._http.get<Product[]>(`${this.apiUrl}/featured`);
   }
 
   getNewProducts(): Observable<Product[]> {
-    return this.http.get<Product[]>(`${this.apiUrl}/new`);
+    return this._http.get<Product[]>(`${this.apiUrl}/new`);
   }
 
   getProduct(productId: string | null): Observable<Product> {
     if (!productId || productId.trim().length === 0) {
       return throwError(() => new Error('Missing product id'));
     }
-    return this.http.get<Product>(`${this.apiUrl}/${productId}`);
+    return this._http.get<Product>(`${this.apiUrl}/${productId}`);
   }
 
   addProduct(newProduct: FormData): Observable<Product> {
-    return this.http.post<Product>(`${this.apiUrl}/create`, newProduct);
+    return this._http.post<Product>(`${this.apiUrl}/create`, newProduct);
   }
 
   updateProduct(id: string, editProductData: FormData): Observable<Product> {
-    return this.http.put<Product>(`${this.apiUrl}/${id}`, editProductData);
+    return this._http.put<Product>(`${this.apiUrl}/${id}`, editProductData).pipe(tap((): void => this.invalidateImages()));
   }
 
   deleteProduct(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+    return this._http.delete<void>(`${this.apiUrl}/${id}`).pipe(tap((): void => this.invalidateImages()));
   }
 
   inverseProductVisibility(id: string): Observable<Product> {
-    return this.http.patch<Product>(`${this.apiUrl}/${id}/visibility/inverse`, null);
+    return this._http.patch<Product>(`${this.apiUrl}/${id}/visibility/inverse`, null);
   }
 
   getImage(imagePath: string): Observable<Blob> {
-    const cached = this.imageRequests.get(imagePath);
-    if (cached) {
-      return cached;
-    }
-    const request = this.http.get(`${this.apiUrlImages}/images?path=${encodeURIComponent(imagePath)}`, {
-      responseType: 'blob',
+    const cached: Observable<Blob> | undefined = this.imageRequests.get(imagePath);
+    if (cached) return cached;
+    const request: Observable<Blob> = this._http.get(`${this.apiUrlImages}/images`, {
+      params: {path: imagePath}, responseType: 'blob'
     }).pipe(
-      catchError(error => {
-        this.imageRequests.delete(imagePath);
-        return throwError(() => error);
-      }),
-      // Keep the decoded blob reusable across cart, summary and listing
-      // consumers; each component still owns and revokes its object URL.
-      shareReplay({bufferSize: 1, refCount: false})
+      finalize((): void => { if (this.imageRequests.get(imagePath) === request) this.imageRequests.delete(imagePath); }),
+      shareReplay({bufferSize: 1, refCount: true})
     );
-    this.imageRequests.set(imagePath, request);
+    // Only concurrent requests share bytes. Completed/cancelled entries are evicted;
+    // a bounded map never retains session-long image data or stale replacements.
+    if (this.imageRequests.size < 32) this.imageRequests.set(imagePath, request);
     return request;
   }
 }

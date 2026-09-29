@@ -42,6 +42,7 @@ describe('ProductDetailComponent', () => {
         {
           provide: ProductService,
           useValue: {
+            imageInvalidations: new Subject<void>().asObservable(),
             getProduct,
             getProductsByCategory: () => of([]),
             getImage: () => of(new Blob()),
@@ -117,6 +118,7 @@ describe('ProductDetailComponent stale main images', () => {
         {
           provide: ProductService,
           useValue: {
+            imageInvalidations: new Subject<void>().asObservable(),
             getProduct: (id: string) => of(makeImagedProduct(id)),
             getProductsByCategory: () => of([]),
             getImage: (path: string) => {
@@ -144,7 +146,8 @@ describe('ProductDetailComponent stale main images', () => {
 
     // Late p1 resolution must not populate the reset index-keyed map.
     imageSubjects.get('img-p1')!.next(new Blob(['p1-bytes']));
-    expect(component.imageUrls[0]).toBeUndefined();
+    expect(component.images.states()['0']).toBe('loading');
+    expect(component.imageUrls[0]).toBe(component.emptyImage);
 
     // The current product image still loads normally.
     imageSubjects.get('img-p2')!.next(new Blob(['p2-bytes']));
@@ -179,6 +182,7 @@ describe('ProductDetailComponent stale related images (AA5)', () => {
         {
           provide: ProductService,
           useValue: {
+            imageInvalidations: new Subject<void>().asObservable(),
             getProduct: (id: string) => of(makeCategorizedProduct(id)),
             // Each product view lists a different related product, so the
             // stale and current image fetches use different paths.

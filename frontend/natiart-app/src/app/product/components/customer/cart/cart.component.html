@@ -52,8 +52,8 @@
                     <div class="flex items-center">
                       <div class="shrink-0 h-16 w-16 relative group">
                         <!-- *** USE item.cartItemId for image key *** -->
-                        <img class="h-16 w-16 rounded-md object-cover border border-primary-lighter/30"
-                          [src]="imageUrls[item.cartItemId] || 'assets/img/placeholder.png'"
+                        <img (error)="images.failed(item.cartItemId)" class="h-16 w-16 rounded-md object-cover border border-primary-lighter/30"
+                          [src]="imageUrls[item.cartItemId] || emptyImage"
                           [alt]="item.product.label">
                         <!-- *** Custom Image Indicator *** -->
                       </div>
@@ -112,8 +112,8 @@
                 <!-- Image -->
                 <div class="h-20 w-20 rounded-md border border-primary-lighter/30 shrink-0 relative group">
                   <!-- *** USE item.cartItemId for image key *** -->
-                  <img class="h-full w-full object-cover rounded-md"
-                    [src]="imageUrls[item.cartItemId] || 'assets/img/placeholder.png'"
+                  <img (error)="images.failed(item.cartItemId)" class="h-full w-full object-cover rounded-md"
+                    [src]="imageUrls[item.cartItemId] || emptyImage"
                     [alt]="item.product.label">
                   <!-- *** Custom Image Indicator *** -->
                   @if (item.image) {

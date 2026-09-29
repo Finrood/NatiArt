@@ -6,7 +6,7 @@
       @for (item of cartItems; track item.cartItemId) {
         <div class="flex items-start justify-between pb-5 border-b border-gray-100 last:border-b-0">
           <div class="flex items-start space-x-4">
-            <img [src]="imageUrls[item.cartItemId] || 'assets/img/placeholder.png'"
+            <img (error)="images.failed(item.cartItemId)" [src]="imageUrls[item.cartItemId] || emptyImage"
               [alt]="item.product.label"
               class="w-20 h-20 rounded-lg object-cover border border-gray-200 p-1">
             <div>

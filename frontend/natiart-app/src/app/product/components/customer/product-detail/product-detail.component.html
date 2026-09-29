@@ -18,8 +18,8 @@
               (mousemove)="updateZoomPosition($event)"
               (mouseleave)="isZoomed = false"
               (click)="toggleZoom($event)">
-              <img #mainImage
-                [src]="imageUrls[selectedImageIndex] || 'assets/img/placeholder.png'"
+              <img (error)="images.failed(selectedImageIndex.toString())" #mainImage
+                [src]="imageUrls[selectedImageIndex] || emptyImage"
                 alt="{{product.label}} - Main Image"
                 class="w-full h-auto object-contain transition-transform duration-200 ease-in-out block"
                  [ngStyle]="{
@@ -46,9 +46,9 @@
             </div>
             <!-- Thumbnails -->
             <div class="flex mt-4 space-x-2 overflow-x-auto pb-2">
-              @for (imgEntry of imageUrls | keyvalue; track imgEntry; let i = $index) {
+              @for (imagePath of product.images; track $index; let i = $index) {
                 <img (click)="selectImage(i)"
-                  [src]="imgEntry.value || 'assets/img/placeholder.png'"
+                  [src]="imageUrls[i] || emptyImage" (error)="images.failed(i.toString())"
                   [alt]="product.label + ' Thumbnail ' + (i + 1)"
                   class="w-20 h-20 object-contain border-2 cursor-pointer transition-colors duration-200 rounded"
                   [class.border-primary]="selectedImageIndex === i"
@@ -153,8 +153,8 @@
                   <div class="group border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
                     <a [routerLink]="['/product', relatedProduct.id]" class="block">
                       <div class="relative aspect-square bg-gray-100"> <!-- Use aspect-square for consistent shape -->
-                        <img [alt]="relatedProduct.label"
-                          [src]="relatedImageUrls[relatedProduct.id!] || 'assets/img/placeholder.png'"
+                        <img (error)="images.failed(relatedProduct.id!)" [alt]="relatedProduct.label"
+                          [src]="relatedImageUrls[relatedProduct.id!] || emptyImage"
                           class="absolute top-0 left-0 w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 p-2"> <!-- Added padding -->
                         </div>
                         <div class="p-4">

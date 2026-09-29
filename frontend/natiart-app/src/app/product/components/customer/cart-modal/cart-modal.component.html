@@ -8,17 +8,8 @@
         @for (item of cartItems; track item.cartItemId) {
           <div class="flex items-center mb-4 pb-4 border-b">
             <div class="w-16 h-16 mr-4 overflow-hidden rounded">
-              @if (imageUrls[item.cartItemId]) {
-                <img (error)="onImageError(item.cartItemId)"
-                  [alt]="item.product.label"
-                  [src]="imageUrls[item.cartItemId]"
-                  class="w-full h-full object-cover">
-              }
-              @if (!imageUrls[item.cartItemId]) {
-                <div class="w-full h-full bg-gray-200 flex items-center justify-center">
-                  <span class="text-gray-400">No image</span>
-                </div>
-              }
+              <img (error)="images.failed(item.cartItemId)" [alt]="item.product.label"
+                [src]="imageUrls[item.cartItemId] || emptyImage" class="w-full h-full object-cover">
             </div>
             <div class="grow">
               <p class="font-semibold">{{ item.product.label }}</p>
