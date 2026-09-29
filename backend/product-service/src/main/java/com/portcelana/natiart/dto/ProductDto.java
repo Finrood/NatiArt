@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.portcelana.natiart.dto.product.ProductImageReferenceDto;
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.model.Product;
@@ -24,6 +25,7 @@ public class ProductDto {
     private Set<PersonalizationOption> availablePersonalizations = new HashSet<>();
     private Set<String> tags = new HashSet<>();
     private List<String> images = new ArrayList<>();
+    private List<ProductImageReferenceDto> imageManifest;
     private boolean newProduct;
     private boolean featuredProduct;
     private boolean active;
@@ -156,6 +158,15 @@ public class ProductDto {
 
     public ProductDto setImages(List<String> images) {
         this.images = images;
+        return this;
+    }
+
+    public List<ProductImageReferenceDto> getImageManifest() {
+        return imageManifest;
+    }
+
+    public ProductDto setImageManifest(List<ProductImageReferenceDto> imageManifest) {
+        this.imageManifest = imageManifest;
         return this;
     }
 

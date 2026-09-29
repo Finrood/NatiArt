@@ -25,6 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.ProductDto;
+import com.portcelana.natiart.dto.product.ProductImageReferenceDto;
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.repository.CartItemRepository;
@@ -232,5 +233,34 @@ class ProductManagerImplTest {
         assertThrows(
                 ResourceNotFoundException.class,
                 () -> productManager.getProductsOrDie(List.of(plate.getId(), "missing")));
+    }
+
+    @Test
+    void updateProduct_foreignRetainedImageIsRejectedBeforeUpload() {
+        final Product product = new Product("Art", BigDecimal.TEN).setImages(List.of("owned"));
+        when(categoryManager.getCategoryOrDie("cat")).thenReturn(new Category("Art"));
+        when(packageManager.getPackage(null)).thenReturn(Optional.empty());
+        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
+        final ProductDto dto = new ProductDto("Art", BigDecimal.TEN)
+                .setId(product.getId())
+                .setCategoryId("cat")
+                .setImageManifest(List.of(new ProductImageReferenceDto("foreign", null)));
+        assertThrows(IllegalArgumentException.class, () -> productManager.updateProduct(dto, List.of()));
+        verify(storageService, never()).uploadFile(any(String.class), any(InputFile.class), any(String.class));
+        verify(productRepository, never()).save(any(Product.class));
+    }
+
+    @Test
+    void updateProduct_unknownUploadReferenceIsRejectedBeforeUpload() {
+        final Product product = new Product("Art", BigDecimal.TEN);
+        when(categoryManager.getCategoryOrDie("cat")).thenReturn(new Category("Art"));
+        when(packageManager.getPackage(null)).thenReturn(Optional.empty());
+        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
+        final ProductDto dto = new ProductDto("Art", BigDecimal.TEN)
+                .setId(product.getId())
+                .setCategoryId("cat")
+                .setImageManifest(List.of(new ProductImageReferenceDto(null, "unknown")));
+        assertThrows(IllegalArgumentException.class, () -> productManager.updateProduct(dto, List.of()));
+        verify(storageService, never()).uploadFile(any(String.class), any(InputFile.class), any(String.class));
     }
 }
