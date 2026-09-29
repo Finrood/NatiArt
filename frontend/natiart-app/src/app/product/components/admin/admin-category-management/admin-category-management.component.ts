@@ -1,10 +1,11 @@
-import {AfterViewInit, Component, inject, OnInit, ViewChild} from '@angular/core';
+import {AfterViewInit, DestroyRef, signal, Component, inject, OnInit, ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {CategoryService} from '../../../service/category.service';
 import {Category} from '../../../models/category.model';
 import {BehaviorSubject} from 'rxjs';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {finalize} from 'rxjs/operators';
 import {NatiartFormFieldComponent} from "../../../../shared/components/natiart-form-field/natiart-form-field.component";
 import {AlertMessageComponent} from "../../../../shared/components/alert-message/alert-message.component";
@@ -23,8 +24,13 @@ export class CategoryManagementComponent implements OnInit, AfterViewInit {
   categories$ = this._categories$.asObservable();
 
   isEditingCategory: boolean = false;
-  modalVisible: boolean = false;
-  isSubmitting = false;
+  readonly $modalVisible = signal(false);
+  get modalVisible(): boolean { return this.$modalVisible(); }
+  set modalVisible(value: boolean) { this.$modalVisible.set(value); }
+  readonly $isSubmitting = signal(false);
+  get isSubmitting(): boolean { return this.$isSubmitting(); }
+  set isSubmitting(value: boolean) { this.$isSubmitting.set(value); }
+  private readonly _destroyed = inject(DestroyRef);
 
   categoryForm: FormGroup;
   private categoryService = inject(CategoryService);
@@ -88,7 +94,7 @@ export class CategoryManagementComponent implements OnInit, AfterViewInit {
 
   addCategory(generation = this.formGeneration): void {
     const category: Category = this.categoryForm.value;
-    this.categoryService.addCategory(category).pipe(finalize(() => this.isSubmitting = false)).subscribe({
+    this.categoryService.addCategory(category).pipe(takeUntilDestroyed(this._destroyed), finalize(() => this.isSubmitting = false)).subscribe({
       next: (response) => {
         this._categories$.next([...this._categories$.value, response]);
         if (generation === this.formGeneration) {
@@ -105,7 +111,7 @@ export class CategoryManagementComponent implements OnInit, AfterViewInit {
 
   updateCategory(generation = this.formGeneration): void {
     const category: Category = this.categoryForm.value;
-    this.categoryService.updateCategory(category.id!, category).pipe(finalize(() => this.isSubmitting = false)).subscribe({
+    this.categoryService.updateCategory(category.id!, category).pipe(takeUntilDestroyed(this._destroyed), finalize(() => this.isSubmitting = false)).subscribe({
       next: (response: Category) => {
         this._categories$.next(
           this._categories$.value.map(cat => cat.id === response.id ? response : cat)
@@ -136,7 +142,7 @@ export class CategoryManagementComponent implements OnInit, AfterViewInit {
         reportError('category', error);
         let errorMessage = 'An error occurred while deleting the category.';
         if (error.status === 400) {
-          errorMessage = 'Category contains existing products. Delete them before deleting this category';
+          errorMessage = 'Category is used by products. Reassign those products before deleting this category.';
         } else if (error.status === 404) {
           errorMessage = 'Category not found. It may have been already deleted.';
         } else if (error.status === 403) {

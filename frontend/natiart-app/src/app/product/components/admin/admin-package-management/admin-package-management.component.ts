@@ -1,8 +1,9 @@
-import {AfterViewInit, Component, OnInit, ViewChild} from '@angular/core';
+import {AfterViewInit, DestroyRef, signal, inject, Component, OnInit, ViewChild} from '@angular/core';
 import {HttpErrorResponse} from '@angular/common/http';
 import {PackageService} from '../../../service/package.service';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {BehaviorSubject} from 'rxjs';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {finalize} from 'rxjs/operators';
 import {Package} from '../../../models/package.model';
 import { AsyncPipe, NgClass } from '@angular/common';
@@ -29,15 +30,23 @@ export class PackageManagementComponent implements OnInit, AfterViewInit {
   packages = new BehaviorSubject<Package[]>([]);
   isEditingPackage = new BehaviorSubject(false);
   packageForm: FormGroup;
-  modalVisible: boolean = false;
-  isSubmitting = false;
+  readonly $modalVisible = signal(false);
+  get modalVisible(): boolean { return this.$modalVisible(); }
+  set modalVisible(value: boolean) { this.$modalVisible.set(value); }
+  readonly $isSubmitting = signal(false);
+  get isSubmitting(): boolean { return this.$isSubmitting(); }
+  set isSubmitting(value: boolean) { this.$isSubmitting.set(value); }
+  private readonly _destroyed = inject(DestroyRef);
   private formGeneration = 0;
   private pendingAlerts: Array<{message: string; type: 'success' | 'error'}> = [];
 
   @ViewChild('alertMessages') alertMessagesComponent!: AlertMessageComponent;
 
-  constructor(private packageService: PackageService, private fb: FormBuilder) {
-    this.packageForm = this.fb.group({
+  private readonly _packageService = inject(PackageService);
+  private readonly _fb = inject(FormBuilder);
+
+  constructor() {
+    this.packageForm = this._fb.group({
       id: [''],
       label: ['', Validators.required],
       height: ['', [Validators.required, Validators.min(0)]],
@@ -99,7 +108,7 @@ export class PackageManagementComponent implements OnInit, AfterViewInit {
 
   addPackage(generation = this.formGeneration): void {
     const pack: Package = this.packageForm.value;
-    this.packageService.addPackage(pack).pipe(finalize(() => this.isSubmitting = false)).subscribe({
+    this._packageService.addPackage(pack).pipe(takeUntilDestroyed(this._destroyed), finalize(() => this.isSubmitting = false)).subscribe({
       next: (response) => {
         this.packages.next([...this.packages.value, response]);
         if (generation === this.formGeneration) {
@@ -116,7 +125,7 @@ export class PackageManagementComponent implements OnInit, AfterViewInit {
 
   updatePackage(generation = this.formGeneration): void {
     const pack: Package = this.packageForm.value;
-    this.packageService.updatePackage(pack.id!, pack).pipe(finalize(() => this.isSubmitting = false)).subscribe({
+    this._packageService.updatePackage(pack.id!, pack).pipe(takeUntilDestroyed(this._destroyed), finalize(() => this.isSubmitting = false)).subscribe({
       next: (response: Package) => {
         this.packages.next(
           this.packages.value.map(p => p.id === response.id ? response : p)
@@ -138,7 +147,7 @@ export class PackageManagementComponent implements OnInit, AfterViewInit {
     if (!pack || !window.confirm(`Delete package "${pack.label}"?`)) {
       return;
     }
-    this.packageService.deletePackage(id).subscribe({
+    this._packageService.deletePackage(id).subscribe({
       next: () => {
         this.packages.next(this.packages.value.filter(p => p.id !== id));
         this.showAlert('Package deleted successfully', 'success');
@@ -147,7 +156,7 @@ export class PackageManagementComponent implements OnInit, AfterViewInit {
         reportError('package', error);
         let errorMessage = 'An error occurred while deleting the package.';
         if (error.status === 400) {
-          errorMessage = 'Package contains existing products. Delete them before deleting this package';
+          errorMessage = 'Package is used by products. Reassign those products before deleting this package.';
         } else if (error.status === 404) {
           errorMessage = 'Package not found. It may have been already deleted.';
         } else if (error.status === 403) {
@@ -159,7 +168,7 @@ export class PackageManagementComponent implements OnInit, AfterViewInit {
   }
 
   private getPackages(): void {
-    this.packageService.getPackages().subscribe({
+    this._packageService.getPackages().subscribe({
       next: (response) => this.packages.next(response),
       error: (error) => {
         reportError('package', error);
