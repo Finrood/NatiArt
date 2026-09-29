@@ -54,7 +54,7 @@
 
   <!-- Error messages -->
   @if (showErrors()) {
-    <div class="text-error text-sm space-y-1">
+    <div [id]="controlName + '-errors'" role="alert" class="text-error text-sm space-y-1">
       @if (control?.errors?.['required']) {
         <p>{{ label }} is required</p>
       }
@@ -84,7 +84,13 @@
       @if (control?.errors?.['fetchError']) {
         <p>Error fetching address</p>
       }
-      @if (control?.errors?.['passwordMismatch']) {
+      @if (control?.errors?.['passwordTooLong']) {
+        <p>Password is too long (maximum {{ passwordRequirements.maxUtf8Bytes }} UTF-8 bytes). Use fewer characters.</p>
+      }
+      @if (control?.errors?.['passwordComplexity']) {
+        <p>Password must have at least {{ passwordRequirements.minLength }} characters, an uppercase letter, a lowercase letter and a number.</p>
+      }
+      @if (hasPasswordMismatch() || control?.errors?.['passwordMismatch']) {
         <p>Passwords do not match</p>
       }
     </div>

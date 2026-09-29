@@ -10,6 +10,7 @@ export class CustomPasswordValidators {
       }
 
       const checks = checkPasswordRequirements(value, DEFAULT_REQUIREMENTS);
+      if (!checks.hasMaxBytes) return {passwordTooLong: true};
       const isValid = Object.values(checks).every(Boolean);
 
       return isValid ? null : {passwordComplexity: true};

@@ -1,4 +1,4 @@
-import {ChangeDetectionStrategy, Component, OnDestroy, OnInit} from '@angular/core';
+import {ChangeDetectionStrategy, Component, inject, OnDestroy, OnInit} from '@angular/core';
 import { AsyncPipe } from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
 import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
@@ -42,11 +42,11 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
   shippingState$: Observable<ShippingState> = this.shippingStateSubject.asObservable();
   private destroy$ = new Subject<void>();
 
-  constructor(
-    private fb: FormBuilder,
-    private shippingService: ShippingService
-  ) {
-    this.shippingForm = this.fb.group({
+  private readonly _fb = inject(FormBuilder);
+  private readonly _shippingService = inject(ShippingService);
+
+  constructor() {
+    this.shippingForm = this._fb.group({
       // CepFormat keeps the control normalized to eight digits; the hyphen is
       // presentation-only.
       cep: ['', [Validators.required, Validators.pattern(/^\d{8}$/)]],
@@ -105,7 +105,7 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
       weight: 2,
       quantity: 1
     };
-    return this.shippingService.calculateShipping(request);
+    return this._shippingService.calculateShipping(request);
   }
 
   private processShippingOptions(options: ShippingEstimate[]): ShippingState {

@@ -41,6 +41,35 @@ describe('ShippingEstimationComponent', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
+  for (const method of ['typing', 'formatted paste']) {
+    it('requests shipping after ' + method + ' through the rendered CEP formatter', fakeAsync(() => {
+      const component = createComponent();
+      const input: HTMLInputElement = fixture.nativeElement.querySelector('input[cepFormat]');
+      if (method === 'typing') {
+        for (const digit of '12345678') {
+          input.value += digit;
+          input.dispatchEvent(new InputEvent('input', {bubbles: true, inputType: 'insertText', data: digit}));
+          tick(16);
+        }
+      } else {
+        input.value = '12345-678';
+        input.dispatchEvent(new InputEvent('input', {bubbles: true, inputType: 'insertFromPaste', data: '12345-678'}));
+      }
+      expect(input.value).toBe('12345-678');
+      expect(component.shippingForm.get('cep')!.value).toBe('12345678');
+      expect(component.shippingForm.valid).toBeTrue();
+      tick(300);
+      const request = http.expectOne((r) => r.url.includes('/shipping/estimate'));
+      expect(request.request.body.to).toBe('12345678');
+      request.flush([estimate(9)]);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toContain('Cheapest Shipping Option');
+      fixture.destroy();
+      tick(300);
+      http.verify();
+    }));
+  }
+
   it('surfacesTheCheapestOptionOnceTheDebouncedCepLookupSucceeds', fakeAsync(() => {
     const component = createComponent();
     component.shippingForm.get('cep')!.setValue('12345678');
