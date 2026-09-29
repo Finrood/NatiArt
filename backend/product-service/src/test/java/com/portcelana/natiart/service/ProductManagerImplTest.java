@@ -245,7 +245,10 @@ class ProductManagerImplTest {
                 .setId(product.getId())
                 .setCategoryId("cat")
                 .setImageManifest(List.of(new ProductImageReferenceDto("foreign", null)));
-        assertThrows(IllegalArgumentException.class, () -> productManager.updateProduct(dto, List.of()));
+        assertEquals(
+                "Retained image is not owned by this product or is duplicated",
+                assertThrows(IllegalArgumentException.class, () -> productManager.updateProduct(dto, List.of()))
+                        .getMessage());
         verify(storageService, never()).uploadFile(any(String.class), any(InputFile.class), any(String.class));
         verify(productRepository, never()).save(any(Product.class));
     }
@@ -260,7 +263,10 @@ class ProductManagerImplTest {
                 .setId(product.getId())
                 .setCategoryId("cat")
                 .setImageManifest(List.of(new ProductImageReferenceDto(null, "unknown")));
-        assertThrows(IllegalArgumentException.class, () -> productManager.updateProduct(dto, List.of()));
+        assertEquals(
+                "Unknown or duplicated image upload reference",
+                assertThrows(IllegalArgumentException.class, () -> productManager.updateProduct(dto, List.of()))
+                        .getMessage());
         verify(storageService, never()).uploadFile(any(String.class), any(InputFile.class), any(String.class));
     }
 }
