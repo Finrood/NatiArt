@@ -403,7 +403,7 @@ public class AsaasPaymentService implements PaymentService {
                 && !localPayment.getOrderId().isBlank()) {
             orderManager.markOrderPaid(localPayment.getOrderId());
         }
-        return new PaymentStatusResponse(paymentId, status);
+        return new PaymentStatusResponse(paymentId, status, localPayment.getOrderId());
     }
 
     private AsaasPaymentCreationResponse fetchPaymentOrDie(String paymentId) {

@@ -1,10 +1,12 @@
-import {ChangeDetectorRef, Component, OnDestroy, OnInit} from '@angular/core';
+import {ChangeDetectorRef, Component, inject, signal, OnDestroy, OnInit} from '@angular/core';
 import {exhaustMap, map} from "rxjs/operators";
-import {catchError, interval, of, Subscription, throwError, timeout} from "rxjs";
+import {catchError, interval, of, Subscription, take, takeUntil, throwError, timeout, timer} from "rxjs";
 import {PaymentService} from "../../../../service/payment.service";
 import {ActivatedRoute, ParamMap, Router} from "@angular/router";
 import { DatePipe, NgClass } from "@angular/common";
 import * as confetti from 'canvas-confetti';
+import {CartService} from '../../../../service/cart.service';
+import {AuthenticationService} from '../../../../../directory/service/authentication.service';
 import {ButtonComponent} from "../../../../../shared/components/button.component";
 
 @Component({
@@ -21,6 +23,10 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   qrCodeData: { encodedImage: string; payload: string; expirationDate: Date } | undefined;
   paymentStatus: string = 'PENDING';
   copyFailed: boolean = false;
+  readonly $orderId = signal<string | null>(null);
+  readonly $cartUpdateFailed = signal(false);
+  private resumeSubscription: Subscription | null = null;
+  private expirySubscription: Subscription | null = null;
   pollingInterval!: Subscription;
   private paramSubscription: Subscription | null = null;
   private qrSubscription: Subscription | null = null;
@@ -28,48 +34,61 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   private pollCount: number = 0;
   private readonly MAX_POLL_ATTEMPTS: number = 60;
 
-  constructor(
-    private route: ActivatedRoute,
-    private paymentService: PaymentService,
-    private router: Router,
-    private changeDetectorRef: ChangeDetectorRef
-  ) {
-  }
+  private readonly _route = inject(ActivatedRoute);
+  private readonly _paymentService = inject(PaymentService);
+  private readonly _router = inject(Router);
+  private readonly _changeDetectorRef = inject(ChangeDetectorRef);
+  private readonly _cartService = inject(CartService);
+  private readonly _authenticationService = inject(AuthenticationService);
 
   ngOnInit(): void {
     // Subscribe to param changes (not a one-shot snapshot): Angular reuses
     // this component when navigating between payment ids, and the QR lookup
     // plus status polling must follow the currently routed payment.
-    this.paramSubscription = this.route.paramMap.subscribe((params: ParamMap): void => {
+    this.paramSubscription = this._route.paramMap.subscribe((params: ParamMap): void => {
       const routedId: string | null = params.get('paymentId');
       this.stopPolling();
       this.stopQrCode();
       this.qrCodeData = undefined;
+      this.$orderId.set(null);
+      this.$cartUpdateFailed.set(false);
+      this.stopFireworks();
       this.copyFailed = false;
       if (routedId) {
         this.paymentId = routedId;
         this.paymentStatus = 'PENDING';
-        this.loadQrCode(routedId);
         this.startPolling(routedId);
+        this.loadQrCode(routedId);
       } else {
         this.paymentId = null;
         this.paymentStatus = 'ERROR';
       }
+      this._changeDetectorRef.detectChanges();
     });
   }
 
-  loadQrCode(paymentId: string) {
+  loadQrCode(paymentId: string): void {
     this.stopQrCode();
-    this.qrSubscription = this.paymentService.getPixQrCode(paymentId).subscribe(
+    this.qrSubscription = this._paymentService.getPixQrCode(paymentId).subscribe(
       (data) => {
         if (!data.encodedImage || !data.payload || Number.isNaN(data.expirationDate.getTime())
           || data.expirationDate.getTime() <= Date.now()) {
           this.paymentStatus = 'EXPIRED';
           this.stopPolling();
+          this._changeDetectorRef.detectChanges();
           return;
         }
         this.qrCodeData = data;
-        this.changeDetectorRef.detectChanges();
+        const remaining: number = data.expirationDate.getTime() - Date.now();
+        if (remaining <= 300000) {
+          this.expirySubscription = timer(remaining).subscribe((): void => {
+            this.qrCodeData = undefined;
+            this.paymentStatus = 'EXPIRED';
+            this.stopPolling();
+            this._changeDetectorRef.detectChanges();
+          });
+        }
+        this._changeDetectorRef.detectChanges();
       },
       () => {
         // Status polling cannot make this screen usable without the QR code.
@@ -78,27 +97,32 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
         // error state.
         this.stopPolling();
         this.paymentStatus = 'ERROR';
-        this.changeDetectorRef.detectChanges();
+        this._changeDetectorRef.detectChanges();
       }
     );
   }
 
   stopQrCode(): void {
+    this.resumeSubscription?.unsubscribe();
+    this.resumeSubscription = null;
+    this.expirySubscription?.unsubscribe();
+    this.expirySubscription = null;
     if (this.qrSubscription) {
       this.qrSubscription.unsubscribe();
       this.qrSubscription = null;
     }
   }
 
-  startPolling(paymentId: string) {
+  startPolling(paymentId: string): void {
+    this.stopPolling();
     let consecutiveErrors = 0;
     this.pollCount = 0;
     this.pollingInterval = interval(5000)
       .pipe(
         exhaustMap(() =>
-          this.paymentService.getPaymentStatus(paymentId).pipe(
-            timeout({each: 4500}),
-            map((status) => ({ok: true as const, status: status.status})),
+          this._paymentService.getPaymentStatus(paymentId).pipe(
+            timeout({each: 10000}),
+            map((status) => ({ok: true as const, status: status.status, orderId: status.orderId})),
             catchError((error) => {
               consecutiveErrors++;
               if (consecutiveErrors >= 5) {
@@ -110,6 +134,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
             }),
           ),
         ),
+        takeUntil(timer(300001)),
       )
       .subscribe({
         next: (result) => {
@@ -120,16 +145,18 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
             consecutiveErrors = 0;
             this.paymentStatus = result.status;
             if (this.paymentStatus === 'COMPLETED') {
-              this.triggerFireworks();
-              this.stopPolling();
+              this.completePayment(result.orderId);
               return;
             }
             if (this.paymentStatus === 'EXPIRED' || this.isQrExpired()) {
               this.stopPolling();
               this.paymentStatus = 'EXPIRED';
+              this.qrCodeData = undefined;
+              this._changeDetectorRef.detectChanges();
               return;
             }
           }
+          this._changeDetectorRef.detectChanges();
           this.pollCount++;
           if (this.pollCount >= this.MAX_POLL_ATTEMPTS) {
             // Abandoned tab guard: every tick costs one upstream Asaas call
@@ -138,17 +165,26 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
             // indefinitely; the user can revisit the page to resume.
             this.stopPolling();
             this.paymentStatus = 'ERROR';
+            this._changeDetectorRef.detectChanges();
           }
         },
         error: () => {
           // 5 consecutive errors: stop polling and surface a non-success state instead of dying silently.
           this.stopPolling();
           this.paymentStatus = 'ERROR';
+          this._changeDetectorRef.detectChanges();
+        },
+        complete: (): void => {
+          if (this.paymentStatus === 'PENDING') {
+            this.paymentStatus = 'ERROR';
+            this.stopQrCode();
+            this._changeDetectorRef.detectChanges();
+          }
         },
       });
   }
 
-  stopPolling() {
+  stopPolling(): void {
     if (this.pollingInterval) {
       this.pollingInterval.unsubscribe();
       this.pollingInterval = undefined!;
@@ -160,14 +196,44 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   }
 
   retryPayment(): void {
-    if (!this.paymentId) {
-      return;
-    }
+    const paymentId: string | null = this.paymentId;
+    if (!paymentId) return;
+    this.stopPolling();
+    this.stopQrCode();
     this.qrCodeData = undefined;
     this.paymentStatus = 'PENDING';
-    this.loadQrCode(this.paymentId);
-    this.startPolling(this.paymentId);
-    this.changeDetectorRef.detectChanges();
+    this.resumeSubscription = this._paymentService.getPaymentStatus(paymentId).pipe(timeout(10000)).subscribe({
+      next: (status): void => {
+        if (status.status === 'COMPLETED') {
+          this.completePayment(status.orderId);
+        } else {
+          this.startPolling(paymentId);
+          this.loadQrCode(paymentId);
+        }
+      },
+      error: (): void => {
+        this.paymentStatus = 'ERROR';
+        this._changeDetectorRef.detectChanges();
+      },
+    });
+    this._changeDetectorRef.detectChanges();
+  }
+
+  private completePayment(orderId: string | undefined): void {
+    this.paymentStatus = 'COMPLETED';
+    this.$orderId.set(orderId ?? null);
+    this.stopPolling();
+    this.stopQrCode();
+    this.qrCodeData = undefined;
+    if (orderId) {
+      this._authenticationService.currentUser$.pipe(take(1)).subscribe((user): void => {
+        if (!user?.externalId) return;
+        try { this._cartService.completePurchase(orderId, user.externalId); }
+        catch { this.$cartUpdateFailed.set(true); }
+      });
+    }
+    this.triggerFireworks();
+    this._changeDetectorRef.detectChanges();
   }
 
   copyToClipboard(inputElement: HTMLInputElement): void {
@@ -182,11 +248,11 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
     }
   }
 
-  closePayment() {
-    this.router.navigate(['/']);
+  closePayment(): void {
+    this._router.navigate(['/']);
   }
 
-  triggerFireworks() {
+  triggerFireworks(): void {
     this.stopFireworks();
     const duration = 5 * 1000; // 5 seconds
     const animationEnd = Date.now() + duration;
@@ -218,7 +284,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
     }
   }
 
-  ngOnDestroy() {
+  ngOnDestroy(): void {
     if (this.paramSubscription) {
       this.paramSubscription.unsubscribe();
       this.paramSubscription = null;
