@@ -23,8 +23,7 @@ export const routes: Routes = [
   },
   {
     path: 'products',
-    canActivate: [authGuard],
-    loadComponent: () => import('./product/components/customer/dashboard/dashboard.component').then(m => m.DashboardComponent)
+    loadComponent: () => import('./product/components/customer/catalog/catalog.component').then(m => m.CatalogComponent)
   },
   {
     path: 'about',
@@ -38,7 +37,7 @@ export const routes: Routes = [
     path: 'contact',
     data: {
       title: 'Contact',
-      message: 'Contact support through your order confirmation or return to the store to continue browsing.'
+      message: 'Online contact is currently unavailable. Return to the store to continue browsing.'
     },
     loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
   },
@@ -47,18 +46,18 @@ export const routes: Routes = [
     canActivate: [authGuard],
     data: {
       title: 'My account',
-      message: 'Your account is active. Order history and profile editing are coming soon.'
+      message: 'Order history and profile editing are currently unavailable on this page.'
     },
     loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
   },
   {
     path: 'faq',
-    data: {title: 'Frequently asked questions', message: 'Questions about products and orders can be sent through the contact channel.'},
+    data: {title: 'Frequently asked questions', message: 'Frequently asked questions are not published yet.'},
     loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
   },
   {
     path: 'shipping-returns',
-    data: {title: 'Shipping and returns', message: 'Shipping and return details are included with each order confirmation.'},
+    data: {title: 'Shipping and returns', message: 'Shipping and return information is not published on this page yet.'},
     loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
   },
   {

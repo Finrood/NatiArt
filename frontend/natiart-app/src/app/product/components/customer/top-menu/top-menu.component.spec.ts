@@ -30,6 +30,26 @@ describe('TopMenuComponent', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
+  it('offers matching account/logout destinations on desktop and mobile and closes the mobile navigation', () => {
+    const fixture = TestBed.createComponent(TopMenuComponent);
+    fixture.detectChanges();
+    fixture.componentInstance.isLoggedIn = true;
+    fixture.detectChanges();
+    const desktop: HTMLElement = fixture.nativeElement.querySelector('.hidden.lg\\:block');
+    expect(desktop.querySelector('a[href="/account"]')).not.toBeNull();
+    expect(desktop.querySelector('a[href="/logout"]')).not.toBeNull();
+    (fixture.nativeElement.querySelector('button[aria-label="Toggle navigation"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const nav: HTMLElement = fixture.nativeElement.querySelector('nav.flex-col');
+    expect(nav.querySelector('a[href="/account"]')).not.toBeNull();
+    expect(nav.querySelector('a[href="/logout"]')).not.toBeNull();
+    nav.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('nav.flex-col')).toBeNull();
+    expect(fixture.nativeElement.querySelector('input[type="search"]').disabled).toBeTrue();
+    fixture.destroy();
+  });
+
   it('cancels the pending hover-close timer on destroy (P2)', () => {
     const fixture = TestBed.createComponent(TopMenuComponent);
     const component = fixture.componentInstance;

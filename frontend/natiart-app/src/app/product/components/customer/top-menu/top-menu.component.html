@@ -39,8 +39,9 @@
 
         <!-- User Account -->
         <div class="hidden lg:block">
-          @if (isLoggedIn) {
+          @if ($isLoggedIn()) {
             <a routerLink="/account" class="text-secondary hover:text-primary transition-colors">My Account</a>
+            <a routerLink="/logout" class="ml-4 text-secondary hover:text-primary transition-colors">Logout</a>
           } @else {
             <a routerLink="/login" class="text-secondary hover:text-primary transition-colors">Login</a>
           }
@@ -48,7 +49,7 @@
 
         <!-- Mobile Menu Button -->
         <div class="lg:hidden">
-          <button (click)="toggleMobileMenu()" class="text-secondary hover:text-primary">
+          <button aria-label="Toggle navigation" [attr.aria-expanded]="isMobileMenuOpen" (click)="toggleMobileMenu()" class="text-secondary hover:text-primary">
             <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg>
           </button>
         </div>
@@ -60,13 +61,13 @@
   @if (isMobileMenuOpen) {
     <div class="lg:hidden fixed inset-0 bg-black/40 z-40" (click)="toggleMobileMenu()"></div>
     <div class="lg:hidden fixed inset-y-0 right-0 bg-background w-72 shadow-xl z-50 p-6 transform transition-transform duration-300 ease-in-out" [class.translate-x-0]="isMobileMenuOpen" [class.translate-x-full]="!isMobileMenuOpen">
-      <nav class="flex flex-col space-y-6 text-lg">
+      <nav class="flex flex-col space-y-6 text-lg" (click)="closeMobileMenu()">
         <a routerLink="/dashboard" class="text-secondary hover:text-primary transition-colors duration-200">Home</a>
         <a routerLink="/products" class="text-secondary hover:text-primary transition-colors duration-200">Collections</a>
         <a routerLink="/about" class="text-secondary hover:text-primary transition-colors duration-200">About</a>
         <a routerLink="/contact" class="text-secondary hover:text-primary transition-colors duration-200">Contact</a>
         <hr class="border-primary-lighter/50">
-        @if (isLoggedIn) {
+        @if ($isLoggedIn()) {
           <a routerLink="/account" class="text-secondary hover:text-primary transition-colors">My Account</a>
           <a routerLink="/logout" class="text-secondary hover:text-primary transition-colors">Logout</a>
         } @else {
