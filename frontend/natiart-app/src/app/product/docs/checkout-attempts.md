@@ -18,3 +18,9 @@ Leaving the page cancels the client subscriptions and prevents later payment
 requests or navigation. A request already accepted by the server may still
 complete, so the saved key is retained for the next visit. If browser storage
 cannot preserve the attempt, checkout stops before creating an order.
+
+The attempt also keeps the original cart line IDs and purchased quantities before
+the order POST. CA31 uses this snapshot when registering its order receipt after
+order replay; resume must never substitute the current cart. Legacy attempts have
+an empty snapshot so completion leaves their cart unchanged. CA30 and CA31 edit
+the same checkout flow and need a combined merge resolution and test run.

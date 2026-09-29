@@ -85,8 +85,8 @@ describe('CheckoutComponent', () => {
             getCartItems: (): BehaviorSubject<never[]> => new BehaviorSubject<never[]>([]),
             getCartTotal: (): BehaviorSubject<number> => new BehaviorSubject<number>(0),
             getCartTotalSnapshot: (): number => 99.9,
-            getCartItemsSnapshot: (): Array<{ product: { id: string }; quantity: number }> => [
-              { product: { id: 'prod-1' }, quantity: 1 },
+            getCartItemsSnapshot: (): Array<{ cartItemId: string; product: { id: string }; quantity: number }> => [
+              { cartItemId: 'line-1', product: { id: 'prod-1' }, quantity: 1 },
             ],
           },
         },
@@ -279,6 +279,8 @@ describe('CheckoutComponent', () => {
       orderIdempotencyKey: string;
     };
     expect(saved.currentOrder).toBeNull();
+    expect(JSON.parse(localStorage.getItem(attemptKey)!).purchasedCartLines)
+      .toEqual([{cartItemId: 'line-1', quantity: 1}]);
     expect(saved.orderRequest.items).toEqual([{productId: 'prod-1', quantity: 1}]);
     expect(createPixPaymentSpy).not.toHaveBeenCalled();
 
@@ -299,6 +301,8 @@ describe('CheckoutComponent', () => {
     expect(createPixPaymentSpy).toHaveBeenCalledTimes(1);
     expect(routerNavigateSpy).toHaveBeenCalledWith(['/pix-payment', 'pay_123']);
     expect(localStorage.getItem(attemptKey)).not.toBeNull();
+    expect(JSON.parse(localStorage.getItem(attemptKey)!).purchasedCartLines)
+      .toEqual([{cartItemId: 'line-1', quantity: 1}]);
   });
 
   it('replays the same payment key after provider acceptance with a lost response', async () => {

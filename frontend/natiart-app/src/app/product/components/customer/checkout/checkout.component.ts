@@ -27,6 +27,7 @@ interface CheckoutAttempt {
   username: string;
   fingerprint: string;
   orderRequest: OrderDto;
+  purchasedCartLines: Array<{cartItemId: string; quantity: number}>;
   orderIdempotencyKey: string;
   paymentIdempotencyKey: string;
   currentOrder: OrderDto | null;
@@ -74,6 +75,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   private currentOrder: OrderDto | null = null;
   private orderRequest: OrderDto | null = null;
+  private purchasedCartLines: Array<{cartItemId: string; quantity: number}> = [];
   private paymentId: string | null = null;
   private checkoutFingerprint: string | null = null;
   private hasPrefilledCurrentUser = false;
@@ -280,6 +282,8 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       if (!this.orderRequest) {
         const orderRequest = this.buildOrderRequest();
         this.orderRequest = orderRequest;
+        this.purchasedCartLines = this._cartService.getCartItemsSnapshot().map(
+          (item: CartItem) => ({cartItemId: item.cartItemId, quantity: item.quantity}));
         this.checkoutFingerprint = JSON.stringify(orderRequest);
         this.orderIdempotencyKey = crypto.randomUUID();
         this.paymentIdempotencyKey = crypto.randomUUID();
@@ -522,6 +526,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         username,
         fingerprint: this.checkoutFingerprint,
         orderRequest: this.orderRequest,
+        purchasedCartLines: this.purchasedCartLines,
         orderIdempotencyKey: this.orderIdempotencyKey,
         paymentIdempotencyKey: this.paymentIdempotencyKey,
         currentOrder: this.currentOrder,
@@ -554,6 +559,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         throw new Error('Saved checkout cannot be safely resumed');
       }
       this.orderRequest = request;
+      this.purchasedCartLines = Array.isArray(attempt.purchasedCartLines)
+        && attempt.purchasedCartLines.every((line) => !!line && typeof line.cartItemId === 'string'
+          && line.cartItemId.trim().length > 0 && Number.isSafeInteger(line.quantity) && line.quantity > 0)
+        ? attempt.purchasedCartLines : [];
       this.checkoutFingerprint = JSON.stringify(request);
       this.orderIdempotencyKey = attempt.orderIdempotencyKey;
       this.paymentIdempotencyKey = attempt.paymentIdempotencyKey;
@@ -627,6 +636,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   private resetAttempt(): void {
+    this.purchasedCartLines = [];
     this.currentOrder = null;
     this.orderRequest = null;
     this.paymentId = null;
