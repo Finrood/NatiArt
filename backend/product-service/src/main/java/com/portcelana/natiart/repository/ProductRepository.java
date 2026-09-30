@@ -46,6 +46,9 @@ public interface ProductRepository extends JpaRepository<Product, String> {
             "SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.images LEFT JOIN FETCH p.category LEFT JOIN FETCH p.packaging WHERE p.id IN :ids")
     List<Product> findAllWithImagesByIds(@Param("ids") List<String> ids);
 
+    @Query("select count(p) from Product p join p.images image where image = :uri")
+    long countImageReferences(String uri);
+
     boolean existsByCategory(Category category);
 
     boolean existsByPackaging(Package packaging);

@@ -51,6 +51,10 @@ public interface StorageService extends Serializable {
 
     URI uploadFile(String location, InputFile file, String key);
 
+    /** Resolve the confined target before writing so durable ownership can be recorded. */
+    URI uploadTarget(String location, String key);
+
+    /** Idempotently remove an owned file. */
     void delete(URI uri);
 
     /**

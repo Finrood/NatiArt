@@ -21,8 +21,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.ProductDto;
@@ -47,6 +45,7 @@ public class ProductManagerImpl implements ProductManager {
     private final CategoryManager categoryManager;
     private final PackageManager packageManager;
     private final StorageService storageService;
+    private final ProductImageLifecycle imageLifecycle;
 
     public ProductManagerImpl(
             ProductRepository productRepository,
@@ -54,13 +53,15 @@ public class ProductManagerImpl implements ProductManager {
             CartItemRepository cartItemRepository,
             CategoryManager categoryManager,
             PackageManager packageManager,
-            StorageService storageService) {
+            StorageService storageService,
+            ProductImageLifecycle imageLifecycle) {
         this.productRepository = productRepository;
         this.orderRepository = orderRepository;
         this.cartItemRepository = cartItemRepository;
         this.categoryManager = categoryManager;
         this.packageManager = packageManager;
         this.storageService = storageService;
+        this.imageLifecycle = imageLifecycle;
     }
 
     @Override
@@ -196,7 +197,6 @@ public class ProductManagerImpl implements ProductManager {
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
         final Optional<Package> pack = packageManager.getPackage(productDto.getPackageId());
         final Product product = getProductOrDie(productDto.getId());
-        final List<String> previousImages = List.copyOf(product.getImages());
         product.setLabel(label)
                 .setDescription(productDto.getDescription())
                 .setCategory(category)
@@ -213,7 +213,7 @@ public class ProductManagerImpl implements ProductManager {
         final List<String> imagesUris = processImages(product, productDto.getImages(), imagesInput);
         product.setImages(imagesUris);
         final Product saved = productRepository.save(product);
-        deleteRemovedImagesAfterCommit(previousImages, imagesUris);
+
         return saved;
     }
 
@@ -230,8 +230,8 @@ public class ProductManagerImpl implements ProductManager {
             throw new IllegalArgumentException(
                     "Product [" + product.getLabel() + "] is referenced by an order or cart; deactivate it instead");
         }
+        imageLifecycle.prepareReferences(product.getImages(), List.of());
         productRepository.delete(product);
-        deleteRemovedImagesAfterCommit(product.getImages(), List.of());
     }
 
     @Override
@@ -262,52 +262,36 @@ public class ProductManagerImpl implements ProductManager {
 
     private List<String> processImages(Product product, List<String> existingImages, List<InputFile> newImages) {
         final List<InputFile> uploads = newImages != null ? newImages : List.of();
-        final List<String> retainedImages = existingImages != null ? existingImages : List.of();
-        if (retainedImages.size() + uploads.size() > MAX_IMAGES_PER_PRODUCT) {
-            throw new IllegalArgumentException("A product may contain at most " + MAX_IMAGES_PER_PRODUCT + " images");
-        }
-        LOGGER.info(
-                "Processing [{}] images for product labelled [{}] with id [{}]",
-                uploads.size(),
-                product.getLabel(),
-                product.getId());
-
-        final List<String> imagesUris = new ArrayList<>(retainedImages);
-
-        final List<String> newUris = new ArrayList<>();
         try {
+            final List<String> retainedImages = existingImages != null ? existingImages : List.of();
+            if (retainedImages.size() + uploads.size() > MAX_IMAGES_PER_PRODUCT) {
+                throw new IllegalArgumentException(
+                        "A product may contain at most " + MAX_IMAGES_PER_PRODUCT + " images");
+            }
+            LOGGER.info(
+                    "Processing [{}] images for product labelled [{}] with id [{}]",
+                    uploads.size(),
+                    product.getLabel(),
+                    product.getId());
+
+            imageLifecycle.prepareReferences(product.getImages(), retainedImages);
+            final List<String> imagesUris = new ArrayList<>(retainedImages);
+
             for (InputFile inputFile : uploads) {
                 final String imagePath = IMAGE_BASE_PATH + product.getId() + "/" + UUID.randomUUID();
-                final URI imageUri = storageService.uploadFile(
-                        imagePath, inputFile, UUID.randomUUID().toString());
-                newUris.add(imageUri.toString());
+                imagesUris.add(imageLifecycle
+                        .upload(product.getId(), imagePath, UUID.randomUUID().toString(), inputFile)
+                        .toString());
             }
-        } catch (RuntimeException error) {
-            newUris.forEach(uri -> storageService.delete(URI.create(uri)));
-            throw error;
-        }
-
-        imagesUris.addAll(newUris);
-        return imagesUris;
-    }
-
-    private void deleteRemovedImagesAfterCommit(List<String> previousImages, List<String> retainedImages) {
-        final List<String> removed = previousImages.stream()
-                .filter(uri -> !retainedImages.contains(uri))
-                .toList();
-        if (removed.isEmpty()) {
-            return;
-        }
-        final Runnable cleanup = () -> removed.forEach(uri -> storageService.delete(URI.create(uri)));
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    cleanup.run();
+            return imagesUris;
+        } finally {
+            for (InputFile input : uploads) {
+                try {
+                    input.inputStream().close();
+                } catch (java.io.IOException error) {
+                    LOGGER.warn("Unable to close product upload input");
                 }
-            });
-        } else {
-            cleanup.run();
+            }
         }
     }
 

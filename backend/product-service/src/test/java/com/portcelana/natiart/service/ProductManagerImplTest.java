@@ -54,6 +54,9 @@ class ProductManagerImplTest {
     @Mock
     private StorageService storageService;
 
+    @Mock
+    private ProductImageLifecycle imageLifecycle;
+
     @InjectMocks
     private ProductManagerImpl productManager;
 
@@ -133,6 +136,36 @@ class ProductManagerImplTest {
         assertEquals("Mug", created.getLabel());
         assertTrue(created.getImages().isEmpty());
         verify(storageService, never()).uploadFile(any(String.class), any(InputFile.class), any(String.class));
+    }
+
+    @Test
+    void failedUploadBatchClosesAttemptedAndUnattemptedInputs() throws Exception {
+        final Category category = new Category("Tableware");
+        when(categoryManager.getCategoryOrDie("cat-1")).thenReturn(category);
+        when(packageManager.getPackage(null)).thenReturn(Optional.empty());
+        when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(imageLifecycle.upload(any(String.class), any(String.class), any(String.class), any(InputFile.class)))
+                .thenReturn(URI.create("file:///fixture/first"))
+                .thenThrow(new IllegalStateException("fixture upload failed"));
+        final java.io.ByteArrayInputStream first =
+                org.mockito.Mockito.spy(new java.io.ByteArrayInputStream(new byte[] {1}));
+        final java.io.ByteArrayInputStream second =
+                org.mockito.Mockito.spy(new java.io.ByteArrayInputStream(new byte[] {2}));
+        final java.io.ByteArrayInputStream third =
+                org.mockito.Mockito.spy(new java.io.ByteArrayInputStream(new byte[] {3}));
+        final List<InputFile> inputs = List.of(
+                new InputFile(first, "image/webp", "first", 1),
+                new InputFile(second, "image/webp", "second", 1),
+                new InputFile(third, "image/webp", "third", 1));
+        assertThrows(
+                IllegalStateException.class,
+                () -> productManager.createProduct(
+                        new ProductDto("Mug", BigDecimal.TEN).setCategoryId("cat-1"), inputs));
+        verify(first).close();
+        verify(second).close();
+        verify(third).close();
+        verify(imageLifecycle, times(2))
+                .upload(any(String.class), any(String.class), any(String.class), any(InputFile.class));
     }
 
     @Test

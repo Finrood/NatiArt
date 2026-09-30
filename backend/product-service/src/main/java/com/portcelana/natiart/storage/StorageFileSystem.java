@@ -90,18 +90,38 @@ public class StorageFileSystem implements Storage {
 
     @Override
     public URI uploadFile(String location, String key, InputFile inputFile) {
-        final File file = resolveAllowedWriteFile(location, key);
+        try (InputStream inputStream = inputFile.inputStream()) {
+            return writeFile(resolveAllowedWriteFile(location, key), inputStream);
+        } catch (IOException error) {
+            throw new IllegalStateException("Unable to close an image upload", error);
+        }
+    }
+
+    private URI writeFile(File file, InputStream inputStream) {
+        boolean created = false;
         try {
             Files.createDirectories(file.toPath().getParent());
-            try (InputStream inputStream = inputFile.inputStream();
-                    FileOutputStream fileOutputStream = new FileOutputStream(file)) {
-                IOUtils.copy(inputStream, fileOutputStream);
+            try (OutputStream outputStream =
+                    Files.newOutputStream(file.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+                created = true;
+                IOUtils.copy(inputStream, outputStream);
             }
             return file.toURI();
-        } catch (IOException e) {
-            throw new IllegalStateException(
-                    String.format("An error has occurred while storing file [%s] in [%s]", file.getName(), key));
+        } catch (IOException error) {
+            if (created) {
+                try {
+                    Files.deleteIfExists(file.toPath());
+                } catch (IOException cleanupError) {
+                    error.addSuppressed(cleanupError);
+                }
+            }
+            throw new IllegalStateException("Unable to store an image", error);
         }
+    }
+
+    @Override
+    public URI uploadTarget(String location, String key) {
+        return resolveAllowedWriteFile(location, key).toURI();
     }
 
     @Override
