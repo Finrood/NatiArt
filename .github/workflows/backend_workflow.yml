@@ -44,6 +44,9 @@ jobs:
         working-directory: backend
         run: ./gradlew :directory-service:clean :directory-service:build
 
+      - name: Require executed boundary suites
+        run: python3 backend/scripts/check_boundary_reports.py directory-service
+
       - name: Upload test reports on failure
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -75,6 +78,9 @@ jobs:
         working-directory: backend
         run: ./gradlew :product-service:clean :product-service:build
 
+      - name: Require executed boundary suites
+        run: python3 backend/scripts/check_boundary_reports.py product-service
+
       - name: Upload test reports on failure
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -84,3 +90,12 @@ jobs:
             backend/product-service/build/test-results/test/*.xml
             backend/product-service/build/reports/tests/test/**/*
           retention-days: 7
+
+  container-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Build and start both backend images with clean and dirty host contexts
+        run: bash backend/scripts/smoke_images.sh

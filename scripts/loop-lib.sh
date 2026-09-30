@@ -208,3 +208,10 @@ pr_checks_summary() { # $1 = PR number; prints FAIL|PASS|PENDING (never fails)
     elif checks_passed <<<"$checks"; then echo "PASS"
     else echo "PENDING"; fi
 }
+
+# The caller has checked ancestry using this captured SHA. Never delete a newer tip.
+delete_salvage_remote() {
+    local branch="$1" validated_sha="$2"
+    [[ "$branch" == salvage/* && "$validated_sha" =~ ^[0-9a-f]{40}$ ]] || return 1
+    git push -q --force-with-lease="refs/heads/$branch:$validated_sha" origin --delete "$branch"
+}

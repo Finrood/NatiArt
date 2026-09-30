@@ -3,6 +3,10 @@
 # advanced after validation. The force-with-lease must reject the stale SHA.
 set -Eeuo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/loop-lib.sh
+source "$SCRIPT_DIR/../loop-lib.sh"
+
 ROOT="$(mktemp -d)"
 trap 'rm -rf "$ROOT"' EXIT
 
@@ -43,7 +47,7 @@ git -C "$ROOT/b" commit -qm newer-wip
 git -C "$ROOT/b" push -q origin "$branch"
 advanced="$(git -C "$ROOT/b" rev-parse HEAD)"
 
-if git -C "$ROOT/a" push -q --force-with-lease="refs/heads/$branch:$captured" origin --delete "$branch"; then
+if (cd "$ROOT/a" && delete_salvage_remote "$branch" "$captured"); then
     echo "expected stale leased deletion to fail" >&2
     exit 1
 fi
@@ -53,3 +57,15 @@ if [[ "$actual" != "$advanced" ]]; then
     exit 1
 fi
 echo "ok: stale leased salvage deletion rejected and advanced remote preserved"
+
+# The same production helper must delete a stable validated tip successfully.
+stable="salvage/stable"
+git -C "$ROOT/a" branch "$stable" master
+git -C "$ROOT/a" push -q origin "$stable"
+stable_sha="$(git -C "$ROOT/a" rev-parse "$stable")"
+(cd "$ROOT/a" && delete_salvage_remote "$stable" "$stable_sha")
+[[ -z "$(git -C "$ROOT/a" ls-remote origin "refs/heads/$stable")" ]]
+# Invalid branch/SHA input must never reach the deletion command.
+if (cd "$ROOT/a" && delete_salvage_remote master "$stable_sha"); then exit 1; fi
+[[ -n "$(git -C "$ROOT/a" ls-remote origin refs/heads/master)" ]]
+echo "ok: production helper deletes only stable validated salvage tips"

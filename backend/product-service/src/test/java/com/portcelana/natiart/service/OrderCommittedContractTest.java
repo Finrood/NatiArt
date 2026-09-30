@@ -1,0 +1,135 @@
+package com.portcelana.natiart.service;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import com.portcelana.natiart.dto.OrderDto;
+import com.portcelana.natiart.dto.OrderItemDto;
+import com.portcelana.natiart.model.Category;
+import com.portcelana.natiart.model.Product;
+import com.portcelana.natiart.repository.CategoryRepository;
+import com.portcelana.natiart.repository.OrderRepository;
+import com.portcelana.natiart.repository.ProductRepository;
+
+@DataJpaTest(properties = {"spring.sql.init.mode=never", "natiart.test.contract=OrderCommittedContractTest"})
+@Import({OrderManagerImpl.class, OrderCreationService.class})
+class OrderCommittedContractTest {
+    @Autowired
+    private OrderManager manager;
+
+    @Autowired
+    private OrderRepository orders;
+
+    @Autowired
+    private ProductRepository products;
+
+    @Autowired
+    private CategoryRepository categories;
+
+    @Autowired
+    private PlatformTransactionManager transactions;
+
+    @MockitoBean
+    private ProductManager productManager;
+
+    @MockitoBean
+    private ShippingService shipping;
+
+    private TransactionTemplate transaction;
+
+    @BeforeEach
+    void configure() {
+        transaction = new TransactionTemplate(transactions);
+        when(productManager.getProductsOrDie(anyList()))
+                .thenAnswer(invocation -> products.findAllById(invocation.<List<String>>getArgument(0)).stream()
+                        .collect(Collectors.toMap(Product::getId, product -> product)));
+        when(shipping.getOrderShippingAmount(anyString())).thenReturn(BigDecimal.ZERO);
+    }
+
+    private String seed(int stock) {
+        return transaction.execute(status -> {
+            final Category category = categories.save(new Category("contract-" + UUID.randomUUID()));
+            return products.save(new Product("Handmade contract product", new BigDecimal("10.00"))
+                            .setCategory(category)
+                            .setStockQuantity(stock))
+                    .getId();
+        });
+    }
+
+    private OrderDto request(List<OrderItemDto> items) {
+        return new OrderDto()
+                .setFirstname("Fixture")
+                .setLastname("Customer")
+                .setEmail("contract@example.test")
+                .setZipCode("01001000")
+                .setItems(items);
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void committedReplayMapsDetachedItemsAndDoesNotReserveStockTwice() {
+        final String id = seed(5);
+        final String owner = "contract-owner-" + UUID.randomUUID();
+        final OrderDto request =
+                request(List.of(new OrderItemDto().setProductId(id).setQuantity(2)));
+        final OrderDto first = OrderDto.from(manager.createOrder(request, owner, "committed-key"));
+        final OrderDto replay = OrderDto.from(manager.createOrder(request, owner, "committed-key"));
+        assertEquals(first.getId(), replay.getId());
+        assertEquals(1, replay.getItems().size());
+        assertEquals(2, replay.getItems().getFirst().getQuantity());
+        assertEquals(id, replay.getItems().getFirst().getProductId());
+        assertEquals(
+                3,
+                transaction
+                        .<Integer>execute(
+                                status -> products.findById(id).orElseThrow().getStockQuantity())
+                        .intValue());
+        assertEquals(
+                1,
+                orders.findAll().stream()
+                        .filter(order -> owner.equals(order.getOwnerExternalId()))
+                        .count());
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void failureOnLaterLineRollsBackEarlierDatabaseStockReservationAndOrderInsert() {
+        final String first = seed(5);
+        final String second = seed(0);
+        final String owner = "rollback-owner-" + UUID.randomUUID();
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> manager.createOrder(
+                        request(List.of(
+                                new OrderItemDto().setProductId(first).setQuantity(2),
+                                new OrderItemDto().setProductId(second).setQuantity(1))),
+                        owner,
+                        "rollback-key"));
+        assertEquals(
+                5,
+                transaction
+                        .<Integer>execute(
+                                status -> products.findById(first).orElseThrow().getStockQuantity())
+                        .intValue());
+        assertTrue(orders.findByOwnerExternalIdAndIdempotencyKey(owner, "rollback-key")
+                .isEmpty());
+    }
+}

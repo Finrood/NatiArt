@@ -1,4 +1,4 @@
-import {ChangeDetectorRef, Component, OnDestroy, OnInit} from '@angular/core';
+import {ChangeDetectorRef, Component, inject, OnDestroy, OnInit} from '@angular/core';
 import {map, switchMap} from "rxjs/operators";
 import {catchError, interval, of, Subscription, throwError} from "rxjs";
 import {PaymentService} from "../../../../service/payment.service";
@@ -28,19 +28,16 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   private pollCount: number = 0;
   private readonly MAX_POLL_ATTEMPTS: number = 60;
 
-  constructor(
-    private route: ActivatedRoute,
-    private paymentService: PaymentService,
-    private router: Router,
-    private changeDetectorRef: ChangeDetectorRef
-  ) {
-  }
+  private readonly _route: ActivatedRoute = inject(ActivatedRoute);
+  private readonly _paymentService: PaymentService = inject(PaymentService);
+  private readonly _router: Router = inject(Router);
+  private readonly _changeDetectorRef: ChangeDetectorRef = inject(ChangeDetectorRef);
 
   ngOnInit(): void {
     // Subscribe to param changes (not a one-shot snapshot): Angular reuses
     // this component when navigating between payment ids, and the QR lookup
     // plus status polling must follow the currently routed payment.
-    this.paramSubscription = this.route.paramMap.subscribe((params: ParamMap): void => {
+    this.paramSubscription = this._route.paramMap.subscribe((params: ParamMap): void => {
       const routedId: string | null = params.get('paymentId');
       this.stopPolling();
       this.stopQrCode();
@@ -57,10 +54,13 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
     });
   }
 
-  loadQrCode(paymentId: string) {
+  loadQrCode(paymentId: string): void {
     this.stopQrCode();
-    this.qrSubscription = this.paymentService.getPixQrCode(paymentId).subscribe(
-      (data) => (this.qrCodeData = data),
+    this.qrSubscription = this._paymentService.getPixQrCode(paymentId).subscribe(
+      (data): void => {
+        this.qrCodeData = data;
+        this._changeDetectorRef.markForCheck();
+      },
       () => {
         // Status polling cannot make this screen usable without the QR code.
         // Stop it so a later PENDING status cannot replace the QR error with
@@ -68,7 +68,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
         // error state.
         this.stopPolling();
         this.paymentStatus = 'ERROR';
-        this.changeDetectorRef.detectChanges();
+        this._changeDetectorRef.detectChanges();
       }
     );
   }
@@ -86,7 +86,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
     this.pollingInterval = interval(5000)
       .pipe(
         switchMap(() =>
-          this.paymentService.getPaymentStatus(paymentId).pipe(
+          this._paymentService.getPaymentStatus(paymentId).pipe(
             map((status) => ({ok: true as const, status: status.status})),
             catchError((error) => {
               consecutiveErrors++;
@@ -108,12 +108,14 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
           } else {
             consecutiveErrors = 0;
             this.paymentStatus = result.status;
+            this._changeDetectorRef.markForCheck();
             if (this.paymentStatus === 'COMPLETED') {
               this.triggerFireworks();
               this.stopPolling();
               return;
             }
           }
+          this._changeDetectorRef.markForCheck();
           this.pollCount++;
           if (this.pollCount >= this.MAX_POLL_ATTEMPTS) {
             // Abandoned tab guard: every tick costs one upstream Asaas call
@@ -128,6 +130,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
           // 5 consecutive errors: stop polling and surface a non-success state instead of dying silently.
           this.stopPolling();
           this.paymentStatus = 'ERROR';
+          this._changeDetectorRef.markForCheck();
         },
       });
   }
@@ -151,7 +154,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   }
 
   closePayment() {
-    this.router.navigate(['/']);
+    this._router.navigate(['/']);
   }
 
   triggerFireworks() {

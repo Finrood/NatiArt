@@ -434,8 +434,7 @@ git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads/sa
        { [[ -z "$REMOTE_SB_SHA" ]] || git merge-base --is-ancestor "$REMOTE_SB_SHA" origin/master 2>/dev/null; }; then
         log "Deleting old merged salvage branch $sb."
         git branch -D "$sb" 2>/dev/null || true
-        if [[ -n "$REMOTE_SB_SHA" ]] && ! git push -q \
-            --force-with-lease="refs/heads/$sb:$REMOTE_SB_SHA" origin --delete "$sb" 2>/dev/null; then
+        if [[ -n "$REMOTE_SB_SHA" ]] && ! delete_salvage_remote "$sb" "$REMOTE_SB_SHA" 2>/dev/null; then
             log "Remote salvage $sb changed during validation; preserving it."
         fi
     else
