@@ -17,7 +17,7 @@ of a disposable bare repository. No fixture contacts a real payment account.
 | Product DTO after database session closes | `ProductDetachedHttpContractTest`, committed JPA data followed by actual controller JSON serialization |
 | Purchase through native controls and routing | `checkout-http-journey.spec.ts`: real order/payment HTTP services, server total, pending/QR/confirmed screen; order conflict sends no payment request |
 | Packaged backend containers | `backend/scripts/smoke_images.sh`: clean/dirty contexts, host artifact exclusion, identical executable JARs, full runtime startup for both services |
-| Cleanup lease | `test_salvage_delete_lease.sh`: actual shared production helper rejects an advanced remote tip, deletes a stable tip, rejects non-salvage input |
+| Cleanup lease | `test_salvage_delete_lease.sh`: actual shared production helper rejects an advanced remote tip, deletes a stable tip, rejects invalid branch/SHA input |
 
 Each committed JPA fixture has its own test context/database. It deliberately
 cannot roll back the transaction under test on behalf of production code or
@@ -37,10 +37,9 @@ combining CA8/CA11 provider validation and money-type changes; mocked
 RestTemplate responses alone cannot prove deserialization.
 
 CA30/CA31 extend the native purchase contract with durable checkout recovery,
-status-first navigation, bounded polling and account-scoped receipt subtraction.
-Keep their HTTP/rendered regressions alongside this journey. Their signals
-replace CA53's minimal change-detection notification for QR and confirmed status;
-keep the rendered assertions instead of preserving obsolete notifications.
+safe status refresh, bounded polling and account-scoped receipt subtraction.
+Keep their HTTP/rendered regressions alongside this journey. Preserve their receipt signals and QR/status change-detection notifications,
+with the rendered assertions proving that asynchronous updates reach the screen.
 CA36's labels and CA26's image ordering extend the detached DTO fixture.
 
 CA41/CA42/CA46/CA62 extend the cleanup/review loop. Preserve the `delete_remote_with_lease` helper
@@ -52,3 +51,26 @@ an isolated local remote.
 Production deployment, real delivery credentials, historical migrations and
 provider reconciliation remain covered by their respective PRs and owner
 requirements. Passing this suite does not establish those external conditions.
+
+## Disposable integration evidence
+
+These snapshots are local verification artifacts, not stacked PR branches or a
+merged release:
+
+- Order/payment/history + coverage: `fc947b99d3be12a91cd10d3859f7d9b51a3873ad`,
+  323 product tests/full Java 25 checks. Preserve CA11's durable provider ID,
+  CA12's locked reservation/reconciliation rules and CA61 history reads.
+- CA21/30/31 + CA29/33/34/35/36/37 + coverage:
+  `cc61d5b8e682feb119fd18a9b71daac07875aa44`, 277 product tests/full checks,
+  255 rendered UI tests and offline production build. The native HTTP journey
+  uses the real cart and checks confirmed quantity deduction, later additions
+  and once-only receipt replay. Resolution retains required house number,
+  dirty-form protection, immutable checkout payload/keys and original receipts.
+- CA41/42/46/62 + coverage: `3ef690681d9e1cfba9c2d773166b78f1efc55c6c`,
+  all ten script fixture files and ShellCheck. The recorded-ownership caller
+  retains ownership/ancestry revalidation and invokes the same low-level lease
+  helper; the actual production caller race fixture preserves an advancing tip.
+
+Whole integration patches and logs are kept outside the repository in the
+repair ledger. Historical production migrations, live provider reconciliation,
+heartbeat identity provisioning and real email delivery remain external gates.
