@@ -52,5 +52,8 @@ jobs:
           CHROME_BIN: /usr/bin/google-chrome
         run: npm test -- --watch=false --browsers=ChromeHeadless
 
+      - name: Build the production frontend container
+        run: docker build -t natiart-frontend-ci frontend
+
       - name: Verify frontend container release replacement
         run: python3 frontend/tests/container_rollout_test.py
