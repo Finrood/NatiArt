@@ -1,8 +1,9 @@
-import {Component} from '@angular/core';
+import {Component, DestroyRef, inject, signal, WritableSignal} from '@angular/core';
 import {HttpErrorResponse} from '@angular/common/http';
-import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
+import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {RouterLink} from '@angular/router';
 import {finalize} from 'rxjs/operators';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 
 import {ButtonComponent} from '../../../../shared/components/button.component';
 import {NatiartFormFieldComponent} from '../../../../shared/components/natiart-form-field/natiart-form-field.component';
@@ -11,22 +12,22 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-password-reset-request',
-  standalone: true,
   imports: [ReactiveFormsModule, RouterLink, ButtonComponent, NatiartFormFieldComponent],
   templateUrl: './password-reset-request.component.html'
 })
 export class PasswordResetRequestComponent {
-  readonly form = this.fb.nonNullable.group({
-    username: ['', [Validators.required, Validators.email]]
+  private readonly _fb: FormBuilder = inject(FormBuilder);
+  private readonly _passwordResetService: PasswordResetService = inject(PasswordResetService);
+  private readonly _destroyRef: DestroyRef = inject(DestroyRef);
+  readonly form: FormGroup<{username: FormControl<string>}> = this._fb.nonNullable.group({
+    username: ['', [Validators.required, Validators.email, Validators.maxLength(255)]]
   });
-  isSubmitting = false;
-  message = '';
-  errorMessage = '';
-
-  constructor(private readonly fb: FormBuilder, private readonly passwordResetService: PasswordResetService) {}
+  readonly $isSubmitting: WritableSignal<boolean> = signal(false);
+  readonly $message: WritableSignal<string> = signal('');
+  readonly $errorMessage: WritableSignal<string> = signal('');
 
   submit(): void {
-    if (this.isSubmitting) {
+    if (this.$isSubmitting()) {
       return;
     }
     if (this.form.invalid) {
@@ -34,15 +35,15 @@ export class PasswordResetRequestComponent {
       return;
     }
 
-    this.isSubmitting = true;
-    this.message = '';
-    this.errorMessage = '';
-    this.passwordResetService.requestReset(this.form.controls.username.value)
-      .pipe(finalize(() => this.isSubmitting = false))
+    this.$isSubmitting.set(true);
+    this.$message.set('');
+    this.$errorMessage.set('');
+    this._passwordResetService.requestReset(this.form.controls.username.value)
+      .pipe(takeUntilDestroyed(this._destroyRef), finalize((): void => this.$isSubmitting.set(false)))
       .subscribe({
-        next: response => this.message = response.message,
+        next: (response): void => this.$message.set(response.message),
         error: (error: HttpErrorResponse) => {
-          this.errorMessage = 'We could not process that request. Please try again shortly.';
+          this.$errorMessage.set('We could not process that request. Please try again shortly.');
           reportError('password-reset-request', error);
         }
       });

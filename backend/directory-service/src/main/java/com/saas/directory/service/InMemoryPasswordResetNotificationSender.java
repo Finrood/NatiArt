@@ -5,14 +5,12 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
-/**
- * Local notification fixture. A real mail adapter can implement
- * {@link PasswordResetNotificationSender}; keeping the default fixture makes
- * the complete flow verifiable without sending credentials to a third party.
- */
+/** Local/test fixture; production must use the configured SMTP delivery adapter. */
 @Service
+@Profile({"local-h2 & !production", "test & !production"})
 public class InMemoryPasswordResetNotificationSender implements PasswordResetNotificationSender {
     private static final int MAX_NOTIFICATIONS = 100;
 

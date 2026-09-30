@@ -2,8 +2,11 @@ package com.saas.directory.controller;
 
 import jakarta.validation.Valid;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.MailException;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,8 +19,9 @@ import com.saas.directory.service.PasswordManager;
 
 @RestController
 public class PasswordResetController {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PasswordResetController.class);
     private static final String REQUEST_MESSAGE =
-            "If an account exists for that address, a password reset link has been sent.";
+            "If this address belongs to an account, check your email for recovery instructions. If no message arrives, try again later.";
 
     private final PasswordManager passwordManager;
 
@@ -27,7 +31,13 @@ public class PasswordResetController {
 
     @PostMapping("/password-reset/request")
     public ResponseEntity<PasswordResetResponse> requestReset(@Valid @RequestBody PasswordResetRequestDto request) {
-        passwordManager.notifyResetPassword(request.username());
+        try {
+            passwordManager.notifyResetPassword(request.username());
+        } catch (MailException deliveryFailure) {
+            // Keep the response uniform; the transaction rolls back the undelivered token.
+            // Mail exception details can contain the reset link and must not be logged.
+            LOGGER.warn("Password recovery delivery failed; no notification details recorded");
+        }
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(new PasswordResetResponse(REQUEST_MESSAGE));
     }
 
