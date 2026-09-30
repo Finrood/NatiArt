@@ -47,7 +47,7 @@ git -C "$ROOT/b" commit -qm newer-wip
 git -C "$ROOT/b" push -q origin "$branch"
 advanced="$(git -C "$ROOT/b" rev-parse HEAD)"
 
-if (cd "$ROOT/a" && delete_salvage_remote "$branch" "$captured"); then
+if (cd "$ROOT/a" && delete_remote_with_lease "$branch" "$captured"); then
     echo "expected stale leased deletion to fail" >&2
     exit 1
 fi
@@ -63,9 +63,9 @@ stable="salvage/stable"
 git -C "$ROOT/a" branch "$stable" master
 git -C "$ROOT/a" push -q origin "$stable"
 stable_sha="$(git -C "$ROOT/a" rev-parse "$stable")"
-(cd "$ROOT/a" && delete_salvage_remote "$stable" "$stable_sha")
+(cd "$ROOT/a" && delete_remote_with_lease "$stable" "$stable_sha")
 [[ -z "$(git -C "$ROOT/a" ls-remote origin "refs/heads/$stable")" ]]
 # Invalid branch/SHA input must never reach the deletion command.
-if (cd "$ROOT/a" && delete_salvage_remote master "$stable_sha"); then exit 1; fi
+if (cd "$ROOT/a" && delete_remote_with_lease master "$stable_sha"); then exit 1; fi
 [[ -n "$(git -C "$ROOT/a" ls-remote origin refs/heads/master)" ]]
 echo "ok: production helper deletes only stable validated salvage tips"

@@ -43,7 +43,7 @@ replace CA53's minimal change-detection notification for QR and confirmed status
 keep the rendered assertions instead of preserving obsolete notifications.
 CA36's labels and CA26's image ordering extend the detached DTO fixture.
 
-CA41/CA42/CA46/CA62 extend the cleanup/review loop. Preserve the `delete_salvage_remote` helper
+CA41/CA42/CA46/CA62 extend the cleanup/review loop. Preserve the `delete_remote_with_lease` helper
 and its explicit validated SHA when reconciling the hygiene block. Do not invoke
 the whole operational loop as a test: it can send messages, merge and delete
 branches. This fixture invokes only the exact production deletion boundary with
