@@ -812,6 +812,7 @@ class AsaasPaymentServiceTest {
                 .getPaymentStatus("pay-complete", "cus_MINE");
 
         assertEquals(PaymentStatus.COMPLETED, response.getStatus());
+        assertEquals("ord-1", response.getOrderId());
         verify(orderManager).markOrderPaid("ord-1");
     }
 
