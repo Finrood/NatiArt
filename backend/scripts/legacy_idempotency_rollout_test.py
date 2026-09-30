@@ -79,6 +79,18 @@ def main():
         assert sql('SELECT count(*) FROM payment_idempotency') == '2'
         print('ok: duplicate financial rows abort instead of selecting a winner')
 
+        reset(); sql(SQL)
+        sql('ALTER TABLE payment_idempotency DROP CONSTRAINT payment_idempotency_pkey;')
+        sql(SQL, success=False)
+        print('ok: missing financial primary key requires explicit reconciliation')
+
+        reset()
+        sql('CREATE TABLE unrelated(owner_external_id text, idempotency_key text);'
+            'CREATE UNIQUE INDEX uk_customer_order_owner_idempotency ON unrelated(owner_external_id,idempotency_key);')
+        sql(SQL, success=False)
+        assert sql("SELECT count(*) FROM information_schema.columns WHERE table_name='customer_order' AND column_name='request_fingerprint'") == '0'
+        print('ok: same-name foreign index cannot satisfy the order uniqueness guard')
+
         sql('DROP SCHEMA public CASCADE; CREATE SCHEMA public;')
         sql(SQL, success=False)
         assert sql("SELECT count(*) FROM information_schema.tables WHERE table_schema='public'") == '0'

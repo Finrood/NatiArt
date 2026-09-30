@@ -45,6 +45,12 @@ BEGIN
         AND data_type <> 'timestamp with time zone') THEN
         RAISE EXCEPTION 'Partial payment_idempotency column types require explicit reconciliation';
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint c
+        WHERE c.conrelid='payment_idempotency'::regclass AND c.contype='p'
+        AND c.conkey=ARRAY[(SELECT a.attnum FROM pg_attribute a
+            WHERE a.attrelid=c.conrelid AND a.attname='id')]::smallint[]) THEN
+        RAISE EXCEPTION 'Partial payment_idempotency primary key requires explicit reconciliation';
+    END IF;
     IF EXISTS (SELECT 1 FROM customer_order WHERE idempotency_key IS NOT NULL
         GROUP BY owner_external_id,idempotency_key HAVING count(*)>1) THEN
         RAISE EXCEPTION 'Duplicate order keys require explicit reconciliation';
@@ -79,9 +85,11 @@ ALTER TABLE payment_idempotency ADD CONSTRAINT ck_payment_idempotency_status
 DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
         WHERE c.relname='uk_customer_order_owner_idempotency' AND i.indisunique
+        AND i.indisvalid AND i.indisready AND i.indrelid='customer_order'::regclass
         AND pg_get_indexdef(i.indexrelid) LIKE '%(owner_external_id, idempotency_key)')
         OR NOT EXISTS (SELECT 1 FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
         WHERE c.relname='uk_payment_idempotency_owner_key' AND i.indisunique
+        AND i.indisvalid AND i.indisready AND i.indrelid='payment_idempotency'::regclass
         AND pg_get_indexdef(i.indexrelid) LIKE '%(owner_external_id, idempotency_key)') THEN
         RAISE EXCEPTION 'Existing idempotency index definitions require explicit reconciliation';
     END IF;
