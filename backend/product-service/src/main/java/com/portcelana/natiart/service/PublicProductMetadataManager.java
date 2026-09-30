@@ -11,13 +11,13 @@ import com.portcelana.natiart.repository.ProductRepository;
 @Service
 public class PublicProductMetadataManager {
     private final ProductRepository productRepository;
-    private String shopName = "Porcelain Elegance";
+    private String shopName = "NatiArt";
 
     public PublicProductMetadataManager(ProductRepository productRepository) {
         this.productRepository = productRepository;
     }
 
-    @Value("${natiart.storefront.name:Porcelain Elegance}")
+    @Value("${natiart.storefront.name:NatiArt}")
     public void setShopName(String shopName) {
         if (shopName == null
                 || shopName.isBlank()
@@ -30,20 +30,23 @@ public class PublicProductMetadataManager {
 
     /** Public scalar text only; inactive/missing products share a generic response. */
     @Transactional(readOnly = true)
-    public PublicProductMetadataDto getMetadata(String productId) {
+    public PublicProductMetadataDto getMetadata(String productId, StorefrontLanguage language) {
         final PublicProductTextDto product = productId != null && productId.matches("[A-Za-z0-9-]{1,64}")
                 ? productRepository.findActivePublicTextById(productId).orElse(null)
                 : null;
         if (product == null) {
             return PublicProductMetadataDto.from(
-                    shopName + " | Handmade Art", "Browse products from " + shopName + ".", "website");
+                    shopName + " | " + language.shopTitle(),
+                    language.shopDescription(shopName),
+                    language.code(),
+                    "website");
         }
         final String label = normalize(product.label(), 100);
         final String description =
                 product.description() == null || product.description().isBlank()
                         ? label + " | " + shopName
                         : normalize(product.description(), 160);
-        return PublicProductMetadataDto.from(label + " | " + shopName, description, "product");
+        return PublicProductMetadataDto.from(label + " | " + shopName, description, language.code(), "product");
     }
 
     private static String normalize(String value, int limit) {

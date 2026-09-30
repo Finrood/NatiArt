@@ -1,5 +1,5 @@
 // START OF FILE: src/app/product/components/customer/cart/cart.component.ts
-import {ChangeDetectionStrategy, Component, OnDestroy, OnInit, ViewChild} from '@angular/core'; // Import SecurityContext
+import {ChangeDetectionStrategy, Component, OnDestroy, OnInit, ViewChild, inject} from '@angular/core'; // Import SecurityContext
 import {BehaviorSubject, combineLatest, Observable, of, Subject} from 'rxjs';
 import {catchError, finalize, map, startWith, takeUntil, tap} from 'rxjs/operators';
 import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
@@ -24,7 +24,6 @@ interface CartState {
 
 @Component({
   selector: 'app-cart',
-  standalone: true,
   imports: [
     ConfirmationModalComponent,
     RouterLink,
@@ -51,15 +50,15 @@ export class CartComponent implements OnInit, OnDestroy {
   private objectUrlsCreated: string[] = []; // Keep track of created blob URLs
   private destroy$ = new Subject<void>();
 
-  constructor(
-    private cartService: CartService,
-    private productService: ProductService,
-    private sanitizer: DomSanitizer,
-    private router: Router
-  ) {
+  private readonly _cartService: CartService = inject(CartService);
+  private readonly _productService: ProductService = inject(ProductService);
+  private readonly _sanitizer: DomSanitizer = inject(DomSanitizer);
+  private readonly _router: Router = inject(Router);
+
+  constructor() {
     this.cartState$ = combineLatest([
-      this.cartService.getCartItems(),
-      this.cartService.getCartTotal()
+      this._cartService.getCartItems(),
+      this._cartService.getCartTotal()
     ]).pipe(
       map(([items, total]) => ({
         items,
@@ -89,33 +88,33 @@ export class CartComponent implements OnInit, OnDestroy {
     const newQuantity = Math.max(1, Math.min(item.quantity + change, item.product.stockQuantity));
     if (newQuantity !== item.quantity) {
       this.performAction(
-        () => this.cartService.updateItemQuantity(item.cartItemId, newQuantity), // Use cartItemId
-        'Failed to update quantity. Please try again.'
+        () => this._cartService.updateItemQuantity(item.cartItemId, newQuantity), // Use cartItemId
+        $localize`Failed to update quantity. Please try again.`
       );
     }
   }
 
   askRemoveItem(item: CartItem): void {
     this.modalAction = () => this.performAction(
-      () => this.cartService.removeFromCart(item.cartItemId), // Use cartItemId
-      'Failed to remove item. Please try again.'
+      () => this._cartService.removeFromCart(item.cartItemId), // Use cartItemId
+      $localize`Failed to remove item. Please try again.`
     );
-    this.confirmationModal.title = 'Remove Item';
+    this.confirmationModal.title = $localize`Remove Item`;
     this.confirmationModal.message = `Are you sure you want to remove this instance of "${item.product.label}"${item.image ? ' (with custom image)' : ''} from your cart?`;
     this.confirmationModal.confirmText = 'Remove';
-    this.confirmationModal.cancelText = 'Cancel';
+    this.confirmationModal.cancelText = $localize`Cancel`;
     this.confirmationModal.isOpen = true;
   }
 
   askClearCart(): void {
     this.modalAction = () => this.performAction(
-      () => this.cartService.clearCart(),
-      'Failed to clear cart. Please try again.'
+      () => this._cartService.clearCart(),
+      $localize`Failed to clear cart. Please try again.`
     );
-    this.confirmationModal.title = 'Clear Cart';
-    this.confirmationModal.message = 'Are you sure you want to remove all items from your cart?';
-    this.confirmationModal.confirmText = 'Clear Cart';
-    this.confirmationModal.cancelText = 'Cancel';
+    this.confirmationModal.title = $localize`Clear Cart`;
+    this.confirmationModal.message = $localize`Are you sure you want to remove all items from your cart?`;
+    this.confirmationModal.confirmText = $localize`Clear Cart`;
+    this.confirmationModal.cancelText = $localize`Cancel`;
     this.confirmationModal.isOpen = true;
   }
 
@@ -135,8 +134,8 @@ export class CartComponent implements OnInit, OnDestroy {
 
 
   proceedToCheckout(): void {
-    this.router.navigate(['/checkout']).catch(error => {
-      this.setError('Failed to navigate to checkout. Please try again.');
+    this._router.navigate(['/checkout']).catch(error => {
+      this.setError($localize`Failed to navigate to checkout. Please try again.`);
       reportError('cart-navigation', error);
     });
   }
@@ -182,7 +181,7 @@ export class CartComponent implements OnInit, OnDestroy {
         if (item.image instanceof File) {
           // Create Object URL for the custom File image
           const objectUrl = URL.createObjectURL(item.image);
-          this.imageUrls[item.cartItemId] = this.sanitizer.bypassSecurityTrustUrl(objectUrl);
+          this.imageUrls[item.cartItemId] = this._sanitizer.bypassSecurityTrustUrl(objectUrl);
           this.objectUrlsCreated.push(objectUrl); // Track for cleanup
         } else if (item.product.images && item.product.images.length > 0) {
           // Fetch the default product image if no custom image
@@ -199,7 +198,7 @@ export class CartComponent implements OnInit, OnDestroy {
     // Drop resolutions that arrive after the line was removed: the cleanup
     // pass in prepareImageUrls deletes the key, and an unguarded write
     // would resurrect it (AA3). Destroy teardown is covered by takeUntil.
-    this.productService.getImage(imagePath).pipe(
+    this._productService.getImage(imagePath).pipe(
       takeUntil(this.destroy$) // Auto-unsubscribe
     ).subscribe({
       next: (blob: Blob): void => {
@@ -207,7 +206,7 @@ export class CartComponent implements OnInit, OnDestroy {
           return;
         }
         const objectUrl: string = URL.createObjectURL(blob);
-        this.imageUrls[cartItemId] = this.sanitizer.bypassSecurityTrustUrl(objectUrl);
+        this.imageUrls[cartItemId] = this._sanitizer.bypassSecurityTrustUrl(objectUrl);
         this.objectUrlsCreated.push(objectUrl); // Track for cleanup
       },
       error: (error: unknown): void => {
@@ -221,7 +220,7 @@ export class CartComponent implements OnInit, OnDestroy {
   }
 
   private isCartLineLive(cartItemId: string): boolean {
-    return this.cartService.getCartItemsSnapshot().some((item: CartItem): boolean => item.cartItemId === cartItemId);
+    return this._cartService.getCartItemsSnapshot().some((item: CartItem): boolean => item.cartItemId === cartItemId);
   }
 
   private errorDismissTimer: ReturnType<typeof setTimeout> | undefined = undefined;

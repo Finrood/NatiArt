@@ -43,8 +43,8 @@ def wait_ready(port, path, process=None):
 
 
 def main():
-    assert (ASSETS / 'index.html').is_file(), 'Build the production Angular application first'
-    assert '<meta name="natiart-public-metadata">' in (ASSETS / 'index.html').read_text()
+    assert (ASSETS / 'en/index.html').is_file(), 'Build the production Angular application first'
+    assert '<meta name="natiart-public-metadata">' in (ASSETS / 'en/index.html').read_text()
     jar = next(path for path in (ROOT / 'backend/product-service/build/libs').glob('*.jar')
                if not path.name.endswith('-plain.jar'))
     app_port, edge_port = free_port(), free_port()
@@ -78,29 +78,46 @@ VALUES('public-one',0,'Cup "<script>" & café','Actual & public description',10,
                     '-v', f'{work / "nginx.conf"}:/etc/nginx/conf.d/default.conf:ro',
                     'nginx:1.27-alpine'], check=True, stdout=subprocess.DEVNULL)
                 wait_ready(edge_port, '/healthz')
-                first, headers = fetch(edge_port, '/product/public-one', headers={
+                first, headers = fetch(edge_port, '/en/product/public-one', headers={
                     'User-Agent': 'SyntheticShareUnfurler/1.0', 'Cookie': 'inert-fixture-cookie',
                     'Authorization': 'Bearer inert-fixture-token'})
-                assert '<title>Cup &#34;&#60;script&#62;&#34; &#38; caf&#233; | Porcelain Elegance</title>' in first
+                assert '<title>Cup &#34;&#60;script&#62;&#34; &#38; caf&#233; | NatiArt</title>' in first
                 assert '<meta property="og:description" content="Actual &#38; public description">' in first
                 assert '<meta property="og:type" content="product">' in first
                 assert '<script>"' not in first and 'private upload' not in first
                 assert headers['Cache-Control'] == 'no-store'
-                second, _ = fetch(edge_port, '/product/public-two?tracking=inert')
-                assert '<title>Second public piece | Porcelain Elegance</title>' in second
+                second, _ = fetch(edge_port, '/en/product/public-two?tracking=inert')
+                assert '<title>Second public piece | NatiArt</title>' in second
                 assert 'Distinct second description' in second and 'Actual &#38;' not in second
-                for path in ['/product/private-one', '/product/missing', '/product/private-one/']:
+                for path in ['/en/product/private-one', '/en/product/missing', '/en/product/private-one/']:
                     body, _ = fetch(edge_port, path)
-                    assert '<title>Porcelain Elegance | Handmade Art</title>' in body
+                    assert '<title>NatiArt | Handmade Art</title>' in body
                     assert '<meta property="og:type" content="website">' in body
                     assert 'DO NOT PUBLISH' not in body and 'private upload' not in body
                 fetch(edge_port, '/_public-product-metadata', status=404)
                 metadata, metadata_headers = fetch(app_port, '/products/public-one/metadata', status=204)
                 assert metadata == '' and metadata_headers['X-Natiart-Title'].isascii()
+                for language, title, description in [
+                        ('en', 'NatiArt | Handmade Art', 'Browse products from NatiArt.'),
+                        ('pt-BR', 'NatiArt | Arte artesanal', 'Conhe&#231;a os produtos da NatiArt.')]:
+                    body, _ = fetch(edge_port, f'/{language}/product/missing')
+                    assert f'<html lang="{language}"' in body
+                    assert f'<base href="/{language}/">' in body
+                    assert f'<title>{title}</title>' in body
+                    assert description in body
+                    localized, _ = fetch(edge_port, f'/{language}/product/public-two')
+                    assert '<title>Second public piece | NatiArt</title>' in localized
+                    assert f'<html lang="{language}"' in localized
+                    shell, _ = fetch(edge_port, f'/{language}/login')
+                    assert f'<html lang="{language}"' in shell
+                fetch(app_port, '/products/public-one/metadata?language=unsupported', status=400)
+                legacy, _ = fetch(edge_port, '/product/public-two?tracking=inert')
+                assert '<base href="/en/">' in legacy
+                print('ok: English and Portuguese initial HTML have accurate language/base/brand and private-safe metadata')
                 print('ok: initial HTTP HTML contains distinct escaped active-product metadata; private/missing text stays generic')
                 # When the backend disappears, the edge must not serve stale product claims.
                 process.terminate(); process.wait(timeout=10)
-                fetch(edge_port, '/product/public-one', status=500)
+                fetch(edge_port, '/en/product/public-one', status=500)
                 print('ok: metadata subrequest is internal and upstream failure does not reuse stale product text')
             except Exception:
                 print((work / 'application.log').read_text()[-12000:])

@@ -1,4 +1,4 @@
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, inject} from '@angular/core';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {EmptyError, firstValueFrom, map, Observable, Subject, throwError} from 'rxjs';
@@ -25,7 +25,6 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-checkout',
-  standalone: true,
   imports: [
     AsyncPipe,
     CommonModule,
@@ -61,24 +60,24 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
 
-  constructor(
-    private fb: FormBuilder,
-    private cartService: CartService,
-    private authenticationService: AuthenticationService,
-    private orderService: OrderService,
-    private paymentService: PaymentService,
-    private router: Router,
-    private cdr: ChangeDetectorRef
-  ) {
-    this.checkoutForm = this.fb.group({
-      userInfo: this.fb.group({
+  private readonly _fb: FormBuilder = inject(FormBuilder);
+  private readonly _cartService: CartService = inject(CartService);
+  private readonly _authenticationService: AuthenticationService = inject(AuthenticationService);
+  private readonly _orderService: OrderService = inject(OrderService);
+  private readonly _paymentService: PaymentService = inject(PaymentService);
+  private readonly _router: Router = inject(Router);
+  private readonly _cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
+
+  constructor() {
+    this.checkoutForm = this._fb.group({
+      userInfo: this._fb.group({
         firstname: ['', Validators.required],
         lastname: ['', Validators.required],
         cpf: ['', [Validators.required, CustomCpfValidators.validCpf()]],
         email: ['', [Validators.required, Validators.email]],
         phone: ['', Validators.pattern('[()0-9 -]*')],
       }),
-      shippingInfo: this.fb.group({
+      shippingInfo: this._fb.group({
         country: ['Brazil', Validators.required],
         state: ['', Validators.required],
         city: ['', Validators.required],
@@ -87,7 +86,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         street: ['', Validators.required],
         complement: [''],
       }),
-      billingInfo: this.fb.group({
+      billingInfo: this._fb.group({
         country: ['Brazil'],
         state: [''],
         city: [''],
@@ -96,7 +95,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         street: [''],
         complement: [''],
       }),
-      paymentInfo: this.fb.group({
+      paymentInfo: this._fb.group({
         paymentMethod: ['', Validators.required],
         cardNumber: [''],
         expirationDate: [''],
@@ -104,11 +103,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       }),
     });
 
-    this.cartItems$ = this.cartService.getCartItems();
-    this.cartTotal$ = this.cartService.getCartTotal();
-    this.isLoggedIn$ = this.authenticationService.isLoggedIn$;
-    this.currentUser$ = this.authenticationService.currentUser$;
-    this.isLoading$ = this.orderService.orderProcessing$;
+    this.cartItems$ = this._cartService.getCartItems();
+    this.cartTotal$ = this._cartService.getCartTotal();
+    this.isLoggedIn$ = this._authenticationService.isLoggedIn$;
+    this.currentUser$ = this._authenticationService.currentUser$;
+    this.isLoading$ = this._orderService.orderProcessing$;
   }
 
   nextStep() {
@@ -149,7 +148,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.authenticationService.fetchCurrentUser()
+    this._authenticationService.fetchCurrentUser()
       .pipe(takeUntil(this.destroy$))
       .subscribe();
 
@@ -200,7 +199,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   onSameShippingChange(isSame: boolean): void {
     this.sameShippingAsBilling = isSame;
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
 
   updatePaymentValidators(): void {
@@ -227,11 +226,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     return this.isLoggedIn$.pipe(
       switchMap(isLoggedIn => {
         if (!isLoggedIn) {
-          this.setErrorMessage('Please sign in or register before checking out.');
-          return throwError(() => new Error('Guest checkout requires an authenticated account.'));
+          this.setErrorMessage($localize`Please sign in or register before checking out.`);
+          return throwError(() => new Error($localize`Guest checkout requires an authenticated account.`));
         } else {
           return this.currentUser$.pipe(map(user => {
-            if (!user) throw new Error('No logged-in user found.');
+            if (!user) throw new Error($localize`No logged-in user found.`);
             return user;
           }));
         }
@@ -243,7 +242,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.clearErrorMessage();
     try {
       if (!user || !user.externalId) {
-        this.setErrorMessage('Could not retrieve customer ID for payment. Please try again.');
+        this.setErrorMessage($localize`Could not retrieve customer ID for payment. Please try again.`);
         return;
       }
 
@@ -257,11 +256,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       }
 
       if (!this.currentOrder) {
-        this.setInfoMessage('Creating your order...');
-        const order = await firstValueFrom(this.orderService.createOrder(orderRequest, this.orderIdempotencyKey));
+        this.setInfoMessage($localize`Creating your order...`);
+        const order = await firstValueFrom(this._orderService.createOrder(orderRequest, this.orderIdempotencyKey));
         this.clearInfoMessage();
         if (!order?.id || order.totalAmount == null) {
-          this.setErrorMessage('Could not create your order. Please try again.');
+          this.setErrorMessage($localize`Could not create your order. Please try again.`);
           return;
         }
         this.currentOrder = order;
@@ -269,7 +268,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
       const order = this.currentOrder;
       if (!order?.id || order.totalAmount == null) {
-        this.setErrorMessage('Could not retrieve your order. Please try again.');
+        this.setErrorMessage($localize`Could not retrieve your order. Please try again.`);
         return;
       }
 
@@ -282,16 +281,16 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       };
 
       const paymentResponse = await firstValueFrom(
-        this.paymentService.createPixPayment(pixPaymentData, this.paymentIdempotencyKey)
+        this._paymentService.createPixPayment(pixPaymentData, this.paymentIdempotencyKey)
       );
 
       const paymentId: string | undefined = paymentResponse?.paymentId;
       if (!paymentId) {
-        this.setErrorMessage('Could not process PIX payment. Please try again.');
+        this.setErrorMessage($localize`Could not process PIX payment. Please try again.`);
         return;
       }
 
-      this.router.navigate(['/pix-payment', paymentId]);
+      this._router.navigate(['/pix-payment', paymentId]);
       this.currentOrder = null;
       this.checkoutFingerprint = null;
       this.orderIdempotencyKey = crypto.randomUUID();
@@ -299,15 +298,15 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
     } catch (error) {
       reportError('payment', error);
-      this.setErrorMessage('Could not process PIX payment. Please try again.');
+      this.setErrorMessage($localize`Could not process PIX payment. Please try again.`);
     }
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
 
   private buildOrderRequest(): OrderDto {
     const userInfo = this.checkoutForm.get('userInfo')?.getRawValue();
     const shippingInfo = this.checkoutForm.get('shippingInfo')?.getRawValue();
-    const items = this.cartService.getCartItemsSnapshot().map(item => {
+    const items = this._cartService.getCartItemsSnapshot().map(item => {
       if (!item.product.id) {
         throw new Error('A cart item is missing its product identifier.');
       }
@@ -315,7 +314,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     });
 
     if (items.length === 0) {
-      throw new Error('Cannot create an order from an empty cart.');
+      throw new Error($localize`Cannot create an order from an empty cart.`);
     }
 
     return {
@@ -339,7 +338,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.clearErrorMessage();
     if (this.checkoutForm.invalid) {
       this.checkoutForm.markAllAsTouched();
-      this.setErrorMessage('Please correct the errors in the form.');
+      this.setErrorMessage($localize`Please correct the errors in the form.`);
       return;
     }
     if (this.isSubmitting) {
@@ -367,47 +366,47 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       }
 
       if (paymentMethod === PaymentMethod.CREDIT_CARD || paymentMethod === PaymentMethod.DEBIT_CARD) {
-        this.setInfoMessage('Processing card payment...');
-        this.setErrorMessage('Card payment is not yet implemented.');
+        this.setInfoMessage($localize`Processing card payment...`);
+        this.setErrorMessage($localize`Card payment is not yet implemented.`);
         this.clearInfoMessage();
         return;
       }
 
-      this.setErrorMessage('Invalid payment method selected.');
+      this.setErrorMessage($localize`Invalid payment method selected.`);
 
     } catch (error) {
       reportError('checkout', error);
       if (!this.errorMessage) {
-        this.setErrorMessage('An unexpected error occurred during checkout.');
+        this.setErrorMessage($localize`An unexpected error occurred during checkout.`);
       }
     } finally {
       this.isSubmitting = false;
     }
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
 
   private setInfoMessage(message: string): void {
     this.infoMessage = message;
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
   private clearInfoMessage(): void {
     this.infoMessage = '';
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
 
   private setErrorMessage(message: string): void {
     this.errorMessage = message;
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
 
   dismissError(): void {
     this.errorMessage = '';
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
 
   private clearErrorMessage(): void {
     this.errorMessage = '';
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
 
   ngOnDestroy(): void {

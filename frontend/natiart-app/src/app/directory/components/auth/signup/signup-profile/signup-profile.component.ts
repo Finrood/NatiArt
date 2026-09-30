@@ -1,4 +1,4 @@
-import {Component, EventEmitter, Input, Output} from '@angular/core';
+import {Component, EventEmitter, Input, Output, inject} from '@angular/core';
 import {FormGroup, ReactiveFormsModule} from "@angular/forms";
 import {
   NatiartFormFieldComponent
@@ -17,7 +17,6 @@ import {SignupService} from "../../../../service/signup.service";
 
 @Component({
   selector: 'app-signup-profile',
-  standalone: true,
   imports: [
     NatiartFormFieldComponent,
     ReactiveFormsModule,
@@ -39,7 +38,9 @@ export class SignupProfileComponent {
 
   isLoadingAddress = false;
 
-  constructor(private signupService: SignupService) {
+  private readonly _signupService: SignupService = inject(SignupService);
+
+  constructor() {
   }
 
   goBack() {
@@ -64,7 +65,7 @@ export class SignupProfileComponent {
     }
 
     this.isLoadingAddress = true;
-    this.signupService.getAddressFromZipCode(zipCode)
+    this._signupService.getAddressFromZipCode(zipCode)
       .pipe(finalize(() => this.isLoadingAddress = false))
       .subscribe({
         next: (data: ViaCEPResponse) => {
@@ -77,7 +78,7 @@ export class SignupProfileComponent {
           });
         },
         error: () => {
-          this.setErrorMessage('Error fetching address. Please enter manually.');
+          this.setErrorMessage($localize`Error fetching address. Please enter manually.`);
         }
       });
   }

@@ -18,7 +18,6 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-product-detail',
-  standalone: true, // Add standalone: true if not already
   imports: [
     AsyncPipe,
     FormsModule,
@@ -98,14 +97,14 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       switchMap((params: ParamMap) => {
         const productId: string | null = params.get('id');
         if (!productId) {
-          throw new Error('Missing product id');
+          throw new Error($localize`Missing product id`);
         }
         return this._productService.getProduct(productId);
       }),
       catchError((error: unknown) => {
         reportError('product-loading', error);
         this.product$.next(null);
-        this.loadError = 'Could not load this product. Please try again.';
+        this.loadError = $localize`Could not load this product. Please try again.`;
         this.isLoading = false;
         return of(null);
       })
@@ -132,19 +131,19 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   }
 
   private setStorefrontMetadata(): void {
-    this._title.setTitle('Porcelain Elegance | Handmade Art');
+    this._title.setTitle($localize`NatiArt | Handmade Art`);
     this._meta.updateTag({
       name: 'description',
-      content: 'Browse products from Porcelain Elegance.'
+      content: $localize`Browse products from NatiArt.`
     });
-    this._meta.updateTag({property: 'og:title', content: 'Porcelain Elegance | Handmade Art'});
-    this._meta.updateTag({property: 'og:description', content: 'Browse products from Porcelain Elegance.'});
+    this._meta.updateTag({property: 'og:title', content: $localize`NatiArt | Handmade Art`});
+    this._meta.updateTag({property: 'og:description', content: $localize`Browse products from NatiArt.`});
     this._meta.updateTag({property: 'og:type', content: 'website'});
   }
 
   private setProductMetadata(product: Product): void {
-    const title = `${product.label} | Porcelain Elegance`;
-    const description = (product.description || `${product.label} | Porcelain Elegance`)
+    const title = `${product.label} | NatiArt`;
+    const description = (product.description || `${product.label} | NatiArt`)
       .replace(/\s+/g, ' ')
       .trim()
       .slice(0, 160);

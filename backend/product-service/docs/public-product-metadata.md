@@ -27,18 +27,36 @@ through actual nginx. It checks distinct public products, markup/Unicode escapin
 inactive/missing product privacy, the internal route and upstream failure without
 JavaScript. This synthetic fixture makes no provider requests or deployments.
 
-## Owner decision still required
+## Supported languages and shop identity
 
-CA64 is not ready for merge. The current Porcelain Elegance/English copy is the
-pre-existing candidate, not an owner-approved shop identity or language policy.
-Production requires NATIART_STOREFRONT_NAME; confirm it with the owner and update
-all root/client/server titles and visible shop labels together. English is the
-only implemented language. If the owner chooses Portuguese, translate labels,
-configure the locale/language and reconcile BRL/date/number and CEP/CPF guidance
-before claiming that acceptance criterion. Changing only an HTML lang tag is
-insufficient. Preserve the CA34 keyboard/accessibility evidence and recheck the
-chosen copy at representative narrow/wide layouts. No owner approval, deployment,
-external search indexing or actual social-provider preview is claimed.
+The owner selected **NatiArt**, **English (`en`)** and **Brazilian Portuguese
+(`pt-BR`)** on 2026-09-30. Production sets `NATIART_STOREFRONT_NAME=NatiArt`.
+Angular builds separate translated bundles at `/en/` and `/pt-BR/`, including
+form labels/errors, cart/checkout/PIX messages and accessible names. Its locale
+provider controls BRL prices and date formatting. Angular uses its Brazilian
+Portuguese base `pt` locale data for the `pt-BR` locale identifier. CPF, CEP, BRL
+and PIX remain Brazilian contracts in either language; language does not change
+the market, currency, order payload or payment state.
 
-Integrate with CA36 public detail handling and CA49 edge routing/retention before
-release; preserve the scalar query and metadata subrequest alongside their fixes.
+Native language links retain the route, query and fragment. Changing language
+loads the other bundle. An edited Angular form requires confirmation before a
+reload; declining preserves the page and its entries. Cart and auth storage keep
+their existing keys. No form data or token is copied to a translation service.
+Legacy unprefixed bookmarks redirect to English and preserve their query.
+
+Product-link metadata uses the language in the URL, independently of browser
+cookies or authentication. Unsupported metadata languages return 400. Initial
+shop fallback titles/descriptions and client metadata use the selected language;
+product titles/descriptions remain the actual catalog text entered by the seller.
+They are not automatically translated or replaced with invented claims. Separate
+seller-authored product translations remain a future content feature.
+
+Use `npm run extract-i18n` after changing messages, update
+`src/locale/messages.pt-BR.json`, and run an explicit production build. Missing
+translations fail that build. `postbuild` updates each localized HTML shell and
+copies the shared root runtime configuration. Keep locale-aware routing alongside
+CA49's hashed asset retention, no-store HTML and API routing when merging.
+
+Preserve the CA34 accessibility changes and verify the translated purchase
+journey after integration. No deployment, external search indexing, actual
+social-provider preview or dedicated screen-reader audit is claimed.

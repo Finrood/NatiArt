@@ -8,7 +8,6 @@ import {PaymentMethod} from "../../../../models/paymentMethod.model";
 
 @Component({
   selector: 'app-payment-info-step',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     NatiartFormFieldComponent,
@@ -21,8 +20,8 @@ export class PaymentInfoStepComponent {
   @Input({ required: true }) checkoutForm!: FormGroup;
 
   paymentMethods = [
-    {value: PaymentMethod.CREDIT_CARD, label: 'Credit Card'},
-    {value: PaymentMethod.DEBIT_CARD, label: 'Debit Card'},
+    {value: PaymentMethod.CREDIT_CARD, label: $localize`Credit Card`},
+    {value: PaymentMethod.DEBIT_CARD, label: $localize`Debit Card`},
     {value: PaymentMethod.PIX, label: 'PIX'}
   ];
 

@@ -1,8 +1,7 @@
 <div class="max-w-md mx-auto my-10 p-8 bg-white rounded-2xl shadow-lg text-center">
 
   @if (copyFailed) {
-    <p class="mb-4 text-sm text-red-600" role="alert">
-      Could not copy the PIX code. Please select and copy it manually.
+    <p class="mb-4 text-sm text-red-600" role="alert" i18n>Could not copy the PIX code. Please select and copy it manually.
     </p>
   }
 
@@ -15,21 +14,20 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
       </div>
-      <h1 class="text-2xl font-bold text-gray-800 mb-2">Payment Successful!</h1>
-      <p class="text-gray-600 mb-6">Thank you for your purchase. Your order is confirmed.</p>
-      <app-button (click)="closePayment()" [block]="true" color="primary" size="lg">
-        Continue Shopping
+      <h1 class="text-2xl font-bold text-gray-800 mb-2" i18n>Payment Successful!</h1>
+      <p class="text-gray-600 mb-6" i18n>Thank you for your purchase. Your order is confirmed.</p>
+      <app-button (click)="closePayment()" [block]="true" color="primary" size="lg" i18n>Continue Shopping
       </app-button>
     </div>
   } @else {
     @if (qrCodeData) {
       <div>
-        <h1 class="text-2xl font-bold text-gray-800 mb-2">Scan to Pay with PIX</h1>
-        <p class="text-gray-600 mb-6">Your order is reserved. Complete the payment before it expires.</p>
+        <h1 class="text-2xl font-bold text-gray-800 mb-2" i18n>Scan to Pay with PIX</h1>
+        <p class="text-gray-600 mb-6" i18n>Your order is reserved. Complete the payment before it expires.</p>
         <div class="mb-6">
-          <img [src]="qrCodeData.encodedImage" alt="PIX QR Code" class="w-64 h-64 mx-auto rounded-lg border border-gray-200 p-2"/>
+          <img [src]="qrCodeData.encodedImage" alt="PIX QR Code" class="w-64 h-64 mx-auto rounded-lg border border-gray-200 p-2" i18n-alt/>
         </div>
-        <p class="text-sm text-gray-500 mb-4">Or use the code below:</p>
+        <p class="text-sm text-gray-500 mb-4" i18n>Or use the code below:</p>
         <div class="relative mb-6">
           <input type="text" [value]="qrCodeData.payload" readonly #pixCodeInput
             class="w-full bg-gray-100 border border-gray-300 text-gray-700 text-sm rounded-lg p-3 pr-12 truncate">
@@ -43,19 +41,19 @@
           </app-button>
         </div>
         <div class="text-sm text-gray-600">
-          <p>Payment Status: <strong class="font-semibold" [ngClass]="{'text-yellow-500': paymentStatus === 'PENDING', 'text-green-500': paymentStatus === 'PAID'}">{{ paymentStatus }}</strong></p>
-          <p>Expires in: <strong class="font-semibold">{{ qrCodeData.expirationDate | date: 'mediumTime' }}</strong></p>
+          <p><ng-container i18n>Payment Status: </ng-container><strong class="font-semibold" [ngClass]="{'text-yellow-500': paymentStatus === 'PENDING', 'text-green-500': paymentStatus === 'PAID'}" i18n>{paymentStatus, select, PENDING {Pending} COMPLETED {Confirmed} ERROR {Could not confirm payment} other {Awaiting confirmation}}</strong></p>
+          <p><ng-container i18n>Expires in: </ng-container><strong class="font-semibold">{{ qrCodeData.expirationDate | date: 'mediumTime' }}</strong></p>
         </div>
       </div>
     } @else if (paymentStatus === 'ERROR') {
       <div class="flex items-center justify-center">
-        <p class="ml-4 text-gray-600" role="alert">Could not load the payment details. Please go back and try again.</p>
+        <p class="ml-4 text-gray-600" role="alert" i18n>Could not load the payment details. Please go back and try again.</p>
       </div>
     } @else {
       <div class="flex items-center justify-center">
         <!-- Simple spinner -->
         <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
-        <p class="ml-4 text-gray-600">Loading payment details...</p>
+        <p class="ml-4 text-gray-600" i18n>Loading payment details...</p>
       </div>
     }
   }
