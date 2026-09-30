@@ -66,8 +66,12 @@ Note: the timer needs a lingering user session to fire while logged out
    like code (max 2 merges/cycle shared).
 3. The agent merges ONLY on fully green CI + mergeable + `VERDICT: APPROVE`
    (`gh pr checks --watch`), with `gh pr merge --merge --delete-branch`.
-   The script itself auto-merges green patch/minor dependabot PRs older than
-   48h (no verdict needed; majors/groups/red stay for agent/human).
+   The script itself auto-merges verified Dependabot PRs only when the actual
+   manifest diff is one supported patch/minor update, all required checks are
+   green, and the PR has had no update for at least 48h. Using the PR's latest
+   update time conservatively restarts the soak after a newly pushed head or a
+   later comment. Ambiguous diffs, majors, groups, and red checks stay open
+   for review.
    Never force-push, never push to `master`, never touch dependabot branches.
 4. Strategic items (shared rate-limit store, cookie-auth migration, schema
    tooling) require a human decision — the prompt forbids the agent from taking
