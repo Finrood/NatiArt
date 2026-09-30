@@ -50,7 +50,7 @@ export class PasswordRequirementsComponent {
         text: 'Contains number',
         valid: results.hasNumber
       },
-      {text: `Maximum ${this.requirements.maxUtf8Bytes} UTF-8 bytes`, valid: results.hasMaxBytes}
+      {text: 'Within the supported password length', valid: results.hasMaxBytes}
     ];
   }
 }

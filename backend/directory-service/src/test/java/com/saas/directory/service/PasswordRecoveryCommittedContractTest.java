@@ -68,6 +68,9 @@ class PasswordRecoveryCommittedContractTest {
     private RoleRepository roles;
 
     @Autowired
+    private ExternalUserRepository externalUsers;
+
+    @Autowired
     private TokenRepository tokens;
 
     @Autowired
@@ -109,7 +112,11 @@ class PasswordRecoveryCommittedContractTest {
     private User seed() {
         return transaction.execute(status -> {
             final Role role = roles.findAll().stream().findFirst().orElseGet(() -> roles.save(new Role(RoleName.USER)));
-            return users.save(new User("fixture-" + UUID.randomUUID() + "@example.test", "OldPass123").setRole(role));
+            final User saved =
+                    users.save(new User("fixture-" + UUID.randomUUID() + "@example.test", "OldPass123").setRole(role));
+            externalUsers.save(new ExternalUser(
+                    saved, com.saas.directory.model.helper.PaymentProcessor.ASAAS, "customer-" + saved.getId()));
+            return saved;
         });
     }
 
@@ -211,7 +218,10 @@ class PasswordRecoveryCommittedContractTest {
                         .filter(token -> token.getUser().getId().equals(user.getId()))
                         .count());
         final UserAuthDto after = authentication.login(new CredentialsDto(user.getUsername(), "NewPass123"));
-        assertNotNull(provider.authenticateWithToken(after.getAccessToken(), TokenType.AUTH_ACCESS));
+        final var resumed = provider.authenticateWithToken(after.getAccessToken(), TokenType.AUTH_ACCESS);
+        final var identity = (com.saas.directory.dto.UserDto) resumed.getPrincipal();
+        assertEquals(user.getId(), identity.getId());
+        assertEquals("customer-" + user.getId(), identity.getExternalId());
         assertTrue(encoder.matches(
                 "NewPass123", users.findById(user.getId()).orElseThrow().getPasswordHash()));
     }
