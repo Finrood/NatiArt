@@ -44,10 +44,13 @@ jobs:
         working-directory: frontend/natiart-app
         run: |
           npm ci
-          npm run build
+          npm run build -- --configuration production
 
       - name: Unit tests (Karma, ChromeHeadless)
         working-directory: frontend/natiart-app
         env:
           CHROME_BIN: /usr/bin/google-chrome
         run: npm test -- --watch=false --browsers=ChromeHeadless
+
+      - name: Verify frontend container release replacement
+        run: python3 frontend/tests/container_rollout_test.py

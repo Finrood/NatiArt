@@ -1,0 +1,167 @@
+#!/usr/bin/env python3
+"""Exercise the shipped nginx template/entrypoint with two immutable releases."""
+import argparse
+import json
+import pathlib
+import shutil
+import subprocess
+import tempfile
+import time
+import urllib.error
+import urllib.request
+import uuid
+
+FRONTEND = pathlib.Path(__file__).resolve().parents[1]
+
+
+def docker(*args):
+    return subprocess.check_output(['docker', *args], text=True, stderr=subprocess.STDOUT).strip()
+
+
+def request(port, path, data=None, headers=None):
+    req = urllib.request.Request(f'http://127.0.0.1:{port}{path}', data=data, headers=headers or {})
+    try:
+        response = urllib.request.urlopen(req, timeout=5)
+    except urllib.error.HTTPError as error:
+        response = error
+    with response:
+        return response.status, response.headers, response.read().decode()
+
+
+def ready(port):
+    for _ in range(100):
+        try:
+            if request(port, '/healthz')[0] == 200:
+                return
+        except (OSError, urllib.error.URLError):
+            pass
+        time.sleep(0.1)
+    raise AssertionError('Container did not become ready')
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--interactive', action='store_true', help='Pause for an old-tab browser probe')
+    args = parser.parse_args()
+    prefix = 'natiart-ca49-test-' + uuid.uuid4().hex[:10]
+    network, volume = prefix + '-network', prefix + '-assets'
+    containers, images = [], []
+    docker('network', 'create', network)
+    docker('volume', 'create', volume)
+    try:
+        with tempfile.TemporaryDirectory(prefix=prefix) as folder:
+            root = pathlib.Path(folder)
+            upstream = root / 'upstream.py'
+            upstream.write_text('''from http.server import BaseHTTPRequestHandler, HTTPServer
+import json
+class Handler(BaseHTTPRequestHandler):
+ def do_GET(self): self.reply()
+ def do_POST(self): self.reply()
+ def reply(self):
+  body=self.rfile.read(int(self.headers.get('Content-Length',0))).decode()
+  self.send_response(201 if self.command == 'POST' else 200)
+  self.send_header('Content-Type','application/json')
+  self.send_header('Set-Cookie','refresh=test-only; HttpOnly; Path=/server/directory')
+  self.end_headers()
+  self.wfile.write(json.dumps({'path':self.path,'method':self.command,'body':body,'authorization':self.headers.get('Authorization'),'cookie':self.headers.get('Cookie'),'forwardedHost':self.headers.get('X-Forwarded-Host')}).encode())
+HTTPServer(('0.0.0.0',8080),Handler).serve_forever()
+''')
+            backend = prefix + '-backend'
+            containers.append(backend)
+            docker('run', '-d', '--name', backend, '--network', network, '--network-alias', 'backend', '-v', f'{upstream}:/upstream.py:ro', 'python:3.12-slim', 'python', '/upstream.py')
+            for release, hash_value in [('A', 'AAAAAAAA'), ('B', 'BBBBBBBB')]:
+                context = root / release
+                context.mkdir()
+                (context / 'html').mkdir()
+                shutil.copy(FRONTEND / 'nginx.conf', context / 'nginx.conf')
+                shutil.copy(FRONTEND / 'docker/25-publish-assets.sh', context / 'publish.sh')
+                (context / 'html/index.html').write_text(f'''<!doctype html><html><body><h1>Release {release}</h1><button id="lazy">Load older tab module</button><output id="result"></output><script src="/runtime-config.js"></script><script type="module">document.querySelector('#lazy').onclick=async()=>{{try{{const value=await import('/chunk-{hash_value}.js');document.querySelector('#result').textContent=value.release+' / '+window.__NATIART_CONFIG__.release;}}catch(error){{document.querySelector('#result').textContent='FAILED';}}}};</script></body></html>''')
+                (context / f'html/chunk-{hash_value}.js').write_text(f'export const release = "{release}";')
+                (context / 'html/runtime-config.js').write_text('window.__NATIART_CONFIG__ = {release:"image-default"};')
+                (context / 'Dockerfile').write_text('''FROM nginx:1.27-alpine
+ENV NATIART_PUBLIC_SCHEME=http
+COPY nginx.conf /etc/nginx/templates/default.conf.template
+COPY --chmod=755 publish.sh /docker-entrypoint.d/25-publish-assets.sh
+COPY html /usr/share/nginx/html
+''')
+                image = prefix + ':' + release.lower()
+                images.append(image)
+                docker('build', '-q', '-t', image, str(context))
+                (root / f'config-{release}.js').write_text(f'window.__NATIART_CONFIG__ = {{release:"{release}"}};')
+
+            def launch(release, port=None):
+                name = prefix + '-' + release.lower()
+                containers.append(name)
+                docker('run', '-d', '--name', name, '--network', network, '-p', f'127.0.0.1:{port or ""}:80', '-v', f'{volume}:/var/lib/natiart-assets', '-v', f'{root / ("config-" + release + ".js")}:/run/natiart/runtime-config.js:ro', '-e', 'NATIART_RUNTIME_CONFIG_FILE=/run/natiart/runtime-config.js', '-e', 'DIRECTORY_UPSTREAM=http://backend:8080', '-e', 'PRODUCT_UPSTREAM=http://backend:8080', prefix + ':' + release.lower())
+                actual_port = int(docker('port', name, '80/tcp').rsplit(':', 1)[1])
+                ready(actual_port)
+                return actual_port
+
+            port = launch('A')
+            assert 'Release A' in request(port, '/products/deep/link')[2]
+            assert request(port, '/chunk-AAAAAAAA.js')[0] == 200
+            assert 'immutable' in request(port, '/chunk-AAAAAAAA.js')[1]['Cache-Control']
+            assert 'no-store' in request(port, '/runtime-config.js')[1]['Cache-Control']
+            if args.interactive:
+                input(f'Release A ready at http://127.0.0.1:{port}/products/deep/link . Open the old tab, then press Enter to replace A: ')
+            docker('rm', '-f', prefix + '-a')
+            launch('B', port)
+            for path in ['/', '/index.html', '/products/deep/link', '/checkout']:
+                status, headers, body = request(port, path)
+                assert status == 200 and 'Release B' in body, path
+                assert headers['Cache-Control'] == 'no-store', path
+            assert 'release:"B"' in request(port, '/runtime-config.js')[2]
+            assert request(port, '/runtime-config.js')[1]['Cache-Control'] == 'no-store'
+            # A had never requested its lazy chunk before the switch. B still serves it.
+            assert '"A"' in request(port, '/chunk-AAAAAAAA.js')[2]
+            assert '"B"' in request(port, '/chunk-BBBBBBBB.js')[2]
+            assert request(port, '/chunk-MISSING0.js')[0] == 404
+            assert request(port, '/missing.js')[0] == 404
+            assert request(port, '/server/unknown')[0] == 404
+            for service in ['directory', 'product']:
+                status, headers, body = request(port, f'/server/{service}/echo?next=%2Fcart', data=b'{"test":true}', headers={'Content-Type': 'application/json', 'Authorization': 'Bearer test-only', 'Cookie': 'refresh=test-only'})
+                response = json.loads(body)
+                assert status == 201 and response['path'] == '/echo?next=%2Fcart'
+                assert response['body'] == '{"test":true}' and response['method'] == 'POST'
+                assert response['authorization'] == 'Bearer test-only' and response['cookie'] == 'refresh=test-only'
+                assert 'HttpOnly' in headers['Set-Cookie'] and response['forwardedHost'] == '127.0.0.1'
+            # Rollback uses its image shell/config while retaining B's chunks too.
+            rollback = prefix + '-rollback'
+            containers.append(rollback)
+            docker('run', '-d', '--name', rollback, '--network', network, '-p', '127.0.0.1::80', '-v', f'{volume}:/var/lib/natiart-assets', '-e', 'DIRECTORY_UPSTREAM=http://backend:8080', '-e', 'PRODUCT_UPSTREAM=http://backend:8080', prefix + ':a')
+            rollback_port = int(docker('port', rollback, '80/tcp').rsplit(':', 1)[1])
+            ready(rollback_port)
+            assert 'Release A' in request(rollback_port, '/products/rollback')[2]
+            assert request(rollback_port, '/chunk-BBBBBBBB.js')[0] == 200
+            assert request(rollback_port, '/runtime-config.js')[1]['Cache-Control'] == 'no-store'
+            if args.interactive:
+                input('Release B is ready. Click the old-tab button and check A / A, then open a new tab and check B / B. Press Enter to clean up: ')
+            for suffix, extra_env, expected in [
+                ('missing-upstream', [], 'DIRECTORY_UPSTREAM'),
+                ('invalid-upstream', ['-e', 'DIRECTORY_UPSTREAM=http://backend:8080/path', '-e', 'PRODUCT_UPSTREAM=http://backend:8080'], 'without a path'),
+                ('missing-config', ['-e', 'DIRECTORY_UPSTREAM=http://backend:8080', '-e', 'PRODUCT_UPSTREAM=http://backend:8080', '-e', 'NATIART_RUNTIME_CONFIG_FILE=/missing.js'], None),
+            ]:
+                name = prefix + '-' + suffix
+                containers.append(name)
+                docker('run', '-d', '--name', name, '--network', network, *extra_env, prefix + ':a')
+                assert docker('wait', name) != '0', suffix
+                if expected:
+                    assert expected in docker('logs', name), suffix
+            docker('run', '--rm', '--entrypoint', 'sh', '-v', f'{volume}:/var/lib/natiart-assets', prefix + ':a', '-c', 'printf collision > /var/lib/natiart-assets/chunk-AAAAAAAA.js')
+            name = prefix + '-collision'
+            containers.append(name)
+            docker('run', '-d', '--name', name, '--network', network, '-v', f'{volume}:/var/lib/natiart-assets', '-e', 'DIRECTORY_UPSTREAM=http://backend:8080', '-e', 'PRODUCT_UPSTREAM=http://backend:8080', prefix + ':a')
+            assert docker('wait', name) != '0'
+            assert 'Immutable asset collision' in docker('logs', name)
+            print('PASS: A-to-B replacement, deep links, runtime config/cache, retained lazy assets, both API proxies, rollback and startup failures')
+    finally:
+        for name in reversed(containers):
+            subprocess.run(['docker', 'rm', '-f', name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        for image in images:
+            subprocess.run(['docker', 'image', 'rm', image], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        docker('volume', 'rm', volume)
+        docker('network', 'rm', network)
+
+
+if __name__ == '__main__':
+    main()
