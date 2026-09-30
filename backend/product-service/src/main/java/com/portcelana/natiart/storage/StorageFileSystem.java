@@ -2,6 +2,7 @@ package com.portcelana.natiart.storage;
 
 import java.io.*;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -25,13 +26,20 @@ import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 @Component
 public class StorageFileSystem implements Storage {
     private final List<Path> allowedRoots;
+    private final List<Path> legacyRoots;
 
     @Autowired
-    public StorageFileSystem(@Value("${nati.storage.filesystem.allowed-roots:}") List<String> allowedRoots) {
-        this(allowedRoots, Path.of(System.getProperty("user.dir")));
+    public StorageFileSystem(
+            @Value("${nati.storage.filesystem.allowed-roots:}") List<String> allowedRoots,
+            @Value("${nati.storage.filesystem.legacy-roots:}") List<String> legacyRoots) {
+        this(allowedRoots, legacyRoots, Path.of(System.getProperty("user.dir")));
     }
 
     StorageFileSystem(List<String> allowedRoots, Path workingDirectory) {
+        this(allowedRoots, List.of(), workingDirectory);
+    }
+
+    private StorageFileSystem(List<String> allowedRoots, List<String> legacyRoots, Path workingDirectory) {
         this.allowedRoots = (allowedRoots == null || allowedRoots.isEmpty()
                         ? defaultAllowedRoots(workingDirectory)
                         : allowedRoots)
@@ -40,6 +48,18 @@ public class StorageFileSystem implements Storage {
                         .map(Path::toAbsolutePath)
                         .map(Path::normalize)
                         .toList();
+        this.legacyRoots = legacyRoots == null
+                ? List.of()
+                : legacyRoots.stream()
+                        .filter(root -> root != null && !root.isBlank())
+                        .map(Path::of)
+                        .map(Path::toAbsolutePath)
+                        .map(Path::normalize)
+                        .toList();
+    }
+
+    public StorageFileSystem(List<String> allowedRoots) {
+        this(allowedRoots, List.of());
     }
 
     private static List<String> defaultAllowedRoots(Path workingDirectory) {
@@ -73,6 +93,14 @@ public class StorageFileSystem implements Storage {
         if (!support(path)) {
             throw new IllegalArgumentException("Unsupported URI scheme for file storage: " + path);
         }
+        if (path.isOpaque()) {
+            try {
+                return resolvePrimaryFile(validRelativeKey(path.getSchemeSpecificPart()))
+                        .toFile();
+            } catch (IllegalArgumentException e) {
+                throw new ResourceNotFoundException("Invalid storage key");
+            }
+        }
         final File candidate = new File(path);
         final Path normalizedCandidate;
         try {
@@ -85,7 +113,41 @@ public class StorageFileSystem implements Storage {
                 return normalizedCandidate.toFile();
             }
         }
+        for (Path legacyRoot : legacyRoots) {
+            if (normalizedCandidate.startsWith(legacyRoot)) {
+                final Path relative = legacyRoot.relativize(normalizedCandidate);
+                return resolvePrimaryFile(relative).toFile();
+            }
+        }
         throw new ResourceNotFoundException("Requested path is outside of the allowed storage roots: " + path);
+    }
+
+    private Path resolvePrimaryFile(Path relative) {
+        try {
+            final Path file = allowedRoots
+                    .getFirst()
+                    .resolve(relative)
+                    .toFile()
+                    .getCanonicalFile()
+                    .toPath();
+            if (!file.startsWith(allowedRoots.getFirst())) {
+                throw new IllegalArgumentException("Storage key escapes the configured root");
+            }
+            return file;
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Unable to resolve storage key", e);
+        }
+    }
+
+    private Path validRelativeKey(String key) {
+        if (key == null || key.isBlank() || key.contains("..") || key.contains("\\")) {
+            throw new IllegalArgumentException("Invalid storage key");
+        }
+        final Path relative = Path.of(key);
+        if (relative.isAbsolute() || !relative.normalize().equals(relative)) {
+            throw new IllegalArgumentException("Invalid storage key");
+        }
+        return relative;
     }
 
     @Override
@@ -106,7 +168,13 @@ public class StorageFileSystem implements Storage {
             try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
                 IOUtils.copy(inputFile.inputStream(), fileOutputStream);
             }
-            return file.toURI();
+            final String relative =
+                    allowedRoots.getFirst().relativize(file.toPath()).toString().replace('\\', '/');
+            try {
+                return new URI("file", relative, null);
+            } catch (URISyntaxException e) {
+                throw new IllegalStateException("Unable to encode stored file key", e);
+            }
         } catch (IOException e) {
             throw new IllegalStateException(
                     String.format("An error has occurred while storing file [%s] in [%s]", file.getName(), key));
@@ -122,19 +190,19 @@ public class StorageFileSystem implements Storage {
         if (location == null || location.isBlank() || key == null || key.isBlank()) {
             throw new IllegalArgumentException("Storage write requires a non-blank location and key");
         }
-        if (Path.of(key).isAbsolute() || key.contains("..")) {
-            throw new IllegalArgumentException("Storage write key escapes the allowed storage roots: " + key);
-        }
+        final Path relative = validRelativeKey(key);
         final Path normalizedCandidate;
         try {
-            normalizedCandidate = new File(location, key).getCanonicalFile().toPath();
+            final Path base = Path.of(location).isAbsolute()
+                    ? Path.of(location)
+                    : allowedRoots.getFirst().resolve(location);
+            normalizedCandidate =
+                    base.resolve(relative).toFile().getCanonicalFile().toPath();
         } catch (IOException e) {
             throw new IllegalArgumentException("Unable to resolve storage write path: " + key);
         }
-        for (Path root : allowedRoots) {
-            if (normalizedCandidate.startsWith(root)) {
-                return normalizedCandidate.toFile();
-            }
+        if (normalizedCandidate.startsWith(allowedRoots.getFirst())) {
+            return normalizedCandidate.toFile();
         }
         throw new IllegalArgumentException("Storage write path is outside of the allowed storage roots: " + key);
     }
@@ -146,7 +214,8 @@ public class StorageFileSystem implements Storage {
             try (final ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(tempFile))) {
                 final Set<String> usedEntryNames = new HashSet<>();
                 uriSet.stream().sorted(Comparator.comparing(URI::toString)).forEach((uri) -> {
-                    final String fileName = uniqueZipEntryName(usedEntryNames, Paths.get(uri.getPath()));
+                    final String fileName = uniqueZipEntryName(
+                            usedEntryNames, Paths.get(uri.isOpaque() ? uri.getSchemeSpecificPart() : uri.getPath()));
                     addZipEntry(zip, fileName, resolveAllowedFile(uri));
                 });
             }

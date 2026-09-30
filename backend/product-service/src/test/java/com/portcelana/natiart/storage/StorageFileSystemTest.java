@@ -249,7 +249,8 @@ class StorageFileSystemTest {
 
         final URI uri = storage.uploadFile(root.resolve("p1").toString(), "img.webp", testInput("image-bytes"));
 
-        assertTrue(Path.of(uri).startsWith(root));
+        assertEquals("file:p1/img.webp", uri.toString());
+        assertTrue(Files.exists(root.resolve("p1/img.webp")));
         try (var in = storage.openFile(uri)) {
             assertEquals("image-bytes", new String(in.readAllBytes(), StandardCharsets.UTF_8));
         }
@@ -262,9 +263,80 @@ class StorageFileSystemTest {
 
         final URI uri = storage.uploadFile("default.webp", testInput("default-bytes"));
 
-        assertTrue(Path.of(uri).startsWith(root));
+        assertEquals("file:default.webp", uri.toString());
+        assertTrue(Files.exists(root.resolve("default.webp")));
         try (var in = storage.openFile(uri)) {
             assertEquals("default-bytes", new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        }
+    }
+
+    @Test
+    void uploadedKeySurvivesAdapterReplacementAndNonDefaultRoot() throws IOException {
+        final Path firstRoot = tempDir.resolve("first-volume");
+        final StorageFileSystem firstInstance = storageWithRoots(List.of(firstRoot.toString()));
+        final URI uri = firstInstance.uploadFile("products/product-1/image.webp", testInput("saved-bytes"));
+
+        assertEquals("file:products/product-1/image.webp", uri.toString());
+        try (var in = storageWithRoots(List.of(firstRoot.toString())).openFile(uri)) {
+            assertEquals("saved-bytes", new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        }
+
+        final Path relocatedRoot = tempDir.resolve("non-default-volume");
+        final Path relocatedFile = relocatedRoot.resolve("products/product-1/image.webp");
+        Files.createDirectories(relocatedFile.getParent());
+        Files.copy(firstRoot.resolve("products/product-1/image.webp"), relocatedFile);
+        try (var in = storageWithRoots(List.of(relocatedRoot.toString())).openFile(uri)) {
+            assertEquals("saved-bytes", new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        }
+    }
+
+    @Test
+    void legacyAbsoluteUriResolvesCopiedFileUnderConfiguredRoot() throws IOException {
+        final Path root = tempDir.resolve("new-volume");
+        final Path oldRoot = tempDir.resolve("old-process-directory/product-images");
+        final Path file = root.resolve("product-1/old.webp");
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, "legacy-bytes");
+        final StorageFileSystem storage = new StorageFileSystem(List.of(root.toString()), List.of(oldRoot.toString()));
+
+        try (var in = storage.openFile(oldRoot.resolve("product-1/old.webp").toUri())) {
+            assertEquals("legacy-bytes", new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        }
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> storage.openFile(
+                        tempDir.resolve("unknown/product-1/old.webp").toUri()));
+    }
+
+    @Test
+    void logicalKeyRejectsTraversalAndEscapingSymlink() throws IOException {
+        final Path root = tempDir.resolve("volume");
+        Files.createDirectories(root);
+        final StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+
+        assertThrows(ResourceNotFoundException.class, () -> storage.openFile(URI.create("file:../secret.webp")));
+        assertThrows(
+                ResourceNotFoundException.class, () -> storage.openFile(URI.create("file:products/../secret.webp")));
+        final Path outside = tempDir.resolve("outside.webp");
+        Files.writeString(outside, "secret");
+        try {
+            Files.createSymbolicLink(root.resolve("link.webp"), outside);
+        } catch (IOException | UnsupportedOperationException e) {
+            return;
+        }
+        assertThrows(ResourceNotFoundException.class, () -> storage.openFile(URI.create("file:link.webp")));
+    }
+
+    @Test
+    void downloadFilesAcceptsLogicalKeys() throws IOException {
+        final Path root = tempDir.resolve("volume");
+        final StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+        final URI uri = storage.uploadFile("products/product-1/image.webp", testInput("bytes"));
+
+        try (var in = storage.downloadFiles(Set.of(uri));
+                var zip = new ZipInputStream(in)) {
+            assertEquals("image.webp", zip.getNextEntry().getName());
+            assertEquals("bytes", new String(zip.readAllBytes(), StandardCharsets.UTF_8));
         }
     }
 

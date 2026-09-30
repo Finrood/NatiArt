@@ -36,7 +36,7 @@ import com.portcelana.natiart.storage.StorageService;
 @Service
 public class ProductManagerImpl implements ProductManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductManagerImpl.class);
-    private static final String IMAGE_BASE_PATH = "product-images/";
+    private static final String IMAGE_KEY_PREFIX = "products/";
 
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
@@ -267,9 +267,8 @@ public class ProductManagerImpl implements ProductManager {
 
         List<String> newUris = uploads.parallelStream()
                 .map(inputFile -> {
-                    final String imagePath = IMAGE_BASE_PATH + product.getId() + "/" + UUID.randomUUID();
-                    final URI imageUri = storageService.uploadFile(
-                            imagePath, inputFile, UUID.randomUUID().toString());
+                    final String imageKey = IMAGE_KEY_PREFIX + product.getId() + "/" + UUID.randomUUID();
+                    final URI imageUri = storageService.uploadFile(imageKey, inputFile);
                     return imageUri.toString();
                 })
                 .toList();
