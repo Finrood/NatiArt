@@ -20,9 +20,9 @@ its reviewed public JavaScript file at `/run/natiart/runtime-config.js` and set
 container before nginx starts and fails if the configured file is missing or
 empty. This file must contain only public configuration, never credentials.
 The existing consumer accepts `window.__NATIART_CONFIG__.errorReportingUrl`;
-CA48 changes the reporting transport/configuration contract, so preserve its
-consumer and matching deployment values when integrating. No API origin runtime
-override is assumed here: API routing remains on the storefront origin.
+Keep the reporting consumer and its deployment URL consistent when integrating
+other reporting changes. No API origin runtime override is assumed here: API
+routing remains on the storefront origin.
 
 The shell, including Angular deep links, uses `no-store`. Only content-hashed
 build filenames receive immutable caching. Other static files revalidate;
