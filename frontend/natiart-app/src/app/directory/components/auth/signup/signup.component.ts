@@ -117,7 +117,7 @@ export class SignupComponent implements OnInit {
         cpf: ['', [Validators.required, CustomCpfValidators.validCpf()]],
         phone: ['', [CustomPhoneValidators.validPhone()]],
         country: ['Brazil', Validators.required],
-        state: ['', Validators.required],
+        state: ['', [Validators.required, Validators.pattern(/^(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$/i)]],
         city: ['', Validators.required],
         neighborhood: ['', Validators.required],
         zipCode: ['', [Validators.required, CustomCepValidators.validCep()]],
