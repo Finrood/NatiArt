@@ -35,6 +35,10 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
   styleUrls: ['./product-detail.component.css']
 })
 export class ProductDetailComponent implements OnInit, OnDestroy {
+  imageLabel(index: number): string {
+    return $localize`View product image ${index}:IMAGE_NUMBER:`;
+  }
+
   product$ = new BehaviorSubject<Product | null>(null);
   quantity: number = 1;
   relatedProducts$ = new BehaviorSubject<Product[]>([]);

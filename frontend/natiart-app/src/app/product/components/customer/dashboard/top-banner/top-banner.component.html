@@ -2,7 +2,7 @@
   <!-- Image Slides -->
   @for (image of bannerImages; track image; let i = $index) {
     <div class="absolute inset-0 w-full h-full transition-opacity duration-1000 ease-in-out" [class.opacity-100]="i === currentBannerIndex" [class.opacity-0]="i !== currentBannerIndex">
-      <img [src]="image" [alt]="'Banner Image ' + (i + 1)" class="w-full h-full object-cover">
+      <img [src]="image" alt="Banner Image {{ i + 1 }}" i18n-alt class="w-full h-full object-cover">
       <div class="absolute inset-0 bg-black/30"></div> <!-- Dark overlay for better text contrast -->
     </div>
   }

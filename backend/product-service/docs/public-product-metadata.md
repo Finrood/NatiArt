@@ -54,9 +54,26 @@ seller-authored product translations remain a future content feature.
 Use `npm run extract-i18n` after changing messages, update
 `src/locale/messages.pt-BR.json`, and run an explicit production build. Missing
 translations fail that build. `postbuild` updates each localized HTML shell and
-copies the shared root runtime configuration. Keep locale-aware routing alongside
+copies shared public files (runtime configuration, icon and fonts) at their
+existing root URLs. Keep locale-aware routing alongside
 CA49's hashed asset retention, no-store HTML and API routing when merging.
 
 Preserve the CA34 accessibility changes and verify the translated purchase
 journey after integration. No deployment, external search indexing, actual
 social-provider preview or dedicated screen-reader audit is claimed.
+
+## Integration with the form and accessibility PRs
+
+CA29/33/34/35/36/37 change many of the same templates. Preserve their required
+house-number fields, input/label associations, optional-field rules, password
+policy, accessible dialogs/carousel controls and image-state handling when
+merging. Add i18n markers to their new visible text and accessible names, then
+extract messages again. The Portuguese catalog includes the messages exercised
+in the combined fixture so these controls can use the same translations.
+Dynamic native ARIA names use a localized component method with
+`[attr.aria-label]`; interpolating a translated `aria-label` directly caused
+Angular's JIT boundary tests to reject it.
+
+The copied CA49 A/B/rollback fixture now checks language-prefixed shells and lazy
+assets as well as legacy bookmarks, root runtime configuration and API proxies.
+Deduplicate that fixture with CA49 while retaining these locale assertions.

@@ -1,4 +1,4 @@
-import {readFile, writeFile, access, copyFile} from 'node:fs/promises';
+import {readFile, writeFile, access, cp} from 'node:fs/promises';
 import {constants} from 'node:fs';
 
 const root = new URL('../dist/nati-art-frontend/browser/', import.meta.url);
@@ -16,4 +16,4 @@ for (const [language, [title, description]] of Object.entries(copy)) {
   await writeFile(index, html);
 }
 
-await copyFile(new URL('../public/runtime-config.js', import.meta.url), new URL('runtime-config.js', root));
+await cp(new URL('../public/', import.meta.url), root, {recursive: true});

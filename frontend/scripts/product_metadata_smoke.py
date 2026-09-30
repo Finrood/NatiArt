@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Fetch real product HTML through nginx and the application, without JavaScript."""
 import socket
+import re
 import subprocess
 import tempfile
 import time
@@ -110,6 +111,19 @@ VALUES('public-one',0,'Cup "<script>" & café','Actual & public description',10,
                     assert f'<html lang="{language}"' in localized
                     shell, _ = fetch(edge_port, f'/{language}/login')
                     assert f'<html lang="{language}"' in shell
+                    for script in re.findall(r'<script src="([^"]+)"', shell):
+                        path = script if script.startswith('/') else f'/{language}/{script}'
+                        source, asset_headers = fetch(edge_port, path)
+                        assert '<app-root>' not in source, path
+                        if script == '/runtime-config.js':
+                            assert asset_headers['Cache-Control'] == 'no-store'
+                        else:
+                            assert 'immutable' in asset_headers['Cache-Control']
+                if (ASSETS / 'fonts').exists():
+                    font = next((ASSETS / 'fonts').glob('*.ttf'))
+                    request = urllib.request.urlopen(f'http://127.0.0.1:{edge_port}/fonts/{font.name}', timeout=4)
+                    assert request.status == 200 and request.headers['Cache-Control'] == 'no-cache'
+                    request.close()
                 fetch(app_port, '/products/public-one/metadata?language=unsupported', status=400)
                 legacy, _ = fetch(edge_port, '/product/public-two?tracking=inert')
                 assert '<base href="/en/">' in legacy
