@@ -5,11 +5,13 @@ on:
     branches: [ "master" ]
     paths:
       - "frontend/**"
+      - "backend/product-service/**"
       - ".github/workflows/frontend_workflow.yml"
   pull_request:
     branches: [ "master" ]
     paths:
       - "frontend/**"
+      - "backend/product-service/**"
       - ".github/workflows/frontend_workflow.yml"
 
 # Least privilege: the build only reads the repo.
@@ -44,10 +46,20 @@ jobs:
         working-directory: frontend/natiart-app
         run: |
           npm ci
-          npm run build
+          npm run build -- --configuration production
 
       - name: Unit tests (Karma, ChromeHeadless)
         working-directory: frontend/natiart-app
         env:
           CHROME_BIN: /usr/bin/google-chrome
         run: npm test -- --watch=false --browsers=ChromeHeadless
+
+      - name: Set up Java 25 for the real metadata HTTP boundary
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v5
+        with:
+          distribution: 'corretto'
+          java-version: '25'
+      - name: Build product application and fetch real public metadata through nginx
+        run: |
+          ./gradlew :backend:product-service:bootJar
+          python3 frontend/scripts/product_metadata_smoke.py

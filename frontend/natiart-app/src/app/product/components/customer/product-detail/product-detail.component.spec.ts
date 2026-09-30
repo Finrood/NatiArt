@@ -67,7 +67,7 @@ describe('ProductDetailComponent', () => {
     expect(component.loadError).toBeNull();
     expect(document.title).toBe('Product p1 | Porcelain Elegance');
     expect(document.querySelector('meta[name="description"]')?.getAttribute('content'))
-      .toBe('Discover Product p1, a handmade porcelain piece from Porcelain Elegance.');
+      .toBe('Product p1 | Porcelain Elegance');
   });
 
   it('reloads when the route id changes and resets per-product state', () => {
@@ -79,6 +79,12 @@ describe('ProductDetailComponent', () => {
     expect(component.quantity).toBe(1);
     expect(component.selectedImageIndex).toBe(0);
     expect(component.isLoading).toBe(false);
+  });
+
+  it('clears product share metadata when the route is destroyed', () => {
+    fixture.destroy();
+    expect(document.title).toBe('Porcelain Elegance | Handmade Art');
+    expect(document.querySelector('meta[property="og:type"]')?.getAttribute('content')).toBe('website');
   });
 
   it('surfaces an error state instead of loading forever on fetch failure', () => {
