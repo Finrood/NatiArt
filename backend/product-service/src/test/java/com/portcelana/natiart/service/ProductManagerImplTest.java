@@ -139,7 +139,7 @@ class ProductManagerImplTest {
     void inverseVisibility_existingProduct_flipsAtomicallyWithoutReadModifyWrite() {
         final Product product = new Product("Mug", BigDecimal.TEN);
         when(productRepository.toggleActiveById(product.getId())).thenReturn(1);
-        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
+        when(productRepository.findByIdWithImages(product.getId())).thenReturn(Optional.of(product));
 
         final Product toggled = productManager.inverseVisibility(product.getId());
 
