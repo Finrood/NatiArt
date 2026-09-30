@@ -12,6 +12,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import jakarta.persistence.EntityManagerFactory;
+
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -31,7 +35,12 @@ import com.portcelana.natiart.repository.ProductRepository;
 import com.portcelana.natiart.service.ImageConversionService;
 import com.portcelana.natiart.service.ProductManager;
 
-@DataJpaTest(properties = {"spring.sql.init.mode=never", "natiart.test.contract=ProductDetachedHttpContractTest"})
+@DataJpaTest(
+        properties = {
+            "spring.sql.init.mode=never",
+            "natiart.test.contract=ProductDetachedHttpContractTest",
+            "spring.jpa.properties.hibernate.generate_statistics=true"
+        })
 class ProductDetachedHttpContractTest {
     @Autowired
     private ProductRepository products;
@@ -44,6 +53,9 @@ class ProductDetachedHttpContractTest {
 
     @Autowired
     private PlatformTransactionManager transactions;
+
+    @Autowired
+    private EntityManagerFactory entityManagerFactory;
 
     @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -60,9 +72,14 @@ class ProductDetachedHttpContractTest {
                     .setImages(List.of("images/front.webp", "images/back.webp")));
         });
         assertNotNull(seeded);
+        final Statistics sql = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        sql.clear();
         final Product detached = transaction.execute(
                 status -> products.findByIdWithImages(seeded.getId()).orElseThrow());
         assertNotNull(detached);
+        org.junit.jupiter.api.Assertions.assertEquals(1, sql.getPrepareStatementCount());
+        org.junit.jupiter.api.Assertions.assertEquals(0, sql.getEntityFetchCount());
+        org.junit.jupiter.api.Assertions.assertEquals(0, sql.getCollectionFetchCount());
         final ProductManager manager = mock(ProductManager.class);
         when(manager.getProductWithImagesOrDie(seeded.getId())).thenReturn(detached);
         final MockMvc http = MockMvcBuilders.standaloneSetup(
