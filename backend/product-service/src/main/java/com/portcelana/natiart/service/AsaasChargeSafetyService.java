@@ -64,7 +64,7 @@ public class AsaasChargeSafetyService {
                     || !payment.getOwnerExternalId().equals(charge.getCustomer())) {
                 throw new IllegalStateException("Payment requires provider reconciliation before stock release");
             }
-            if (charge.isDeleted() || "REFUNDED".equals(charge.getStatus())) {
+            if (Boolean.TRUE.equals(charge.isDeleted()) || "REFUNDED".equals(charge.getStatus())) {
                 return;
             }
             if (!"PENDING".equals(charge.getStatus()) && !"OVERDUE".equals(charge.getStatus())) {
