@@ -1,15 +1,16 @@
-# Production database rollouts — migration adoption pending
+# Production database rollouts — JPA for now
 
-CA52 is not ready for merge. The maintainer must choose the migration tool
-(Flyway or the proposed repository-owned SQL runner) before a complete versioned
-history is adopted. The audit explicitly requires that decision.
+The owner decided on 2026-09-30 to keep schema management in JPA/Hibernate.
+Both production services intentionally use `ddl-auto=update`; Flyway, Liquibase
+and a repository-owned migration runner are outside the current scope.
+The premature change to `validate` has been removed. No migration-tool selection
+is required to review this PR.
 
-The premature switch to `ddl-auto=validate` has been removed: neither service
-has the complete ordered migration set that would permit a fresh or existing
-production schema to start. The existing `update` mode remains temporarily;
-it is not evidence that required constraints/backfills have been safely applied.
-Do not deploy the combined feature release using automatic schema mutation as
-its migration plan.
+Evolve entities additively. Hibernate schema updates do not reconcile historical
+financial values, migrate renamed columns, or prove that all existing data meets
+new constraints. Preserve backups and inspect actual data before destructive
+changes. A future move to versioned migrations and `validate` remains tracked
+below; it is not a prerequisite imposed on the current JPA-based approach.
 
 ## Existing legacy idempotency upgrade
 
@@ -20,7 +21,10 @@ them, creates the reservation table before inspecting it, and aborts on
 unknown partial financial shape, duplicate keys or unsupported states. It
 never chooses a winning charge or fabricates required historical values.
 
-Run with `psql -v ON_ERROR_STOP=1` during a maintenance window with application
+This SQL is an optional historical maintenance reference, not the current
+application schema-management path or a required deployment step. If it is
+needed for an existing legacy database, run with `psql -v ON_ERROR_STOP=1`
+during a maintenance window with application
 writers stopped and a verified backup. It has bounded statement/lock timeouts.
 On any preflight failure, roll back, inspect duplicates/partial data with the
 owner, and retry only after explicit reconciliation. Successful repetition
@@ -39,9 +43,10 @@ based on the JPA model at `25f4d49fa0b4c4c0f325ec779b7a41b3d6d23d40`
 application, retained order/reservation values, required uniqueness/state checks,
 and atomic rejection of missing/duplicate/partial data. It deliberately does not
 claim to load the complete previous application schema or validate the combined
-release: those are still required after the migration-tool decision.
+release. Complete release rehearsal remains future work if versioned migrations
+are adopted.
 
-## Combined release inventory
+## Future rollout backlog — retain for a later decision
 
 | PR contract | Schema and owner preflight to retain |
 | --- | --- |
@@ -58,10 +63,11 @@ release: those are still required after the migration-tool decision.
 | CA67 recovery | PASSWORD_RESET token purpose/expiry/consumption and session invalidation; production mail settings and verified delivery are external prerequisites |
 | Other incoming PRs | Reconcile every entity/column/index/constraint delta, including collection tables and status-check expansions, against the chosen combined application head |
 
-The companion docs/SQL are inputs to one ordered version history, not independent
-proof that the combined schema validates. After the tool choice, CI must rehearse
-both empty-database setup and upgrades from the pinned complete prior schema,
-with representative retained orders/payments, duplicates and partial deployments.
-It must apply the history repeatedly, verify constraints/readability, and start
-both matching production application versions with `ddl-auto=validate`.
-Only after those gates pass may the production profiles change to validation.
+The companion docs/SQL retain historical-data requirements for future rollout
+planning. When the owner chooses to adopt versioned migrations, inventory the
+combined application schema, pin a complete previous-version PostgreSQL baseline,
+and rehearse both fresh setup and upgrades with representative retained financial
+data, duplicates and partial deployments. Verify repeatability, constraints and
+readability, then start both matching production applications with `validate`.
+Change production profiles only after that work passes. Until then JPA remains
+the selected schema-management mechanism.
