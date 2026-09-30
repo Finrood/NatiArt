@@ -3,6 +3,7 @@ package com.portcelana.natiart.service;
 import java.time.Duration;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -25,6 +26,7 @@ public class AsaasChargeSafetyService {
     private final String paymentsUrl;
     private final RestTemplate restTemplate;
 
+    @Autowired
     public AsaasChargeSafetyService(
             @Value("${natiart.payment.asaas.apikey}") String apiKey,
             @Value("${natiart.payment.asaas.payments-url:https://sandbox.asaas.com/api/v3/payments}")
