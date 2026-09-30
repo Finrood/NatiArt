@@ -2,7 +2,8 @@
 
 Authenticated order creation accepts an `Idempotency-Key` scoped to the
 authenticated owner. The request fingerprint includes the contact/address
-payload, delivery amount, and sorted product/quantity lines. Replaying the
+payload and sorted product/quantity lines. Client delivery amount is ignored
+and does not participate in the fingerprint. Replaying the
 same key and fingerprint returns the committed order without product reads,
 stock updates, or payment-provider work. Reusing the key for another payload
 returns `409 Conflict`.

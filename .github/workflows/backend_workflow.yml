@@ -84,3 +84,12 @@ jobs:
             backend/product-service/build/test-results/test/*.xml
             backend/product-service/build/reports/tests/test/**/*
           retention-days: 7
+
+  legacy-idempotency-rehearsal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Rehearse scoped legacy upgrade, duplicates and partial schema
+        run: python3 backend/scripts/legacy_idempotency_rollout_test.py
