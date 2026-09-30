@@ -49,7 +49,9 @@ provenance from an arbitrary URI.
 
 CA47/48 change the filesystem root and logical resource-key contract; retain
 those confinement/resolution rules in `uploadTarget`, upload, and delete when
-combining the branches. CA13's private uploads keep their own lifecycle and
+combining the branches. If a resource-key migration rewrites `product_images`,
+rewrite ownership `uri` values in the same migration, preflight collisions, and
+keep cleanup stopped until both tables resolve the same files. CA13's private uploads keep their own lifecycle and
 namespace; never register their IDs as product images. CA26's ordered image
 manifest must call this lifecycle for new files and lock retained references.
 Rolling back the app must preserve this table; older writers should be stopped
