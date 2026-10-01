@@ -81,7 +81,9 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
       CUSTOM_IMAGE: [false],
       tags: [new Set<string>()],
       images: [[]],
-      active: [true]
+      active: [true],
+      newProduct: [false],
+      featuredProduct: [false]
     });
   }
 
@@ -161,7 +163,14 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
       }));
       this.loadExistingImages(product.images || []);
     } else {
-      this.productForm.reset({ originalPrice: 0, markedPrice: 0, stockQuantity: 0 });
+      this.productForm.reset({
+        originalPrice: 0,
+        markedPrice: 0,
+        stockQuantity: 0,
+        active: true,
+        newProduct: false,
+        featuredProduct: false,
+      });
       this.imagePreviews = [];
     }
     this.imageFiles = [];
