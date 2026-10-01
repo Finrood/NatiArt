@@ -19,7 +19,6 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.repository.CategoryRepository;
@@ -38,7 +37,6 @@ class JpaAuditConfigTest {
     @Autowired
     private MutableClock utcClock;
 
-    // Unrelated service constructor wiring is repaired in CA3; this context exercises JPA auditing.
     @MockitoBean
     private DatabaseTokenValidationCache tokenValidationCache;
 
@@ -88,11 +86,6 @@ class JpaAuditConfigTest {
         @Primary
         MutableClock testClock() {
             return new MutableClock();
-        }
-
-        @Bean
-        WebClient.Builder webClientBuilder() {
-            return WebClient.builder();
         }
     }
 
