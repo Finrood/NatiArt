@@ -15,12 +15,15 @@
         </svg>
       </div>
       <h1 class="text-2xl font-bold text-gray-800 mb-2" i18n>Payment Successful!</h1>
+      @if ($orderId()) { <p class="text-gray-600 mb-4" i18n>Order reference: {{ $orderId() }}</p> }
+      @if ($cartUpdateFailed()) { <p role="alert" i18n>Payment confirmed. Your cart could not be updated; refresh this page to retry.</p> }
       <p class="text-gray-600 mb-6" i18n>Thank you for your purchase. Your order is confirmed.</p>
-      <app-button (click)="closePayment()" [block]="true" color="primary" size="lg" i18n>Continue Shopping
+      <app-button (click)="closePayment()" [block]="true" color="primary" size="lg" i18n>
+        Continue Shopping
       </app-button>
     </div>
   } @else {
-    @if (qrCodeData) {
+    @if (paymentStatus !== 'ERROR' && paymentStatus !== 'EXPIRED' && qrCodeData && !isQrExpired()) {
       <div>
         <h1 class="text-2xl font-bold text-gray-800 mb-2" i18n>Scan to Pay with PIX</h1>
         <p class="text-gray-600 mb-6" i18n>Your order is reserved. Complete the payment before it expires.</p>
@@ -45,9 +48,14 @@
           <p><ng-container i18n>Expires in: </ng-container><strong class="font-semibold">{{ qrCodeData.expirationDate | date: 'mediumTime' }}</strong></p>
         </div>
       </div>
-    } @else if (paymentStatus === 'ERROR') {
+    } @else if (paymentStatus === 'ERROR' || paymentStatus === 'EXPIRED') {
       <div class="flex items-center justify-center">
-        <p class="ml-4 text-gray-600" role="alert" i18n>Could not load the payment details. Please go back and try again.</p>
+        <div>
+          <p class="ml-4 text-gray-600" role="alert">
+            {{ paymentErrorMessage }}
+          </p>
+          <app-button (click)="retryPayment()" color="primary" size="md" class="mt-4" i18n>Refresh payment</app-button>
+        </div>
       </div>
     } @else {
       <div class="flex items-center justify-center">

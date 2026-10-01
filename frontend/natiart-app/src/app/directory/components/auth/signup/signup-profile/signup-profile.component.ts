@@ -1,4 +1,4 @@
-import {Component, EventEmitter, Input, Output, inject} from '@angular/core';
+import {ChangeDetectorRef, Component, EventEmitter, Input, OnDestroy, Output, inject} from '@angular/core';
 import {FormGroup, ReactiveFormsModule} from "@angular/forms";
 import {
   NatiartFormFieldComponent
@@ -12,6 +12,7 @@ import {
 import {ButtonComponent} from "../../../../../shared/components/button.component";
 
 import {finalize} from "rxjs/operators";
+import {Subscription} from "rxjs";
 import {ViaCEPResponse} from "../../../../models/viaCEPResponse.model";
 import {SignupService} from "../../../../service/signup.service";
 
@@ -29,7 +30,7 @@ import {SignupService} from "../../../../service/signup.service";
   templateUrl: './signup-profile.component.html',
   styleUrl: './signup-profile.component.css'
 })
-export class SignupProfileComponent {
+export class SignupProfileComponent implements OnDestroy {
   @Input() profileForm!: FormGroup;
   @Input() errorMessage = '';
   @Input() isSubmitting = false;
@@ -37,8 +38,11 @@ export class SignupProfileComponent {
   @Output() nextStep = new EventEmitter<void>();
 
   isLoadingAddress = false;
+  addressErrorMessage = '';
+  private addressLookupSubscription: Subscription | undefined;
 
   private readonly _signupService: SignupService = inject(SignupService);
+  private readonly _changeDetectorRef: ChangeDetectorRef = inject(ChangeDetectorRef);
 
   constructor() {
   }
@@ -58,17 +62,25 @@ export class SignupProfileComponent {
   }
 
   onZipCodeChange(): void {
-    this.clearErrorMessage();
+    this.addressErrorMessage = '';
+    this.addressLookupSubscription?.unsubscribe();
     const zipCode = this.profileForm.get('zipCode')?.value?.replace(/\D/g, '');
     if (zipCode?.length !== 8) {
       return;
     }
 
     this.isLoadingAddress = true;
-    this._signupService.getAddressFromZipCode(zipCode)
-      .pipe(finalize(() => this.isLoadingAddress = false))
+    this.addressLookupSubscription = this._signupService.getAddressFromZipCode(zipCode)
+      .pipe(finalize(() => {
+        this.isLoadingAddress = false;
+        this._changeDetectorRef.markForCheck();
+      }))
       .subscribe({
         next: (data: ViaCEPResponse) => {
+          if (data.erro) {
+            this.setAddressErrorMessage($localize`This ZIP code was not found. Please enter the address manually.`);
+            return;
+          }
           this.profileForm.patchValue({
               street: data.logradouro,
               city: data.localidade,
@@ -78,16 +90,17 @@ export class SignupProfileComponent {
           });
         },
         error: () => {
-          this.setErrorMessage($localize`Error fetching address. Please enter manually.`);
+          this.setAddressErrorMessage($localize`Error fetching address. Please enter manually.`);
         }
       });
   }
 
-  private setErrorMessage(message: string): void {
-    this.errorMessage = message;
+  ngOnDestroy(): void {
+    this.addressLookupSubscription?.unsubscribe();
   }
 
-  private clearErrorMessage(): void {
-    this.errorMessage = '';
+  private setAddressErrorMessage(message: string): void {
+    this.addressErrorMessage = message;
+    this._changeDetectorRef.markForCheck();
   }
 }

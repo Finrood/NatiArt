@@ -1,4 +1,4 @@
-import {ChangeDetectionStrategy, Component, OnInit, inject} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject} from '@angular/core';
 import {HttpErrorResponse} from '@angular/common/http';
 import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {CustomPasswordValidators} from '../../../validator/CustomPasswordValidators';
@@ -41,6 +41,8 @@ export class SignupComponent implements OnInit {
   private readonly _router: Router = inject(Router);
   private readonly _signupService: SignupService = inject(SignupService);
 
+  private readonly _changeDetectorRef: ChangeDetectorRef = inject(ChangeDetectorRef);
+
   constructor() {
     this.signupForm = this.initForm();
   }
@@ -81,7 +83,10 @@ export class SignupComponent implements OnInit {
 
     this.isSubmitting = true;
     this._signupService.registerUser(userRegistration)
-      .pipe(finalize(() => this.isSubmitting = false))
+      .pipe(finalize(() => {
+        this.isSubmitting = false;
+        this._changeDetectorRef.markForCheck();
+      }))
       .subscribe({
         next: () => {
           this._router.navigate(['/login'])
@@ -89,7 +94,7 @@ export class SignupComponent implements OnInit {
             });
         },
         error: (error: HttpErrorResponse) => {
-          this.setErrorMessage($localize`Registration failed. Please try again.`);
+          this.setErrorMessage(this.registrationErrorMessage(error));
           reportError('registration', error);
         }
       });
@@ -116,7 +121,7 @@ export class SignupComponent implements OnInit {
         cpf: ['', [Validators.required, CustomCpfValidators.validCpf()]],
         phone: ['', [CustomPhoneValidators.validPhone()]],
         country: ['Brazil', Validators.required],
-        state: ['', Validators.required],
+        state: ['', [Validators.required, Validators.pattern(/^(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$/i)]],
         city: ['', Validators.required],
         neighborhood: ['', Validators.required],
         zipCode: ['', [Validators.required, CustomCepValidators.validCep()]],
@@ -128,9 +133,21 @@ export class SignupComponent implements OnInit {
 
   private setErrorMessage(message: string): void {
     this.errorMessage = message;
+    this._changeDetectorRef.markForCheck();
   }
 
   private clearErrorMessage(): void {
     this.errorMessage = '';
+    this._changeDetectorRef.markForCheck();
+  }
+
+  private registrationErrorMessage(error: HttpErrorResponse): string {
+    if (error.status === 409) {
+      return $localize`An account with this email already exists.`;
+    }
+    if (error.status === 0) {
+      return $localize`The service is unavailable. Please try again.`;
+    }
+    return $localize`Registration failed. Please try again.`;
   }
 }

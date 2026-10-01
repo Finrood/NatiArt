@@ -19,19 +19,10 @@ import {PaymentMethod} from "../../../../models/paymentMethod.model";
 export class PaymentInfoStepComponent {
   @Input({ required: true }) checkoutForm!: FormGroup;
 
-  paymentMethods = [
-    {value: PaymentMethod.CREDIT_CARD, label: $localize`Credit Card`},
-    {value: PaymentMethod.DEBIT_CARD, label: $localize`Debit Card`},
-    {value: PaymentMethod.PIX, label: 'PIX'}
-  ];
+  paymentMethods = [{value: PaymentMethod.PIX, label: 'PIX'}];
 
   get paymentInfoGroup(): FormGroup { // Helper getter
     return this.checkoutForm.get('paymentInfo') as FormGroup;
-  }
-
-  isCardPaymentSelected(): boolean {
-    const paymentMethod = this.checkoutForm.get('paymentInfo.paymentMethod')?.value;
-    return paymentMethod === PaymentMethod.CREDIT_CARD || paymentMethod === PaymentMethod.DEBIT_CARD;
   }
 
   isPixSelected(): boolean {
