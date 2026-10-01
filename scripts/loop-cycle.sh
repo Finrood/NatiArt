@@ -412,33 +412,12 @@ fi
 # 5. Stale-branch hygiene: prune local branches whose remote is gone.
 git fetch -q --prune origin
 git branch -vv | awk '/: gone]/{print $1}' | grep -v '^\*' | while read -r gone_branch; do
-    gone_sha="$(git rev-parse "refs/heads/$gone_branch" 2>/dev/null || true)"
-    if loop_owned_tip "$gone_branch" "$gone_sha" "$OWNERSHIP_LEDGER"; then
-        git branch -d "$gone_branch" 2>/dev/null || true
-    fi
+    loop_delete_merged_local_branch "$gone_branch" "$OWNERSHIP_LEDGER" || true
 done || true
 # Salvage retention: keep the newest 5 salvage branches, and only delete older
 # branches after proving their commits are already merged into origin/master.
 # Old unmerged salvage is still recoverable WIP and must never be force-deleted.
-git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads/salvage/ 2>/dev/null | tail -n +6 | while read -r sb; do
-    sb_sha="$(git rev-parse "refs/heads/$sb" 2>/dev/null || true)"
-    if ! loop_owned_tip "$sb" "$sb_sha" "$OWNERSHIP_LEDGER"; then
-        log "Preserving unowned salvage branch $sb."
-        continue
-    fi
-    REMOTE_SB_SHA="$(git rev-parse "origin/$sb" 2>/dev/null || true)"
-    if git merge-base --is-ancestor "$sb" origin/master 2>/dev/null && \
-       { [[ -z "$REMOTE_SB_SHA" ]] || git merge-base --is-ancestor "$REMOTE_SB_SHA" origin/master 2>/dev/null; }; then
-        log "Deleting old merged salvage branch $sb."
-        git branch -D "$sb" 2>/dev/null || true
-        if [[ -n "$REMOTE_SB_SHA" ]] && ! git push -q \
-            --force-with-lease="refs/heads/$sb:$REMOTE_SB_SHA" origin --delete "$sb" 2>/dev/null; then
-            log "Remote salvage $sb changed during validation; preserving it."
-        fi
-    else
-        log "Preserving old salvage branch $sb (local or remote tip is unmerged)."
-    fi
-done
+loop_cleanup_old_local_salvage "$OWNERSHIP_LEDGER"
 
 # 5a. Mechanical verdict production. Runs every cycle, including REPAIR MODE —
 # and reviews RED PRs too: the reviewer is the one who reports machine-readable
@@ -542,13 +521,8 @@ done || true
 # branches fully merged into master, only loop prefixes — never master,
 # dependabot/*, or unmerged work. Salvage retention uses fetched commit age and
 # verifies the remote tip is merged before deleting anything.
-git branch -r --merged origin/master 2>/dev/null | sed 's#^ *origin/##' | grep -E '^(fix|perf|chore|docs|feature)/' | sort -u | while read -r b; do
-    loop_delete_merged_remote_branch "$b" "$OWNERSHIP_LEDGER"
-done || true
-git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/remotes/origin/salvage/ 2>/dev/null | sed 's#^origin/##' | tail -n +6 | while read -r sb; do
-    [[ -z "$sb" ]] && continue
-    loop_delete_merged_remote_branch "$sb" "$OWNERSHIP_LEDGER"
-done || true
+loop_cleanup_merged_remote_branches "$OWNERSHIP_LEDGER"
+loop_cleanup_old_remote_salvage "$OWNERSHIP_LEDGER"
 
 # 6. Hand one item to the agent (non-interactive, repo permission policy applies;
 #    never --auto). Timeout keeps the 30-minute cadence honest. The lens rotates
