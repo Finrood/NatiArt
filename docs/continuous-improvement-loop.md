@@ -404,3 +404,13 @@ open PR by the authenticated author. Review success requires a new authenticated
 head-bound review on the specified target. Foreign concurrent PR/review activity
 and printed references cannot complete a worker. Numeric bounds and private,
 distinct retry logs remain enforced.
+### Worker deliverable attribution
+
+A successful CLI exit must be accompanied by a verified result. The runner
+provides an explicit cycle ID and private `NATIART_DELIVERABLE_FILE` path.
+Implementation workers write a JSON object with `cycle`, `branch` and full
+`sha` after committing and pushing. The runner verifies a changed local branch,
+the same exact remote tip, and an open PR by the authenticated account on that
+branch and commit. Unrelated repository activity cannot complete the attempt.
+Review workers must submit a new verdict as the authenticated reviewer on the
+specified PR and unchanged captured head. Printed verdicts do not count.
