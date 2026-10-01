@@ -105,7 +105,8 @@ class OrderReplayIntegrationTest {
                 mock(com.portcelana.natiart.service.ShippingQuoteService.class);
         when(shippingService.requireQuoteForOrder(any(), any(), any(), org.mockito.ArgumentMatchers.anyList(), any()))
                 .thenReturn(new com.portcelana.natiart.model.ShippingQuote()
-                        .setItems(List.of(new com.portcelana.natiart.model.ShippingQuoteItem(product.getId(), 1, product.getOriginalPrice(), product.getVersion())))
+                        .setItems(List.of(new com.portcelana.natiart.model.ShippingQuoteItem(
+                                product.getId(), 1, product.getOriginalPrice(), product.getVersion())))
                         .setShippingAmount(BigDecimal.ZERO)
                         .setItemAmount(product.getOriginalPrice())
                         .setTotalAmount(product.getOriginalPrice())

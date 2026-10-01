@@ -114,16 +114,21 @@ class ArtworkRecoveryHttpIntegrationTest {
                 .thenAnswer(invocation -> {
                     final List<com.portcelana.natiart.dto.OrderItemDto> items = invocation.getArgument(3);
                     return new com.portcelana.natiart.model.ShippingQuote()
-                        .setItems(items.stream()
-                                .map(item -> new com.portcelana.natiart.model.ShippingQuoteItem(product.getId(),
-                                        PersonalizationRules.canonical(item.getPersonalization().getPersonalizationOptions()),
-                                        item.getQuantity(), BigDecimal.TEN, product.getVersion())).toList())
-                        .setShippingAmount(BigDecimal.ZERO)
-                        .setItemAmount(BigDecimal.TEN)
-                        .setTotalAmount(BigDecimal.TEN)
-                        .setServiceId("1")
-                        .setDestinationPostalCode("88010000")
-                        .setExpiresAt(java.time.Instant.now().plusSeconds(900));
+                            .setItems(items.stream()
+                                    .map(item -> new com.portcelana.natiart.model.ShippingQuoteItem(
+                                            product.getId(),
+                                            PersonalizationRules.canonical(
+                                                    item.getPersonalization().getPersonalizationOptions()),
+                                            item.getQuantity(),
+                                            BigDecimal.TEN,
+                                            product.getVersion()))
+                                    .toList())
+                            .setShippingAmount(BigDecimal.ZERO)
+                            .setItemAmount(BigDecimal.TEN)
+                            .setTotalAmount(BigDecimal.TEN)
+                            .setServiceId("1")
+                            .setDestinationPostalCode("88010000")
+                            .setExpiresAt(java.time.Instant.now().plusSeconds(900));
                 });
         return product;
     }
