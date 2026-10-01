@@ -20,6 +20,11 @@ cp "$ROOT/docs/audit-findings.md" "$WORK/repo/docs/"
 cp "$ROOT/docs/loop-lenses.md" "$WORK/repo/docs/"
 printf '#!/usr/bin/env bash\nif [[ "${1:-}" == auth && "${2:-}" == status ]]; then exit 0; fi\nexit 1\n' > "$WORK/bin/gh"
 chmod +x "$WORK/bin/gh"
+cat > "$WORK/bin/df" <<'EOF'
+#!/usr/bin/env bash
+printf 'Filesystem 1K-blocks Used Available Use%% Mounted on\nfixture 10000000 1000000 9000000 10%% /tmp\n'
+EOF
+chmod +x "$WORK/bin/df"
 printf 'sentinel\n' > "$WORK/repo/logs/sentinel"
 before="$(find "$WORK/repo/logs" -maxdepth 1 -type f -printf '%f:%s\n' | sort)"
 REPO="$WORK/repo" XDG_RUNTIME_DIR="$WORK/runtime" PATH="$WORK/bin:$PATH" \
