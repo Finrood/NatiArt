@@ -73,7 +73,8 @@ public class OrderManagerImpl implements OrderManager {
     public CustomerOrder markOrderPaid(String orderId) {
         final CustomerOrder current = getOrderById(orderId);
         if (current.getStatus() == OrderStatus.PENDING) {
-            return updateOrderStatus(orderId, OrderStatus.PAID);
+            current.setStatus(OrderStatus.PAID);
+            return current;
         }
         if (current.getStatus() == OrderStatus.PAID
                 || current.getStatus() == OrderStatus.PROCESSING

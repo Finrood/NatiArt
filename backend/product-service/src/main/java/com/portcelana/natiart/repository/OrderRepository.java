@@ -16,6 +16,7 @@ import com.portcelana.natiart.model.Product;
 
 @Repository
 public interface OrderRepository extends JpaRepository<CustomerOrder, String> {
+    @EntityGraph(attributePaths = {"items", "items.product"})
     Optional<CustomerOrder> findByOwnerExternalIdAndIdempotencyKey(String ownerExternalId, String idempotencyKey);
 
     @Query("SELECT DISTINCT o FROM CustomerOrder o LEFT JOIN FETCH o.items item "
