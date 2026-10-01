@@ -1,6 +1,6 @@
 <div
   class="absolute top-full right-0 mt-2 bg-primary-lighter border-2 border-primary-light p-4 rounded-lg shadow-lg shadow-primary-dark w-80 z-50">
-  <h2 class="text-xl font-bold mb-4">Your Cart</h2>
+  <h2 class="text-xl font-bold mb-4" i18n>Your Cart</h2>
 
   @if ((cartItems$ | async); as cartItems) {
     @if (cartItems.length) {
@@ -16,14 +16,14 @@
               }
               @if (!imageUrls[item.cartItemId]) {
                 <div class="w-full h-full bg-gray-200 flex items-center justify-center">
-                  <span class="text-gray-400">No image</span>
+                  <span class="text-gray-400" i18n>No image</span>
                 </div>
               }
             </div>
             <div class="grow">
               <p class="font-semibold">{{ item.product.label }}</p>
               @if (item.goldBorder) {
-                <p class="mt-1 text-sm font-medium text-yellow-600">With Gold Border</p>
+                <p class="mt-1 text-sm font-medium text-yellow-600" i18n>With Gold Border</p>
               }
               <div class="flex items-center mt-1">
                 <input (change)="updateQuantity(item, item.quantity)" [(ngModel)]="item.quantity"
@@ -43,18 +43,17 @@
         }
         <div class="border-t pt-2 mt-2">
           <div class="flex justify-between items-center font-bold">
-            <span>Total:</span>
+            <span i18n>Total:</span>
             <span>{{ cartTotal$ | async | currency:'BRL' }}</span>
           </div>
         </div>
         <div class="mt-4">
-          <app-button routerLink="/cart" [block]="true" color="primary" size="lg">
-            Go to Cart
+          <app-button routerLink="/cart" [block]="true" color="primary" size="lg" i18n>Go to Cart
           </app-button>
         </div>
       </div>
     } @else {
-      <p class="text-center text-gray-500">Your cart is empty.</p>
+      <p class="text-center text-gray-500" i18n>Your cart is empty.</p>
     }
   }
 </div>

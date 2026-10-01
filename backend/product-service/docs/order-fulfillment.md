@@ -1,0 +1,23 @@
+# Fulfillment views and commands
+
+Customer views are owner scoped and copy personalization maps while their read
+transaction is open. Purchase labels and SKU identifiers remain immutable even
+when the catalog is renamed. Creation uses the single validated `personalization`
+contract and owned upload claim shared with checkout and confirmed shipping;
+there is no separate unvalidated fulfillment input.
+
+Only provider confirmation may mark an order paid. Administrator commands expose
+PAID -> PROCESSING -> SHIPPED -> DELIVERED, and the backend validates each edge.
+A rejected command leaves the list visible with feedback on its order row.
+
+Both history and fulfillment request bounded pages of 20 (server maximum 100).
+The administrator can load later pages without replacing earlier rows. Database
+ordering uses date and ID for stable ties; DTO construction and map copying happen
+before the persistence context closes. Status changes advance the JPA version,
+so stale writers conflict instead of overwriting progress.
+
+Committed-JPA HTTP fixtures cover a 21-order traversal and an older paid order's
+transition. Rendered Angular tests exercise the matching page requests/buttons
+and scoped failure feedback. Carrier/creation tests reject unsupported options
+and foreign artwork and verify server-priced custom artwork, quote equality,
+and idempotent replay without another stock reservation or upload claim.
