@@ -471,7 +471,7 @@ for n in $ALL_PRS; do
     else
         RC_NOTE=""
     fi
-    timeout 660 scripts/run-agent.sh --role review --budget 600 --title "review-pr-$n" \
+    timeout 660 scripts/run-agent.sh --role review --review-pr "$n" --budget 600 --title "review-pr-$n" \
         ${AUTHOR_SKIP:+--skip "$AUTHOR_SKIP"} \
         "$(cat scripts/agent-review-prompt.md)
 ---
@@ -573,7 +573,7 @@ fi
 log "Invoking agent for one cycle item."
 BEFORE_BRANCH_REFS="$(git for-each-ref --format='%(refname:short)' refs/heads/ | LC_ALL=C sort)"
 BEFORE_REMOTE_BRANCH_REFS="$(git for-each-ref --format='%(refname:short)' refs/remotes/origin/ | sed 's#^origin/##' | LC_ALL=C sort)"
-CYCLE_OWNERSHIP_ID="$(cat /proc/sys/kernel/random/uuid)"
+CYCLE_OWNERSHIP_ID="$CYCLE_ID"
 # Model failover: run-agent.sh walks the priority list from
 # scripts/agent-models.conf (opencode Muse free -> cline Muse -> cline DeepSeek
 # -> cline GLM),
