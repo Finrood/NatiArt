@@ -12,7 +12,7 @@ export class CustomPasswordValidators {
         /[A-Z]/.test(value),  // has uppercase letter
         /[a-z]/.test(value),  // has lowercase letter
         /[0-9]/.test(value),  // has numeric digit
-        value.length >= 6     // is valid length
+        value.length >= 8     // is valid length
       ].every(Boolean);
 
       return isValid ? null : {passwordComplexity: true};
