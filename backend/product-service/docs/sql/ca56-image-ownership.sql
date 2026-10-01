@@ -11,5 +11,5 @@ CREATE TABLE IF NOT EXISTS product_image_ownership (
     CONSTRAINT ck_product_image_state CHECK (state IN ('STAGED', 'LIVE', 'DELETE_PENDING', 'DELETED'))
 );
 CREATE INDEX IF NOT EXISTS ix_product_image_cleanup
-    ON product_image_ownership (state, next_attempt_at, created_at);
+    ON product_image_ownership (next_attempt_at, created_at, id);
 COMMIT;

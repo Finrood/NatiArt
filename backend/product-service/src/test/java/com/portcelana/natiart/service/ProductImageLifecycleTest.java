@@ -83,6 +83,10 @@ class ProductImageLifecycleTest {
                 lifecycle.upload(owner, root.toString(), UUID.randomUUID().toString(), input()));
     }
 
+    private Path physicalFile(URI uri) {
+        return uri.isOpaque() ? root.resolve(uri.getSchemeSpecificPart()) : Path.of(uri);
+    }
+
     private ProductImageOwnership record(URI uri) {
         return files.findAll().stream()
                 .filter(file -> file.getUri().equals(uri.toString()))
@@ -109,11 +113,11 @@ class ProductImageLifecycleTest {
                             "rollback-owner", root.toString(), UUID.randomUUID().toString(), input());
                     product("invalid", uri[0]).setDescription("x".repeat(600));
                 }));
-        assertTrue(Files.exists(Path.of(uri[0])));
+        assertTrue(Files.exists(physicalFile(uri[0])));
         assertEquals(State.STAGED, record(uri[0]).getState());
         final ProductImageLifecycle restarted = new ProductImageLifecycle(files, products, storage, transactions);
         restarted.reconcile(Instant.now().plusSeconds(3600));
-        assertFalse(Files.exists(Path.of(uri[0])));
+        assertFalse(Files.exists(physicalFile(uri[0])));
         assertEquals(State.DELETED, record(uri[0]).getState());
     }
 
@@ -132,7 +136,7 @@ class ProductImageLifecycleTest {
                     throw new IllegalStateException("rollback");
                 }));
         lifecycle.reconcile(Instant.now().plusSeconds(3600));
-        assertTrue(Files.exists(Path.of(uri)));
+        assertTrue(Files.exists(physicalFile(uri)));
         assertEquals(State.LIVE, record(uri).getState());
         assertEquals(1, products.countImageReferences(uri.toString()));
     }
@@ -155,17 +159,17 @@ class ProductImageLifecycleTest {
         });
         final Instant now = Instant.now().plusSeconds(3600);
         lifecycle.reconcile(now);
-        assertTrue(Files.exists(Path.of(uri)));
+        assertTrue(Files.exists(physicalFile(uri)));
         transaction.executeWithoutResult(status -> {
             lifecycle.prepareReferences(List.of(uri.toString()), List.of());
             products.findByIdWithImages(ids[1]).orElseThrow().setImages(List.of());
         });
         lifecycle.reconcile(now.plusSeconds(61));
-        assertTrue(Files.exists(Path.of(uri)));
+        assertTrue(Files.exists(physicalFile(uri)));
         transaction.executeWithoutResult(
                 status -> entityManager.remove(entityManager.find(Personalization.class, ids[2])));
         lifecycle.reconcile(now.plusSeconds(122));
-        assertFalse(Files.exists(Path.of(uri)));
+        assertFalse(Files.exists(physicalFile(uri)));
         assertEquals(State.DELETED, record(uri).getState());
     }
 
@@ -180,11 +184,11 @@ class ProductImageLifecycleTest {
                 .delete(uri);
         final Instant now = Instant.now().plusSeconds(3600);
         lifecycle.reconcile(now);
-        assertTrue(Files.exists(Path.of(uri)));
+        assertTrue(Files.exists(physicalFile(uri)));
         assertEquals(State.DELETE_PENDING, record(uri).getState());
         assertEquals(1, record(uri).getCleanupAttempts());
         new ProductImageLifecycle(files, products, storage, transactions).reconcile(now.plusSeconds(61));
-        assertFalse(Files.exists(Path.of(uri)));
+        assertFalse(Files.exists(physicalFile(uri)));
         assertEquals(State.DELETED, record(uri).getState());
     }
 
@@ -222,11 +226,11 @@ class ProductImageLifecycleTest {
                     executor.submit(() -> worker.reconcile(Instant.now().plusSeconds(3600)));
             assertTrue(workerLockAttempted.await(5, TimeUnit.SECONDS));
             assertThrows(java.util.concurrent.TimeoutException.class, () -> cleanup.get(150, TimeUnit.MILLISECONDS));
-            assertTrue(Files.exists(Path.of(uri[0])));
+            assertTrue(Files.exists(physicalFile(uri[0])));
             commit.countDown();
             uploader.get(5, TimeUnit.SECONDS);
             cleanup.get(5, TimeUnit.SECONDS);
-            assertTrue(Files.exists(Path.of(uri[0])));
+            assertTrue(Files.exists(physicalFile(uri[0])));
             assertEquals(State.LIVE, record(uri[0]).getState());
             verify(storage, never()).delete(uri[0]);
         } finally {
@@ -249,9 +253,9 @@ class ProductImageLifecycleTest {
                     lifecycle.upload(
                             "batch-owner", root.toString(), UUID.randomUUID().toString(), input());
                 }));
-        assertTrue(Files.exists(Path.of(first[0])));
+        assertTrue(Files.exists(physicalFile(first[0])));
         lifecycle.reconcile(Instant.now().plusSeconds(3600));
-        assertFalse(Files.exists(Path.of(first[0])));
+        assertFalse(Files.exists(physicalFile(first[0])));
         assertEquals(State.DELETED, record(first[0]).getState());
     }
 

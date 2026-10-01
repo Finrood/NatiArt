@@ -7,7 +7,9 @@ import jakarta.persistence.*;
 
 /** Durable file intent; tombstones prevent re-adoption while cleanup is retried. */
 @Entity
-@Table(uniqueConstraints = @UniqueConstraint(name = "uk_product_image_uri", columnNames = "uri"))
+@Table(
+        uniqueConstraints = @UniqueConstraint(name = "uk_product_image_uri", columnNames = "uri"),
+        indexes = @Index(name = "ix_product_image_cleanup_due", columnList = "nextAttemptAt,createdAt,id"))
 public class ProductImageOwnership {
     public enum State {
         STAGED,

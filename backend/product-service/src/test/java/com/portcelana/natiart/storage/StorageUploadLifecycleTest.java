@@ -23,8 +23,9 @@ class StorageUploadLifecycleTest {
         final var target = storage.uploadTarget(root.toString(), "success");
         assertEquals(
                 target, storage.uploadFile(root.toString(), "success", new InputFile(input, "image/webp", "test", 3)));
+        assertTrue(target.isOpaque());
         assertTrue(input.closed);
-        assertArrayEquals(new byte[] {1, 2, 3}, Files.readAllBytes(Path.of(target)));
+        assertArrayEquals(new byte[] {1, 2, 3}, Files.readAllBytes(root.resolve(target.getSchemeSpecificPart())));
     }
 
     @Test

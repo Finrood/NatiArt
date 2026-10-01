@@ -36,7 +36,7 @@ import com.portcelana.natiart.storage.StorageService;
 @Service
 public class ProductManagerImpl implements ProductManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductManagerImpl.class);
-    private static final String IMAGE_BASE_PATH = "product-images/";
+    private static final String IMAGE_KEY_PREFIX = "products/";
     private static final int MAX_IMAGES_PER_PRODUCT = 10;
 
     private final ProductRepository productRepository;
@@ -251,13 +251,14 @@ public class ProductManagerImpl implements ProductManager {
     @Override
     @Transactional
     public Product inverseVisibility(String productId) {
-        // Atomic in-database flip: concurrent toggles serialize in the database
-        // instead of colliding on @Version and surfacing OptimisticLockException
-        // as a generic 500.
+        // The bulk flip increments @Version and clears managed state before the
+        // complete reload, so a stale product save cannot undo this change.
         if (productRepository.toggleActiveById(productId) == 0) {
             throw new ResourceNotFoundException("Product with id [" + productId + "] not found");
         }
-        return getProductOrDie(productId);
+        return productRepository
+                .findByIdWithImages(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product with id [" + productId + "] not found"));
     }
 
     private List<String> processImages(Product product, List<String> existingImages, List<InputFile> newImages) {
@@ -278,7 +279,7 @@ public class ProductManagerImpl implements ProductManager {
             final List<String> imagesUris = new ArrayList<>(retainedImages);
 
             for (InputFile inputFile : uploads) {
-                final String imagePath = IMAGE_BASE_PATH + product.getId() + "/" + UUID.randomUUID();
+                final String imagePath = IMAGE_KEY_PREFIX + product.getId() + "/" + UUID.randomUUID();
                 imagesUris.add(imageLifecycle
                         .upload(product.getId(), imagePath, UUID.randomUUID().toString(), inputFile)
                         .toString());

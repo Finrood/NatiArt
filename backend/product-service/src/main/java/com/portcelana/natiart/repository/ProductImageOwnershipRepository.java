@@ -24,7 +24,7 @@ public interface ProductImageOwnershipRepository extends JpaRepository<ProductIm
     Optional<ProductImageOwnership> findByUriForUpdate(String uri);
 
     @Query(
-            "select f.id from ProductImageOwnership f where (f.state = :pending or (f.state = :staged and f.createdAt <= :cutoff)) and f.nextAttemptAt <= :now order by f.createdAt, f.id")
+            "select f.id from ProductImageOwnership f where (f.state = :pending or (f.state = :staged and f.createdAt <= :cutoff)) and f.nextAttemptAt <= :now order by f.nextAttemptAt, f.createdAt, f.id")
     List<String> findCleanupCandidates(State pending, State staged, Instant cutoff, Instant now, Pageable pageable);
 
     @Query("select count(p) from Personalization p join p.personalizationOptions option where value(option) = :uri")

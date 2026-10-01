@@ -25,17 +25,19 @@ rechecks its current state, checks all product and personalization references,
 and deletes only an unreferenced owned file. Reference checks and deletion are
 serialized with the supported product reference writes. A failed deletion or
 transaction remains retryable; checks/attempts are spaced by at least one
-minute, so referenced pending files cannot monopolize each batch. Deletion is
+minute. Selection is ordered by persisted next-attempt time, creation time and
+ID, so referenced pending files and repeated disk failures cannot monopolize
+each batch across restarts. Deletion is
 idempotent. `DELETED` rows remain as tombstones; retaining one is rejected.
 No URI, upload bytes or customer data is written into cleanup logs.
 
 ## Rollout and legacy files
 
-Apply `docs/sql/ca56-image-ownership.sql` in the product database before the
-application. It is transactional and rerunnable for the complete table shape;
-a partial or incompatible earlier table requires explicit reconciliation, not
-silent alteration. Include it in CA52's versioned history after the maintainer
-selects the migration tool. Check the schema before enabling validation.
+The owner-selected rollout uses JPA/Hibernate `ddl-auto=update` (CA52),
+including the ownership entity and cleanup index. No migration runner is
+required. `docs/sql/ca56-image-ownership.sql` remains a reference for a future
+operator-controlled schema rollout; inspect an existing incompatible table
+before enabling cleanup.
 
 Untracked legacy files are **never automatically deleted**. Before enabling
 cleanup for a historical file, an operator must inventory its storage location,
