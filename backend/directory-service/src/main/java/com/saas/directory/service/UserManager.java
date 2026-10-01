@@ -69,6 +69,7 @@ public class UserManager {
             throw new IllegalArgumentException("Password cannot be empty");
         }
         PasswordPolicy.validate(userRegistrationDto.password());
+        profileManager.validateProfile(userRegistrationDto.profile());
         final Role role = roleRepository
                 .findRoleByLabel(RoleName.USER)
                 .orElseThrow(() -> new RoleNotFoundException(String.format("Role [%s] not found", RoleName.USER)));

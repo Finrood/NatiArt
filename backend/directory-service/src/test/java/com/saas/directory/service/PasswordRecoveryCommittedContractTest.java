@@ -131,6 +131,39 @@ class PasswordRecoveryCommittedContractTest {
         manager.doResetPassword(token, new ResetPasswordDto("NewPass123", "NewPass123"));
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void revokedBrowserAccessOrRefreshCannotBlockAnonymousRecovery(boolean refreshBearer) throws Exception {
+        final User user = seed();
+        final UserAuthDto session = authentication.login(new CredentialsDto(user.getUsername(), "OldPass123"));
+        transaction.executeWithoutResult(status -> tokens.deleteAll());
+        final String rejected = refreshBearer ? session.getRefreshToken() : session.getAccessToken();
+        assertThrows(
+                IllegalAccessException.class,
+                () -> provider.authenticateWithToken(
+                        rejected, refreshBearer ? TokenType.AUTH_REFRESH : TokenType.AUTH_ACCESS));
+        final MockMvc http = MockMvcBuilders.standaloneSetup(new PasswordResetController(manager))
+                .addFilters(new com.saas.directory.configuration.JwtAuthFilter(provider))
+                .build();
+        http.perform(post("/password-reset/request")
+                        .header("Authorization", "Bearer " + rejected)
+                        .contentType("application/json")
+                        .content("{\"username\":\"" + user.getUsername() + "\"}"))
+                .andExpect(status().isAccepted());
+        final String token = resetToken(user, Instant.now().plusSeconds(900));
+        http.perform(post("/password-reset")
+                        .header("Authorization", "Bearer " + rejected)
+                        .contentType("application/json")
+                        .content("{\"token\":\"" + token
+                                + "\",\"password\":\"NewPass123\",\"passwordConfirmation\":\"NewPass123\"}"))
+                .andExpect(status().isNoContent());
+        assertTrue(encoder.matches(
+                "NewPass123", users.findById(user.getId()).orElseThrow().getPasswordHash()));
+        assertTrue(tokens.findByJtiAndTokenType(token, TokenType.PASSWORD_RESET).isEmpty());
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+    }
+
     @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void actualSmtpDeliveryContainsUsableFragmentLinkAndUniformRequestContract() throws Exception {

@@ -68,3 +68,17 @@ and a login with the new password creates a usable session for the same user.
   production validation is enabled. This adapter introduces no new JPA table.
 
 Findings remain OPEN pending independent review, merge and deployed verification.
+
+## Anonymous recovery with a stale browser session
+
+Only the exact configured recovery request and redemption endpoints bypass
+bearer attachment and token renewal. In the directory filter only POST requests
+to those exact paths are anonymous, so a revoked access or refresh credential
+cannot block a valid recovery link. Protected paths, path lookalikes and other
+methods still validate supplied credentials. Existing request rate limits,
+uniform 202 responses and one-time reset-token validation remain in effect.
+
+Real controller/filter/JPA tests request recovery and redeem a valid token with
+genuinely revoked access and refresh credentials. Browser interceptor tests
+verify no bearer, refresh request or recovery-triggered login navigation. Live
+SMTP configuration and delivery remain deferred to the owner.

@@ -12,6 +12,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.auth0.jwt.exceptions.JWTVerificationException;
+
 import com.saas.directory.model.TokenType;
 
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -24,6 +26,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        final String path = request.getServletPath().isEmpty() ? request.getRequestURI() : request.getServletPath();
+        if (HttpMethod.POST.matches(request.getMethod())
+                && ("/password-reset/request".equals(path) || "/password-reset".equals(path))) {
+            SecurityContextHolder.clearContext();
+            filterChain.doFilter(request, response);
+            return;
+        }
         final String header = request.getHeader(HttpHeaders.AUTHORIZATION);
 
         if (header != null && header.startsWith("Bearer ")) {
@@ -47,6 +56,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 // Same contract as the ControllerAdvice handler for handler-level denials:
                 // 401 with the static ControllerAdvice.INVALID_TOKEN_MESSAGE body, so one
                 // failure has one shape regardless of the layer that rejects it.
+                SecurityContextHolder.clearContext();
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("text/plain;charset=UTF-8");
+                response.getWriter().write(ControllerAdvice.INVALID_TOKEN_MESSAGE);
+                return;
+            } catch (JWTVerificationException e) {
                 SecurityContextHolder.clearContext();
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("text/plain;charset=UTF-8");
