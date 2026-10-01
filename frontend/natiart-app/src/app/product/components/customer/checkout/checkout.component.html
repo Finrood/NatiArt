@@ -31,6 +31,14 @@
               Please sign in or register before checking out. Guest checkout is currently unavailable.
             </div>
           }
+          @for (item of (cartItems$ | async) ?? []; track item.cartItemId) {
+            @if (item.requiresArtworkReselection) {
+              <label class="block mb-4" data-artwork-reselection>
+                Select artwork again for {{ item.product.label }}. The previous upload is no longer available.
+                <input type="file" accept="image/*" (change)="reselectArtwork(item.cartItemId, $event)">
+              </label>
+            }
+          }
           <form [formGroup]="checkoutForm" (ngSubmit)="onSubmit()">
 
             <!-- Step 1: Personal Information -->

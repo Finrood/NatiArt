@@ -29,10 +29,10 @@ class MelhorenvioShippingCalculationRequestTest {
                         new ShippingEstimateRequest("88000000", 0.8f, 60.0f, 45.0f, 30.0f, 1)),
                 "01310923");
 
-        assertEquals(2, request.getVolumes().size());
-        assertEquals("0.4", request.getVolumes().get(0).getWeight());
-        assertEquals("20.0", request.getVolumes().get(0).getLength());
-        assertEquals(2, request.getVolumes().get(0).getQntd());
-        assertEquals("60.0", request.getVolumes().get(1).getLength());
+        assertEquals(3, request.getVolumes().size());
+        assertEquals(0.4f, request.getVolumes().get(0).getWeight());
+        assertEquals(20.0f, request.getVolumes().get(0).getLength());
+        assertEquals(0.4f, request.getVolumes().get(1).getWeight());
+        assertEquals(60.0f, request.getVolumes().get(2).getLength());
     }
 }

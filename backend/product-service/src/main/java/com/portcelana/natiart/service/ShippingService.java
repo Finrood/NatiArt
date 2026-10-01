@@ -69,8 +69,8 @@ public class ShippingService {
 
     /**
      * Calculates rates for the documented packing rule: each product line is
-     * represented by one provider volume using its configured package and the
-     * requested quantity as that volume's quantity. No client-supplied
+     * expanded into one numeric provider volume per unit using its configured
+     * package. Quantity is never encoded as an unsupported parcel field. No client-supplied
      * dimensions are accepted on this order path.
      */
     List<ShippingEstimate> getShippingEstimates(List<ShippingEstimateRequest> shippingEstimateRequests) {

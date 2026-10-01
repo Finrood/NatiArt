@@ -1,3 +1,4 @@
+import {HttpErrorResponse} from '@angular/common/http';
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnDestroy, OnInit} from '@angular/core';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
@@ -318,10 +319,37 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       this.paymentIdempotencyKey = crypto.randomUUID();
 
     } catch (error) {
+      if (this.recoverArtwork(error)) return;
       reportError('payment', error);
       this.setErrorMessage('Could not process PIX payment. Please try again.');
     }
     this._cdr.detectChanges();
+  }
+
+  private recoverArtwork(error: unknown): boolean {
+    if (!this.currentOrder && error instanceof HttpErrorResponse && error.status === 400 &&
+        error.error?.code === 'CUSTOM_ARTWORK_UNAVAILABLE' && error.error?.orderCreated === false &&
+        typeof error.error?.uploadId === 'string') {
+        this._cartService.invalidateArtwork(error.error.uploadId);
+        this.checkoutFingerprint = null;
+        this.shippingQuote = null;
+        this.shippingQuoteFingerprint = null;
+        this.orderIdempotencyKey = crypto.randomUUID();
+        this.paymentIdempotencyKey = crypto.randomUUID();
+        this.clearInfoMessage();
+        this.setErrorMessage('Your artwork is no longer available. Retry to upload your selected file, or select it again below.');
+        this._cdr.markForCheck();
+        return true;
+      }
+    return false;
+  }
+
+  reselectArtwork(cartItemId: string, event: Event): void {
+    const input: HTMLInputElement = event.target as HTMLInputElement;
+    const file: File | undefined = input.files?.[0];
+    if (file) this._cartService.reselectArtwork(cartItemId, file);
+    input.value = '';
+    this._cdr.markForCheck();
   }
 
   private async buildOrderRequest(): Promise<OrderDto> {
@@ -348,6 +376,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   private async buildOrderItems(): Promise<OrderItemDto[]> {
     const items = await Promise.all(this._cartService.getCartItemsSnapshot().map(async item => {
+      if (item.requiresArtworkReselection) throw new Error('Select your artwork again before checkout.');
       if (item.image && !item.customImageUploadId) {
         this.setInfoMessage('Uploading your custom artwork...');
         const upload = await firstValueFrom(this._productService.uploadCustomerImage(item.image));
@@ -402,6 +431,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       this.clearErrorMessage();
       return true;
     } catch (error) {
+      if (this.recoverArtwork(error)) return false;
       reportError('checkout-shipping-quote', error);
       this.shippingQuote = null;
       this.shippingQuoteFingerprint = null;
@@ -410,7 +440,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     } finally {
       this.isLoadingQuote = false;
       this.clearInfoMessage();
-      this.cdr.detectChanges();
+      this._cdr.detectChanges();
     }
   }
 

@@ -57,7 +57,7 @@ describe('CartService', () => {
 
     service.setCustomImageUploadId(items[1].cartItemId, 'upload-1').subscribe();
     expect(service.getCartItemsSnapshot()[1].customImageUploadId).toBe('upload-1');
-    expect(JSON.parse(localStorage.getItem('natiart-cart') ?? '[]')).toEqual([
+    expect(JSON.parse(localStorage.getItem('natiart-cart') ?? '{}').items).toEqual([
       jasmine.objectContaining({goldBorder: true}),
       jasmine.objectContaining({customImageUploadId: 'upload-1'}),
     ]);

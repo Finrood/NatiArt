@@ -145,7 +145,7 @@ public class CustomerUploadService {
         validateUploadId(uploadId, ownerExternalId);
         final CustomerUpload upload = customerUploadRepository
                 .findByIdForUpdate(uploadId)
-                .orElseThrow(() -> new ResourceNotFoundException("Custom artwork upload was not found"));
+                .orElseThrow(() -> new UnusableCustomerUploadException(uploadId));
         requireClaimable(upload, ownerExternalId);
         upload.setConsumedAt(Instant.now());
         return customerUploadRepository.save(upload);
@@ -157,7 +157,7 @@ public class CustomerUploadService {
         validateUploadId(uploadId, ownerExternalId);
         final CustomerUpload upload = customerUploadRepository
                 .findById(uploadId)
-                .orElseThrow(() -> new ResourceNotFoundException("Custom artwork upload was not found"));
+                .orElseThrow(() -> new UnusableCustomerUploadException(uploadId));
         requireClaimable(upload, ownerExternalId);
     }
 
@@ -178,13 +178,13 @@ public class CustomerUploadService {
             throw new ResourceNotFoundException("Custom artwork upload was not found");
         }
         if (upload.getConsumedAt() != null) {
-            throw new IllegalArgumentException("Custom artwork upload was already used");
+            throw new UnusableCustomerUploadException(upload.getId());
         }
         if (upload.getReadyAt() == null) {
             throw new IllegalArgumentException("Custom artwork upload is not ready");
         }
         if (!upload.getCreatedAt().isAfter(Instant.now().minus(uploadTtl))) {
-            throw new IllegalArgumentException("Custom artwork upload has expired");
+            throw new UnusableCustomerUploadException(upload.getId());
         }
     }
 

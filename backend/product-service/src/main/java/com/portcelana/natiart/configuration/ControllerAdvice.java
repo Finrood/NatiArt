@@ -23,6 +23,20 @@ import com.portcelana.natiart.service.UpstreamServiceException;
 public class ControllerAdvice {
     private static final Logger LOGGER = LoggerFactory.getLogger(ControllerAdvice.class);
 
+    /** A rejected artwork claim rolls back the order transaction before this response is rendered. */
+    @ExceptionHandler(com.portcelana.natiart.service.UnusableCustomerUploadException.class)
+    public ResponseEntity<Object> handleUnusableCustomerUpload(
+            com.portcelana.natiart.service.UnusableCustomerUploadException exception) {
+        return ResponseEntity.badRequest()
+                .body(java.util.Map.of(
+                        "code",
+                        "CUSTOM_ARTWORK_UNAVAILABLE",
+                        "uploadId",
+                        exception.getUploadId(),
+                        "orderCreated",
+                        false));
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Object> handleAccessDeniedException(AccessDeniedException e) {
         LOGGER.debug("Access denied: ", e);

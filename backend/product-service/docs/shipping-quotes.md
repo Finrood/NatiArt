@@ -4,9 +4,13 @@ The customer requests a quote after entering a destination and before the
 payment step. Each cart line carries its quantity and personalization options.
 The server checks active products, package dimensions, weights, artwork
 ownership, and the configured personalization surcharge. It prices each
-fulfillment variant separately and sums quantities for the same product into
-one carrier volume. The carrier receives one volume per product/package; this
-is the packing rule until a physical multi-product packer is implemented.
+fulfillment variant separately and sums quantities for the same product before packing. The carrier receives
+one explicit parcel per purchased unit, each with the product package dimensions
+and unit weight as JSON numbers. No unsupported `volumes.qntd` is sent. This
+conservative packing rule matches the documented prepacked-volumes contract:
+https://docs.melhorenvio.com.br/docs/cotacao-de-fretes
+and https://docs.melhorenvio.com.br/reference/calculo-de-fretes-por-produtos.
+A physical multi-product packer remains future work.
 
 The quote stores the server item prices, total, service ID, destination,
 expiry, and a fingerprint of the product versions, quantities, prices, and

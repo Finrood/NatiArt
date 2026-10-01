@@ -22,8 +22,8 @@ public class ShippingEstimateRequest {
                 || height <= 0) {
             throw new IllegalArgumentException("Shipping weight and dimensions must be greater than zero");
         }
-        if (quantity < 1) {
-            throw new IllegalArgumentException("Shipping quantity must be at least one");
+        if (quantity < 1 || quantity > 100) {
+            throw new IllegalArgumentException("Shipping quantity must be between one and 100");
         }
         this.to = to;
         this.weight = weight;

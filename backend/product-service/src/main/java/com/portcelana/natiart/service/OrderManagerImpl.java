@@ -108,6 +108,14 @@ public class OrderManagerImpl implements OrderManager {
 
         try {
             return orderCreationService.createOrder(orderDto, ownerExternalId, normalizedKey, fingerprint);
+        } catch (UnusableCustomerUploadException exception) {
+            // A concurrent same-key creator may have claimed the artwork and committed first.
+            // Reload its order before declaring the claim definitively rejected.
+            if (normalizedKey != null) {
+                final Optional<CustomerOrder> winner = findOrder(ownerExternalId, normalizedKey);
+                if (winner.isPresent()) return returnReplayOrReject(winner.get(), fingerprint);
+            }
+            throw exception;
         } catch (DataIntegrityViolationException e) {
             // The unique index is the serialization point. This code runs
             // after the losing transaction has rolled back, so reloading here

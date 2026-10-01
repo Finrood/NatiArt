@@ -1,4 +1,5 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
+import {HttpErrorResponse} from '@angular/common/http';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
@@ -30,6 +31,7 @@ describe('CheckoutComponent', () => {
     goldBorder?: boolean;
     image?: File;
     customImageUploadId?: string;
+    requiresArtworkReselection?: boolean;
   }>;
   let uploadCustomerImageSpy: jasmine.Spy;
   let setCustomImageUploadIdSpy: jasmine.Spy;
@@ -98,6 +100,12 @@ describe('CheckoutComponent', () => {
             getCartTotalSnapshot: (): number => 99.9,
             getCartItemsSnapshot: () => cartItemsSnapshot,
             setCustomImageUploadId: setCustomImageUploadIdSpy,
+            invalidateArtwork: (id: string): void => {
+              for (const item of cartItemsSnapshot) if (item.customImageUploadId === id) {
+                delete item.customImageUploadId;
+                item.requiresArtworkReselection = !item.image;
+              }
+            },
             rememberPurchase: jasmine.createSpy('rememberPurchase'),
           },
         },
@@ -238,6 +246,41 @@ describe('CheckoutComponent', () => {
     expect(orderRequest.shippingQuoteId).toBe('variant-quote');
     expect(uploadCustomerImageSpy).toHaveBeenCalledOnceWith(artwork);
     expect(setCustomImageUploadIdSpy).toHaveBeenCalledOnceWith('line-art', uploadId);
+  });
+
+  it('invalidates a definitively rejected artwork ID and uploads the retained File once on retry', async () => {
+    const file: File = new File(['art'], 'art.png', {type: 'image/png'});
+    cartItemsSnapshot = [{cartItemId: 'line-art', product: {id: 'prod-1'}, quantity: 1,
+      image: file, customImageUploadId: 'expired-id'}];
+    createOrderSpy.and.returnValue(throwError(() => new HttpErrorResponse({status: 400,
+      error: {code: 'CUSTOM_ARTWORK_UNAVAILABLE', uploadId: 'expired-id', orderCreated: false}})));
+    (component as unknown as {shippingQuoteFingerprint: string}).shippingQuoteFingerprint =
+      (component as unknown as {currentShippingQuoteFingerprint(): string}).currentShippingQuoteFingerprint();
+    await component.onProcessPixPayment(loggedInUser);
+    const oldKey: string = createOrderSpy.calls.first().args[1];
+    expect(cartItemsSnapshot[0].customImageUploadId).toBeUndefined();
+    expect(uploadCustomerImageSpy).not.toHaveBeenCalled();
+    expect(createPixPaymentSpy).not.toHaveBeenCalled();
+    uploadCustomerImageSpy.and.returnValue(of({uploadId: 'fresh-id'}));
+    createOrderSpy.and.returnValue(of({id: 'fresh-order', totalAmount: 10}));
+    spyOn(TestBed.inject(ShippingService), 'createQuote').and.returnValue(of({quoteId: 'fresh-quote', expiresAt: '2099-01-01T00:00:00Z'} as ShippingQuote));
+    await (component as unknown as {loadShippingQuote(): Promise<boolean>}).loadShippingQuote();
+    await component.onProcessPixPayment(loggedInUser);
+    expect(uploadCustomerImageSpy).toHaveBeenCalledOnceWith(file);
+    expect(createOrderSpy.calls.mostRecent().args[0].items[0].personalization.personalizationOptions.CUSTOM_IMAGE).toBe('fresh-id');
+    expect(createOrderSpy.calls.mostRecent().args[1]).not.toBe(oldKey);
+  });
+
+  it('retains the artwork ID and same order key after an ambiguous response', async () => {
+    cartItemsSnapshot = [{cartItemId: 'line-art', product: {id: 'prod-1'}, quantity: 1, customImageUploadId: 'owned-id'}];
+    createOrderSpy.and.returnValue(throwError(() => new HttpErrorResponse({status: 0})));
+    (component as unknown as {shippingQuoteFingerprint: string}).shippingQuoteFingerprint =
+      (component as unknown as {currentShippingQuoteFingerprint(): string}).currentShippingQuoteFingerprint();
+    await component.onProcessPixPayment(loggedInUser);
+    await component.onProcessPixPayment(loggedInUser);
+    expect(cartItemsSnapshot[0].customImageUploadId).toBe('owned-id');
+    expect(createOrderSpy.calls.argsFor(0)[1]).toBe(createOrderSpy.calls.argsFor(1)[1]);
+    expect(uploadCustomerImageSpy).not.toHaveBeenCalled();
   });
 
   it('keeps checkout errors visible until dismissed (O3)', async () => {
