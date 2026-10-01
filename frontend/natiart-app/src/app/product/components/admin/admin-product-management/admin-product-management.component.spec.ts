@@ -126,13 +126,13 @@ describe('ProductManagementComponent error UX (O2)', () => {
 
 describe('ProductManagementComponent ordered image sessions', () => {
   let imageRequests: Map<string, Subject<Blob>>;
-  let productService: {getProducts: jasmine.Spy; getImage: jasmine.Spy; updateProduct: jasmine.Spy};
+  let productService: {getProductsPage: jasmine.Spy; getImage: jasmine.Spy; updateProduct: jasmine.Spy};
   const product = (id: string, images: string[]): Product => ({id, images, label: 'Art', originalPrice: 10,
     markedPrice: 10, stockQuantity: 10, categoryId: 'cat', tags: new Set<string>(), availablePersonalizations: []});
 
   beforeEach(async () => {
     imageRequests = new Map<string, Subject<Blob>>();
-    productService = {getProducts: jasmine.createSpy().and.returnValue(of([])),
+    productService = {getProductsPage: jasmine.createSpy().and.returnValue(of({items: [], page: 0, size: 20, total: 0, hasNext: false})),
       getImage: jasmine.createSpy().and.callFake((path: string): Subject<Blob> => {
         const request: Subject<Blob> = new Subject<Blob>();
         imageRequests.set(path, request);
@@ -141,8 +141,8 @@ describe('ProductManagementComponent ordered image sessions', () => {
     await TestBed.configureTestingModule({imports: [ProductManagementComponent], providers: [
       provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
       {provide: ProductService, useValue: productService},
-      {provide: CategoryService, useValue: {getCategories: (): unknown => of([])}},
-      {provide: PackageService, useValue: {getPackages: (): unknown => of([])}},
+      {provide: CategoryService, useValue: {getCategoriesPage: (): unknown => of({items: [], page: 0, size: 20, total: 0, hasNext: false})}},
+      {provide: PackageService, useValue: {getPackagesPage: (): unknown => of({items: [], page: 0, size: 20, total: 0, hasNext: false})}},
     ]}).compileComponents();
   });
 

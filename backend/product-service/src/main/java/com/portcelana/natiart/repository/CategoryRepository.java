@@ -18,6 +18,8 @@ public interface CategoryRepository extends JpaRepository<Category, String> {
 
     Optional<Category> findCategoryByLabel(String label);
 
+    Optional<Category> findByIdAndActiveTrue(String id);
+
     @Modifying
     @Query("UPDATE Category c SET c.active = CASE WHEN c.active = true THEN false ELSE true END WHERE c.id = :id")
     int toggleActiveById(@Param("id") String id);

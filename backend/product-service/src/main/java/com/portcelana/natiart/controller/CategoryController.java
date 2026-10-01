@@ -8,11 +8,14 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
 
 import com.portcelana.natiart.dto.CategoryDto;
 import com.portcelana.natiart.dto.PagedResponseDto;
+import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.service.CategoryManager;
 
 @RestController
@@ -30,7 +33,10 @@ public class CategoryController {
     public CategoryDto getCategory(@PathVariable String categoryId) {
         LOGGER.debug("Getting category with id [{}]", categoryId);
 
-        return CategoryDto.from(categoryManager.getCategoryOrDie(categoryId));
+        return CategoryDto.from(
+                isAdmin()
+                        ? categoryManager.getCategoryOrDie(categoryId)
+                        : categoryManager.getActiveCategoryOrDie(categoryId));
     }
 
     @GetMapping("/categories")
@@ -39,9 +45,9 @@ public class CategoryController {
             @RequestParam(required = false, defaultValue = "20") int size) {
         LOGGER.debug("Getting all categories page [{}] size [{}]", page, size);
         Pageable pageable = toPageable(page, size);
-        return categoryManager.getCategories(pageable).stream()
-                .map(CategoryDto::from)
-                .toList();
+        final List<Category> categories =
+                isAdmin() ? categoryManager.getCategories(pageable) : categoryManager.getActiveCategories(pageable);
+        return categories.stream().map(CategoryDto::from).toList();
     }
 
     @GetMapping("/categories/page")
@@ -61,6 +67,13 @@ public class CategoryController {
         final int safePage = Math.max(0, page);
         final int safeSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
         return PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "label", "id"));
+    }
+
+    private static boolean isAdmin() {
+        final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null
+                && authentication.getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
     }
 
     @PostMapping("/categories/create")

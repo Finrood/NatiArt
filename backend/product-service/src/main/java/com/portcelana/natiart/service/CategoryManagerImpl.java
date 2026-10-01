@@ -45,6 +45,17 @@ public class CategoryManagerImpl implements CategoryManager {
 
     @Override
     @Transactional(readOnly = true)
+    public Category getActiveCategoryOrDie(String categoryId) {
+        if (categoryId == null) {
+            throw new ResourceNotFoundException("Category with id null not found");
+        }
+        return categoryRepository
+                .findByIdAndActiveTrue(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category with id " + categoryId + " not found"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Category> getCategories(Pageable pageable) {
         return categoryRepository.findAll(pageable).stream().toList();
     }
@@ -55,6 +66,12 @@ public class CategoryManagerImpl implements CategoryManager {
         return PagedResponseDto.from(
                 (includeInactive ? categoryRepository.findAll(pageable) : categoryRepository.findByActiveTrue(pageable))
                         .map(CategoryDto::from));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Category> getActiveCategories(Pageable pageable) {
+        return categoryRepository.findByActiveTrue(pageable).getContent();
     }
 
     @Override

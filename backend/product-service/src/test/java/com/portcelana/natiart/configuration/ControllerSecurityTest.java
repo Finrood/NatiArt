@@ -1,6 +1,8 @@
 package com.portcelana.natiart.configuration;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
@@ -9,6 +11,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
@@ -30,6 +33,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
+import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.service.CartManager;
 import com.portcelana.natiart.service.CategoryManager;
 import com.portcelana.natiart.service.ImageConversionService;
@@ -147,11 +152,63 @@ class ControllerSecurityTest {
     void anonymousProductListingServesCatalogWithoutUserResolution() throws Exception {
         // The listing is intentionally public and takes no user parameter:
         // an empty catalog must render 200 with no security rejection.
-        when(productManager.getProducts(any())).thenReturn(List.of());
+        when(productManager.getActiveProducts(any())).thenReturn(List.of());
 
         mockMvc.perform(get("/products")).andExpect(status().isOk());
 
-        verify(productManager).getProducts(any());
+        verify(productManager).getActiveProducts(any());
+    }
+
+    @Test
+    @WithAnonymousUser
+    void anonymousCategoryListingOnlyUsesPublicCategories() throws Exception {
+        when(categoryManager.getActiveCategories(any())).thenReturn(List.of(new Category("Visible")));
+
+        mockMvc.perform(get("/categories"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].label").value("Visible"));
+
+        verify(categoryManager).getActiveCategories(any());
+    }
+
+    @Test
+    @WithMockUser(roles = {"ADMIN"})
+    void adminCategoryListingCanFindHiddenCategories() throws Exception {
+        when(categoryManager.getCategories(any())).thenReturn(List.of(new Category("Hidden").setActive(false)));
+
+        mockMvc.perform(get("/categories"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].active").value(false));
+
+        verify(categoryManager).getCategories(any());
+    }
+
+    @Test
+    @WithAnonymousUser
+    void anonymousCannotReadHiddenCategoryOrItsProductList() throws Exception {
+        when(categoryManager.getActiveCategoryOrDie("hidden"))
+                .thenThrow(new ResourceNotFoundException("Category with id hidden not found"));
+
+        mockMvc.perform(get("/categories/hidden")).andExpect(status().isNotFound());
+        mockMvc.perform(get("/products").param("categoryId", "hidden")).andExpect(status().isNotFound());
+
+        verify(categoryManager, times(2)).getActiveCategoryOrDie("hidden");
+    }
+
+    @Test
+    @WithMockUser(roles = {"ADMIN"})
+    void adminCanReadHiddenCategoryAndItsProductList() throws Exception {
+        final Category hidden = new Category("Hidden").setActive(false);
+        when(categoryManager.getCategoryOrDie("hidden")).thenReturn(hidden);
+        when(productManager.getProductsByCategory(eq(hidden), any())).thenReturn(List.of());
+
+        mockMvc.perform(get("/categories/hidden"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(false));
+        mockMvc.perform(get("/products").param("categoryId", "hidden")).andExpect(status().isOk());
+
+        verify(categoryManager, times(2)).getCategoryOrDie("hidden");
+        verify(productManager).getProductsByCategory(eq(hidden), any());
     }
 
     @Test

@@ -34,8 +34,10 @@ class ProductImageManifestHttpTest {
     void multipartManifestUploadIdSurvivesRealImageConversion() throws Exception {
         final ProductManager manager = mock(ProductManager.class);
         when(manager.updateProduct(any(ProductDto.class), anyList())).thenReturn(new Product("Art", BigDecimal.TEN));
-        final MockMvc mvc = MockMvcBuilders.standaloneSetup(
-                        new ProductController(manager, new ImageConversionService()))
+        final MockMvc mvc = MockMvcBuilders.standaloneSetup(new ProductController(
+                        manager,
+                        org.mockito.Mockito.mock(com.portcelana.natiart.service.CategoryManager.class),
+                        new ImageConversionService()))
                 .build();
         final String uploadId = UUID.randomUUID().toString();
         final String json = "{\"id\":\"p1\",\"label\":\"Art\",\"originalPrice\":10,\"imageManifest\":[{\"uploadId\":\""

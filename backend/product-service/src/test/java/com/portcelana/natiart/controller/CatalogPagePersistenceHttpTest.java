@@ -95,4 +95,39 @@ class CatalogPagePersistenceHttpTest {
                 .andExpect(jsonPath("$.total").value(21))
                 .andExpect(jsonPath("$.items[0].label").value("Package-20"));
     }
+
+    @Test
+    void publicPagedDiscoveryAndLegacyListsExcludeHiddenProductsAndCategories() throws Exception {
+        final Category visible = categories.save(new Category("Visible"));
+        final Category hidden = categories.save(new Category("Hidden").setActive(false));
+        products.save(new Product("Visible", BigDecimal.TEN).setCategory(visible));
+        products.save(new Product("Hidden product", BigDecimal.TEN)
+                .setCategory(visible)
+                .setActive(false));
+        products.save(new Product("Hidden category product", BigDecimal.TEN).setCategory(hidden));
+        products.flush();
+        final MockMvc mvc = MockMvcBuilders.standaloneSetup(
+                        new ProductController(productManager, categoryManager, new ImageConversionService()),
+                        new CategoryController(categoryManager))
+                .build();
+        mvc.perform(get("/products/page"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.items[0].label").value("Visible"));
+        mvc.perform(get("/products"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+        mvc.perform(get("/categories/page"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(1));
+        mvc.perform(get("/categories"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+        mvc.perform(get("/admin/products/page"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(3));
+        mvc.perform(get("/admin/categories/page"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(2));
+    }
 }
