@@ -26,6 +26,11 @@ printf '%s\n' 'Filesystem 1K-blocks Used Available Use% Mounted on' 'fixture 419
 DF
 chmod +x "$WORK/bin/df"
 chmod +x "$WORK/bin/gh"
+cat > "$WORK/bin/df" <<'EOF'
+#!/usr/bin/env bash
+printf 'Filesystem 1K-blocks Used Available Use%% Mounted on\nfixture 10000000 1000000 9000000 10%% /tmp\n'
+EOF
+chmod +x "$WORK/bin/df"
 printf 'sentinel\n' > "$WORK/repo/logs/sentinel"
 before="$(find "$WORK/repo/logs" -maxdepth 1 -type f -printf '%f:%s\n' | sort)"
 REPO="$WORK/repo" XDG_RUNTIME_DIR="$WORK/runtime" PATH="$WORK/bin:$PATH" \
