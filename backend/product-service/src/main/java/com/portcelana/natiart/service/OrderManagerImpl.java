@@ -75,7 +75,7 @@ public class OrderManagerImpl implements OrderManager {
         final CustomerOrder current = getOrderById(orderId);
         if (current.getStatus() == OrderStatus.PENDING) {
             current.setStatus(OrderStatus.PAID);
-            return current;
+            return orderRepository.saveAndFlush(current);
         }
         if (current.getStatus() == OrderStatus.PAID
                 || current.getStatus() == OrderStatus.PROCESSING
@@ -123,7 +123,7 @@ public class OrderManagerImpl implements OrderManager {
     private PageRequest pageRequest(int page, int size) {
         final int safePage = Math.max(0, page);
         final int safeSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
-        return PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "orderDate"));
+        return PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "orderDate", "id"));
     }
 
     private List<CustomerOrder> loadOrders(List<String> orderIds) {

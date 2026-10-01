@@ -48,7 +48,7 @@ class OrderReplayIntegrationTest {
     @Test
     void controllerReplayReturnsTheSameItemsAndReservesStockOnce() {
         final Product product = seedProduct();
-        final OrderController controller = new OrderController(realManager(product));
+        final OrderController controller = controller(realManager(product), product);
         final OrderDto request = orderRequest(product.getId());
         final AuthenticationResponseDto.Principal principal = principal();
 
@@ -68,7 +68,7 @@ class OrderReplayIntegrationTest {
         final Product product = seedProduct();
         final OrderDto request = orderRequest(product.getId());
         final AuthenticationResponseDto.Principal principal = principal();
-        final OrderDto winner = new OrderController(realManager(product)).createOrder(request, "checkout-1", principal);
+        final OrderDto winner = controller(realManager(product), product).createOrder(request, "checkout-1", principal);
         entityManager.flush();
         entityManager.clear();
 
@@ -81,7 +81,7 @@ class OrderReplayIntegrationTest {
         when(losingCreation.createOrder(any(OrderDto.class), eq("cus_jane"), eq("checkout-1"), anyString()))
                 .thenThrow(new DataIntegrityViolationException("duplicate idempotency key"));
 
-        final OrderDto replayed = new OrderController(new OrderManagerImpl(racingRepository, losingCreation))
+        final OrderDto replayed = controller(new OrderManagerImpl(racingRepository, losingCreation), product)
                 .createOrder(request, "checkout-1", principal);
 
         assertSameResponse(winner, replayed);
@@ -89,6 +89,15 @@ class OrderReplayIntegrationTest {
                 4, productRepository.findById(product.getId()).orElseThrow().getStockQuantity());
         verify(racingRepository, times(2)).findByOwnerExternalIdAndIdempotencyKey("cus_jane", "checkout-1");
         verify(losingCreation).createOrder(any(OrderDto.class), eq("cus_jane"), eq("checkout-1"), anyString());
+    }
+
+    private OrderController controller(com.portcelana.natiart.service.OrderManager manager, Product product) {
+        return new OrderController(
+                manager,
+                new com.portcelana.natiart.service.OrderViewService(
+                        realManager(product),
+                        new org.springframework.beans.factory.support.DefaultListableBeanFactory()
+                                .getBeanProvider(com.portcelana.natiart.repository.PaymentRepository.class)));
     }
 
     private Product seedProduct() {
@@ -105,7 +114,8 @@ class OrderReplayIntegrationTest {
                 mock(com.portcelana.natiart.service.ShippingQuoteService.class);
         when(shippingService.requireQuoteForOrder(any(), any(), any(), org.mockito.ArgumentMatchers.anyList(), any()))
                 .thenReturn(new com.portcelana.natiart.model.ShippingQuote()
-                        .setItems(List.of(new com.portcelana.natiart.model.ShippingQuoteItem(product.getId(), 1, product.getOriginalPrice(), product.getVersion())))
+                        .setItems(List.of(new com.portcelana.natiart.model.ShippingQuoteItem(
+                                product.getId(), 1, product.getOriginalPrice(), product.getVersion())))
                         .setShippingAmount(BigDecimal.ZERO)
                         .setItemAmount(product.getOriginalPrice())
                         .setTotalAmount(product.getOriginalPrice())

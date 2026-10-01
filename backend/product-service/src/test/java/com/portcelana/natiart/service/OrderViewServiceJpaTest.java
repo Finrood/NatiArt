@@ -131,6 +131,54 @@ class OrderViewServiceJpaTest {
                 () -> transactions.executeWithoutResult(ignored -> orderRepository.saveAndFlush(stale)));
     }
 
+    @Test
+    void boundedFulfillmentHttpPagesExposeAndAdvanceTheOlderPaidOrder() throws Exception {
+        final TransactionTemplate transactions = new TransactionTemplate(transactionManager);
+        final String olderId = transactions.execute(ignored -> {
+            paymentRepository.deleteAll();
+            orderRepository.deleteAll();
+            final Instant start = Instant.now();
+            for (int index = 0; index < 20; index++) {
+                orderRepository.save(newOrder(OrderStatus.DELIVERED).setOrderDate(start.minusSeconds(index)));
+            }
+            return orderRepository
+                    .saveAndFlush(newOrder(OrderStatus.PAID).setOrderDate(start.minusSeconds(21)))
+                    .getId();
+        });
+        final org.springframework.test.web.servlet.MockMvc http =
+                org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(
+                                new com.portcelana.natiart.controller.OrderController(orderManager, orderViewService))
+                        .setControllerAdvice(new com.portcelana.natiart.configuration.ControllerAdvice())
+                        .build();
+        http.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/admin/orders")
+                        .param("page", "0")
+                        .param("size", "20"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                        .isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.length()")
+                        .value(20));
+        http.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/admin/orders")
+                        .param("page", "1")
+                        .param("size", "20"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                        .isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.length()")
+                        .value(1))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$[0].id")
+                        .value(olderId));
+        http.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                                "/admin/orders/" + olderId + "/status")
+                        .contentType("application/json")
+                        .content("{\"status\":\"PROCESSING\"}"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                        .isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.status")
+                        .value("PROCESSING"));
+        assertEquals(
+                OrderStatus.PROCESSING,
+                orderRepository.findById(olderId).orElseThrow().getStatus());
+    }
+
     private CustomerOrder newOrder(OrderStatus status) {
         return new CustomerOrder()
                 .setFirstname("Buyer")

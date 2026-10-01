@@ -6,11 +6,14 @@
 
   @if (loading) {
     <p role="status" class="text-gray-600">Loading orders…</p>
-  } @else if (errorMessage) {
+  }
+  @if (errorMessage) {
     <p role="alert" class="rounded-md bg-red-50 border border-red-200 text-red-700 px-4 py-3">{{ errorMessage }}</p>
-  } @else if (orders.length === 0) {
+  }
+  @if (!loading && orders.length === 0 && !errorMessage) {
     <p class="text-gray-600">There are no orders to fulfill.</p>
-  } @else {
+  }
+  @if (orders.length > 0) {
     <div class="space-y-4">
       @for (order of orders; track order.id) {
         <article class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -21,6 +24,9 @@
             </div>
             <p class="font-medium text-gray-800">{{ order.totalAmount | currency:'BRL' }} · {{ order.status || 'PENDING' }}</p>
           </div>
+          @if ($orderErrors()[order.id!]) {
+            <p role="alert" class="text-red-700">{{ $orderErrors()[order.id!] }}</p>
+          }
           <div class="mt-4 flex flex-wrap gap-2">
             @for (status of availableStatuses(order); track status) {
               <button type="button" class="rounded-md bg-primary px-3 py-2 text-sm text-white hover:bg-primary-dark disabled:opacity-50" [disabled]="savingOrderId !== null" (click)="setStatus(order, status)">
@@ -33,5 +39,8 @@
         </article>
       }
     </div>
+  }
+  @if ($hasMore()) {
+    <button type="button" (click)="loadMore()" [disabled]="loading" data-load-more>Load more orders</button>
   }
 </section>

@@ -50,6 +50,7 @@ import tools.jackson.databind.json.JsonMapper;
         })
 @Import({
     OrderManagerImpl.class,
+    OrderViewService.class,
     OrderCreationService.class,
     CustomerUploadService.class,
     ShippingQuoteService.class,
@@ -68,6 +69,9 @@ class ShippingPackingHttpIntegrationTest {
 
     @Autowired
     private OrderManager manager;
+
+    @Autowired
+    private OrderViewService views;
 
     @MockitoBean
     private ProductManager productManager;
@@ -91,7 +95,7 @@ class ShippingPackingHttpIntegrationTest {
     void setup() {
         final AuthenticationResponseDto.Principal principal = mock(AuthenticationResponseDto.Principal.class);
         when(principal.getExternalId()).thenReturn("owner");
-        http = MockMvcBuilders.standaloneSetup(new OrderController(manager))
+        http = MockMvcBuilders.standaloneSetup(new OrderController(manager, views))
                 .setControllerAdvice(new ControllerAdvice())
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
                     @Override
@@ -132,20 +136,21 @@ class ShippingPackingHttpIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"one", "three", "variants"})
+    @ValueSource(strings = {"one", "three", "variants", "custom"})
     void serializedCarrierMassMatchesUnitsAndConfirmedQuoteIsCommittedUnchanged(String scenario) throws Exception {
-        final int units = scenario.equals("one") ? 1 : 3;
+        final int units = (scenario.equals("one") || scenario.equals("custom")) ? 1 : 3;
         final Category category =
                 categories.saveAndFlush(new Category(UUID.randomUUID().toString()));
-        final com.portcelana.natiart.model.Package packaging =
-                packages.saveAndFlush(new com.portcelana.natiart.model.Package("Unit parcel " + UUID.randomUUID(), 10, 15, 20));
+        final com.portcelana.natiart.model.Package packaging = packages.saveAndFlush(
+                new com.portcelana.natiart.model.Package("Unit parcel " + UUID.randomUUID(), 10, 15, 20));
         final Product product = products.saveAndFlush(new Product("Plate", BigDecimal.TEN)
                 .setCategory(category)
                 .setPackaging(packaging)
                 .setWeightKg(new BigDecimal("0.50"))
                 .setStockQuantity(10)
-                .setAvailablePersonalizations(
-                        java.util.Set.of(com.portcelana.natiart.model.support.PersonalizationOption.GOLDEN_BORDER)));
+                .setAvailablePersonalizations(java.util.Set.of(
+                        com.portcelana.natiart.model.support.PersonalizationOption.GOLDEN_BORDER,
+                        com.portcelana.natiart.model.support.PersonalizationOption.CUSTOM_IMAGE)));
         when(productManager.getProductsOrDie(List.of(product.getId()))).thenReturn(Map.of(product.getId(), product));
         final org.springframework.test.web.client.MockRestServiceServer server =
                 org.springframework.test.web.client.MockRestServiceServer.bindTo(carrierClient)
@@ -174,6 +179,10 @@ class ShippingPackingHttpIntegrationTest {
         final java.util.List<com.portcelana.natiart.dto.shipping.ShippingQuoteItemRequest> quoteItems =
                 new java.util.ArrayList<>();
         final java.util.List<OrderItemDto> items = new java.util.ArrayList<>();
+        final com.portcelana.natiart.model.CustomerUpload artwork = scenario.equals("custom")
+                ? uploads.saveAndFlush(new com.portcelana.natiart.model.CustomerUpload(
+                        "owner", "file:customer-uploads/owned.webp", "image/webp", 12L))
+                : null;
         if (scenario.equals("variants")) {
             final com.portcelana.natiart.dto.PersonalizationDto golden =
                     new com.portcelana.natiart.dto.PersonalizationDto()
@@ -191,6 +200,20 @@ class ShippingPackingHttpIntegrationTest {
                     .setProductId(product.getId())
                     .setQuantity(2));
             items.add(new OrderItemDto().setProductId(product.getId()).setQuantity(2));
+        } else if (artwork != null) {
+            final com.portcelana.natiart.dto.PersonalizationDto custom =
+                    new com.portcelana.natiart.dto.PersonalizationDto()
+                            .setPersonalizationOptions(Map.of(
+                                    com.portcelana.natiart.model.support.PersonalizationOption.CUSTOM_IMAGE,
+                                    artwork.getId()));
+            quoteItems.add(new com.portcelana.natiart.dto.shipping.ShippingQuoteItemRequest()
+                    .setProductId(product.getId())
+                    .setQuantity(1)
+                    .setPersonalization(custom));
+            items.add(new OrderItemDto()
+                    .setProductId(product.getId())
+                    .setQuantity(1)
+                    .setPersonalization(custom));
         } else {
             quoteItems.add(new com.portcelana.natiart.dto.shipping.ShippingQuoteItemRequest()
                     .setProductId(product.getId())
@@ -239,6 +262,18 @@ class ShippingPackingHttpIntegrationTest {
                 .andExpect(jsonPath("$.id").value(saved.getId()));
         assertEquals(
                 10 - units, products.findById(product.getId()).orElseThrow().getStockQuantity());
+        if (artwork != null) {
+            assertEquals(product.getOriginalPrice().add(new BigDecimal("2.50")), quote.getItemAmount());
+            org.junit.jupiter.api.Assertions.assertNotNull(
+                    uploads.findById(artwork.getId()).orElseThrow().getConsumedAt());
+            assertEquals(
+                    artwork.getId(),
+                    saved.getItems()
+                            .getFirst()
+                            .getPersonalization()
+                            .getCustomImageUpload()
+                            .getId());
+        }
         server.verify();
     }
 }

@@ -70,7 +70,14 @@ class OrderManagerImplTest {
                     final Product product = products.get(item.getProductId());
                     final BigDecimal unitPrice = product.getMarkedPrice().orElseGet(product::getOriginalPrice);
                     return new ShippingQuoteItem(
-                            item.getProductId(), item.getQuantity(), unitPrice, product.getVersion());
+                            item.getProductId(),
+                            PersonalizationRules.canonical(
+                                    item.getPersonalization() == null
+                                            ? Map.of()
+                                            : item.getPersonalization().getPersonalizationOptions()),
+                            item.getQuantity(),
+                            unitPrice,
+                            product.getVersion());
                 })
                 .toList();
         final BigDecimal itemAmount = quoteItems.stream()
@@ -104,6 +111,7 @@ class OrderManagerImplTest {
     @Test
     void createOrderComputesTotalsAndPersistsItems() {
         Product plate = product("p1", "Plate", new BigDecimal("15.00"), new BigDecimal("13.00"), 100);
+        plate.setAvailablePersonalizations(java.util.Set.of(PersonalizationOption.GOLDEN_BORDER));
         when(productManager.getProductsOrDie(List.of("p1"))).thenReturn(Map.of("p1", plate));
         when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1);
         shippingAmount = new BigDecimal("5.00");
