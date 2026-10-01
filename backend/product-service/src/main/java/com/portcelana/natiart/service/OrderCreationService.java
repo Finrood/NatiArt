@@ -118,17 +118,17 @@ public class OrderCreationService {
         return savedOrder;
     }
 
-    private String validateContactDetails(OrderDto orderDto) {
-        DomainValidation.requiredText(orderDto.getFirstname(), "firstname", 255);
-        DomainValidation.requiredText(orderDto.getLastname(), "lastname", 255);
-        DomainValidation.requiredText(orderDto.getEmail(), "email", 255);
-        DomainValidation.optionalText(orderDto.getPhone(), "phone", 255);
-        DomainValidation.requiredText(orderDto.getCountry(), "country", 255);
-        DomainValidation.requiredText(orderDto.getState(), "state", 255);
-        DomainValidation.requiredText(orderDto.getCity(), "city", 255);
-        DomainValidation.requiredText(orderDto.getNeighborhood(), "neighborhood", 255);
-        DomainValidation.requiredText(orderDto.getStreet(), "street", 255);
-        DomainValidation.optionalText(orderDto.getComplement(), "complement", 255);
+    static String validateContactDetails(OrderDto orderDto) {
+        orderDto.setFirstname(DomainValidation.requiredText(orderDto.getFirstname(), "firstname", 255));
+        orderDto.setLastname(DomainValidation.requiredText(orderDto.getLastname(), "lastname", 255));
+        orderDto.setEmail(DomainValidation.requiredText(orderDto.getEmail(), "email", 255));
+        orderDto.setPhone(DomainValidation.normalizedOptionalText(orderDto.getPhone(), "phone", 255));
+        orderDto.setCountry(DomainValidation.requiredText(orderDto.getCountry(), "country", 255));
+        orderDto.setState(DomainValidation.requiredText(orderDto.getState(), "state", 255));
+        orderDto.setCity(DomainValidation.requiredText(orderDto.getCity(), "city", 255));
+        orderDto.setNeighborhood(DomainValidation.requiredText(orderDto.getNeighborhood(), "neighborhood", 255));
+        orderDto.setStreet(DomainValidation.requiredText(orderDto.getStreet(), "street", 255));
+        orderDto.setComplement(DomainValidation.normalizedOptionalText(orderDto.getComplement(), "complement", 255));
         return DomainValidation.cep(orderDto.getZipCode());
     }
 

@@ -19,6 +19,13 @@ public final class DomainValidation {
         return normalized;
     }
 
+    public static String normalizedOptionalText(String value, String field, int maxLength) {
+        if (value == null) return null;
+        final String normalized = value.strip();
+        optionalText(normalized, field, maxLength);
+        return normalized;
+    }
+
     public static void optionalText(String value, String field, int maxLength) {
         if (value != null && value.length() > maxLength) {
             throw new InputValidationException(field, field + " must not exceed " + maxLength + " characters");

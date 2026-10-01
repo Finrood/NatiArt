@@ -106,7 +106,7 @@ describe('CartService', () => {
   it('doesNotPersistLinesThatCarryACustomImage', () => {
     service.addToCart(product(), 1, false, new File([], 'art.png')).subscribe();
 
-    expect(localStorage.getItem('natiart-cart')).toBeNull();
+    expect(JSON.parse(localStorage.getItem('natiart-cart')!).items).toEqual([]);
   });
 
   it('recoversToAnEmptyCartWhenThePersistedCartIsCorrupt', () => {
@@ -164,4 +164,32 @@ describe('CartService', () => {
     service.removeFromCart(cartItemId).subscribe();
     expect(service.getCartItemsSnapshot()).toEqual([]);
   });
+  it('deducts purchased quantities once across reloads and preserves additions and other variants', () => {
+    service.addToCart(product(), 2).subscribe();
+    const line: CartItem = service.getCartItemsSnapshot()[0];
+    service.rememberPurchase('ord-1', 'cus_MINE', [{cartItemId: line.cartItemId, quantity: 2}]);
+    service.addToCart(product(), 2).subscribe();
+    service.addToCart(product(), 1, true).subscribe();
+    service.addToCart(product({id: 'other'}), 1).subscribe();
+    service.completePurchase('ord-1', 'foreign');
+    expect(service.getCartItemsSnapshot()[0].quantity).toBe(4);
+    service.completePurchase('ord-1', 'cus_MINE');
+    expect(service.getCartItemsSnapshot().map((item: CartItem) => item.quantity)).toEqual([2, 1, 1]);
+    const restored: CartService = new CartService();
+    restored.completePurchase('ord-1', 'cus_MINE');
+    expect(restored.getCartItemsSnapshot().map((item: CartItem) => item.quantity)).toEqual([2, 1, 1]);
+  });
+
+  it('keeps cart and receipt unchanged when a completion cannot be persisted', () => {
+    service.addToCart(product(), 2).subscribe();
+    const line: CartItem = service.getCartItemsSnapshot()[0];
+    service.rememberPurchase('ord-1', 'cus_MINE', [{cartItemId: line.cartItemId, quantity: 2}]);
+    const storage = spyOn(localStorage, 'setItem').and.throwError('full');
+    expect(() => service.completePurchase('ord-1', 'cus_MINE')).toThrow();
+    expect(service.getCartItemsSnapshot()[0].quantity).toBe(2);
+    storage.and.callThrough();
+    service.completePurchase('ord-1', 'cus_MINE');
+    expect(service.getCartItemsSnapshot()).toEqual([]);
+  });
+
 });
