@@ -1,4 +1,4 @@
-import {AfterViewInit, ChangeDetectorRef, Component, HostListener, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
+import {AfterViewInit, ChangeDetectorRef, Component, DestroyRef, HostListener, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {ProductService} from '../../../service/product.service';
@@ -13,6 +13,8 @@ import {CdkDragDrop, DragDropModule, moveItemInArray} from '@angular/cdk/drag-dr
 import {PersonalizationOption} from '../../../models/support/personalization-option';
 import {ImageService} from '../../../service/image.service';
 import {AlertMessageComponent} from "../../../../shared/components/alert-message/alert-message.component";
+import {PagedList} from '../../../../shared/service/paged-list';
+import {PageControlsComponent} from '../../../../shared/components/page-controls.component';
 import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportError, reportWarning} from '../../../../shared/service/error-reporting.service';
 
@@ -28,7 +30,7 @@ interface ImagePreview {
 @Component({
   selector: 'app-admin-product-management',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DragDropModule, AlertMessageComponent, ButtonComponent],
+  imports: [CommonModule, ReactiveFormsModule, DragDropModule, AlertMessageComponent, ButtonComponent, PageControlsComponent],
   templateUrl: './admin-product-management.component.html',
   styleUrls: ['./admin-product-management.component.css']
 })
@@ -96,6 +98,16 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   onResize(): void {
     this.isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   }
+
+  readonly pages = new PagedList<Product>((page: number) => this.productService.getProductsPage(undefined, page, 20, '', true),
+    (items: Product[]): void => {this._products$.next(items); this.updateAllProductImages(items);}, inject(DestroyRef), (): void => this.showAlert('Error loading products', 'error'));
+
+  readonly categoryOptions = new PagedList<Category>((page: number) => this.categoryService.getCategoriesPage(page, 20, true),
+    (items: Category[]): void => this.categories.next([...new Map([...this.categories.value, ...items]
+      .map((item: Category) => [item.id, item] as const)).values()]), inject(DestroyRef));
+  readonly packageOptions = new PagedList<Package>((page: number) => this.packageService.getPackagesPage(page, 20, true),
+    (items: Package[]): void => this.packages.next([...new Map([...this.packages.value, ...items]
+      .map((item: Package) => [item.id, item] as const)).values()]), inject(DestroyRef));
 
   ngOnInit(): void {
     this.getProducts();
@@ -231,6 +243,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   deleteProduct(id: string): void {
     this.productService.deleteProduct(id).subscribe({
       next: () => {
+        this.pages.load(this.pages.$page());
         this._products$.next(this._products$.value.filter(prod => prod.id !== id));
         this.showAlert('Product deleted successfully', 'success');
       },
@@ -244,6 +257,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   toggleProductVisibility(product: Product): void {
     this.productService.inverseProductVisibility(product.id!).subscribe({
       next: (response: Product) => {
+        this.pages.load(this.pages.$page());
         this._products$.next(this._products$.value.map(prod => prod.id === response.id ? response : prod));
       },
       error: (error) => {
@@ -256,6 +270,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   private addProduct(formData: FormData): void {
     this.productService.addProduct(formData).subscribe({
       next: (response) => {
+        this.pages.load(this.pages.$page());
         this._products$.next([...this._products$.value, response]);
         this.updateProductImage(response);
         this.closeModal();
@@ -273,6 +288,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   private updateProduct(productId: string, formData: FormData): void {
     this.productService.updateProduct(productId, formData).subscribe({
       next: (response: Product) => {
+        this.pages.load(this.pages.$page());
         this._products$.next(this._products$.value.map(prod => prod.id === response.id ? response : prod));
         this.updateProductImage(response);
         this.closeModal();
@@ -287,38 +303,11 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
     });
   }
 
-  private getProducts(): void {
-    this.productService.getProducts().subscribe({
-      next: (response: Product[]) => {
-        this._products$.next(response);
-        this.updateAllProductImages(response);
-      },
-      error: (error) => {
-        reportError('product-management', error);
-        this.showAlert('Error loading products', 'error');
-      }
-    });
-  }
+  private getProducts(): void { this.pages.load(0); }
 
-  private getCategories(): void {
-    this.categoryService.getCategories().subscribe({
-      next: (response) => this.categories.next(response),
-      error: (error) => {
-        reportError('category', error);
-        this.showAlert('Error loading categories', 'error');
-      }
-    });
-  }
+  private getCategories(): void { this.categoryOptions.load(0); }
 
-  private getPackages(): void {
-    this.packageService.getPackages().subscribe({
-      next: (response) => this.packages.next(response),
-      error: (error) => {
-        reportError('package', error);
-        this.showAlert('Error loading packages', 'error');
-      }
-    });
-  }
+  private getPackages(): void { this.packageOptions.load(0); }
 
   private validateAllFormFields(formGroup: FormGroup): void {
     Object.keys(formGroup.controls).forEach(field => {

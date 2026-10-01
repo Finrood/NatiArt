@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.CategoryDto;
+import com.portcelana.natiart.dto.PagedResponseDto;
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.repository.CategoryRepository;
 import com.portcelana.natiart.repository.ProductRepository;
@@ -46,6 +47,14 @@ public class CategoryManagerImpl implements CategoryManager {
     @Transactional(readOnly = true)
     public List<Category> getCategories(Pageable pageable) {
         return categoryRepository.findAll(pageable).stream().toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PagedResponseDto<CategoryDto> getCategoriesPage(Pageable pageable, boolean includeInactive) {
+        return PagedResponseDto.from(
+                (includeInactive ? categoryRepository.findAll(pageable) : categoryRepository.findByActiveTrue(pageable))
+                        .map(CategoryDto::from));
     }
 
     @Override

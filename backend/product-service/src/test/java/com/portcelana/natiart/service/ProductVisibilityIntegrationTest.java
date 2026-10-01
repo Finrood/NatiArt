@@ -55,7 +55,8 @@ class ProductVisibilityIntegrationTest {
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void toggleMapsCompleteDetachedResponseAndCommitsVisibility() {
         final Product saved = seedProduct();
-        final ProductController controller = new ProductController(productManager, mock(ImageConversionService.class));
+        final ProductController controller =
+                new ProductController(productManager, mock(CategoryManager.class), mock(ImageConversionService.class));
 
         final ProductDto response = controller.inverseProductVisibility(saved.getId());
 
