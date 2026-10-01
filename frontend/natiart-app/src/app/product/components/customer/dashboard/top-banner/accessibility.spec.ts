@@ -6,6 +6,7 @@ describe('Carousel keyboard and motion contract', () => {
   beforeEach(async () => {await TestBed.configureTestingModule({imports: [TopBannerComponent], providers: [provideRouter([])]}).compileComponents();});
   it('keeps named controls visible, pauses rotation and accepts keyboard navigation', fakeAsync(() => {
     const fixture = TestBed.createComponent(TopBannerComponent);
+    fixture.componentInstance.bannerImages.splice(0, 1, ...Array<string>(4).fill('assets/img/a1.webp'));
     fixture.detectChanges();
     const root: HTMLElement = fixture.nativeElement.querySelector('[aria-roledescription="carousel"]');
     const next: HTMLButtonElement = fixture.nativeElement.querySelector('button[aria-label="Next banner"]');
