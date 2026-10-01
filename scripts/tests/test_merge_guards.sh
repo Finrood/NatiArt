@@ -34,7 +34,7 @@ gh() {
             else
                 return 1
             fi
-            jq -r "$filter" "$fixture"
+            if [[ -n "$filter" ]]; then jq -r "$filter" "$fixture"; else cat "$fixture"; fi
             ;;
         "pr merge")
             printf '%s\n' "$*" >> "$WORK/merges"
@@ -102,6 +102,31 @@ sed -i 's/"state":"APPROVED"/"state":"DISMISSED"/g' "$WORK/reviews.json"
 if trusted_latest_verdict 7 2222222222222222222222222222222222222222 >/dev/null; then
     echo "dismissed review unexpectedly passed" >&2
     exit 1
+fi
+
+# Formal provider state is authoritative even without custom verdict grammar.
+cat > "$WORK/reviews.json" <<'EOF'
+{"reviews":[
+ {"submittedAt":"2026-09-12T10:00:00Z","author":{"login":"trusted-reviewer"},"state":"APPROVED","commit":{"oid":"2222222222222222222222222222222222222222"},"body":"VERDICT: APPROVE (reviewed 2222222222222222222222222222222222222222)"},
+ {"submittedAt":"2026-09-12T11:00:00Z","author":{"login":"trusted-reviewer"},"state":"CHANGES_REQUESTED","commit":{"oid":"2222222222222222222222222222222222222222"},"body":"Please repair the production boundary."}
+]}
+EOF
+if trusted_latest_verdict 7 2222222222222222222222222222222222222222 >/dev/null; then
+    echo "ordinary formal changes request was hidden by older verdict text" >&2; exit 1
+fi
+jq '.reviews[1].state = "DISMISSED"' "$WORK/reviews.json" > "$WORK/new.json"
+mv "$WORK/new.json" "$WORK/reviews.json"
+if trusted_latest_verdict 7 2222222222222222222222222222222222222222 >/dev/null; then
+    echo "dismissed reviewer state resurrected an earlier approval" >&2; exit 1
+fi
+jq '.reviews += [.reviews[0] + {submittedAt:"2026-09-12T12:00:00Z"}]' "$WORK/reviews.json" > "$WORK/new.json"
+mv "$WORK/new.json" "$WORK/reviews.json"
+is_head_bound_approval "$(trusted_latest_verdict 7 2222222222222222222222222222222222222222)"
+# One independent reviewer approval cannot hide another active trusted veto.
+jq '.reviews += [.reviews[1] + {state:"CHANGES_REQUESTED",author:{login:"other-trusted"}}]' "$WORK/reviews.json" > "$WORK/new.json"
+mv "$WORK/new.json" "$WORK/reviews.json"
+if NATIART_TRUSTED_REVIEWERS='trusted-reviewer,other-trusted' trusted_latest_verdict 7 2222222222222222222222222222222222222222 >/dev/null; then
+    echo "another trusted reviewer veto was ignored" >&2; exit 1
 fi
 
 # Simulate a push after checks and review were collected. The final head read

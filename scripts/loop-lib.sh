@@ -56,31 +56,127 @@ gh_checks_safe() { # `gh pr checks` keeps output on non-zero check-state exits
     fi
 }
 
+is_loop_branch() { # naming classifier for watchdog only; never ownership proof
+    [[ "${1:-}" =~ ^(fix|perf|chore|docs|feature|salvage)/ ]]
+}
+
 is_docs_only() { # $1 = PR number; true iff every changed file is under docs/
     local files
     files=$(gh pr view "$1" --json files --jq '.files[].path' 2>/dev/null) || return 1
     [[ -n "$files" ]] && ! grep -qvE '^docs/' <<<"$files"
 }
 
-is_loop_branch() { # $1 = branch name; true iff the loop owns it (may salvage)
-    [[ "${1:-}" =~ ^(fix|perf|chore|docs|feature|salvage)/ ]]
+loop_owned_branch() { # $1=exact branch name $2=private ownership ledger
+    local branch="${1:-}" ledger="${2:-}"
+    [[ -n "$branch" && -f "$ledger" ]] || return 1
+    awk -F '\t' -v branch="$branch" '$1 == branch && NF == 3 { found=1 } END { exit !found }' "$ledger"
+}
+
+loop_owned_tip() { # $1=exact branch name $2=exact recorded tip $3=private ledger
+    local branch="${1:-}" sha="${2:-}" ledger="${3:-}"
+    [[ -n "$branch" && -n "$sha" && -f "$ledger" ]] || return 1
+    awk -F '\t' -v branch="$branch" -v sha="$sha" \
+        '$1 == branch && $3 == sha && NF == 3 { found=1 } END { exit !found }' "$ledger"
+}
+
+loop_record_new_branches() { # $1=before local refs $2=before remote refs $3=ledger $4=cycle id
+    local before="$1" remote_before="$2" ledger="$3" cycle_id="$4" branch sha
+    while IFS= read -r branch; do
+        [[ -n "$branch" && "$branch" != master ]] || continue
+        if grep -qxF "$branch" <<<"$remote_before"; then continue; fi
+        if loop_owned_branch "$branch" "$ledger"; then continue; fi
+        sha="$(git rev-parse "refs/heads/$branch" 2>/dev/null)" || return 1
+        printf '%s\t%s\t%s\n' "$branch" "$cycle_id" "$sha" >> "$ledger" || return 1
+    done < <(comm -13 <(printf '%s\n' "$before" | LC_ALL=C sort) \
+        <(git for-each-ref --format='%(refname:short)' refs/heads/ | LC_ALL=C sort))
+}
+
+loop_delete_merged_remote_branch() { # $1=branch $2=private ledger
+    local branch="$1" ledger="$2" remote_sha
+    if ! loop_owned_branch "$branch" "$ledger"; then
+        log "Preserving unowned remote branch $branch."
+        return 0
+    fi
+    remote_sha="$(git rev-parse "refs/remotes/origin/$branch" 2>/dev/null)" || return 0
+    if ! loop_owned_tip "$branch" "$remote_sha" "$ledger"; then
+        log "Preserving changed remote branch $branch; its tip differs from the ownership record."
+        return 0
+    fi
+    if ! git merge-base --is-ancestor "$remote_sha" origin/master 2>/dev/null; then
+        log "Preserving unmerged remote branch $branch."
+        return 0
+    fi
+    if ! git push -q --force-with-lease="refs/heads/$branch:$remote_sha" origin --delete "$branch"; then
+        log "Remote branch $branch changed after validation or push failed; preserving it."
+    fi
+}
+
+is_loop_machinery_file() { # $1 = path that always requires human review
+    case "$1" in
+        scripts/*|agents/*|.github/*|.cursorrules|docs/continuous-improvement-loop.md|docs/loop-lenses.md|AGENTS.md|CLAUDE.md|GEMINI.md|*/AGENTS.md|*/CLAUDE.md|*/GEMINI.md) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+files_touch_loop_machinery() { # $1 = newline-separated changed paths
+    local files="$1" path
+    while IFS= read -r path; do
+        [[ -z "$path" ]] && continue
+        is_loop_machinery_file "$path" && return 0
+    done <<<"$files"
+    return 1
+}
+
+dependabot_author_is_verified() { # $1 = authenticated GitHub login
+    [[ "$1" == "dependabot[bot]" ]]
+}
+
+dependabot_files_supported() { # $1 = newline-separated manifest/lockfile paths
+    local files="$1" path
+    [[ -n "$files" ]] || return 1
+    while IFS= read -r path; do
+        [[ -n "$path" ]] || return 1
+        case "$path" in
+            backend/*/build.gradle|backend/*/build.gradle.kts|backend/*/gradle.lockfile|frontend/natiart-app/package.json|frontend/natiart-app/package-lock.json|package.json|package-lock.json|gradle/libs.versions.toml|gradle/verification-metadata.xml)
+                ;;
+            *) return 1 ;;
+        esac
+    done <<<"$files"
+}
+
+dependabot_update_soaked() { # $1=PR updatedAt $2=epoch now; conservatively resets on any PR activity
+    local updated_at="$1" now="$2" updated_epoch
+    updated_epoch="$(date -d "$updated_at" +%s 2>/dev/null)" || return 1
+    [[ "$updated_epoch" =~ ^[0-9]+$ && "$now" =~ ^[0-9]+$ ]] || return 1
+    (( updated_epoch > 0 && now >= updated_epoch && now - updated_epoch >= 172800 ))
 }
 
 semver_bump() { # $1 = dependabot title; prints patch|minor|major|unknown
-    # Only single-dependency "bump X from a.b.c to x.y.z" titles classify.
-    # Group bumps ("across 1 directory with N updates"), multi-pair titles
-    # ("A from x to y, B from ..."), and anything else return unknown
-    # (conservative: never auto-merge what we cannot scope to one bump).
+    # Only exact single-dependency "Bump X from a.b.c to x.y.z" titles
+    # classify. Group/multi-pair titles, prereleases, downgrades, and malformed
+    # values return unknown (conservative: never auto-merge what we cannot scope).
     local title="$1"
-    case "$title" in
-        *from\ *from*|*to\ *to*) echo unknown; return ;;
-    esac
-    if [[ "$title" =~ from\ [vV]?([0-9]+)\.([0-9]+)\.([0-9]+).*to\ [vV]?([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
-        if [[ "${BASH_REMATCH[1]}" != "${BASH_REMATCH[4]}" ]]; then echo major
-        elif [[ "${BASH_REMATCH[2]}" != "${BASH_REMATCH[5]}" ]]; then echo minor
-        else echo patch; fi
-    else
+    local old_major old_minor old_patch new_major new_minor new_patch component
+    if [[ "${title#* from }" == *" from "* || "${title#* to }" == *" to "* ]]; then
         echo unknown
+        return
+    fi
+    if [[ ! "$title" =~ ^.*[Bb]ump[[:space:]]+.+[[:space:]]from[[:space:]]v?([0-9]+)\.([0-9]+)\.([0-9]+)[[:space:]]+to[[:space:]]v?([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+        echo unknown
+        return
+    fi
+    old_major="${BASH_REMATCH[1]}"; old_minor="${BASH_REMATCH[2]}"; old_patch="${BASH_REMATCH[3]}"
+    new_major="${BASH_REMATCH[4]}"; new_minor="${BASH_REMATCH[5]}"; new_patch="${BASH_REMATCH[6]}"
+    for component in "$old_major" "$old_minor" "$old_patch" "$new_major" "$new_minor" "$new_patch"; do
+        [[ "${#component}" -le 9 ]] || { echo unknown; return; }
+    done
+    if (( 10#$new_major < 10#$old_major ||
+          (10#$new_major == 10#$old_major && 10#$new_minor < 10#$old_minor) ||
+          (10#$new_major == 10#$old_major && 10#$new_minor == 10#$old_minor && 10#$new_patch < 10#$old_patch) )); then
+        echo unknown
+    elif (( 10#$new_major != 10#$old_major )); then echo major
+    elif (( 10#$new_minor != 10#$old_minor )); then echo minor
+    else echo patch
     fi
 }
 
@@ -106,11 +202,19 @@ latest_verdict() { # $1 = PR number; prints the FIRST LINE of the newest VERDICT
     latest_verdict_body "$1" | grep -m1 '^VERDICT:' || true
 }
 
-latest_review_record() { # $1 = PR; newest verdict's author, state, commit, first line
-    gh pr view "$1" --json reviews --jq '[((.reviews // [])[] | {t: .submittedAt, a: (.author.login // ""), s: (.state // ""), c: (.commit.oid // ""), b: .body})]
-        | map(select(.b | type == "string")) | map(.b |= gsub("^[ \\t]+"; ""))
-        | map(select(.b | startswith("VERDICT:"))) | sort_by(.t) | last
-        | if . == null then empty else "\(.a)\t\(.s)\t\(.c)\t\(.b | split("\n")[0])" end' 2>/dev/null || true
+latest_review_record() { # $1=PR; each trusted reviewer's latest formal state, including ordinary prose vetoes
+    local reviews
+    reviews="$(gh pr view "$1" --json reviews 2>/dev/null)" || return 1
+    jq -r --arg trusted "${NATIART_TRUSTED_REVIEWERS:-}" '
+        ($trusted | split(",")) as $allowed
+        | [.reviews[]? | select(.author.login as $login | $allowed | index($login))
+            | select(.state == "APPROVED" or .state == "CHANGES_REQUESTED" or .state == "DISMISSED")]
+        | group_by(.author.login) | map(sort_by(.submittedAt) | last)
+        | if any(.state == "CHANGES_REQUESTED") then
+            map(select(.state == "CHANGES_REQUESTED")) | sort_by(.submittedAt) | last
+          else map(select(.state == "APPROVED")) | sort_by(.submittedAt) | last end
+        | if . == null then empty else
+            [.author.login, .state, (.commit.oid // ""), ((.body // "") | ltrimstr(" ") | split("\n")[0])] | @tsv end' <<<"$reviews"
 }
 
 login_in_list() { # $1 = authenticated login; $2 = comma-separated allowlist
@@ -146,6 +250,36 @@ pr_is_loop_owned() { # $1 = PR number; authenticated author + exact ownership ma
     body="$(gh pr view "$1" --json body --jq '.body // empty' 2>/dev/null)" || return 1
     login_in_list "$author" "${NATIART_LOOP_AUTHORS:-Finrood}" || return 1
     grep -qxF 'Loop-Owner: natiart-improvement-loop' <<<"$body"
+}
+
+pr_base_at_head() { # $1=PR $2=captured SHA; immutable compare base, fail closed on incomplete metadata
+    local base
+    [[ "${2:-}" =~ ^[0-9a-f]{40}$ ]] || return 1
+    base="$(gh pr view "$1" --json baseRefOid --jq .baseRefOid 2>/dev/null)" || return 1
+    [[ "$base" =~ ^[0-9a-f]{40}$ ]] || return 1
+    printf '%s' "$base"
+}
+
+pr_files_at_head() { # $1=PR $2=captured SHA; files never come from a later mutable PR head
+    local base
+    base="$(pr_base_at_head "$1" "$2")" || return 1
+    gh api --paginate "repos/{owner}/{repo}/compare/$base...$2" --jq 'if (.files | length) >= 300 then error("comparison file limit reached") else .files[].filename end' 2>/dev/null
+}
+
+pr_patch_at_head() { # $1=PR $2=captured SHA; exact dependency patch
+    local base
+    base="$(pr_base_at_head "$1" "$2")" || return 1
+    gh api "repos/{owner}/{repo}/compare/$base...$2" -H 'Accept: application/vnd.github.diff' 2>/dev/null
+}
+
+pr_checks_at_head() { # $1=full captured SHA; includes checks and legacy status contexts
+    [[ "${1:-}" =~ ^[0-9a-f]{40}$ ]] || return 1
+    local runs statuses
+    runs="$(gh api --paginate "repos/{owner}/{repo}/commits/$1/check-runs?per_page=100" --jq \
+        '.check_runs[] | [.name, (if .status != "completed" then "pending" elif .conclusion == "success" then "pass" else "fail" end), "", .html_url] | @tsv' 2>/dev/null)" || return 1
+    statuses="$(gh api "repos/{owner}/{repo}/commits/$1/status" --jq \
+        '.statuses[] | [.context, (if .state == "success" then "pass" elif .state == "pending" then "pending" else "fail" end), "", .target_url] | @tsv' 2>/dev/null)" || return 1
+    printf '%s\n%s\n' "$runs" "$statuses"
 }
 
 merge_pr_at_head() { # $1 = PR number; $2 = reviewed full head SHA
