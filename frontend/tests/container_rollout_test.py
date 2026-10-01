@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise the shipped nginx template/entrypoint with two immutable releases."""
 import argparse
+import http.client
 import json
 import pathlib
 import shutil
@@ -133,6 +134,25 @@ COPY html /usr/share/nginx/html
                 assert response['body'] == '{"test":true}' and response['method'] == 'POST'
                 assert response['authorization'] == 'Bearer test-only' and response['cookie'] == 'refresh=test-only'
                 assert 'HttpOnly' in headers['Set-Cookie'] and response['forwardedHost'] == '127.0.0.1'
+            # Exercise the actual multipart creation route above nginx's default 1 MiB.
+            boundary = 'natiart-upload-boundary'
+            body = (f'--{boundary}\r\nContent-Disposition: form-data; name="productDto"\r\nContent-Type: application/json\r\n\r\n{{"label":"fixture"}}\r\n'
+                    f'--{boundary}\r\nContent-Disposition: form-data; name="newImages"; filename="fixture.webp"\r\nContent-Type: image/webp\r\n\r\n').encode() + b'a' * (2 * 1024 * 1024) + f'\r\n--{boundary}--\r\n'.encode()
+            status, headers, received = request(port, '/server/product/products/create?fixture=upload', data=body,
+                headers={'Content-Type': f'multipart/form-data; boundary={boundary}', 'Authorization': 'Bearer upload-fixture', 'Cookie': 'fixture=upload'})
+            received = json.loads(received)
+            assert status == 201 and received['path'] == '/products/create?fixture=upload'
+            assert received['body'].encode() == body
+            assert received['authorization'] == 'Bearer upload-fixture' and received['cookie'] == 'fixture=upload'
+            # nginx rejects an oversized declared body before accepting its bytes.
+            for path, length in [('/server/product/products/create', 102 * 1024 * 1024), ('/server/directory/register-user', 2 * 1024 * 1024)]:
+                connection = http.client.HTTPConnection('127.0.0.1', port, timeout=5)
+                connection.putrequest('POST', path)
+                connection.putheader('Content-Type', f'multipart/form-data; boundary={boundary}')
+                connection.putheader('Content-Length', str(length))
+                connection.endheaders()
+                assert connection.getresponse().status == 413, path
+                connection.close()
             # Rollback uses its image shell/config while retaining B's chunks too.
             rollback = prefix + '-rollback'
             containers.append(rollback)

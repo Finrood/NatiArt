@@ -340,6 +340,16 @@
     "4560504204439476580": "Mostrar ou ocultar senha",
     "9178182467454450952": "Confirmar",
     "5419797558021521652": "Ir para o banner {$IMAGE_NUMBER}",
-    "2542543072706966282": "Ver imagem do produto {$IMAGE_NUMBER}"
+    "2542543072706966282": "Ver imagem do produto {$IMAGE_NUMBER}",
+    "8407116544304459385": "Este CEP não foi encontrado. Informe o endereço manualmente.",
+    "9220609066485678691": "Prato de porcelana pintado à mão para celebrar momentos especiais",
+    "3391587206380147263": "Já existe uma conta com este e-mail.",
+    "5138143001064201023": "O serviço está indisponível. Tente novamente.",
+    "7301016303813991384": "Referência do pedido: {$INTERPOLATION}",
+    "7363161117585438309": "Pagamento confirmado. Não foi possível atualizar o carrinho; atualize esta página para tentar novamente.",
+    "6930465769132062440": " Continuar comprando ",
+    "5178116813176299129": "Atualizar pagamento",
+    "3923879805129934576": "Este código PIX expirou.",
+    "8132716036960983596": "Não foi possível carregar os dados do pagamento."
   }
 }
