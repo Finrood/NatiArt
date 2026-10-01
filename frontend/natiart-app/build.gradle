@@ -12,7 +12,7 @@ tasks.register("npmCi", Exec) {
 tasks.register("npmBuild", Exec) {
     dependsOn("npmCi")
     workingDir(projectDir)
-    commandLine(npmCommand, "run", "build")
+    commandLine(npmCommand, "run", "build", "--", "--configuration", "production")
 }
 
 tasks.register("npmTest", Exec) {
@@ -21,6 +21,12 @@ tasks.register("npmTest", Exec) {
     commandLine(npmCommand, "test", "--", "--watch=false", "--browsers=ChromeHeadless")
 }
 
+tasks.register("verifyProductionArtifacts", Exec) {
+    dependsOn("npmBuild")
+    workingDir(projectDir)
+    commandLine("node", "scripts/verify-production-artifacts.mjs")
+}
+
 tasks.named("build") {
-    dependsOn("npmBuild", "npmTest")
+    dependsOn("verifyProductionArtifacts", "npmTest")
 }

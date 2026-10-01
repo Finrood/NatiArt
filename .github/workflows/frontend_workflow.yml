@@ -44,7 +44,8 @@ jobs:
         working-directory: frontend/natiart-app
         run: |
           npm ci
-          npm run build
+          npm run build -- --configuration production
+          node scripts/verify-production-artifacts.mjs
 
       - name: Unit tests (Karma, ChromeHeadless)
         working-directory: frontend/natiart-app
