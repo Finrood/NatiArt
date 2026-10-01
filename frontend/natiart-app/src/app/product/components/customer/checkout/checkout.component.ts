@@ -224,9 +224,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.clearErrorMessage();
     try {
       // Provisioning can finish after login; refresh before deciding checkout is blocked.
-      const paymentUser = user?.externalId
+      const paymentUser: User = user?.externalId
         ? user
-        : await firstValueFrom(this.authenticationService.fetchCurrentUser());
+        : await firstValueFrom(this._authenticationService.fetchCurrentUser());
       if (!paymentUser.externalId) {
         const status = paymentUser.provisioningStatus;
         if (status === 'PENDING' || status === 'IN_PROGRESS') {
