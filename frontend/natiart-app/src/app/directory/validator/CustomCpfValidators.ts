@@ -5,7 +5,7 @@ export class CustomCpfValidators {
     return (control: AbstractControl): ValidationErrors | null => {
       const cpf = typeof control.value === 'string' ? control.value.replace(/\D/g, '') : '';
 
-      if (cpf === null || cpf.length === 0) {
+      if (cpf.length === 0) {
         return null; // Don't validate empty or null values, use Validators.required for that
       }
 
