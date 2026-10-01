@@ -22,6 +22,18 @@ describe('CheckoutComponent', () => {
   let isLoggedInSubject: BehaviorSubject<boolean>;
   let currentUserSubject: BehaviorSubject<User | null>;
 
+  it('requires a house number or N/A and bounds it to the persisted size', () => {
+    const houseNumber = component.checkoutForm.get('shippingInfo.houseNumber')!;
+    houseNumber.setValue('');
+    expect(houseNumber.hasError('required')).toBeTrue();
+    houseNumber.setValue('N/A');
+    expect(houseNumber.valid).toBeTrue();
+    houseNumber.setValue('a'.repeat(255));
+    expect(houseNumber.valid).toBeTrue();
+    houseNumber.setValue('a'.repeat(256));
+    expect(houseNumber.hasError('maxlength')).toBeTrue();
+  });
+
   const loggedInUser: User = {
     id: 'u1',
     username: 'user@example.test',
@@ -81,8 +93,9 @@ describe('CheckoutComponent', () => {
             getCartItems: (): BehaviorSubject<never[]> => new BehaviorSubject<never[]>([]),
             getCartTotal: (): BehaviorSubject<number> => new BehaviorSubject<number>(0),
             getCartTotalSnapshot: (): number => 99.9,
-            getCartItemsSnapshot: (): Array<{ product: { id: string }; quantity: number }> => [
-              { product: { id: 'prod-1' }, quantity: 1 },
+            rememberPurchase: jasmine.createSpy('rememberPurchase'),
+            getCartItemsSnapshot: (): Array<{ cartItemId: string; product: { id: string }; quantity: number }> => [
+              { cartItemId: 'line-1', product: { id: 'prod-1' }, quantity: 1 },
             ],
           },
         },

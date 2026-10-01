@@ -20,6 +20,7 @@ import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.ProductRepository;
+import com.portcelana.natiart.service.support.DomainValidation;
 
 /**
  * Owns the transaction that reserves stock and persists an order. Keeping
@@ -52,6 +53,7 @@ public class OrderCreationService {
     @Transactional
     public CustomerOrder createOrder(
             OrderDto orderDto, String ownerExternalId, String idempotencyKey, String requestFingerprint) {
+        orderDto.setHouseNumber(DomainValidation.requiredText(orderDto.getHouseNumber(), "houseNumber", 255));
         validateContactDetails(orderDto);
         validateItems(orderDto.getItems());
         final BigDecimal serverDeliveryAmount = shippingService.getOrderShippingAmount(orderDto.getZipCode());

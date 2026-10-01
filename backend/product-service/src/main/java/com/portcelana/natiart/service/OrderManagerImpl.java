@@ -25,6 +25,7 @@ import com.portcelana.natiart.dto.OrderItemDto;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
+import com.portcelana.natiart.service.support.DomainValidation;
 
 @Service
 public class OrderManagerImpl implements OrderManager {
@@ -71,7 +72,8 @@ public class OrderManagerImpl implements OrderManager {
     public CustomerOrder markOrderPaid(String orderId) {
         final CustomerOrder current = getOrderById(orderId);
         if (current.getStatus() == OrderStatus.PENDING) {
-            return updateOrderStatus(orderId, OrderStatus.PAID);
+            current.setStatus(OrderStatus.PAID);
+            return current;
         }
         if (current.getStatus() == OrderStatus.PAID
                 || current.getStatus() == OrderStatus.PROCESSING
@@ -95,6 +97,7 @@ public class OrderManagerImpl implements OrderManager {
             throw new IllegalArgumentException("An order must have an owner");
         }
         final String normalizedKey = normalizeIdempotencyKey(idempotencyKey);
+        orderDto.setHouseNumber(DomainValidation.requiredText(orderDto.getHouseNumber(), "houseNumber", 255));
         final String fingerprint = fingerprint(orderDto);
 
         if (normalizedKey != null) {
@@ -213,9 +216,11 @@ public class OrderManagerImpl implements OrderManager {
             throw new IllegalArgumentException("Order [" + orderId + "] must not transition from ["
                     + current.getStatus() + "] to [" + status + "]");
         }
-        if (orderRepository.updateStatusById(orderId, status) == 0) {
-            throw new ResourceNotFoundException("CustomerOrder with id " + orderId + " not found");
-        }
-        return getOrderById(orderId);
+        // The entity is managed by this transaction, so changing it lets JPA
+        // include its @Version predicate in the UPDATE. A concurrent transition
+        // therefore fails with an optimistic-lock conflict instead of silently
+        // overwriting the other status.
+        current.setStatus(status);
+        return current;
     }
 }

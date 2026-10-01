@@ -46,6 +46,16 @@ describe('AddressFormComponent', () => {
     }).compileComponents();
   });
 
+  it('renders the house-number limit and no-number instruction', () => {
+    const fixture = TestBed.createComponent(AddressFormComponent);
+    fixture.componentInstance.addressFormGroup = makeAddressForm(TestBed.inject(FormBuilder));
+    fixture.detectChanges();
+    const input: HTMLInputElement = fixture.nativeElement.querySelector('[formControlName="houseNumber"]');
+    expect(input.maxLength).toBe(255);
+    expect(fixture.nativeElement.textContent).toContain('Enter N/A');
+    fixture.destroy();
+  });
+
   it('should create', () => {
     const fixture = TestBed.createComponent(AddressFormComponent);
     expect(fixture.componentInstance).toBeTruthy();
