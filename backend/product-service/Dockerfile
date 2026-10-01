@@ -7,15 +7,15 @@ COPY backend/gradle/ gradle/
 COPY backend/gradlew gradlew
 COPY backend/settings.gradle.kts settings.gradle.kts
 COPY backend/build.gradle.kts build.gradle.kts
-COPY backend/directory-service/ directory-service/
-COPY backend/product-service/ product-service/
+COPY backend/directory-service/build.gradle.kts directory-service/build.gradle.kts
+COPY backend/product-service/build.gradle.kts product-service/build.gradle.kts
 
 # Download dependencies to cache them
-RUN ./gradlew --no-daemon dependencies
+RUN ./gradlew :product-service:dependencies --no-daemon
 
-# Build the application, skipping tests
-WORKDIR /app/product-service
-RUN ../gradlew build -x test --no-daemon
+# Only this service's source enters its build stage.
+COPY backend/product-service/src/ product-service/src/
+RUN ./gradlew :product-service:bootJar --no-daemon
 
 # Stage 2: Runtime
 FROM amazoncorretto:25-alpine
@@ -31,7 +31,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
 USER appuser
 
 # Copy only the built JAR from the build stage
-COPY --from=build --chown=appuser:appgroup /app/product-service/build/libs/*.jar app.jar
+COPY --from=build --chown=appuser:appgroup /app/product-service/build/libs/product-service.jar app.jar
 
 # Expose the application port
 EXPOSE 8082

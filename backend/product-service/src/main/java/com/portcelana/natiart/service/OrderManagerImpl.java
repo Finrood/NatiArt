@@ -72,7 +72,8 @@ public class OrderManagerImpl implements OrderManager {
     public CustomerOrder markOrderPaid(String orderId) {
         final CustomerOrder current = getOrderById(orderId);
         if (current.getStatus() == OrderStatus.PENDING) {
-            return updateOrderStatus(orderId, OrderStatus.PAID);
+            current.setStatus(OrderStatus.PAID);
+            return current;
         }
         if (current.getStatus() == OrderStatus.PAID
                 || current.getStatus() == OrderStatus.PROCESSING
@@ -107,6 +108,14 @@ public class OrderManagerImpl implements OrderManager {
 
         try {
             return orderCreationService.createOrder(orderDto, ownerExternalId, normalizedKey, fingerprint);
+        } catch (UnusableCustomerUploadException exception) {
+            // A concurrent same-key creator may have claimed the artwork and committed first.
+            // Reload its order before declaring the claim definitively rejected.
+            if (normalizedKey != null) {
+                final Optional<CustomerOrder> winner = findOrder(ownerExternalId, normalizedKey);
+                if (winner.isPresent()) return returnReplayOrReject(winner.get(), fingerprint);
+            }
+            throw exception;
         } catch (DataIntegrityViolationException e) {
             // The unique index is the serialization point. This code runs
             // after the losing transaction has rolled back, so reloading here
@@ -225,9 +234,11 @@ public class OrderManagerImpl implements OrderManager {
             throw new IllegalArgumentException("Order [" + orderId + "] must not transition from ["
                     + current.getStatus() + "] to [" + status + "]");
         }
-        if (orderRepository.updateStatusById(orderId, status) == 0) {
-            throw new ResourceNotFoundException("CustomerOrder with id " + orderId + " not found");
-        }
-        return getOrderById(orderId);
+        // The entity is managed by this transaction, so changing it lets JPA
+        // include its @Version predicate in the UPDATE. A concurrent transition
+        // therefore fails with an optimistic-lock conflict instead of silently
+        // overwriting the other status.
+        current.setStatus(status);
+        return current;
     }
 }
