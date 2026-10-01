@@ -113,7 +113,7 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req);
   }
 
-  const cloned = (tokenService.accessToken && !alreadyRetried)
+  const cloned = tokenService.accessToken && !alreadyRetried
     ? req.clone({setHeaders: {Authorization: `Bearer ${tokenService.accessToken}`}})
     : req;
 
