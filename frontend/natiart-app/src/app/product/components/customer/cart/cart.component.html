@@ -62,7 +62,16 @@
                         @if (item.goldBorder) {
                           <div class="text-xs text-yellow-600 mt-1">Gold Border</div>
                         }
-                        <!-- Remove specific text for custom image, rely on icon -->
+
+                  @if (item.image && !item.customImageUploadId) {
+                    <p class="text-sm text-secondary" data-artwork-draft>Artwork uploads at checkout. If you reload, select the file again.</p>
+                  }
+                  @if (item.requiresArtworkReselection) {
+                    <label class="block text-sm" data-artwork-reselection>Select artwork again for {{item.product.label}}
+                      <input type="file" accept="image/*" (change)="reselectArtwork(item, $event)">
+                    </label>
+                  }
+
                       </div>
                     </div>
                   </td>
@@ -129,6 +138,16 @@
                     <div class="text-xs text-yellow-600">Gold Border</div>
                   }
                   <p class="text-sm text-secondary mb-2">{{ item.product.markedPrice | currency:'BRL' }}</p>
+
+                  @if (item.image && !item.customImageUploadId) {
+                    <p class="text-sm text-secondary" data-artwork-draft>Artwork uploads at checkout. If you reload, select the file again.</p>
+                  }
+                  @if (item.requiresArtworkReselection) {
+                    <label class="block text-sm" data-artwork-reselection>Select artwork again for {{item.product.label}}
+                      <input type="file" accept="image/*" (change)="reselectArtwork(item, $event)">
+                    </label>
+                  }
+
                   <!-- Quantity Controls -->
                   <div class="flex items-center space-x-2 mb-2">
                     <!-- *** Pass item to updateQuantity *** -->

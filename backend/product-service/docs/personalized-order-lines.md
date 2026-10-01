@@ -13,5 +13,8 @@ Checkout invalidates only the matching reference after that definitive response.
 An available File is uploaded once on the next explicit retry; a restored line
 shows a working file selector, preserves its identity and requires artwork before
 ordering. Network/5xx ambiguity and failures after an accepted order retain the
-original order/payment recovery keys. File drafts before checkout still need the
-visible transient-draft notice tracked in CA21.
+original order/payment recovery keys. File drafts remain in memory until checkout uploads them. The selection modal
+and cart visibly warn that reload requires selecting the file again. Persistence
+retains the line identity, quantity and product with a reselection flag, never
+serializes the File, and checkout blocks that line until artwork is selected.
+Ordinary lines and stock bounds survive the same reload.

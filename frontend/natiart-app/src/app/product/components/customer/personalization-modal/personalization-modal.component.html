@@ -20,7 +20,7 @@
             <label for="customImage" class="block text-sm font-medium text-gray-700 mb-1">Upload Custom Image:</label>
             <input type="file" id="customImage" name="customImage" (change)="onFileSelected($event)" accept="image/*"
               class="block w-full text-sm text-gray-500 border border-gray-300 rounded-md p-1 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-light file:text-primary hover:file:bg-primary-lighter cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary">
-            <!-- Display selected file name -->
+            <p class="text-sm text-secondary" data-artwork-draft>Artwork stays in this browser until checkout uploads it. If you reload, select the file again.</p>
             @if (customImage) {
               <p class="text-xs text-gray-500 mt-1">Selected: {{ customImage.name }}</p>
             }
