@@ -98,6 +98,7 @@ describe('CheckoutComponent', () => {
             getCartTotalSnapshot: (): number => 99.9,
             getCartItemsSnapshot: () => cartItemsSnapshot,
             setCustomImageUploadId: setCustomImageUploadIdSpy,
+            rememberPurchase: jasmine.createSpy('rememberPurchase'),
           },
         },
         {

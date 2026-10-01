@@ -1,11 +1,11 @@
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnDestroy, OnInit} from '@angular/core';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {EmptyError, firstValueFrom, map, Observable, Subject, throwError} from 'rxjs';
 import {CartItem} from '../../../models/CartItem.model';
 import {OrderDto} from '../../../models/order.model';
 import {OrderItemDto} from '../../../models/orderItem.model';
-import {CartService} from '../../../service/cart.service';
+import {CartService, PurchasedCartLine} from '../../../service/cart.service';
 import {ProductService} from '../../../service/product.service';
 import {OrderService} from '../../../service/order.service';
 import {Router} from '@angular/router';
@@ -68,26 +68,26 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
 
-  constructor(
-    private fb: FormBuilder,
-    private cartService: CartService,
-    private productService: ProductService,
-    private authenticationService: AuthenticationService,
-    private orderService: OrderService,
-    private paymentService: PaymentService,
-    private shippingService: ShippingService,
-    private router: Router,
-    private cdr: ChangeDetectorRef
-  ) {
-    this.checkoutForm = this.fb.group({
-      userInfo: this.fb.group({
+  private readonly _fb = inject(FormBuilder);
+  private readonly _cartService = inject(CartService);
+  private readonly _productService = inject(ProductService);
+  private readonly _shippingService = inject(ShippingService);
+  private readonly _authenticationService = inject(AuthenticationService);
+  private readonly _orderService = inject(OrderService);
+  private readonly _paymentService = inject(PaymentService);
+  private readonly _router = inject(Router);
+  private readonly _cdr = inject(ChangeDetectorRef);
+
+  constructor() {
+    this.checkoutForm = this._fb.group({
+      userInfo: this._fb.group({
         firstname: ['', Validators.required],
         lastname: ['', Validators.required],
         cpf: ['', [Validators.required, CustomCpfValidators.validCpf()]],
         email: ['', [Validators.required, Validators.email]],
         phone: ['', Validators.pattern('[()0-9 -]*')],
       }),
-      shippingInfo: this.fb.group({
+      shippingInfo: this._fb.group({
         country: ['Brazil', Validators.required],
         state: ['', Validators.required],
         city: ['', Validators.required],
@@ -96,7 +96,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         street: ['', Validators.required],
         complement: [''],
       }),
-      billingInfo: this.fb.group({
+      billingInfo: this._fb.group({
         country: ['Brazil'],
         state: [''],
         city: [''],
@@ -105,19 +105,16 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         street: [''],
         complement: [''],
       }),
-      paymentInfo: this.fb.group({
+      paymentInfo: this._fb.group({
         paymentMethod: ['', Validators.required],
-        cardNumber: [''],
-        expirationDate: [''],
-        cvv: [''],
       }),
     });
 
-    this.cartItems$ = this.cartService.getCartItems();
-    this.cartTotal$ = this.cartService.getCartTotal();
-    this.isLoggedIn$ = this.authenticationService.isLoggedIn$;
-    this.currentUser$ = this.authenticationService.currentUser$;
-    this.isLoading$ = this.orderService.orderProcessing$;
+    this.cartItems$ = this._cartService.getCartItems();
+    this.cartTotal$ = this._cartService.getCartTotal();
+    this.isLoggedIn$ = this._authenticationService.isLoggedIn$;
+    this.currentUser$ = this._authenticationService.currentUser$;
+    this.isLoading$ = this._orderService.orderProcessing$;
   }
 
   async nextStep(): Promise<void> {
@@ -161,7 +158,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.authenticationService.fetchCurrentUser()
+    this._authenticationService.fetchCurrentUser()
       .pipe(takeUntil(this.destroy$))
       .subscribe();
 
@@ -221,27 +218,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   onSameShippingChange(isSame: boolean): void {
     this.sameShippingAsBilling = isSame;
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
 
   updatePaymentValidators(): void {
-    const paymentMethod = this.checkoutForm.get('paymentInfo.paymentMethod')?.value;
-    const cardNumberCtrl = this.checkoutForm.get('paymentInfo.cardNumber');
-    const expirationDateCtrl = this.checkoutForm.get('paymentInfo.expirationDate');
-    const cvvCtrl = this.checkoutForm.get('paymentInfo.cvv');
-
-    if (paymentMethod === PaymentMethod.CREDIT_CARD || paymentMethod === PaymentMethod.DEBIT_CARD) {
-      cardNumberCtrl?.setValidators([Validators.required, Validators.pattern('^[0-9]{13,19}')]);
-      expirationDateCtrl?.setValidators([Validators.required, Validators.pattern('^(0[1-9]|1[0-2])\/?([0-9]{2})')]);
-      cvvCtrl?.setValidators([Validators.required, Validators.pattern('^[0-9]{3,4}')]);
-    } else {
-      cardNumberCtrl?.clearValidators();
-      expirationDateCtrl?.clearValidators();
-      cvvCtrl?.clearValidators();
-    }
-    cardNumberCtrl?.updateValueAndValidity({ emitEvent: false });
-    expirationDateCtrl?.updateValueAndValidity({ emitEvent: false });
-    cvvCtrl?.updateValueAndValidity({ emitEvent: false });
+    // The storefront currently offers only the server-backed PIX flow.
   }
 
   createUserIfGuestCheckout(): Observable<User> {
@@ -293,13 +274,16 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       }
 
       if (!this.currentOrder) {
+        const purchasedLines: PurchasedCartLine[] = this._cartService.getCartItemsSnapshot().map(
+          (item: CartItem) => ({cartItemId: item.cartItemId, quantity: item.quantity}));
         this.setInfoMessage('Creating your order...');
-        const order = await firstValueFrom(this.orderService.createOrder(orderRequest, this.orderIdempotencyKey));
+        const order = await firstValueFrom(this._orderService.createOrder(orderRequest, this.orderIdempotencyKey));
         this.clearInfoMessage();
         if (!order?.id || order.totalAmount == null) {
           this.setErrorMessage('Could not create your order. Please try again.');
           return;
         }
+        this._cartService.rememberPurchase(order.id, user.externalId, purchasedLines);
         this.currentOrder = order;
       }
 
@@ -318,7 +302,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       };
 
       const paymentResponse = await firstValueFrom(
-        this.paymentService.createPixPayment(pixPaymentData, this.paymentIdempotencyKey)
+        this._paymentService.createPixPayment(pixPaymentData, this.paymentIdempotencyKey)
       );
 
       const paymentId: string | undefined = paymentResponse?.paymentId;
@@ -327,7 +311,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         return;
       }
 
-      this.router.navigate(['/pix-payment', paymentId]);
+      this._router.navigate(['/pix-payment', paymentId]);
       this.currentOrder = null;
       this.checkoutFingerprint = null;
       this.orderIdempotencyKey = crypto.randomUUID();
@@ -337,7 +321,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       reportError('payment', error);
       this.setErrorMessage('Could not process PIX payment. Please try again.');
     }
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
 
   private async buildOrderRequest(): Promise<OrderDto> {
@@ -363,15 +347,15 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   private async buildOrderItems(): Promise<OrderItemDto[]> {
-    const items = await Promise.all(this.cartService.getCartItemsSnapshot().map(async item => {
+    const items = await Promise.all(this._cartService.getCartItemsSnapshot().map(async item => {
       if (item.image && !item.customImageUploadId) {
         this.setInfoMessage('Uploading your custom artwork...');
-        const upload = await firstValueFrom(this.productService.uploadCustomerImage(item.image));
+        const upload = await firstValueFrom(this._productService.uploadCustomerImage(item.image));
         if (!upload?.uploadId || upload.uploadId.trim().length === 0) {
           throw new Error('The artwork upload did not return an upload identifier.');
         }
         item.customImageUploadId = upload.uploadId;
-        await firstValueFrom(this.cartService.setCustomImageUploadId(item.cartItemId, upload.uploadId));
+        await firstValueFrom(this._cartService.setCustomImageUploadId(item.cartItemId, upload.uploadId));
       }
       return this.orderItemFromCart(item);
     }));
@@ -413,7 +397,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         return true;
       }
       this.setInfoMessage('Calculating the shipping total...');
-      this.shippingQuote = await firstValueFrom(this.shippingService.createQuote(request));
+      this.shippingQuote = await firstValueFrom(this._shippingService.createQuote(request));
       this.shippingQuoteFingerprint = fingerprint;
       this.clearErrorMessage();
       return true;
@@ -432,7 +416,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   private buildShippingQuoteRequest(items?: OrderItemDto[]): ShippingQuoteRequest {
     const shippingInfo = this.checkoutForm.get('shippingInfo')?.getRawValue();
-    const quoteItems = items ?? this.cartService.getCartItemsSnapshot().map(item => this.orderItemFromCart(item));
+    const quoteItems = items ?? this._cartService.getCartItemsSnapshot().map(item => this.orderItemFromCart(item));
     if (quoteItems.length === 0) {
       throw new Error('Cannot quote shipping for an empty cart.');
     }
@@ -484,13 +468,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         return;
       }
 
-      if (paymentMethod === PaymentMethod.CREDIT_CARD || paymentMethod === PaymentMethod.DEBIT_CARD) {
-        this.setInfoMessage('Processing card payment...');
-        this.setErrorMessage('Card payment is not yet implemented.');
-        this.clearInfoMessage();
-        return;
-      }
-
       this.setErrorMessage('Invalid payment method selected.');
 
     } catch (error) {
@@ -501,31 +478,31 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     } finally {
       this.isSubmitting = false;
     }
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
 
   private setInfoMessage(message: string): void {
     this.infoMessage = message;
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
   private clearInfoMessage(): void {
     this.infoMessage = '';
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
 
   private setErrorMessage(message: string): void {
     this.errorMessage = message;
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
 
   dismissError(): void {
     this.errorMessage = '';
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
 
   private clearErrorMessage(): void {
     this.errorMessage = '';
-    this.cdr.detectChanges();
+    this._cdr.detectChanges();
   }
 
   ngOnDestroy(): void {
