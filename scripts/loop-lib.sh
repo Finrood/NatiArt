@@ -27,11 +27,14 @@ latest_heartbeat() { # prints newest machine-readable heartbeat JSON, or empty
     gh issue view "$issue" --json comments 2>/dev/null | jq -c --arg login "$machine_login" '
         [.comments[]? | select(.author.login == $login)
          | select(.body | type == "string" and length <= 1800 and
-             test("^NATIART_LOOP_HEARTBEAT\\ncycle_id=[0-9]{8}T[0-9]{6}Z-[0-9]{1,7}\\nreviewed_commit=[0-9a-f]{40}\\noutcome=(PR_DELIVERED|AUDIT_ONLY|RED_TEAM_COMPLETED|FAILED)\\nartifacts=[A-Za-z0-9 #,./_-]{0,500}\\nlens=[A-Za-z0-9 +:/._-]{1,100}\\nred_team_slot=(none|[0-9]{1,12})\\n?$"))
+             test("^NATIART_LOOP_HEARTBEAT\\ncycle_id=[0-9]{8}T[0-9]{6}Z-[0-9]{1,7}\\ncompleted_at=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\\nreviewed_commit=[0-9a-f]{40}\\noutcome=(PR_DELIVERED|AUDIT_ONLY|RED_TEAM_COMPLETED|FAILED)\\nartifacts=[A-Za-z0-9 #,./_-]{0,500}\\nlens=[A-Za-z0-9 +:/._-]{1,100}\\nred_team_slot=(none|[0-9]{1,12})\\n?$"))
          | . as $comment
          | (.body | capture("cycle_id=(?<y>[0-9]{4})(?<m>[0-9]{2})(?<d>[0-9]{2})T(?<h>[0-9]{2})(?<min>[0-9]{2})(?<s>[0-9]{2})Z")) as $id
-         | select(try ((($comment.createdAt | fromdateiso8601) -
-             (($id.y + "-" + $id.m + "-" + $id.d + "T" + $id.h + ":" + $id.min + ":" + $id.s + "Z") | fromdateiso8601)) | abs <= 600) catch false)
+         | (.body | capture("completed_at=(?<value>[^\\n]+)").value | fromdateiso8601) as $completed
+         | (($id.y + "-" + $id.m + "-" + $id.d + "T" + $id.h + ":" + $id.min + ":" + $id.s + "Z") | fromdateiso8601) as $started
+         | select(try (($comment.createdAt | fromdateiso8601) - $completed >= 0 and
+             ($comment.createdAt | fromdateiso8601) - $completed <= 120 and
+             $completed - $started >= 0 and $completed - $started <= 3600) catch false)
          | {timestamp: $comment.createdAt, body: $comment.body}]
         | sort_by(.timestamp) | last // empty'
 }
@@ -53,8 +56,8 @@ emit_cycle_heartbeat() { # cycle_id commit outcome artifacts lens red_team_slot
     fi
     # Keep the payload bounded and single-purpose: artifacts are reduced to
     # loop-generated PR numbers and the remaining values are local state.
-    body=$(printf '%s\ncycle_id=%s\nreviewed_commit=%s\noutcome=%s\nartifacts=%s\nlens=%s\nred_team_slot=%s\n' \
-        "$LOOP_HEARTBEAT_MARKER" "$cycle_id" "$commit" "$outcome" "$artifacts" "$lens" "$red_team_slot")
+    body=$(printf '%s\ncycle_id=%s\ncompleted_at=%s\nreviewed_commit=%s\noutcome=%s\nartifacts=%s\nlens=%s\nred_team_slot=%s\n' \
+        "$LOOP_HEARTBEAT_MARKER" "$cycle_id" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$commit" "$outcome" "$artifacts" "$lens" "$red_team_slot")
     [[ "${#body}" -le 1800 ]] || return 1
     gh issue comment "$issue" --body "$body" >/dev/null 2>&1
 }
@@ -119,31 +122,127 @@ gh_checks_safe() { # `gh pr checks` keeps output on non-zero check-state exits
     fi
 }
 
+is_loop_branch() { # naming classifier for watchdog only; never ownership proof
+    [[ "${1:-}" =~ ^(fix|perf|chore|docs|feature|salvage)/ ]]
+}
+
 is_docs_only() { # $1 = PR number; true iff every changed file is under docs/
     local files
     files=$(gh pr view "$1" --json files --jq '.files[].path' 2>/dev/null) || return 1
     [[ -n "$files" ]] && ! grep -qvE '^docs/' <<<"$files"
 }
 
-is_loop_branch() { # $1 = branch name; true iff the loop owns it (may salvage)
-    [[ "${1:-}" =~ ^(fix|perf|chore|docs|feature|salvage)/ ]]
+loop_owned_branch() { # $1=exact branch name $2=private ownership ledger
+    local branch="${1:-}" ledger="${2:-}"
+    [[ -n "$branch" && -f "$ledger" ]] || return 1
+    awk -F '\t' -v branch="$branch" '$1 == branch && NF == 3 { found=1 } END { exit !found }' "$ledger"
+}
+
+loop_owned_tip() { # $1=exact branch name $2=exact recorded tip $3=private ledger
+    local branch="${1:-}" sha="${2:-}" ledger="${3:-}"
+    [[ -n "$branch" && -n "$sha" && -f "$ledger" ]] || return 1
+    awk -F '\t' -v branch="$branch" -v sha="$sha" \
+        '$1 == branch && $3 == sha && NF == 3 { found=1 } END { exit !found }' "$ledger"
+}
+
+loop_record_new_branches() { # $1=before local refs $2=before remote refs $3=ledger $4=cycle id
+    local before="$1" remote_before="$2" ledger="$3" cycle_id="$4" branch sha
+    while IFS= read -r branch; do
+        [[ -n "$branch" && "$branch" != master ]] || continue
+        if grep -qxF "$branch" <<<"$remote_before"; then continue; fi
+        if loop_owned_branch "$branch" "$ledger"; then continue; fi
+        sha="$(git rev-parse "refs/heads/$branch" 2>/dev/null)" || return 1
+        printf '%s\t%s\t%s\n' "$branch" "$cycle_id" "$sha" >> "$ledger" || return 1
+    done < <(comm -13 <(printf '%s\n' "$before" | LC_ALL=C sort) \
+        <(git for-each-ref --format='%(refname:short)' refs/heads/ | LC_ALL=C sort))
+}
+
+loop_delete_merged_remote_branch() { # $1=branch $2=private ledger
+    local branch="$1" ledger="$2" remote_sha
+    if ! loop_owned_branch "$branch" "$ledger"; then
+        log "Preserving unowned remote branch $branch."
+        return 0
+    fi
+    remote_sha="$(git rev-parse "refs/remotes/origin/$branch" 2>/dev/null)" || return 0
+    if ! loop_owned_tip "$branch" "$remote_sha" "$ledger"; then
+        log "Preserving changed remote branch $branch; its tip differs from the ownership record."
+        return 0
+    fi
+    if ! git merge-base --is-ancestor "$remote_sha" origin/master 2>/dev/null; then
+        log "Preserving unmerged remote branch $branch."
+        return 0
+    fi
+    if ! git push -q --force-with-lease="refs/heads/$branch:$remote_sha" origin --delete "$branch"; then
+        log "Remote branch $branch changed after validation or push failed; preserving it."
+    fi
+}
+
+is_loop_machinery_file() { # $1 = path that always requires human review
+    case "$1" in
+        scripts/*|agents/*|.github/*|.cursorrules|docs/continuous-improvement-loop.md|docs/loop-lenses.md|AGENTS.md|CLAUDE.md|GEMINI.md|*/AGENTS.md|*/CLAUDE.md|*/GEMINI.md) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+files_touch_loop_machinery() { # $1 = newline-separated changed paths
+    local files="$1" path
+    while IFS= read -r path; do
+        [[ -z "$path" ]] && continue
+        is_loop_machinery_file "$path" && return 0
+    done <<<"$files"
+    return 1
+}
+
+dependabot_author_is_verified() { # $1 = authenticated GitHub login
+    [[ "$1" == "dependabot[bot]" ]]
+}
+
+dependabot_files_supported() { # $1 = newline-separated manifest/lockfile paths
+    local files="$1" path
+    [[ -n "$files" ]] || return 1
+    while IFS= read -r path; do
+        [[ -n "$path" ]] || return 1
+        case "$path" in
+            backend/*/build.gradle|backend/*/build.gradle.kts|backend/*/gradle.lockfile|frontend/natiart-app/package.json|frontend/natiart-app/package-lock.json|package.json|package-lock.json|gradle/libs.versions.toml|gradle/verification-metadata.xml)
+                ;;
+            *) return 1 ;;
+        esac
+    done <<<"$files"
+}
+
+dependabot_update_soaked() { # $1=PR updatedAt $2=epoch now; conservatively resets on any PR activity
+    local updated_at="$1" now="$2" updated_epoch
+    updated_epoch="$(date -d "$updated_at" +%s 2>/dev/null)" || return 1
+    [[ "$updated_epoch" =~ ^[0-9]+$ && "$now" =~ ^[0-9]+$ ]] || return 1
+    (( updated_epoch > 0 && now >= updated_epoch && now - updated_epoch >= 172800 ))
 }
 
 semver_bump() { # $1 = dependabot title; prints patch|minor|major|unknown
-    # Only single-dependency "bump X from a.b.c to x.y.z" titles classify.
-    # Group bumps ("across 1 directory with N updates"), multi-pair titles
-    # ("A from x to y, B from ..."), and anything else return unknown
-    # (conservative: never auto-merge what we cannot scope to one bump).
+    # Only exact single-dependency "Bump X from a.b.c to x.y.z" titles
+    # classify. Group/multi-pair titles, prereleases, downgrades, and malformed
+    # values return unknown (conservative: never auto-merge what we cannot scope).
     local title="$1"
-    case "$title" in
-        *from\ *from*|*to\ *to*) echo unknown; return ;;
-    esac
-    if [[ "$title" =~ from\ [vV]?([0-9]+)\.([0-9]+)\.([0-9]+).*to\ [vV]?([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
-        if [[ "${BASH_REMATCH[1]}" != "${BASH_REMATCH[4]}" ]]; then echo major
-        elif [[ "${BASH_REMATCH[2]}" != "${BASH_REMATCH[5]}" ]]; then echo minor
-        else echo patch; fi
-    else
+    local old_major old_minor old_patch new_major new_minor new_patch component
+    if [[ "${title#* from }" == *" from "* || "${title#* to }" == *" to "* ]]; then
         echo unknown
+        return
+    fi
+    if [[ ! "$title" =~ ^.*[Bb]ump[[:space:]]+.+[[:space:]]from[[:space:]]v?([0-9]+)\.([0-9]+)\.([0-9]+)[[:space:]]+to[[:space:]]v?([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+        echo unknown
+        return
+    fi
+    old_major="${BASH_REMATCH[1]}"; old_minor="${BASH_REMATCH[2]}"; old_patch="${BASH_REMATCH[3]}"
+    new_major="${BASH_REMATCH[4]}"; new_minor="${BASH_REMATCH[5]}"; new_patch="${BASH_REMATCH[6]}"
+    for component in "$old_major" "$old_minor" "$old_patch" "$new_major" "$new_minor" "$new_patch"; do
+        [[ "${#component}" -le 9 ]] || { echo unknown; return; }
+    done
+    if (( 10#$new_major < 10#$old_major ||
+          (10#$new_major == 10#$old_major && 10#$new_minor < 10#$old_minor) ||
+          (10#$new_major == 10#$old_major && 10#$new_minor == 10#$old_minor && 10#$new_patch < 10#$old_patch) )); then
+        echo unknown
+    elif (( 10#$new_major != 10#$old_major )); then echo major
+    elif (( 10#$new_minor != 10#$old_minor )); then echo minor
+    else echo patch
     fi
 }
 
@@ -270,4 +369,15 @@ pr_checks_summary() { # $1 = PR number; prints FAIL|PASS|PENDING (never fails)
     if checks_failed <<<"$checks"; then echo "FAIL"
     elif checks_passed <<<"$checks"; then echo "PASS"
     else echo "PENDING"; fi
+}
+
+loop_valid_audit_artifact() { # exact newly produced cycle, reviewed commit, bounded structured evidence
+    local file="$1" cycle="$2" commit="$3" bytes
+    [[ -f "$file" && ! -L "$file" ]] || return 1
+    bytes="$(wc -c < "$file")" || return 1
+    [[ "$bytes" -gt 0 && "$bytes" -le 16384 ]] || return 1
+    jq -e --arg cycle "$cycle" --arg commit "$commit" '
+        type == "object" and .cycle == $cycle and .reviewed_commit == $commit and
+        all(.lens, .checked, .outcome; type == "string" and length > 0 and length <= 4000)
+    ' "$file" >/dev/null 2>&1
 }

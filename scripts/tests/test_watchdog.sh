@@ -106,7 +106,7 @@ cat > "$WORK/pr-active.json" <<EOF
 EOF
 echo '[{"number": 42}]' > "$WORK/heartbeat-issue.json"
 cat > "$WORK/heartbeat-active.json" <<EOF
-{"comments": [{"createdAt": "$NOW_ISO", "author": {"login": "natiart-loop-bot"}, "body": "NATIART_LOOP_HEARTBEAT\ncycle_id=$CYCLE_ID_NOW\nreviewed_commit=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\noutcome=PR_DELIVERED\nartifacts=PR #1\nlens=storage\nred_team_slot=none"}]}
+{"comments": [{"createdAt": "$NOW_ISO", "author": {"login": "natiart-loop-bot"}, "body": "NATIART_LOOP_HEARTBEAT\ncycle_id=$CYCLE_ID_NOW\ncompleted_at=$NOW_ISO\nreviewed_commit=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\noutcome=PR_DELIVERED\nartifacts=PR #1\nlens=storage\nred_team_slot=none"}]}
 EOF
 echo "[]" > "$WORK/issue-none.json"
 export GH_PR_JSON="$WORK/pr-active.json" GH_HEARTBEAT_ISSUE_JSON="$WORK/heartbeat-issue.json" GH_HEARTBEAT_JSON="$WORK/heartbeat-active.json" GH_ISSUE_JSON="$WORK/issue-none.json"
