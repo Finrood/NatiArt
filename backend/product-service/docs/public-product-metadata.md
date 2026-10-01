@@ -49,7 +49,10 @@ cookies or authentication. Unsupported metadata languages return 400. Initial
 shop fallback titles/descriptions and client metadata use the selected language;
 product titles/descriptions remain the actual catalog text entered by the seller.
 They are not automatically translated or replaced with invented claims. Separate
-seller-authored product translations remain a future content feature.
+seller-authored translations for products, categories, tags and other editable
+catalog content remain a future content feature. Current catalog entries each
+have one seller-authored value; the interface translation catalog does not add
+a content translation editor.
 
 Use `npm run extract-i18n` after changing messages, update
 `src/locale/messages.pt-BR.json`, and run an explicit production build. Missing
@@ -77,3 +80,14 @@ Angular's JIT boundary tests to reject it.
 The copied CA49 A/B/rollback fixture now checks language-prefixed shells and lazy
 assets as well as legacy bookmarks, root runtime configuration and API proxies.
 Deduplicate that fixture with CA49 while retaining these locale assertions.
+
+## Checkout and fulfillment integration
+
+The CA13/14/21/30/61 histories are integrated into this locale branch. Artwork
+lifetime/reselection notices, confirmed shipping quotes, immutable checkout
+recovery, customer order history and bounded administrator fulfillment commands
+all use the same extracted English and Portuguese messages. Status labels are
+localized while API enum values and permitted transitions remain unchanged.
+Both production locale bundles reject missing message translations. The combined
+browser suite contains 245 passing tests, including the rendered cart reload and
+21-order customer/administrator paging contracts.
