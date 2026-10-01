@@ -25,7 +25,7 @@
           <app-button (click)="deleteCategory(category.id!)" color="danger" size="sm">
             Delete
           </app-button>
-          <app-button (click)="toggleCategoryVisibility(category)" color="primary" size="sm">
+          <app-button [disabled]="isVisibilityPending(category.id)" (click)="toggleCategoryVisibility(category)" color="primary" size="sm">
             <span>{{ category.active ? 'Hide' : 'Show' }}</span>
             <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
               @if (category.active) {

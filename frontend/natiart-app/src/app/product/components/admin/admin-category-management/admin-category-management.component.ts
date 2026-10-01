@@ -23,6 +23,12 @@ export class CategoryManagementComponent implements OnInit, AfterViewInit {
   private _categories$ = new BehaviorSubject<Category[]>([]);
   categories$ = this._categories$.asObservable();
 
+  readonly $visibilityPending = signal<ReadonlySet<string>>(new Set<string>());
+
+  isVisibilityPending(id: string | undefined): boolean {
+    return !!id && this.$visibilityPending().has(id);
+  }
+
   isEditingCategory: boolean = false;
   readonly $modalVisible = signal(false);
   get modalVisible(): boolean { return this.$modalVisible(); }
@@ -154,7 +160,17 @@ export class CategoryManagementComponent implements OnInit, AfterViewInit {
   }
 
   toggleCategoryVisibility(category: Category): void {
-    this.categoryService.inverseCategoryVisibility(category.id!).subscribe({
+    const id: string | undefined = category.id;
+    if (!id || this.isVisibilityPending(id)) return;
+    this.$visibilityPending.update((pending: ReadonlySet<string>) => new Set([...pending, id]));
+    this.categoryService.inverseCategoryVisibility(id).pipe(
+      takeUntilDestroyed(this._destroyed),
+      finalize(() => this.$visibilityPending.update((pending: ReadonlySet<string>) => {
+        const remaining: Set<string> = new Set(pending);
+        remaining.delete(id);
+        return remaining;
+      }))
+    ).subscribe({
       next: (response: Category) => {
         this._categories$.next(
           this._categories$.value.map(cat => cat.id === response.id ? response : cat)
