@@ -15,10 +15,7 @@ import {NgClass} from "@angular/common";
 export class TopBannerComponent implements OnInit, OnDestroy {
   currentBannerIndex: number = 0;
   bannerImages: string[] = [
-    "assets/img/a1.webp",
-    "assets/img/a2.jpg",
-    "assets/img/a3.jpg",
-    "assets/img/a4.jpg"
+    "assets/img/a1.webp"
   ];
   private bannerInterval: ReturnType<typeof setInterval> | undefined;
   private readonly SLIDE_DURATION: number = 3500;

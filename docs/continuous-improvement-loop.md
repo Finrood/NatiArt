@@ -58,18 +58,20 @@ Note: the timer needs a lingering user session to fire while logged out
    loop ~10h on a spotless-only failure. Closed loop: the reviewer writes
    machine-readable `Build:`/`Merge:` lines, the next cycle's agent parses them
    and fixes (conflicts via `git merge origin/master`, never rebase). Cycle
-   self-heals on: dirty tree (WIP salvaged to a dated `salvage/*`
-   branch, master hard-reset to origin, newest 5 salvage branches retained),
-   stray unpushed master commits (same salvage path, plus an automatic
-   `[Salvage]` PR so the work is reviewable instead of orphaned),
-   non-fast-forward `master`.
+   refuses dirty worktrees and locally-ahead `master` commits without staging,
+   publishing, or resetting them. A non-fast-forward `master` also aborts for
+   manual inspection.
    Docs-only flips and dependabot PRs are excluded from blocking — they never
    stop the loop, and green docs PRs with `VERDICT: APPROVE` are auto-merged
    like code (max 2 merges/cycle shared).
 3. The agent merges ONLY on fully green CI + mergeable + `VERDICT: APPROVE`
    (`gh pr checks --watch`), with `gh pr merge --merge --delete-branch`.
-   The script itself auto-merges green patch/minor dependabot PRs older than
-   48h (no verdict needed; majors/groups/red stay for agent/human).
+   The script itself auto-merges verified Dependabot PRs only when the actual
+   manifest diff is one supported patch/minor update, all required checks are
+   green, and the PR has had no update for at least 48h. Using the PR's latest
+   update time conservatively restarts the soak after a newly pushed head or a
+   later comment. Ambiguous diffs, majors, groups, and red checks stay open
+   for review.
    Never force-push, never push to `master`, never touch dependabot branches.
 4. Strategic items (shared rate-limit store, cookie-auth migration, schema
    tooling) require a human decision — the prompt forbids the agent from taking
@@ -240,13 +242,27 @@ table above is agent discipline, enforced by the cycle prompt.
   fix in place on the same branch this cycle (REPAIR MODE, zero new branches),
   never stop-and-idle. Conflicts resolve via `git merge origin/master` (never
   rebase/force-push), then `!check`, then push.
-- WIP recovery: dirt on a loop branch with an open PR is auto-committed as
-  `[WIP]` and pushed; dirt on a loop-prefix branch with no PR is salvaged;
-  dirt anywhere else (suspected human work — the loop never touches it) aborts
-  the cycle loudly. Dirt on master still salvages (killed-cycle fallout).
+- WIP isolation: the loop runs only in its dedicated clean implementation
+  checkout. Any dirty state or locally-ahead master commit is ownership-
+  ambiguous, so the guard aborts without staging, publishing, stashing,
+  resetting, or deleting anything. Inspect and recover that checkout manually.
+  Enroll a separate clone before enabling the user service:
+
+  ```bash
+  git clone <repository-url> "$HOME/.local/share/natiart-improvement-loop-checkout"
+  printf '%s\n' "$HOME/.local/share/natiart-improvement-loop-checkout" > \
+      "$HOME/.local/share/natiart-improvement-loop-checkout/.git/natiart-loop-checkout"
+  chmod 600 "$HOME/.local/share/natiart-improvement-loop-checkout/.git/natiart-loop-checkout"
+  ```
+
+  The user service runs from that clone and fails closed until it is enrolled.
+  Newly created local branches are recorded
+  with the cycle ID and commit in `.git/natiart-loop-owned-branches.tsv`.
+  Cleanup requires an exact ownership entry, a merged tip, and a leased remote
+  deletion. A `fix/*` name by itself never proves ownership; pre-existing
+  branches and tips advanced outside the recorded cycle are never adopted.
 - Watchdog: `loop-watchdog.yml` runs cloud-side every 6h and opens an issue
-  when no loop-branch PR (fix|perf|chore|docs|feature|salvage — human branches
-  and dependabot never count, so human activity cannot mask a dead loop) moved
+  when no PR on the configured loop branch prefixes moved
   in 24h — exits read as success and logs stay local, so without this every
   stall class is silent. An open alert gets timestamped comments, never
   duplicates; all logic lives in tested `scripts/loop-watchdog-check.sh`.

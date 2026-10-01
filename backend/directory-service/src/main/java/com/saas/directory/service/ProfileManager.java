@@ -1,5 +1,8 @@
 package com.saas.directory.service;
 
+import java.util.Locale;
+import java.util.Set;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -10,6 +13,10 @@ import com.saas.directory.repository.ProfileRepository;
 
 @Service
 public class ProfileManager {
+    private static final Set<String> BRAZILIAN_STATES = Set.of(
+            "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI",
+            "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO");
+
     private final ProfileRepository profileRepository;
 
     public ProfileManager(ProfileRepository profileRepository) {
@@ -18,34 +25,83 @@ public class ProfileManager {
 
     @Transactional
     public Profile createProfile(User user, ProfileDto profileDto) {
+        return profileRepository.save(buildProfile(user, profileDto));
+    }
+
+    /** Validates and normalizes signup input before any user row is persisted. */
+    public void validateProfile(ProfileDto profileDto) {
+        buildProfile(null, profileDto);
+    }
+
+    private Profile buildProfile(User user, ProfileDto profileDto) {
         if (profileDto == null) {
             throw new IllegalArgumentException("Profile cannot be null");
         }
-        final Profile profile = new Profile(
-                required(profileDto.getFirstname(), "Firstname"),
-                required(profileDto.getLastname(), "Lastname"),
-                required(profileDto.getCpf(), "Cpf").replaceAll("[^0-9]", ""),
-                required(profileDto.getCountry(), "Country"),
-                required(profileDto.getState(), "State"),
-                required(profileDto.getCity(), "City"),
-                required(profileDto.getNeighborhood(), "Neighborhood"),
-                required(profileDto.getZipCode(), "Zip code"),
-                required(profileDto.getStreet(), "Street"),
-                user);
-        if (profileDto.getPhone() != null) {
-            profile.setPhone(profileDto.getPhone().trim());
+        final String cpf = required(profileDto.getCpf(), "Cpf", 14).replaceAll("[^0-9]", "");
+        if (!isValidCpf(cpf)) {
+            throw new IllegalArgumentException("Cpf is invalid");
         }
-        if (profileDto.getComplement() != null) {
-            profile.setComplement(profileDto.getComplement().trim());
+        final String zipCode = required(profileDto.getZipCode(), "Zip code", 9).replaceAll("[^0-9]", "");
+        if (zipCode.length() != 8) {
+            throw new IllegalArgumentException("Zip code is invalid");
+        }
+        final String state = required(profileDto.getState(), "State", 2).toUpperCase(Locale.ROOT);
+        if (!BRAZILIAN_STATES.contains(state)) {
+            throw new IllegalArgumentException("State is invalid");
+        }
+        final Profile profile = new Profile(
+                required(profileDto.getFirstname(), "Firstname", 100),
+                required(profileDto.getLastname(), "Lastname", 100),
+                cpf,
+                required(profileDto.getCountry(), "Country", 100),
+                state,
+                required(profileDto.getCity(), "City", 100),
+                required(profileDto.getNeighborhood(), "Neighborhood", 100),
+                zipCode,
+                required(profileDto.getStreet(), "Street", 255),
+                user);
+        if (profileDto.getPhone() != null && !profileDto.getPhone().isBlank()) {
+            final String phone = profileDto.getPhone().replaceAll("[^0-9]", "");
+            if (phone.length() != 10 && phone.length() != 11) {
+                throw new IllegalArgumentException("Phone is invalid");
+            }
+            profile.setPhone(phone);
+        }
+        if (profileDto.getComplement() != null && !profileDto.getComplement().isBlank()) {
+            profile.setComplement(required(profileDto.getComplement(), "Complement", 255));
         }
 
-        return profileRepository.save(profile);
+        return profile;
     }
 
-    private static String required(String value, String field) {
+    private static String required(String value, String field, int maxLength) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(String.format("%s cannot be empty", field));
         }
-        return value.trim();
+        final String trimmed = value.trim();
+        if (trimmed.length() > maxLength) {
+            throw new IllegalArgumentException(String.format("%s is too long", field));
+        }
+        return trimmed;
+    }
+
+    private static boolean isValidCpf(String cpf) {
+        if (cpf.length() != 11 || cpf.chars().distinct().count() == 1) {
+            return false;
+        }
+        int firstSum = 0;
+        for (int index = 0; index < 9; index++) {
+            firstSum += Character.digit(cpf.charAt(index), 10) * (10 - index);
+        }
+        final int firstDigit = (firstSum * 10) % 11 % 10;
+        if (firstDigit != Character.digit(cpf.charAt(9), 10)) {
+            return false;
+        }
+        int secondSum = 0;
+        for (int index = 0; index < 10; index++) {
+            secondSum += Character.digit(cpf.charAt(index), 10) * (11 - index);
+        }
+        final int secondDigit = (secondSum * 10) % 11 % 10;
+        return secondDigit == Character.digit(cpf.charAt(10), 10);
     }
 }
