@@ -11,7 +11,7 @@ export class TopBannerComponent implements OnInit, OnDestroy {
   readonly $reducedMotion = signal(false);
   get currentBannerIndex(): number { return this.$currentBannerIndex(); }
   set currentBannerIndex(value: number) { this.$currentBannerIndex.set(value); }
-  readonly bannerImages: string[] = ['assets/img/a1.webp', 'assets/img/a2.jpg', 'assets/img/a3.jpg', 'assets/img/a4.jpg'];
+  readonly bannerImages: string[] = ['assets/img/a1.webp'];
   private bannerInterval: ReturnType<typeof setInterval> | undefined;
   private media: MediaQueryList | null = null;
   private pointerInside: boolean = false;
