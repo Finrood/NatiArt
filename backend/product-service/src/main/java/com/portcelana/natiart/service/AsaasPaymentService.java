@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -62,6 +63,7 @@ public class AsaasPaymentService implements PaymentService {
 
     private final String asaasApiKey;
 
+    @Autowired
     public AsaasPaymentService(
             @Value("${natiart.payment.asaas.apikey}") String asaasApiKey,
             @Value("${natiart.payment.asaas.payments-url:https://sandbox.asaas.com/api/v3/payments}")
@@ -111,6 +113,10 @@ public class AsaasPaymentService implements PaymentService {
         if (requesterExternalId == null || requesterExternalId.isBlank()) {
             throw new UserNotAllowedException("Authenticated customer is required to create a payment");
         }
+        final String orderId = paymentCreationRequest.getOrderId();
+        if (orderId == null || orderId.isBlank()) {
+            throw new IllegalArgumentException("Payment creation requires a non-blank orderId");
+        }
         final String normalizedIdempotencyKey = normalizeIdempotencyKey(idempotencyKey);
         // Defense in depth: the DTO constructor already rejects these, but the
         // service must not trust its input shape if that ever changes.
@@ -119,21 +125,18 @@ public class AsaasPaymentService implements PaymentService {
             throw new IllegalArgumentException(
                     "Payment value must be a positive amount with at most two fraction digits");
         }
-        final String orderId = paymentCreationRequest.getOrderId();
-        if (orderId != null && !orderId.isBlank()) {
-            // Client-priced money is never trusted: an order-linked charge must
-            // match the server-computed order total exactly, or no upstream
-            // charge is created at all.
-            final CustomerOrder order = getOrderOrDie(orderId);
-            // Order-linked charges are authorization-checked before anything
-            // else: an order owned by another customer must fail closed (403,
-            // no upstream egress) even when the quoted value would match.
-            requireOwnedOrder(order.getOwnerExternalId(), requesterExternalId);
-            if (order.getTotalAmount() == null || order.getTotalAmount().compareTo(value) != 0) {
-                throw new IllegalArgumentException(String.format(
-                        "Payment value [%s] does not match the total [%s] of order [%s]",
-                        value, order.getTotalAmount(), orderId));
-            }
+        // Client-priced money is never trusted: an order-linked charge must
+        // match the server-computed order total exactly, or no upstream
+        // charge is created at all.
+        final CustomerOrder order = getOrderOrDie(orderId);
+        // Order-linked charges are authorization-checked before anything
+        // else: an order owned by another customer must fail closed (403,
+        // no upstream egress) even when the quoted value would match.
+        requireOwnedOrder(order.getOwnerExternalId(), requesterExternalId);
+        if (order.getTotalAmount() == null || order.getTotalAmount().compareTo(value) != 0) {
+            throw new IllegalArgumentException(String.format(
+                    "Payment value [%s] does not match the total [%s] of order [%s]",
+                    value, order.getTotalAmount(), orderId));
         }
 
         final String requestFingerprint = fingerprint(paymentCreationRequest);
@@ -385,14 +388,13 @@ public class AsaasPaymentService implements PaymentService {
         final AsaasPaymentCreationResponse payment = fetchPaymentOrDie(paymentId);
         requireOwnedPayment(payment.getCustomer(), requesterExternalId);
 
-        final PaymentStatus status =
-                convertAsaasPaymentStatusToGeneralPaymentStatus(parseAsaasStatus(payment.getStatus()));
+        final PaymentStatus status = parsePaymentStatus(payment.getStatus());
         if (status == PaymentStatus.COMPLETED
                 && localPayment.getOrderId() != null
                 && !localPayment.getOrderId().isBlank()) {
             orderManager.markOrderPaid(localPayment.getOrderId());
         }
-        return new PaymentStatusResponse(paymentId, status);
+        return new PaymentStatusResponse(paymentId, status, localPayment.getOrderId());
     }
 
     private AsaasPaymentCreationResponse fetchPaymentOrDie(String paymentId) {
@@ -455,11 +457,12 @@ public class AsaasPaymentService implements PaymentService {
         }
     }
 
-    private AsaasPaymentStatus parseAsaasStatus(String status) {
+    private static AsaasPaymentStatus parseAsaasStatus(String status) {
         try {
             return AsaasPaymentStatus.valueOf(status);
         } catch (IllegalArgumentException | NullPointerException e) {
-            throw new IllegalArgumentException("Unexpected Asaas status: " + status);
+            LOGGER.warn("Asaas payment response has an unsupported status: {}", status);
+            throw new AsaasApiException("Invalid payment provider response", HttpStatus.BAD_GATEWAY);
         }
     }
 
@@ -555,11 +558,7 @@ public class AsaasPaymentService implements PaymentService {
      * text is never echoed into the response body.
      */
     static PaymentStatus parsePaymentStatus(String status) {
-        try {
-            return PaymentStatus.valueOf(status);
-        } catch (IllegalArgumentException | NullPointerException e) {
-            throw new IllegalArgumentException("Unexpected Asaas payment status");
-        }
+        return convertAsaasPaymentStatusToGeneralPaymentStatus(parseAsaasStatus(status));
     }
 
     private static String safeLogId(String candidate) {
@@ -586,7 +585,8 @@ public class AsaasPaymentService implements PaymentService {
         return headers;
     }
 
-    private PaymentStatus convertAsaasPaymentStatusToGeneralPaymentStatus(AsaasPaymentStatus asaasPaymentStatus) {
+    private static PaymentStatus convertAsaasPaymentStatusToGeneralPaymentStatus(
+            AsaasPaymentStatus asaasPaymentStatus) {
         switch (asaasPaymentStatus) {
             case PENDING -> {
                 return PaymentStatus.PENDING;
@@ -594,7 +594,7 @@ public class AsaasPaymentService implements PaymentService {
             case RECEIVED, CONFIRMED -> {
                 return PaymentStatus.COMPLETED;
             }
-            default -> throw new IllegalArgumentException("Unexpected AsaasPaymentStatus: " + asaasPaymentStatus);
+            default -> throw new AsaasApiException("Invalid payment provider response", HttpStatus.BAD_GATEWAY);
         }
     }
 }
