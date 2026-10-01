@@ -72,6 +72,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
       originalPrice: [0, [Validators.required, Validators.min(0)]],
       markedPrice: [0, Validators.min(0)],
       stockQuantity: [0, [Validators.required, Validators.min(0)]],
+      weightKg: [0, [Validators.required, Validators.min(0.001)]],
       categoryId: ['', Validators.required],
       packageId: [''],
       hasFixedGoldenBorder: [''],
@@ -152,6 +153,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
       this.loadExistingImages(product.images || []);
     } else {
       this.productForm.reset({
+        weightKg: 0,
         originalPrice: 0,
         markedPrice: 0,
         stockQuantity: 0,

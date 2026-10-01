@@ -30,7 +30,6 @@ import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.service.OrderCreationService;
 import com.portcelana.natiart.service.OrderManagerImpl;
 import com.portcelana.natiart.service.ProductManager;
-import com.portcelana.natiart.service.ShippingService;
 
 @DataJpaTest(properties = "spring.sql.init.mode=never")
 class OrderReplayIntegrationTest {
@@ -102,11 +101,26 @@ class OrderReplayIntegrationTest {
     private OrderManagerImpl realManager(Product product) {
         final ProductManager productManager = mock(ProductManager.class);
         when(productManager.getProductsOrDie(List.of(product.getId()))).thenReturn(Map.of(product.getId(), product));
-        final ShippingService shippingService = mock(ShippingService.class);
-        when(shippingService.getOrderShippingAmount("01001000")).thenReturn(BigDecimal.ZERO);
+        final com.portcelana.natiart.service.ShippingQuoteService shippingService =
+                mock(com.portcelana.natiart.service.ShippingQuoteService.class);
+        when(shippingService.requireQuoteForOrder(any(), any(), any(), org.mockito.ArgumentMatchers.anyList(), any()))
+                .thenReturn(new com.portcelana.natiart.model.ShippingQuote()
+                        .setItems(List.of(new com.portcelana.natiart.model.ShippingQuoteItem(product.getId(), 1, product.getOriginalPrice(), product.getVersion())))
+                        .setShippingAmount(BigDecimal.ZERO)
+                        .setItemAmount(product.getOriginalPrice())
+                        .setTotalAmount(product.getOriginalPrice())
+                        .setServiceId("1")
+                        .setDestinationPostalCode("01001000")
+                        .setExpiresAt(java.time.Instant.now().plusSeconds(900)));
         return new OrderManagerImpl(
                 orderRepository,
-                new OrderCreationService(orderRepository, productManager, productRepository, shippingService));
+                new OrderCreationService(
+                        orderRepository,
+                        productManager,
+                        productRepository,
+                        shippingService,
+                        mock(com.portcelana.natiart.service.CustomerUploadService.class),
+                        BigDecimal.ZERO));
     }
 
     private OrderDto orderRequest(String productId) {

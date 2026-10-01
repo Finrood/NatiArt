@@ -291,6 +291,23 @@ class StorageFileSystemTest {
     }
 
     @Test
+    void deleteFileRemovesOnlyLogicalKeyInsideConfiguredRoot() throws IOException {
+        final Path root = tempDir.resolve("volume");
+        final StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+        final URI artwork = storage.uploadFile("customer-uploads/artwork.webp", testInput("artwork"));
+        final Path outside = tempDir.resolve("outside.webp");
+        Files.writeString(outside, "keep");
+
+        storage.deleteFile(artwork);
+        storage.deleteFile(artwork);
+
+        assertFalse(Files.exists(root.resolve("customer-uploads/artwork.webp")));
+        assertThrows(ResourceNotFoundException.class, () -> storage.deleteFile(URI.create("file:../outside.webp")));
+        assertThrows(IllegalArgumentException.class, () -> storage.deleteFile(outside.toUri()));
+        assertEquals("keep", Files.readString(outside));
+    }
+
+    @Test
     void legacyAbsoluteUriResolvesCopiedFileUnderConfiguredRoot() throws IOException {
         final Path root = tempDir.resolve("new-volume");
         final Path oldRoot = tempDir.resolve("old-process-directory/product-images");

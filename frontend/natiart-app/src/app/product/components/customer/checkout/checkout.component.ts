@@ -1,10 +1,13 @@
+import {HttpErrorResponse} from '@angular/common/http';
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnDestroy, OnInit} from '@angular/core';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {EmptyError, firstValueFrom, map, Observable, Subject, throwError} from 'rxjs';
 import {CartItem} from '../../../models/CartItem.model';
 import {OrderDto} from '../../../models/order.model';
+import {OrderItemDto} from '../../../models/orderItem.model';
 import {CartService, PurchasedCartLine} from '../../../service/cart.service';
+import {ProductService} from '../../../service/product.service';
 import {OrderService} from '../../../service/order.service';
 import {Router} from '@angular/router';
 import {PaymentService} from "../../../service/payment.service";
@@ -22,6 +25,8 @@ import {CustomCpfValidators} from "../../../../directory/validator/CustomCpfVali
 import {CustomCepValidators} from "../../../../directory/validator/CustomCepValidators";
 import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportError} from '../../../../shared/service/error-reporting.service';
+import {ShippingQuote, ShippingQuoteRequest, ShippingService} from '../../../service/shipping.service';
+import {PersonalizationOption} from '../../../models/support/personalization-option';
 
 interface CheckoutAttempt {
   username: string;
@@ -72,6 +77,12 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   isLoading$: Observable<boolean>;
   sameShippingAsBilling = true;
   currentStep = 1;
+  shippingQuote: ShippingQuote | null = null;
+  isLoadingQuote = false;
+
+  private shippingQuoteFingerprint: string | null = null;
+  private readonly _productService = inject(ProductService);
+  private readonly _shippingService = inject(ShippingService);
 
   private currentOrder: OrderDto | null = null;
   private orderRequest: OrderDto | null = null;
@@ -131,7 +142,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.isLoading$ = this._orderService.orderProcessing$;
   }
 
-  nextStep() {
+  async nextStep(): Promise<void> {
     if (this.currentStep === 1) {
       this.checkoutForm.get('userInfo')?.markAllAsTouched();
       if (this.checkoutForm.get('userInfo')?.invalid) {
@@ -140,6 +151,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     } else if (this.currentStep === 2) {
       this.checkoutForm.get('shippingInfo')?.markAllAsTouched();
       if (this.checkoutForm.get('shippingInfo')?.invalid) {
+        return;
+      }
+      if (!(await this.loadShippingQuote())) {
         return;
       }
     }
@@ -218,6 +232,17 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       )
       .subscribe();
 
+    this.checkoutForm.get('shippingInfo')?.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.shippingQuote = null;
+        this.shippingQuoteFingerprint = null;
+        if (!this.orderRequest) {
+          this.currentOrder = null;
+          this.checkoutFingerprint = null;
+        }
+      });
+
     this.updatePaymentValidators();
     this.checkoutForm.get('paymentInfo.paymentMethod')?.valueChanges
       .pipe(takeUntil(this.destroy$))
@@ -261,7 +286,23 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       }
 
       if (!this.orderRequest) {
-        const orderRequest = this.buildOrderRequest();
+      if (!this.shippingQuote || this.isShippingQuoteExpired()) {
+        this.setErrorMessage('The shipping total is no longer current. Return to Shipping and review the refreshed quote.');
+        return;
+      }
+      let currentQuoteFingerprint: string;
+      try {
+        currentQuoteFingerprint = this.currentShippingQuoteFingerprint();
+      } catch {
+        this.setErrorMessage('The shipping total is no longer current. Return to Shipping and review the refreshed quote.');
+        return;
+      }
+      if (this.shippingQuoteFingerprint !== currentQuoteFingerprint) {
+        this.setErrorMessage('The shipping total is no longer current. Return to Shipping and review the refreshed quote.');
+        return;
+      }
+        const orderRequest = await this.buildOrderRequest();
+        if (this.destroyed) return;
         this.orderRequest = orderRequest;
         this.purchasedCartLines = this._cartService.getCartItemsSnapshot().map(
           (item: CartItem) => ({cartItemId: item.cartItemId, quantity: item.quantity}));
@@ -290,6 +331,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         this.setErrorMessage('Could not confirm your order. Please try again.');
         return;
       }
+      this._cartService.rememberPurchase(order.id, user.externalId, this.purchasedCartLines);
       this.currentOrder = order;
       this.persistAttempt(user.username);
 
@@ -353,6 +395,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       if (error instanceof EmptyError) {
         return;
       }
+      if (this.recoverRejectedOrder(error, user.username)) return;
       reportError('payment', error);
       this.setErrorMessage('Could not confirm your saved checkout. Please retry; your attempt has been kept.');
     }
@@ -371,19 +414,46 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     }
   }
 
-  private buildOrderRequest(): OrderDto {
+  private recoverRejectedOrder(error: unknown, username: string): boolean {
+    if (this.currentOrder || this.paymentId || !(error instanceof HttpErrorResponse) || error.status !== 400 ||
+        error.error?.orderCreated !== false ||
+        !['ORDER_CREATION_REJECTED', 'CUSTOM_ARTWORK_UNAVAILABLE'].includes(error.error?.code)) return false;
+    if (!this.clearPersistedAttempt(username)) return true;
+    if (error.error.code === 'CUSTOM_ARTWORK_UNAVAILABLE' && typeof error.error.uploadId === 'string') {
+      this._cartService.invalidateArtwork(error.error.uploadId);
+    }
+    this.resetAttempt();
+    this.shippingQuote = null;
+    this.shippingQuoteFingerprint = null;
+    this.currentStep = 2;
+    this.clearInfoMessage();
+    this.setErrorMessage('No order was created. Review your cart and artwork, then confirm shipping again.');
+    return true;
+  }
+
+  private recoverArtwork(error: unknown): boolean {
+    if (this.orderRequest || !(error instanceof HttpErrorResponse) || error.status !== 400 ||
+        error.error?.code !== 'CUSTOM_ARTWORK_UNAVAILABLE' || error.error?.orderCreated !== false ||
+        typeof error.error.uploadId !== 'string') return false;
+    this._cartService.invalidateArtwork(error.error.uploadId);
+    this.shippingQuote = null;
+    this.shippingQuoteFingerprint = null;
+    this.setErrorMessage('Your artwork is no longer available. Select it again and confirm shipping.');
+    return true;
+  }
+
+  reselectArtwork(cartItemId: string, event: Event): void {
+    const input: HTMLInputElement = event.target as HTMLInputElement;
+    const file: File | undefined = input.files?.[0];
+    if (file) this._cartService.reselectArtwork(cartItemId, file);
+    input.value = '';
+    this._cdr.markForCheck();
+  }
+
+  private async buildOrderRequest(): Promise<OrderDto> {
     const userInfo = this.checkoutForm.get('userInfo')?.getRawValue();
     const shippingInfo = this.checkoutForm.get('shippingInfo')?.getRawValue();
-    const items = this._cartService.getCartItemsSnapshot().map(item => {
-      if (!item.product.id) {
-        throw new Error('A cart item is missing its product identifier.');
-      }
-      return {productId: item.product.id, quantity: item.quantity};
-    });
-
-    if (items.length === 0) {
-      throw new Error('Cannot create an order from an empty cart.');
-    }
+    const items = await this.buildOrderItems();
 
     return {
       firstname: userInfo.firstname,
@@ -398,8 +468,101 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       street: shippingInfo.street,
       complement: shippingInfo.complement,
       items,
-      deliveryAmount: 0,
+      shippingQuoteId: this.shippingQuote?.quoteId,
     };
+  }
+
+  private async buildOrderItems(): Promise<OrderItemDto[]> {
+    const items = await Promise.all(this._cartService.getCartItemsSnapshot().map(async item => {
+      if (item.requiresArtworkReselection) throw new Error('Select your artwork again before checkout.');
+      if (item.image && !item.customImageUploadId) {
+        this.setInfoMessage('Uploading your custom artwork...');
+        const upload = await firstValueFrom(this._productService.uploadCustomerImage(item.image));
+        if (!upload?.uploadId || upload.uploadId.trim().length === 0) {
+          throw new Error('The artwork upload did not return an upload identifier.');
+        }
+        item.customImageUploadId = upload.uploadId;
+        await firstValueFrom(this._cartService.setCustomImageUploadId(item.cartItemId, upload.uploadId));
+      }
+      return this.orderItemFromCart(item);
+    }));
+    if (items.length === 0) {
+      throw new Error('Cannot create an order from an empty cart.');
+    }
+    return items;
+  }
+
+  private orderItemFromCart(item: CartItem): OrderItemDto {
+      if (!item.product.id) {
+        throw new Error('A cart item is missing its product identifier.');
+      }
+      if (item.image && !item.customImageUploadId) {
+        throw new Error('A custom artwork line is missing its upload identifier.');
+      }
+      const personalizationOptions: Partial<Record<PersonalizationOption, string>> = {};
+      if (item.goldBorder) {
+        personalizationOptions[PersonalizationOption.GOLDEN_BORDER] = 'true';
+      }
+      if (item.customImageUploadId) {
+        personalizationOptions[PersonalizationOption.CUSTOM_IMAGE] = item.customImageUploadId;
+      }
+      const personalization = Object.keys(personalizationOptions).length > 0
+        ? {personalizationOptions}
+        : undefined;
+      return {productId: item.product.id, quantity: item.quantity, personalization};
+  }
+
+  private async loadShippingQuote(): Promise<boolean> {
+    this.isLoadingQuote = true;
+    try {
+      const items = await this.buildOrderItems();
+      const request = this.buildShippingQuoteRequest(items);
+      const fingerprint = JSON.stringify(request);
+      if (this.shippingQuote
+        && this.shippingQuoteFingerprint === fingerprint
+        && !this.isShippingQuoteExpired()) {
+        return true;
+      }
+      this.setInfoMessage('Calculating the shipping total...');
+      this.shippingQuote = await firstValueFrom(this._shippingService.createQuote(request));
+      this.shippingQuoteFingerprint = fingerprint;
+      this.clearErrorMessage();
+      return true;
+    } catch (error) {
+      if (this.recoverArtwork(error)) return false;
+      reportError('checkout-shipping-quote', error);
+      this.shippingQuote = null;
+      this.shippingQuoteFingerprint = null;
+      this.setErrorMessage('Shipping is unavailable for this address or cart. Please review the address and try again.');
+      return false;
+    } finally {
+      this.isLoadingQuote = false;
+      this.clearInfoMessage();
+      this._cdr.detectChanges();
+    }
+  }
+
+  private buildShippingQuoteRequest(items?: OrderItemDto[]): ShippingQuoteRequest {
+    const shippingInfo = this.checkoutForm.get('shippingInfo')?.getRawValue();
+    const quoteItems = items ?? this._cartService.getCartItemsSnapshot().map(item => this.orderItemFromCart(item));
+    if (quoteItems.length === 0) {
+      throw new Error('Cannot quote shipping for an empty cart.');
+    }
+    return {
+      zipCode: shippingInfo.zipCode.replace(/\D/g, ''),
+      items: quoteItems.map(item => item.personalization
+        ? {productId: item.productId, quantity: item.quantity, personalization: item.personalization}
+        : {productId: item.productId, quantity: item.quantity}),
+    };
+  }
+
+  private currentShippingQuoteFingerprint(): string {
+    return JSON.stringify(this.buildShippingQuoteRequest());
+  }
+
+  private isShippingQuoteExpired(): boolean {
+    const expiresAt = this.shippingQuote ? Date.parse(this.shippingQuote.expiresAt) : NaN;
+    return !Number.isFinite(expiresAt) || expiresAt <= Date.now();
   }
 
   async onSubmit(): Promise<void> {
@@ -588,7 +751,8 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       zipCode: order.zipCode,
       street: order.street,
       complement: order.complement,
-      items: order.items.map(item => ({productId: item.productId, quantity: item.quantity})),
+      items: order.items.map(item => ({productId: item.productId, quantity: item.quantity, personalization: item.personalization})),
+      shippingQuoteId: order.shippingQuoteId,
       deliveryAmount: order.deliveryAmount,
     };
   }
