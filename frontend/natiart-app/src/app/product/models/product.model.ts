@@ -16,4 +16,6 @@ export interface Product {
   tags: string[];
   images: string[];
   active?: boolean;
+  newProduct?: boolean;
+  featuredProduct?: boolean;
 }

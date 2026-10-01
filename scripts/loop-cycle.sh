@@ -65,6 +65,14 @@ if [[ "${BASH_SOURCE[0]:-}" == /tmp/natiart-loop-cycle-*.sh ]]; then
 fi
 
 if [[ "$CHECK_ONLY" -eq 0 ]]; then
+    LOOP_GIT_DIR="$(git -C "$REPO" rev-parse --absolute-git-dir 2>/dev/null)" || \
+        { printf '%s\n' "ERROR: loop checkout is not a Git repository." >&2; exit 1; }
+    if [[ ! -f "$LOOP_GIT_DIR/natiart-loop-checkout" || \
+          "$(<"$LOOP_GIT_DIR/natiart-loop-checkout")" != "$REPO" ]]; then
+        printf '%s\n' "ERROR: checkout is not enrolled as the dedicated loop clone." >&2
+        exit 1
+    fi
+    OWNERSHIP_LEDGER="$LOOP_GIT_DIR/natiart-loop-owned-branches.tsv"
     mkdir -p "$LOG_DIR"
     LOG_FILE="$LOG_DIR/loop-$(date +%Y%m%d-%H%M%S).log"
     exec > >(tee -a "$LOG_FILE") 2>&1
@@ -120,73 +128,12 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
     exit 0
 fi
 
-# 1. Clean tree guard. A killed cycle (timeout kill, reboot, external pkill)
-#    can leave dirt anywhere; the loop must never wedge on it. Every dirty case
-#    self-heals: salvage the WIP to a dedicated snapshot branch (inspectable
-#    later), then continue from a pristine master. (2026-09-06: two cycles
-#    wedged overnight on dirty master; dirty-master now salvages + resets.)
-salvage_wip() { # $1 = source branch label; salvages dirt to origin/salvage/*
-    local B
-    B="salvage/$(date +%Y%m%d-%H%M%S)-$$"
-    if git checkout -q -b "$B" && git add -A && git commit -qm "[WIP] Salvaged interrupted-cycle WIP from $1 (auto-salvage)" && git push -q origin "$B"; then
-        git checkout -q master
-        git reset -q --hard origin/master
-        log "WIP salvaged to origin/$B; master reset clean."
-        return 0
-    fi
-    # Push (or commit) failed: keep WIP locally, still reach a clean master —
-    # but only reset a branch we own. If the master checkout failed (e.g. dirt
-    # blocks it), resetting here would wipe the salvage branch's staged WIP.
-    git checkout -q master 2>/dev/null || true
-    if [[ "$(git branch --show-current 2>/dev/null)" != "master" ]]; then
-        log "Could not reach master for reset; aborting with WIP kept locally on $B."
-        return 1
-    fi
-    git reset -q --hard origin/master 2>/dev/null || true
-    [[ -z "$(git status --porcelain)" ]] && { log "Salvage push failed (likely network/auth); WIP kept on local $B."; return 0; }
-    log "Could not reach a clean master even after salvage; aborting for human review."
-    return 1
-}
+# 1. Clean tree guard. This script must run in a dedicated implementation
+#    checkout. Dirty state has no reliable author/ownership proof, so the loop
+#    refuses to stage, publish, stash, reset, or otherwise reinterpret it.
 if [[ -n "$(git status --porcelain)" ]]; then
-    CUR_BRANCH=$(git branch --show-current)
-    if [[ "$CUR_BRANCH" != "master" ]]; then
-        OWNING_PR=$(gh pr list --state open --head "$CUR_BRANCH" --json number --jq length 2>/dev/null || echo 0)
-        if [[ "$OWNING_PR" -ge 1 ]]; then
-            # Existing loop branch: keep history where its PR can see it.
-            log "Dirty tree on $CUR_BRANCH with an open PR: snapshotting interrupted-cycle WIP."
-            SNAP_BEFORE="$(git rev-parse HEAD 2>/dev/null || echo none)"
-            if git add -A && git commit -qm "[WIP] Interrupted cycle snapshot (auto-committed by loop guard)" && git push -q origin "$CUR_BRANCH"; then
-                log "WIP snapshot pushed; continuing fresh."
-            elif [[ "$(git rev-parse HEAD 2>/dev/null)" != "$SNAP_BEFORE" ]]; then
-                # Commit created but push failed: resetting would orphan the WIP.
-                # Bookmark it on a salvage branch, rewind the loop branch, push
-                # the bookmark (best effort — local bookmark survives regardless).
-                SNAP_B="salvage/$(date +%Y%m%d-%H%M%S)-$$"
-                git branch "$SNAP_B" 2>/dev/null || true
-                git reset -q --hard "$SNAP_BEFORE" 2>/dev/null || true
-                if git push -q origin "$SNAP_B" 2>/dev/null; then
-                    log "WIP snapshot preserved on origin/$SNAP_B; $CUR_BRANCH rewound."
-                else
-                    log "WIP snapshot kept on local $SNAP_B (push failed); $CUR_BRANCH rewound."
-                fi
-            elif salvage_wip "$CUR_BRANCH"; then
-                :
-            else
-                exit 1
-            fi
-        elif is_loop_branch "$CUR_BRANCH" && salvage_wip "$CUR_BRANCH"; then
-            log "Dirty tree on loop branch $CUR_BRANCH (no open PR): WIP salvaged; continuing."
-        elif is_loop_branch "$CUR_BRANCH"; then
-            exit 1
-        else
-            log "Dirty tree on non-loop branch $CUR_BRANCH with no open PR: suspected human WIP; aborting (nothing salvaged, nothing reset)."
-            exit 1
-        fi
-    elif salvage_wip "master"; then
-        :
-    else
-        exit 1
-    fi
+    log "Dirty worktree detected; refusing to salvage or mutate unowned WIP. Run the loop in its dedicated clean checkout."
+    exit 1
 fi
 
 # 2. Sync master (fast-forward only, never merge/rebase here).
@@ -197,28 +144,13 @@ if ! git pull -q --ff-only origin master; then
     exit 1
 fi
 log "master at $(git rev-parse --short HEAD), tree clean."
-# 2b. Stray-commits guard: a cycle agent that exits 0 without delivering can
-#     leave finished work committed locally on master but never pushed (seen
-#     2026-09-06 18:30). Salvage to a pushed branch + PR, then reset to
-#     origin/master. If the salvage push fails, abort WITHOUT resetting —
-#     local-only work must never be destroyed.
+# 2b. Stray-commits guard: local master commits have no machine-verifiable
+#     ownership after the cycle returns. Do not publish or reset them; leave
+#     the checkout unchanged for the owner to inspect.
 LOCAL_AHEAD=$(git rev-list --count origin/master..master 2>/dev/null || echo 0)
 if [[ "$LOCAL_AHEAD" -gt 0 ]]; then
-    B="salvage/stray-$(date +%Y%m%d-%H%M%S)"
-    if git branch "$B" && git push -q origin "$B"; then
-        PR_URL=$(gh pr create --base master --head "$B" \
-            --title "[Salvage] $LOCAL_AHEAD unpushed master commit(s) recovered from interrupted cycle" \
-            --body "Loop guard found local master ahead of origin (work never pushed by the cycle that made it). Recovered to a reviewable PR; master reset to origin. Created by the loop guard (no agent model); review like any cycle output.
-Model: loop-guard/salvage" \
-            2>/dev/null || true)
-        git checkout -q master
-        git reset -q --hard origin/master
-        log "Salvaged $LOCAL_AHEAD unpushed master commit(s) to origin/$B${PR_URL:+; PR: $PR_URL}."
-    else
-        git branch -D "$B" 2>/dev/null || true
-        log "master has $LOCAL_AHEAD unpushed commit(s) and salvage push failed; aborting cycle (work kept local for retry)."
-        exit 1
-    fi
+    log "master is $LOCAL_AHEAD commit(s) ahead of origin/master; refusing to publish or reset unowned commits."
+    exit 1
 fi
 
 # 3. Backlog guard: is there OPEN work? Starvation is a bug, so a low (not
@@ -293,7 +225,7 @@ for n in $CODE_PRS $DOCS_PRS; do
         log "Could not resolve changed files for PR #$n; leaving OPEN (fail closed)."
         continue
     fi
-    if grep -qE '^(scripts/|agents/|\.github/|\.cursorrules|docs/continuous-improvement-loop\.md|docs/loop-lenses\.md)|(^|/)(AGENTS\.md|CLAUDE\.md|GEMINI\.md)$' <<<"$PR_FILES"; then
+    if files_touch_loop_machinery "$PR_FILES"; then
         log "PR #$n touches loop machinery; leaving OPEN for human review (self-modification ban)."
         continue
     fi
@@ -343,18 +275,46 @@ done
 # a verdict (routine bumps; the agent's Lens-16 routine and the human own the
 # rest). Majors, group bumps (unparseable semver), young, and red PRs stay
 # open. Shares the max-2 merge budget above. Never pushes to their branches.
-while IFS=$'\t' read -r dn dcreated dtitle; do
+while IFS=$'\t' read -r dn _dcreated _dtitle; do
     [[ -z "$dn" ]] && continue
     [[ "$merged" -ge 2 ]] && { log "Merged 2 this cycle; dependabot #$dn waits for next cycle."; break; }
-    bump="$(semver_bump "$dtitle")"
-    if [[ "$bump" != "patch" && "$bump" != "minor" ]]; then
-        log "Dependabot #$dn left open ($bump scope needs agent/human)."
+
+    D_META="$(gh_safe gh pr view "$dn" --json author,headRefOid,updatedAt,title \
+        --jq '[.author.login, .headRefOid, .updatedAt, .title] | @tsv')"
+    IFS=$'\t' read -r d_author d_head_sha d_head_updated dtitle <<<"$D_META"
+    if ! dependabot_author_is_verified "${d_author:-}"; then
+        log "Dependabot #$dn left open (authenticated author is not dependabot[bot])."
         continue
     fi
-    created_s=$(date -d "$dcreated" +%s 2>/dev/null || echo 0)
+    if [[ -z "${d_head_sha:-}" || -z "${d_head_updated:-}" || -z "${dtitle:-}" ]]; then
+        log "Dependabot #$dn metadata is unavailable; leaving open."
+        continue
+    fi
+    D_FILES=""
+    if ! D_FILES="$(gh pr view "$dn" --json files --jq '.files[].path' 2>/dev/null)" || [[ -z "$D_FILES" ]]; then
+        log "Dependabot #$dn changed files are unavailable; leaving open."
+        continue
+    fi
+    if files_touch_loop_machinery "$D_FILES"; then
+        log "Dependabot #$dn touches loop machinery; leaving open for human review."
+        continue
+    fi
+    if ! dependabot_files_supported "$D_FILES"; then
+        log "Dependabot #$dn changed files exceed supported manifest/lockfile scope; leaving open."
+        continue
+    fi
+    D_PATCH="$(gh pr diff "$dn" --patch --color never 2>/dev/null)" || {
+        log "Dependabot #$dn patch is unavailable; leaving open."
+        continue
+    }
+    bump="$(python3 "$REPO/scripts/dependabot-diff-bump.py" <<<"$D_PATCH")"
+    if [[ "$bump" != "patch" && "$bump" != "minor" ]]; then
+        log "Dependabot #$dn left open (actual dependency diff is $bump; requires review)."
+        continue
+    fi
     now_s=$(date +%s)
-    if [[ "$created_s" -le 0 || $(( (now_s - created_s) / 3600 )) -lt 48 ]]; then
-        log "Dependabot #$dn left open ($bump but younger than 48h)."
+    if ! dependabot_update_soaked "$d_head_updated" "$now_s"; then
+        log "Dependabot #$dn left open ($bump but latest PR update is younger than 48h)."
         continue
     fi
     dchecks=$(gh_checks_safe gh pr checks "$dn")
@@ -366,11 +326,6 @@ while IFS=$'\t' read -r dn dcreated dtitle; do
         log "Dependabot #$dn has no green checks yet; leaving open."
         continue
     fi
-    D_FILES=""
-    if ! D_FILES="$(gh pr view "$dn" --json files --jq '.files[].path' 2>/dev/null)" || [[ -z "$D_FILES" ]]; then
-        log "Dependabot #$dn changed files are unavailable; leaving open."
-        continue
-    fi
     if ! required_checks_passed "$D_FILES" "$dchecks"; then
         log "Dependabot #$dn is missing one or more path-required green checks; leaving open."
         continue
@@ -380,8 +335,13 @@ while IFS=$'\t' read -r dn dcreated dtitle; do
         log "Dependabot #$dn mergeability is $D_MERGEABLE_STATE; leaving open until GitHub confirms MERGEABLE."
         continue
     fi
-    log "Merging aged green dependabot #$dn ($bump, >48h)."
-    if gh pr merge "$dn" --merge --delete-branch 2>&1 | tail -2; then
+    D_FINAL_SHA="$(gh pr view "$dn" --json headRefOid --jq .headRefOid 2>/dev/null || true)"
+    if [[ "$D_FINAL_SHA" != "$d_head_sha" ]]; then
+        log "Dependabot #$dn head changed during validation; leaving open for a fresh soak/checks snapshot."
+        continue
+    fi
+    log "Merging aged green dependabot #$dn ($bump, >48h, head-bound)."
+    if gh pr merge "$dn" --match-head-commit "$d_head_sha" --merge --delete-branch 2>&1 | tail -2; then
         merged=$((merged + 1))
     else
         log "Merge of dependabot #$dn failed transiently; leaving open for next cycle."
@@ -424,11 +384,21 @@ fi
 
 # 5. Stale-branch hygiene: prune local branches whose remote is gone.
 git fetch -q --prune origin
-git branch -vv | awk '/: gone]/{print $1}' | grep -v '^\*' | xargs -r git branch -d 2>/dev/null || true
+git branch -vv | awk '/: gone]/{print $1}' | grep -v '^\*' | while read -r gone_branch; do
+    gone_sha="$(git rev-parse "refs/heads/$gone_branch" 2>/dev/null || true)"
+    if loop_owned_tip "$gone_branch" "$gone_sha" "$OWNERSHIP_LEDGER"; then
+        git branch -d "$gone_branch" 2>/dev/null || true
+    fi
+done || true
 # Salvage retention: keep the newest 5 salvage branches, and only delete older
 # branches after proving their commits are already merged into origin/master.
 # Old unmerged salvage is still recoverable WIP and must never be force-deleted.
 git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads/salvage/ 2>/dev/null | tail -n +6 | while read -r sb; do
+    sb_sha="$(git rev-parse "refs/heads/$sb" 2>/dev/null || true)"
+    if ! loop_owned_tip "$sb" "$sb_sha" "$OWNERSHIP_LEDGER"; then
+        log "Preserving unowned salvage branch $sb."
+        continue
+    fi
     REMOTE_SB_SHA="$(git rev-parse "origin/$sb" 2>/dev/null || true)"
     if git merge-base --is-ancestor "$sb" origin/master 2>/dev/null && \
        { [[ -z "$REMOTE_SB_SHA" ]] || git merge-base --is-ancestor "$REMOTE_SB_SHA" origin/master 2>/dev/null; }; then
@@ -546,19 +516,11 @@ done || true
 # dependabot/*, or unmerged work. Salvage retention uses fetched commit age and
 # verifies the remote tip is merged before deleting anything.
 git branch -r --merged origin/master 2>/dev/null | sed 's#^ *origin/##' | grep -E '^(fix|perf|chore|docs|feature)/' | sort -u | while read -r b; do
-    if git ls-remote --heads origin "$b" 2>/dev/null | grep -q .; then
-        log "Deleting merged remote branch $b."
-        git push -q origin --delete "$b" 2>/dev/null || log "Could not delete $b (likely already gone)."
-    fi
+    loop_delete_merged_remote_branch "$b" "$OWNERSHIP_LEDGER"
 done || true
 git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/remotes/origin/salvage/ 2>/dev/null | sed 's#^origin/##' | tail -n +6 | while read -r sb; do
     [[ -z "$sb" ]] && continue
-    if git merge-base --is-ancestor "origin/$sb" origin/master 2>/dev/null; then
-        log "Deleting old merged remote salvage branch $sb."
-        git push -q origin --delete "$sb" 2>/dev/null || log "Could not delete $sb (likely already gone)."
-    else
-        log "Preserving old unmerged remote salvage branch $sb."
-    fi
+    loop_delete_merged_remote_branch "$sb" "$OWNERSHIP_LEDGER"
 done || true
 
 # 6. Hand one item to the agent (non-interactive, repo permission policy applies;
@@ -596,6 +558,9 @@ if (( SLOT % 480 == 0 )); then
 $(cat scripts/redteam-addendum.md)"
 fi
 log "Invoking agent for one cycle item."
+BEFORE_BRANCH_REFS="$(git for-each-ref --format='%(refname:short)' refs/heads/ | LC_ALL=C sort)"
+BEFORE_REMOTE_BRANCH_REFS="$(git for-each-ref --format='%(refname:short)' refs/remotes/origin/ | sed 's#^origin/##' | LC_ALL=C sort)"
+CYCLE_OWNERSHIP_ID="$(cat /proc/sys/kernel/random/uuid)"
 # Model failover: run-agent.sh walks the priority list from
 # scripts/agent-models.conf (opencode Muse free -> cline Muse -> cline DeepSeek
 # -> cline GLM),
@@ -606,6 +571,11 @@ log "Invoking agent for one cycle item."
 # reviewer-wait and health row below (a dead reviewer wait orphans the review).
 STATUS=0
 timeout 1500 scripts/run-agent.sh --role cycle --budget 1500 --title "improvement-loop $(date +%Y%m%d-%H%M)" "$CYCLE_MSG" || STATUS=$?
+if ! loop_record_new_branches "$BEFORE_BRANCH_REFS" "$BEFORE_REMOTE_BRANCH_REFS" \
+    "$OWNERSHIP_LEDGER" "$CYCLE_OWNERSHIP_ID"; then
+    log "Failed to record branch ownership; leaving all new branches untouched for manual recovery."
+    STATUS=1
+fi
 if [[ "$STATUS" -eq 124 ]]; then
     log "Agent cycle hit the 25-minute timeout; leaving state for next cycle."
 fi
