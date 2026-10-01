@@ -19,6 +19,8 @@ public interface PaymentIdempotencyRepository extends JpaRepository<PaymentIdemp
 
     List<PaymentIdempotency> findByOrderId(String orderId);
 
+    Optional<PaymentIdempotency> findByOwnerExternalIdAndOrderId(String ownerExternalId, String orderId);
+
     List<PaymentIdempotency> findByOwnerExternalIdAndOrderIdIsNullAndStatusIn(
             String ownerExternalId, List<PaymentIdempotencyStatus> statuses);
 

@@ -63,14 +63,7 @@ public class PaymentIdempotencyService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public PaymentIdempotencyReservation reserve(
             String ownerExternalId, String idempotencyKey, String requestFingerprint, String orderId) {
-        final CustomerOrder order = orderId == null
-                ? null
-                : orderRepository
-                        .findByIdForUpdate(orderId)
-                        .orElseThrow(() -> new IllegalArgumentException("Order is unavailable for payment"));
-        if (order != null && !ownerExternalId.equals(order.getOwnerExternalId())) {
-            throw new IllegalArgumentException("Order is unavailable for payment");
-        }
+        final CustomerOrder order = orderId == null ? null : lockOwnedOrder(ownerExternalId, orderId);
         final Optional<PaymentIdempotency> existing =
                 repository.findByOwnerExternalIdAndIdempotencyKey(ownerExternalId, idempotencyKey);
         if (existing.isPresent()) {
@@ -79,9 +72,7 @@ public class PaymentIdempotencyService {
             if (!java.util.Objects.equals(existing.get().getOrderId(), orderId) && !legacyCompletedReplay) {
                 throw new IllegalArgumentException("Idempotency-Key was already used for another order");
             }
-            if (!java.util.Objects.equals(existing.get().getRequestFingerprint(), requestFingerprint)) {
-                throw new ResourceAlreadyExistsException("Idempotency-Key was already used for a different payment");
-            }
+            requireFingerprint(existing.get(), requestFingerprint);
             return new PaymentIdempotencyReservation(existing.get(), false);
         }
         if (order != null && order.getStatus() != OrderStatus.PENDING) {
@@ -101,9 +92,67 @@ public class PaymentIdempotencyService {
         }
     }
 
+    /**
+     * Reserves the single payment attempt allowed for an order. The client key
+     * remains useful for replay diagnostics, but it is not the serialization
+     * key: callers using different keys for the same order receive this same
+     * server-owned reservation.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public PaymentIdempotencyReservation reserveForOrder(
+            String ownerExternalId, String orderId, String idempotencyKey, String requestFingerprint) {
+        final CustomerOrder order = lockOwnedOrder(ownerExternalId, orderId);
+        final Optional<PaymentIdempotency> existingOrder =
+                repository.findByOwnerExternalIdAndOrderId(ownerExternalId, orderId);
+        if (existingOrder.isPresent()) {
+            requireFingerprint(existingOrder.get(), requestFingerprint);
+            return new PaymentIdempotencyReservation(existingOrder.get(), false);
+        }
+        final Optional<PaymentIdempotency> existingKey =
+                repository.findByOwnerExternalIdAndIdempotencyKey(ownerExternalId, idempotencyKey);
+        if (existingKey.isPresent()) {
+            requireFingerprint(existingKey.get(), requestFingerprint);
+            return new PaymentIdempotencyReservation(existingKey.get(), false);
+        }
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new IllegalArgumentException("Only pending orders can receive a new payment");
+        }
+        try {
+            final PaymentIdempotency record =
+                    new PaymentIdempotency(ownerExternalId, idempotencyKey, requestFingerprint, orderId);
+            final PaymentIdempotency saved = repository.saveAndFlush(record);
+            return new PaymentIdempotencyReservation(saved != null ? saved : record, true);
+        } catch (DataIntegrityViolationException e) {
+            // The caller leaves this failed transaction before reloading the
+            // winning order reservation.
+            throw e;
+        }
+    }
+
+    private void requireFingerprint(PaymentIdempotency record, String requestFingerprint) {
+        if (!java.util.Objects.equals(record.getRequestFingerprint(), requestFingerprint)) {
+            throw new ResourceAlreadyExistsException("Idempotency-Key was already used for a different payment");
+        }
+    }
+
+    private CustomerOrder lockOwnedOrder(String ownerExternalId, String orderId) {
+        final CustomerOrder order = orderRepository
+                .findByIdForUpdate(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order is unavailable for payment"));
+        if (!ownerExternalId.equals(order.getOwnerExternalId())) {
+            throw new IllegalArgumentException("Order is unavailable for payment");
+        }
+        return order;
+    }
+
     @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
     public Optional<PaymentIdempotency> find(String ownerExternalId, String idempotencyKey) {
         return repository.findByOwnerExternalIdAndIdempotencyKey(ownerExternalId, idempotencyKey);
+    }
+
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    public Optional<PaymentIdempotency> findForOrder(String ownerExternalId, String orderId) {
+        return repository.findByOwnerExternalIdAndOrderId(ownerExternalId, orderId);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)

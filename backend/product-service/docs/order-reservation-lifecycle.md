@@ -21,6 +21,12 @@ CREATE INDEX IF NOT EXISTS ix_payment_idempotency_order_id
     ON payment_idempotency (order_id);
 ```
 
+When deploying the order-unique payment reservation change together with this
+revision, run `migrations/20260927-payment-order-reservation-uniqueness.sql`
+instead. That transaction includes this column and index as well as the
+dedupe checks and uniqueness constraints; do not use `ddl-auto=update` as the
+rollout mechanism.
+
 New order-linked attempts lock the order and persist that link before any Asaas
 call. Expiry refuses to release stock while an attempt is in progress or needs
 reconciliation, including older unlinked attempts for the same owner. For an

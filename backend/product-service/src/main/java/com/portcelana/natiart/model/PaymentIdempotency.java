@@ -17,10 +17,14 @@ import jakarta.persistence.UniqueConstraint;
 @Entity
 @Table(
         indexes = @Index(name = "ix_payment_idempotency_order_id", columnList = "order_id"),
-        uniqueConstraints =
-                @UniqueConstraint(
-                        name = "uk_payment_idempotency_owner_key",
-                        columnNames = {"owner_external_id", "idempotency_key"}))
+        uniqueConstraints = {
+            @UniqueConstraint(
+                    name = "uk_payment_idempotency_owner_key",
+                    columnNames = {"owner_external_id", "idempotency_key"}),
+            @UniqueConstraint(
+                    name = "uk_payment_idempotency_owner_order",
+                    columnNames = {"owner_external_id", "order_id"})
+        })
 public class PaymentIdempotency {
     @Id
     private String id = UUID.randomUUID().toString();
@@ -61,8 +65,8 @@ public class PaymentIdempotency {
             String ownerExternalId, String idempotencyKey, String requestFingerprint, String orderId) {
         this.ownerExternalId = ownerExternalId;
         this.idempotencyKey = idempotencyKey;
-        this.requestFingerprint = requestFingerprint;
         this.orderId = orderId;
+        this.requestFingerprint = requestFingerprint;
         this.status = PaymentIdempotencyStatus.IN_PROGRESS;
     }
 
