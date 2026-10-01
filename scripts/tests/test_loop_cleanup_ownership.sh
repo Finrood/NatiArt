@@ -31,7 +31,7 @@ merged_branch() { # branch, register yes/no
     GIT_COMMITTER_DATE='2020-01-01T00:00:00Z' git -C "$root/a" commit -qm "$name"
     git -C "$root/a" push -q origin "$name"
     if [[ "$own" == yes ]]; then
-        (cd "$root/a" && record_loop_branch "$name")
+        (cd "$root/a" && loop_record_owned_tip "$name" fixture-cycle "$(git rev-parse HEAD)" .git/natiart-loop-owned-branches.tsv)
     fi
     git -C "$root/a" checkout -q master
     git -C "$root/a" merge -q --no-ff "$name" -m "merge $name"
@@ -61,13 +61,13 @@ merged_branch fix/foreign no
 foreign_tip="$(git -C "$root/a" rev-parse origin/fix/foreign)"
 (
     cd "$root/a"
-    cleanup_merged_remote_branches
+    loop_cleanup_merged_remote_branches .git/natiart-loop-owned-branches.tsv
 )
 assert_remote_tip fix/foreign "$foreign_tip"
 merged_branch fix/owned yes
 (
     cd "$root/a"
-    cleanup_merged_remote_branches
+    loop_cleanup_merged_remote_branches .git/natiart-loop-owned-branches.tsv
 )
 [[ -z "$(git -C "$root/a" ls-remote origin refs/heads/fix/owned)" ]] || {
     echo 'recorded merged branch was not deleted' >&2
@@ -81,21 +81,21 @@ git -C "$root/a" push -q origin fix/owned
 reused_tip="$(git -C "$root/a" rev-parse fix/owned)"
 (
     cd "$root/a"
-    cleanup_merged_remote_branches
+    loop_cleanup_merged_remote_branches .git/natiart-loop-owned-branches.tsv
 )
 assert_remote_tip fix/owned "$reused_tip"
 assert_remote_tip fix/foreign "$foreign_tip"
 rm -rf "$root"
 
-for caller in cleanup_old_local_salvage cleanup_merged_remote_branches cleanup_old_remote_salvage; do
+for caller in loop_cleanup_old_local_salvage loop_cleanup_merged_remote_branches loop_cleanup_old_remote_salvage; do
     fixture
-    if [[ "$caller" == cleanup_merged_remote_branches ]]; then
+    if [[ "$caller" == loop_cleanup_merged_remote_branches ]]; then
         branch=fix/race
     else
         branch=salvage/race
     fi
     merged_branch "$branch" yes
-    if [[ "$caller" == cleanup_old_remote_salvage ]]; then
+    if [[ "$caller" == loop_cleanup_old_remote_salvage ]]; then
         git -C "$root/a" branch -D "$branch" >/dev/null
     fi
     if [[ "$branch" == salvage/* ]]; then
@@ -115,9 +115,9 @@ for caller in cleanup_old_local_salvage cleanup_merged_remote_branches cleanup_o
             fi
             command git "$@"
         }
-        "$caller"
+        "$caller" .git/natiart-loop-owned-branches.tsv
     )"
-    [[ "$output" == *'changed during validation'* ]] || {
+    [[ "$output" == *'changed after validation or push failed'* ]] || {
         echo "$caller did not report lease mismatch" >&2
         exit 1
     }

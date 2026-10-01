@@ -10,7 +10,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck source=scripts/loop-lib.sh
 source "$REPO_ROOT/scripts/loop-lib.sh"
 
-caller_count="$(grep -Ec '^[[:space:]]*delete_merged_remote_branch "\$(branch|sb)"' \
+caller_count="$(grep -Ec '^[[:space:]]*loop_delete_merged_remote_branch "\$branch"' \
     "$REPO_ROOT/scripts/loop-lib.sh")"
 if [[ "$caller_count" -ne 3 ]]; then
     echo "expected all three cleanup callers to use the lease helper" >&2
@@ -40,7 +40,7 @@ git -C "$ROOT/a" commit -qm validated
 git -C "$ROOT/a" push -q -u origin "$branch"
 (
     cd "$ROOT/a"
-    record_loop_branch "$branch"
+    loop_record_owned_tip "$branch" fixture-cycle "$(git rev-parse HEAD)" "$(git rev-parse --git-common-dir)/natiart-loop-owned-branches.tsv"
 )
 
 # Simulate validation: the salvage commit is merged and its remote SHA saved.
@@ -65,7 +65,7 @@ git -C "$ROOT/b" checkout -qb "$branch" "origin/$branch"
         fi
         command git "$@"
     }
-    if delete_merged_remote_branch "$branch"; then
+    if loop_delete_merged_remote_branch "$branch" "$(git rev-parse --git-common-dir)/natiart-loop-owned-branches.tsv"; then
         echo "expected stale leased deletion to fail" >&2
         exit 1
     fi

@@ -56,144 +56,185 @@ gh_checks_safe() { # `gh pr checks` keeps output on non-zero check-state exits
     fi
 }
 
+is_loop_branch() { # naming classifier for watchdog only; never ownership proof
+    [[ "${1:-}" =~ ^(fix|perf|chore|docs|feature|salvage)/ ]]
+}
+
 is_docs_only() { # $1 = PR number; true iff every changed file is under docs/
     local files
     files=$(gh pr view "$1" --json files --jq '.files[].path' 2>/dev/null) || return 1
     [[ -n "$files" ]] && ! grep -qvE '^docs/' <<<"$files"
 }
 
-is_loop_branch() { # $1 = eligible prefix; this alone does not prove ownership
-    [[ "${1:-}" =~ ^(fix|perf|chore|docs|feature|salvage)/ ]]
-}
-
-loop_branch_registry() {
-    printf '%s/natiart-loop-owned-branches.tsv\n' "$(git rev-parse --path-format=absolute --git-common-dir)"
-}
-
 loop_origin_id() {
     git remote get-url origin | sha256sum | awk '{print $1}'
 }
 
-# Call only immediately after this loop creates and pushes a branch. The record
-# lives in the common Git directory, so a fresh checkout preserves all unknown
-# remote branches instead of inferring ownership from their names.
-record_loop_branch() { # $1 = branch created by this loop
-    local branch="$1" tip local_tip registry origin_id
-    is_loop_branch "$branch" && git check-ref-format --branch "$branch" >/dev/null 2>&1 || return 1
-    tip="$(git ls-remote --heads origin "refs/heads/$branch" | awk 'NR == 1 {print $1}')"
-    [[ "$tip" =~ ^[0-9a-f]{40}$ ]] || return 1
-    local_tip="$(git rev-parse --verify "refs/heads/$branch" 2>/dev/null)" || return 1
-    [[ "$local_tip" == "$tip" ]] || return 1
-    registry="$(loop_branch_registry)" || return 1
+loop_record_owned_tip() { # $1=branch $2=explicit cycle $3=exact produced tip $4=private ledger
+    local branch="$1" cycle="$2" sha="$3" ledger="$4" origin_id
+    [[ -n "$cycle" && "$cycle" != *$'\t'* && "$cycle" != *$'\n'* && "$sha" =~ ^[0-9a-f]{40}$ ]] || return 1
+    git check-ref-format --branch "$branch" >/dev/null 2>&1 || return 1
     origin_id="$(loop_origin_id)" || return 1
-    printf '%s\t%s\t%s\n' "$origin_id" "$branch" "$tip" >> "$registry"
+    printf 'natiart-owned-v1\t%s\t%s\t%s\t%s\n' "$origin_id" "$branch" "$cycle" "$sha" >> "$ledger"
 }
 
-loop_branch_is_recorded() { # $1 = branch, $2 = current remote tip
-    local branch="$1" tip="$2" registry origin_id created_tip recorded_origin recorded_branch
-    registry="$(loop_branch_registry)" || return 1
-    [[ -f "$registry" ]] || return 1
+loop_owned_branch() { # $1=branch $2=private ledger; version + origin prevent ambiguous legacy enrollment
+    local branch="${1:-}" ledger="${2:-}" origin_id
+    [[ -n "$branch" && -f "$ledger" ]] || return 1
     origin_id="$(loop_origin_id)" || return 1
-    while IFS=$'\t' read -r recorded_origin recorded_branch created_tip; do
-        if [[ "$recorded_origin" == "$origin_id" && "$recorded_branch" == "$branch" &&
-              "$created_tip" =~ ^[0-9a-f]{40}$ ]] &&
-           git merge-base --is-ancestor "$created_tip" "$tip" 2>/dev/null; then
-            return 0
-        fi
-    done < "$registry"
-    return 1
+    awk -F '\t' -v branch="$branch" -v origin="$origin_id" \
+        '$1 == "natiart-owned-v1" && $2 == origin && $3 == branch && NF == 5 { found=1 } END { exit !found }' "$ledger"
 }
 
-forget_loop_branch() { # $1 = successfully deleted branch
-    local registry origin_id tmp
-    registry="$(loop_branch_registry)" || return 1
-    [[ -f "$registry" ]] || return 0
+loop_owned_tip() { # $1=branch $2=exact tip $3=ledger; never infer advancement from ancestry
+    local branch="${1:-}" sha="${2:-}" ledger="${3:-}" origin_id
+    [[ "$sha" =~ ^[0-9a-f]{40}$ && -f "$ledger" ]] || return 1
     origin_id="$(loop_origin_id)" || return 1
-    tmp="$(mktemp "${registry}.tmp.XXXXXX")" || return 1
-    if awk -F '\t' -v origin="$origin_id" -v branch="$1" \
-        '!($1 == origin && $2 == branch)' "$registry" > "$tmp" && mv "$tmp" "$registry"; then
-        return 0
-    fi
+    awk -F '\t' -v branch="$branch" -v sha="$sha" -v origin="$origin_id" \
+        '$1 == "natiart-owned-v1" && $2 == origin && $3 == branch && $5 == sha && NF == 5 { found=1 } END { exit !found }' "$ledger"
+}
+
+loop_forget_branch() { # $1=deleted branch $2=ledger; retire enrollment before a name can be reused
+    local branch="$1" ledger="$2" origin_id tmp
+    [[ -f "$ledger" ]] || return 0
+    origin_id="$(loop_origin_id)" || return 1
+    tmp="$(mktemp "${ledger}.tmp.XXXXXX")" || return 1
+    if awk -F '\t' -v branch="$branch" -v origin="$origin_id" \
+        '!($1 == "natiart-owned-v1" && $2 == origin && $3 == branch)' "$ledger" > "$tmp" && mv "$tmp" "$ledger"; then return 0; fi
     rm -f "$tmp"
     return 1
 }
 
-delete_merged_remote_branch() { # $1 = owned branch; lease-protected deletion
-    local branch="$1" remote_tip
-    if ! is_loop_branch "$branch" || ! git check-ref-format --branch "$branch" >/dev/null 2>&1; then
-        log "Preserving remote branch $branch (invalid loop branch name)."
+loop_record_new_branches() { # before local refs, before remote refs, ledger, explicit cycle
+    local before="$1" remote_before="$2" ledger="$3" cycle_id="$4" branch sha
+    while IFS= read -r branch; do
+        [[ -n "$branch" && "$branch" != master ]] || continue
+        if grep -qxF "$branch" <<<"$remote_before"; then continue; fi
+        if loop_owned_branch "$branch" "$ledger"; then continue; fi
+        sha="$(git rev-parse "refs/heads/$branch" 2>/dev/null)" || return 1
+        loop_record_owned_tip "$branch" "$cycle_id" "$sha" "$ledger" || return 1
+    done < <(comm -13 <(printf '%s\n' "$before" | LC_ALL=C sort) \
+        <(git for-each-ref --format='%(refname:short)' refs/heads/ | LC_ALL=C sort))
+}
+
+loop_delete_merged_remote_branch() { # $1=branch $2=ledger; current remote tip and atomic lease on every caller
+    local branch="$1" ledger="$2" remote_sha
+    loop_owned_branch "$branch" "$ledger" || { log "Preserving unowned remote branch $branch."; return 0; }
+    remote_sha="$(git ls-remote --heads origin "refs/heads/$branch" 2>/dev/null | awk 'NR == 1 {print $1}')" || return 1
+    [[ -n "$remote_sha" ]] || return 0
+    loop_owned_tip "$branch" "$remote_sha" "$ledger" || { log "Preserving changed remote branch $branch."; return 0; }
+    git merge-base --is-ancestor "$remote_sha" origin/master 2>/dev/null || { log "Preserving unmerged remote branch $branch."; return 0; }
+    if git push -q --force-with-lease="refs/heads/$branch:$remote_sha" origin --delete "$branch"; then
+        loop_forget_branch "$branch" "$ledger" || return 1
         return 0
     fi
-    remote_tip="$(git ls-remote --heads origin "refs/heads/$branch" 2>/dev/null | awk 'NR == 1 {print $1}')"
-    if [[ -z "$remote_tip" ]]; then
-        return 0
-    fi
-    if ! loop_branch_is_recorded "$branch" "$remote_tip"; then
-        log "Preserving remote branch $branch (no matching loop ownership record)."
-        return 0
-    fi
-    if [[ ! "$remote_tip" =~ ^[0-9a-f]{40}$ ]] || \
-       ! git merge-base --is-ancestor "$remote_tip" origin/master 2>/dev/null; then
-        log "Preserving remote branch $branch (tip is not fully merged into origin/master)."
-        return 0
-    fi
-    if git push -q --force-with-lease="refs/heads/$branch:$remote_tip" origin --delete "$branch"; then
-        forget_loop_branch "$branch" || log "Could not clear ownership record for deleted branch $branch."
-        log "Deleted merged remote branch $branch at validated tip ${remote_tip:0:8}."
-        return 0
-    fi
-    log "Remote branch $branch changed during validation; preserving its newer tip."
+    log "Remote branch $branch changed after validation or push failed; preserving it."
     return 1
 }
 
-cleanup_old_local_salvage() {
-    local sb remote_sha
-    while read -r sb; do
-        [[ -z "$sb" ]] && continue
-        remote_sha="$(git rev-parse "origin/$sb" 2>/dev/null || true)"
-        if [[ -n "$remote_sha" ]] && loop_branch_is_recorded "$sb" "$remote_sha" &&
-           git merge-base --is-ancestor "$sb" origin/master 2>/dev/null &&
-           git merge-base --is-ancestor "$remote_sha" origin/master 2>/dev/null; then
-            log "Deleting old merged salvage branch $sb."
-            git branch -D "$sb" 2>/dev/null || true
-            delete_merged_remote_branch "$sb" || true
-        else
-            log "Preserving old salvage branch $sb (unrecorded or unmerged)."
-        fi
-    done < <(git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads/salvage/ 2>/dev/null | tail -n +6)
+loop_delete_merged_local_branch() { # $1=branch $2=ledger; expected-tip deletion protects advanced local refs
+    local branch="$1" ledger="$2" sha remote_sha
+    sha="$(git rev-parse "refs/heads/$branch" 2>/dev/null)" || return 0
+    loop_owned_tip "$branch" "$sha" "$ledger" || return 0
+    git merge-base --is-ancestor "$sha" origin/master 2>/dev/null || return 0
+    # Ref deletion must never invalidate a checked-out branch in any attached worktree.
+    if git worktree list --porcelain | grep -qxF "branch refs/heads/$branch"; then return 0; fi
+    git update-ref -d "refs/heads/$branch" "$sha" || return 1
+    remote_sha="$(git ls-remote --heads origin "refs/heads/$branch" 2>/dev/null | awk 'NR == 1 {print $1}')" || return 1
+    if [[ -z "$remote_sha" ]]; then loop_forget_branch "$branch" "$ledger"; fi
 }
 
-cleanup_merged_remote_branches() {
-    local branch
+loop_cleanup_old_local_salvage() { # $1=ledger
+    local ledger="$1" branch
     while read -r branch; do
-        [[ -z "$branch" ]] && continue
-        delete_merged_remote_branch "$branch" || true
-    done < <(git branch -r --merged origin/master 2>/dev/null | sed 's#^ *origin/##' | grep -E '^(fix|perf|chore|docs|feature)/' | sort -u)
+        [[ -n "$branch" ]] || continue
+        loop_delete_merged_local_branch "$branch" "$ledger" || true
+        loop_delete_merged_remote_branch "$branch" "$ledger" || true
+    done < <(git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads/salvage/ | tail -n +6)
 }
 
-cleanup_old_remote_salvage() {
-    local branch
+loop_cleanup_merged_remote_branches() { # $1=ledger
+    local ledger="$1" branch
     while read -r branch; do
-        [[ -z "$branch" ]] && continue
-        delete_merged_remote_branch "$branch" || true
-    done < <(git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/remotes/origin/salvage/ 2>/dev/null | sed 's#^origin/##' | tail -n +6)
+        [[ -n "$branch" ]] || continue
+        loop_delete_merged_remote_branch "$branch" "$ledger" || true
+    done < <(git branch -r --merged origin/master | sed 's#^ *origin/##' | grep -E '^(fix|perf|chore|docs|feature)/' | sort -u)
+}
+
+loop_cleanup_old_remote_salvage() { # $1=ledger
+    local ledger="$1" branch
+    while read -r branch; do
+        [[ -n "$branch" ]] || continue
+        loop_delete_merged_remote_branch "$branch" "$ledger" || true
+    done < <(git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/remotes/origin/salvage/ | sed 's#^origin/##' | tail -n +6)
+}
+
+is_loop_machinery_file() { # $1 = path that always requires human review
+    case "$1" in
+        scripts/*|agents/*|.github/*|.cursorrules|docs/continuous-improvement-loop.md|docs/loop-lenses.md|AGENTS.md|CLAUDE.md|GEMINI.md|*/AGENTS.md|*/CLAUDE.md|*/GEMINI.md) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+files_touch_loop_machinery() { # $1 = newline-separated changed paths
+    local files="$1" path
+    while IFS= read -r path; do
+        [[ -z "$path" ]] && continue
+        is_loop_machinery_file "$path" && return 0
+    done <<<"$files"
+    return 1
+}
+
+dependabot_author_is_verified() { # $1 = authenticated GitHub login
+    [[ "$1" == "dependabot[bot]" ]]
+}
+
+dependabot_files_supported() { # $1 = newline-separated manifest/lockfile paths
+    local files="$1" path
+    [[ -n "$files" ]] || return 1
+    while IFS= read -r path; do
+        [[ -n "$path" ]] || return 1
+        case "$path" in
+            backend/*/build.gradle|backend/*/build.gradle.kts|backend/*/gradle.lockfile|frontend/natiart-app/package.json|frontend/natiart-app/package-lock.json|package.json|package-lock.json|gradle/libs.versions.toml|gradle/verification-metadata.xml)
+                ;;
+            *) return 1 ;;
+        esac
+    done <<<"$files"
+}
+
+dependabot_update_soaked() { # $1=PR updatedAt $2=epoch now; conservatively resets on any PR activity
+    local updated_at="$1" now="$2" updated_epoch
+    updated_epoch="$(date -d "$updated_at" +%s 2>/dev/null)" || return 1
+    [[ "$updated_epoch" =~ ^[0-9]+$ && "$now" =~ ^[0-9]+$ ]] || return 1
+    (( updated_epoch > 0 && now >= updated_epoch && now - updated_epoch >= 172800 ))
 }
 
 semver_bump() { # $1 = dependabot title; prints patch|minor|major|unknown
-    # Only single-dependency "bump X from a.b.c to x.y.z" titles classify.
-    # Group bumps ("across 1 directory with N updates"), multi-pair titles
-    # ("A from x to y, B from ..."), and anything else return unknown
-    # (conservative: never auto-merge what we cannot scope to one bump).
+    # Only exact single-dependency "Bump X from a.b.c to x.y.z" titles
+    # classify. Group/multi-pair titles, prereleases, downgrades, and malformed
+    # values return unknown (conservative: never auto-merge what we cannot scope).
     local title="$1"
-    case "$title" in
-        *from\ *from*|*to\ *to*) echo unknown; return ;;
-    esac
-    if [[ "$title" =~ from\ [vV]?([0-9]+)\.([0-9]+)\.([0-9]+).*to\ [vV]?([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
-        if [[ "${BASH_REMATCH[1]}" != "${BASH_REMATCH[4]}" ]]; then echo major
-        elif [[ "${BASH_REMATCH[2]}" != "${BASH_REMATCH[5]}" ]]; then echo minor
-        else echo patch; fi
-    else
+    local old_major old_minor old_patch new_major new_minor new_patch component
+    if [[ "${title#* from }" == *" from "* || "${title#* to }" == *" to "* ]]; then
         echo unknown
+        return
+    fi
+    if [[ ! "$title" =~ ^.*[Bb]ump[[:space:]]+.+[[:space:]]from[[:space:]]v?([0-9]+)\.([0-9]+)\.([0-9]+)[[:space:]]+to[[:space:]]v?([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+        echo unknown
+        return
+    fi
+    old_major="${BASH_REMATCH[1]}"; old_minor="${BASH_REMATCH[2]}"; old_patch="${BASH_REMATCH[3]}"
+    new_major="${BASH_REMATCH[4]}"; new_minor="${BASH_REMATCH[5]}"; new_patch="${BASH_REMATCH[6]}"
+    for component in "$old_major" "$old_minor" "$old_patch" "$new_major" "$new_minor" "$new_patch"; do
+        [[ "${#component}" -le 9 ]] || { echo unknown; return; }
+    done
+    if (( 10#$new_major < 10#$old_major ||
+          (10#$new_major == 10#$old_major && 10#$new_minor < 10#$old_minor) ||
+          (10#$new_major == 10#$old_major && 10#$new_minor == 10#$old_minor && 10#$new_patch < 10#$old_patch) )); then
+        echo unknown
+    elif (( 10#$new_major != 10#$old_major )); then echo major
+    elif (( 10#$new_minor != 10#$old_minor )); then echo minor
+    else echo patch
     fi
 }
 
