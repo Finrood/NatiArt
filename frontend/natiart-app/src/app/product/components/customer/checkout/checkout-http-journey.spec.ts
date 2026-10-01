@@ -30,6 +30,8 @@ describe('Rendered checkout HTTP journey', (): void => {
   }}];
 
   beforeEach(async (): Promise<void> => {
+    localStorage.removeItem('natiart-cart');
+    localStorage.removeItem('natiart-purchases');
     const currentUser: BehaviorSubject<User | null> = new BehaviorSubject<User | null>(user);
     await TestBed.configureTestingModule({
       imports: [JourneyHostComponent], providers: [provideHttpClient(), provideHttpClientTesting(),
@@ -39,13 +41,10 @@ describe('Rendered checkout HTTP journey', (): void => {
           currentUser$: currentUser.asObservable(), isLoggedIn$: new BehaviorSubject<boolean>(true).asObservable(),
           fetchCurrentUser: (): BehaviorSubject<User | null> => currentUser,
         }},
-        {provide: CartService, useValue: {
-          getCartItems: (): BehaviorSubject<CartItem[]> => new BehaviorSubject<CartItem[]>(items),
-          getCartTotal: (): BehaviorSubject<number> => new BehaviorSubject<number>(99.9),
-          getCartItemsSnapshot: (): CartItem[] => items, getCartTotalSnapshot: (): number => 99.9,
-        }},
+
       ],
     }).compileComponents();
+    TestBed.inject(CartService).addToCart(items[0].product, 1).subscribe();
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(JourneyHostComponent);
   });
@@ -93,9 +92,10 @@ describe('Rendered checkout HTTP journey', (): void => {
     expect((fixture.nativeElement as HTMLElement).querySelector('img')?.getAttribute('src')).toContain('data:image/png;base64,');
     tick(5000);
     http.expectOne((request): boolean => request.url.endsWith('/payments/pay_1/status'))
-      .flush({paymentId: 'pay_1', status: 'COMPLETED'});
+      .flush({paymentId: 'pay_1', status: 'COMPLETED', orderId: 'order-1'});
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Payment Successful');
+    expect(TestBed.inject(CartService).getCartItemsSnapshot()).toEqual([]);
     fixture.destroy();
   }));
 
