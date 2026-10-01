@@ -1,7 +1,8 @@
-import {HttpClient, HttpContextToken, HttpInterceptorFn} from '@angular/common/http';
-import {inject} from '@angular/core';
+import {HttpContextToken, HttpInterceptorFn} from '@angular/common/http';
+import {inject, Injector} from '@angular/core';
 import {Router} from "@angular/router";
-import {BehaviorSubject, catchError, filter, first, switchMap, throwError, timeout} from "rxjs";
+import {catchError, switchMap, throwError} from "rxjs";
+import {AuthenticationService} from "../service/authentication.service";
 import {TokenService} from "../service/token.service";
 import {environment} from "../../../environments/environment";
 
@@ -53,49 +54,7 @@ const isRefreshTokenRequest = (url: string): boolean =>
 const isLogoutRequest = (url: string): boolean =>
   isEndpoint(url, [environment.api.directory.endpoints.logout]);
 
-const AUTH_RETRIED = new HttpContextToken<boolean>(() => false);
-const REFRESH_TIMEOUT_MS = 10000;
-
-let refreshInProgress$: BehaviorSubject<string | null> | null = null;
-
-const performRefresh = (http: HttpClient, tokenService: TokenService): BehaviorSubject<string | null> => {
-  if (!refreshInProgress$) {
-    const subject = new BehaviorSubject<string | null>(null);
-    refreshInProgress$ = subject;
-
-    const refreshTokenValue = tokenService.refreshToken;
-    if (!refreshTokenValue) {
-      refreshInProgress$ = null;
-      subject.error(new Error('No refresh token available'));
-      return subject;
-    }
-
-    http.post<{ accessToken: string; refreshToken: string }>(
-      `${environment.api.directory.url}${environment.api.directory.endpoints.refreshToken}`,
-      null,
-      {headers: {Authorization: `Bearer ${refreshTokenValue}`}}
-    ).pipe(timeout({first: REFRESH_TIMEOUT_MS})).subscribe({
-      next: (response) => {
-        tokenService.accessToken = response.accessToken;
-        tokenService.refreshToken = response.refreshToken;
-        subject.next(response.accessToken);
-        subject.complete();
-        if (refreshInProgress$ === subject) {
-          refreshInProgress$ = null;
-        }
-      },
-      error: (error) => {
-        tokenService.clearTokens();
-        if (refreshInProgress$ === subject) {
-          refreshInProgress$ = null;
-        }
-        subject.error(error);
-      }
-    });
-  }
-  return refreshInProgress$!;
-};
-
+export const AUTH_RETRY_CONTEXT = new HttpContextToken<boolean>(() => false);
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   if (!isConfiguredApiUrl(req.url) || isAuthRequest(req.url) || isRefreshTokenRequest(req.url)) {
     return next(req);
@@ -103,9 +62,9 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
 
   const tokenService = inject(TokenService);
   const router = inject(Router);
-  const http = inject(HttpClient);
+  const injector = inject(Injector);
 
-  const alreadyRetried = req.context.get(AUTH_RETRIED);
+  const alreadyRetried = req.context.get(AUTH_RETRY_CONTEXT);
 
   // A caller-supplied credential belongs to the caller. The interceptor only
   // manages credentials for requests that do not already carry Authorization.
@@ -131,15 +90,13 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
           router.navigate(['/login']);
           return throwError(() => error);
         }
-        return performRefresh(http, tokenService).pipe(
-          filter(token => token !== null),
-          first(),
+        return injector.get(AuthenticationService).refreshAccessToken().pipe(
           switchMap(token => next(req.clone({
             setHeaders: {Authorization: `Bearer ${token}`},
-            context: req.context.set(AUTH_RETRIED, true)
+            context: req.context.set(AUTH_RETRY_CONTEXT, true)
           }))),
           catchError(refreshError => {
-            router.navigate(['/login']);
+            if (refreshError.status === 401 || refreshError.status === 403) router.navigate(['/login']);
             return throwError(() => refreshError);
           })
         );

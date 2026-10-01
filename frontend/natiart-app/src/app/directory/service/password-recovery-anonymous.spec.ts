@@ -40,4 +40,30 @@ describe('Anonymous recovery with stale browser session', () => {
       tick();
     }));
   }
+  for (const path of ['/forgot-password', '/reset-password']) {
+    it('keeps recovery usable during rejected stored-session bootstrap on ' + path, fakeAsync(() => {
+      const previous = window.location.pathname;
+      window.history.pushState(null, '', path);
+      try {
+        const jwt = 'stale.' + btoa(JSON.stringify({exp: Math.floor(Date.now() / 1000) + 3600})) + '.signature';
+        const tokens = TestBed.inject(TokenService);
+        tokens.accessToken = jwt;
+        tokens.refreshToken = jwt;
+        TestBed.inject(AuthenticationService);
+        tick();
+        const http = TestBed.inject(HttpTestingController);
+        http.expectOne(environment.api.directory.url + environment.api.directory.endpoints.user + environment.api.directory.endpoints.current)
+          .flush('', {status: 401, statusText: 'Revoked session'});
+        tick();
+        TestBed.inject(PasswordResetService).requestReset('buyer@example.test').subscribe();
+        const request = http.expectOne(environment.api.directory.url + environment.api.directory.endpoints.passwordResetRequest);
+        expect(request.request.headers.has('Authorization')).toBeFalse();
+        request.flush({message: 'If the account exists, recovery instructions will be sent.'}, {status: 202, statusText: 'Accepted'});
+        http.expectNone(environment.api.directory.url + environment.api.directory.endpoints.refreshToken);
+        expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
+      } finally {
+        window.history.pushState(null, '', previous);
+      }
+    }));
+  }
 });

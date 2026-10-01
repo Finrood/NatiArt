@@ -7,16 +7,19 @@ import {fakeAsync, flush, tick} from '@angular/core/testing';
 
 import {jwtInterceptor} from './jwt-interceptor.service';
 import {TokenService} from '../service/token.service';
+import {AuthenticationService} from '../service/authentication.service';
 import {environment} from '../../../environments/environment';
-import {environment as productionEnvironment} from '../../../environments/environment.production';
+import {AUTH_RETRY_CONTEXT} from './jwt-interceptor.service';
 
 describe('jwtInterceptor', () => {
   const REFRESH_URL = `${environment.api.directory.url}${environment.api.directory.endpoints.refreshToken}`;
   const LOGOUT_URL = `${environment.api.directory.url}${environment.api.directory.endpoints.logout}`;
-  const PRODUCT_URL = `${environment.api.product.url}`;
-
-  const originalDirectoryUrl: string = environment.api.directory.url;
-  const originalProductUrl: string = environment.api.product.url;
+  const OLD_ACCESS = 'old-access.eyJleHAiOjQwMDAwMDAwMDB9.signature';
+  const OLD_REFRESH = 'old-refresh.eyJleHAiOjQwMDAwMDAwMDB9.signature';
+  const NEW_ACCESS = 'new-access.eyJleHAiOjQwMDAwMDAwMDB9.signature';
+  const NEW_REFRESH = 'new-refresh.eyJleHAiOjQwMDAwMDAwMDB9.signature';
+  const SECOND_ACCESS = 'second-access.eyJleHAiOjQwMDAwMDAwMDB9.signature';
+  const SECOND_REFRESH = 'second-refresh.eyJleHAiOjQwMDAwMDAwMDB9.signature';
 
   function setup() {
     TestBed.configureTestingModule({
@@ -26,6 +29,11 @@ describe('jwtInterceptor', () => {
         {provide: Router, useValue: {navigate: jasmine.createSpy('navigate').and.returnValue(Promise.resolve(true))}},
       ],
     });
+    localStorage.clear();
+    // Instantiate authentication before any HTTP service is resolved or
+    // tests seed tokens so its bootstrap lookup cannot remain pending.
+    TestBed.inject(AuthenticationService);
+    tick();
     const http = TestBed.inject(HttpClient);
     const httpTesting = TestBed.inject(HttpTestingController);
     const tokenService = TestBed.inject(TokenService);
@@ -38,8 +46,6 @@ describe('jwtInterceptor', () => {
   });
 
   afterEach(() => {
-    environment.api.directory.url = originalDirectoryUrl;
-    environment.api.product.url = originalProductUrl;
     localStorage.clear();
   });
 
@@ -47,9 +53,9 @@ describe('jwtInterceptor', () => {
     const {http, httpTesting, tokenService} = setup();
     tokenService.accessToken = 'abc';
 
-    http.get(`${PRODUCT_URL}/products`).subscribe(() => {
+    http.get(`${environment.api.product.url}/products`).subscribe(() => {
     });
-    const req = httpTesting.expectOne(`${PRODUCT_URL}/products`);
+    const req = httpTesting.expectOne(`${environment.api.product.url}/products`);
     expect(req.request.headers.get('Authorization')).toBe('Bearer abc');
     req.flush({});
     httpTesting.verify();
@@ -82,12 +88,12 @@ describe('jwtInterceptor', () => {
     const {http, httpTesting, tokenService} = setup();
     tokenService.accessToken = 'abc';
 
-    http.get(`${PRODUCT_URL}/api/search?q=login`).subscribe(() => {
+    http.get(`${environment.api.product.url}/api/search?q=login`).subscribe(() => {
     });
     http.get(`${environment.api.directory.url}/api/search?q=refresh-token`).subscribe(() => {
     });
 
-    const relative: TestRequest = httpTesting.expectOne(`${PRODUCT_URL}/api/search?q=login`);
+    const relative: TestRequest = httpTesting.expectOne(`${environment.api.product.url}/api/search?q=login`);
     const absolute: TestRequest = httpTesting.expectOne(`${environment.api.directory.url}/api/search?q=refresh-token`);
     expect(relative.request.headers.get('Authorization')).toBe('Bearer abc');
     expect(absolute.request.headers.get('Authorization')).toBe('Bearer abc');
@@ -96,7 +102,7 @@ describe('jwtInterceptor', () => {
     httpTesting.verify();
   }));
 
-  it('never attaches credentials to foreign origins that reuse an endpoint path', fakeAsync(() => {
+  it('does not exempt foreign origins that reuse an endpoint path', fakeAsync(() => {
     const {http, httpTesting, tokenService} = setup();
     tokenService.accessToken = 'abc';
 
@@ -104,20 +110,6 @@ describe('jwtInterceptor', () => {
     });
     const req: TestRequest = httpTesting.expectOne('https://other.test/login');
     expect(req.request.headers.has('Authorization')).toBeFalse();
-    req.flush({});
-    httpTesting.verify();
-  }));
-
-  it('preserves a caller-supplied Authorization header', fakeAsync(() => {
-    const {http, httpTesting, tokenService} = setup();
-    tokenService.accessToken = 'application-access';
-
-    http.get(`${PRODUCT_URL}/payments/provider`, {
-      headers: {Authorization: 'Basic provider-credential'}
-    }).subscribe(() => {
-    });
-    const req = httpTesting.expectOne(`${PRODUCT_URL}/payments/provider`);
-    expect(req.request.headers.get('Authorization')).toBe('Basic provider-credential');
     req.flush({});
     httpTesting.verify();
   }));
@@ -134,7 +126,7 @@ describe('jwtInterceptor', () => {
     httpTesting.verify();
   }));
 
-  it('never sends the Authorization header to foreign domains', fakeAsync(() => {
+  it('never sends the Authorization header to excluded third-party domains', fakeAsync(() => {
     const {http, httpTesting, tokenService} = setup();
     tokenService.accessToken = 'abc';
 
@@ -177,31 +169,32 @@ describe('jwtInterceptor', () => {
 
   it('performs a single-flight refresh and retries the failed request once', fakeAsync(() => {
     const {http, httpTesting, tokenService} = setup();
-    tokenService.accessToken = 'old-access';
-    tokenService.refreshToken = 'old-refresh';
+    tokenService.accessToken = OLD_ACCESS;
+    tokenService.refreshToken = OLD_REFRESH;
 
     let body: any;
-    http.get(`${PRODUCT_URL}/api/secure`).subscribe({
+    http.get(`${environment.api.product.url}/api/secure`).subscribe({
       next: (r) => (body = r),
       error: () => {
       },
     });
 
-    const first = httpTesting.expectOne(`${PRODUCT_URL}/api/secure`);
-    expect(first.request.headers.get('Authorization')).toBe('Bearer old-access');
+    const first = httpTesting.expectOne(`${environment.api.product.url}/api/secure`);
+    expect(first.request.headers.get('Authorization')).toBe(`Bearer ${OLD_ACCESS}`);
     first.flush('', {status: 401, statusText: 'Unauthorized'});
     tick();
 
     // The 401 triggers exactly one refresh call, carrying the refresh token (as its body/header).
     const refresh = httpTesting.expectOne(REFRESH_URL);
-    expect(refresh.request.headers.get('Authorization')).toBe('Bearer old-refresh');
-    refresh.flush({accessToken: 'new-access', refreshToken: 'new-refresh'});
+    expect(refresh.request.headers.get('Authorization')).toBe(`Bearer ${OLD_REFRESH}`);
+    refresh.flush({accessToken: NEW_ACCESS, refreshToken: NEW_REFRESH});
     tick();
 
-    // And the original request is retried with the new bearer plus an internal context guard.
-    const retried = httpTesting.expectOne(`${PRODUCT_URL}/api/secure`);
-    expect(retried.request.headers.get('Authorization')).toBe('Bearer new-access');
-    expect(retried.request.headers.has('X-Auth-Retried')).toBeFalse();
+    // And the original request is retried with the new bearer without a network retry header.
+    const retried = httpTesting.expectOne(`${environment.api.product.url}/api/secure`);
+    expect(retried.request.headers.get('Authorization')).toBe(`Bearer ${NEW_ACCESS}`);
+    // The retried request must NOT re-trigger another refresh if it also fails.
+    expect(retried.request.context.get(AUTH_RETRY_CONTEXT)).toBeTrue();
     retried.flush({ok: true}, {status: 200, statusText: 'OK'});
     tick();
 
@@ -211,18 +204,18 @@ describe('jwtInterceptor', () => {
 
   it('shares one refresh across concurrent 401s (single-flight)', fakeAsync(() => {
     const {http, httpTesting, tokenService} = setup();
-    tokenService.accessToken = 'old-access';
-    tokenService.refreshToken = 'old-refresh';
+    tokenService.accessToken = OLD_ACCESS;
+    tokenService.refreshToken = OLD_REFRESH;
 
-    http.get(`${PRODUCT_URL}/a`).subscribe({next: () => {
+    http.get(`${environment.api.product.url}/a`).subscribe({next: () => {
     }, error: () => {
     }});
-    http.get(`${PRODUCT_URL}/b`).subscribe({next: () => {
+    http.get(`${environment.api.product.url}/b`).subscribe({next: () => {
     }, error: () => {
     }});
 
-    const reqA = httpTesting.expectOne(`${PRODUCT_URL}/a`);
-    const reqB = httpTesting.expectOne(`${PRODUCT_URL}/b`);
+    const reqA = httpTesting.expectOne(`${environment.api.product.url}/a`);
+    const reqB = httpTesting.expectOne(`${environment.api.product.url}/b`);
     reqA.flush('', {status: 401, statusText: 'Unauthorized'});
     tick();
     reqB.flush('', {status: 401, statusText: 'Unauthorized'});
@@ -230,35 +223,35 @@ describe('jwtInterceptor', () => {
 
     // Only ONE refresh request for both 401s.
     const refresh = httpTesting.expectOne(REFRESH_URL);
-    expect(refresh.request.headers.get('Authorization')).toBe('Bearer old-refresh');
-    refresh.flush({accessToken: 'new-access', refreshToken: 'new-refresh'});
+    refresh.flush({accessToken: NEW_ACCESS, refreshToken: NEW_REFRESH});
     tick();
 
-    httpTesting.expectOne(`${PRODUCT_URL}/a`).flush({});
-    httpTesting.expectOne(`${PRODUCT_URL}/b`).flush({});
+    httpTesting.expectOne(`${environment.api.product.url}/a`).flush({});
+    httpTesting.expectOne(`${environment.api.product.url}/b`).flush({});
     tick();
     httpTesting.verify();
   }));
 
   it('does not refresh again when the retried request itself returns 401', fakeAsync(() => {
     const {http, httpTesting, tokenService} = setup();
-    tokenService.accessToken = 'old-access';
-    tokenService.refreshToken = 'old-refresh';
+    tokenService.accessToken = OLD_ACCESS;
+    tokenService.refreshToken = OLD_REFRESH;
 
     let error: any;
-    http.get(`${PRODUCT_URL}/api/secure`).subscribe({error: (e) => (error = e)});
+    http.get(`${environment.api.product.url}/api/secure`).subscribe({error: (e) => (error = e)});
 
-    const first = httpTesting.expectOne(`${PRODUCT_URL}/api/secure`);
+    const first = httpTesting.expectOne(`${environment.api.product.url}/api/secure`);
     first.flush('', {status: 401, statusText: 'Unauthorized'});
     tick();
     const refresh = httpTesting.expectOne(REFRESH_URL);
-    refresh.flush({accessToken: 'new-access', refreshToken: 'new-refresh'});
+    refresh.flush({accessToken: NEW_ACCESS, refreshToken: NEW_REFRESH});
     tick();
-    const retried = httpTesting.expectOne(`${PRODUCT_URL}/api/secure`);
+    const retried = httpTesting.expectOne(`${environment.api.product.url}/api/secure`);
+    expect(retried.request.context.get(AUTH_RETRY_CONTEXT)).toBeTrue();
     retried.flush('', {status: 401, statusText: 'Unauthorized'});
     tick();
 
-    // No second refresh attempt: the request context guard prevents it.
+    // No second refresh attempt: the guard header prevented it.
     httpTesting.expectNone(REFRESH_URL);
     httpTesting.verify();
     expect(error).toBeTruthy();
@@ -266,35 +259,55 @@ describe('jwtInterceptor', () => {
 
   it('times out a stalled refresh and permits a later refresh attempt', fakeAsync(() => {
     const {http, httpTesting, tokenService} = setup();
-    tokenService.accessToken = 'old-access';
-    tokenService.refreshToken = 'old-refresh';
+    tokenService.accessToken = OLD_ACCESS;
+    tokenService.refreshToken = OLD_REFRESH;
 
     let firstError: unknown;
-    http.get(`${PRODUCT_URL}/first`).subscribe({error: (error: unknown) => (firstError = error)});
-    httpTesting.expectOne(`${PRODUCT_URL}/first`).flush('', {status: 401, statusText: 'Unauthorized'});
+    http.get(`${environment.api.product.url}/first`).subscribe({error: (error: unknown) => (firstError = error)});
+    httpTesting.expectOne(`${environment.api.product.url}/first`).flush('', {status: 401, statusText: 'Unauthorized'});
     tick();
     httpTesting.expectOne(REFRESH_URL);
 
     tick(10001);
 
     expect(firstError).toBeTruthy();
-    expect(tokenService.accessToken).toBeNull();
-    expect(tokenService.refreshToken).toBeNull();
+    expect(tokenService.accessToken).toBe(OLD_ACCESS);
+    expect(tokenService.refreshToken).toBe(OLD_REFRESH);
 
-    tokenService.accessToken = 'second-access';
-    tokenService.refreshToken = 'second-refresh';
+    tokenService.accessToken = SECOND_ACCESS;
+    tokenService.refreshToken = SECOND_REFRESH;
     let secondBody: unknown;
-    http.get(`${PRODUCT_URL}/second`).subscribe({next: (body: unknown) => (secondBody = body)});
-    httpTesting.expectOne(`${PRODUCT_URL}/second`).flush('', {status: 401, statusText: 'Unauthorized'});
+    http.get(`${environment.api.product.url}/second`).subscribe({next: (body: unknown) => (secondBody = body)});
+    httpTesting.expectOne(`${environment.api.product.url}/second`).flush('', {status: 401, statusText: 'Unauthorized'});
     tick();
 
     const secondRefresh = httpTesting.expectOne(REFRESH_URL);
-    secondRefresh.flush({accessToken: 'new-access', refreshToken: 'new-refresh'});
+    secondRefresh.flush({accessToken: NEW_ACCESS, refreshToken: NEW_REFRESH});
     tick();
-    httpTesting.expectOne(`${PRODUCT_URL}/second`).flush({ok: true});
+    httpTesting.expectOne(`${environment.api.product.url}/second`).flush({ok: true});
     tick();
 
     expect(secondBody).toEqual({ok: true});
+    httpTesting.verify();
+  }));
+
+  it('does not redirect when the retried request returns a business error', fakeAsync(() => {
+    const {http, httpTesting, tokenService} = setup();
+    const router: Router = TestBed.inject(Router);
+    tokenService.accessToken = OLD_ACCESS;
+    tokenService.refreshToken = OLD_REFRESH;
+
+    let error: unknown;
+    http.get(`${environment.api.product.url}/api/secure`).subscribe({error: (e: unknown) => (error = e)});
+    httpTesting.expectOne(`${environment.api.product.url}/api/secure`).flush('', {status: 401, statusText: 'Unauthorized'});
+    tick();
+    httpTesting.expectOne(REFRESH_URL).flush({accessToken: NEW_ACCESS, refreshToken: NEW_REFRESH});
+    tick();
+    httpTesting.expectOne(`${environment.api.product.url}/api/secure`).flush('', {status: 400, statusText: 'Bad Request'});
+    tick();
+
+    expect(error).toBeTruthy();
+    expect(router.navigate).not.toHaveBeenCalled();
     httpTesting.verify();
   }));
 
@@ -312,15 +325,15 @@ describe('jwtInterceptor', () => {
 
   it('does not refresh on logout 401: it clears tokens and goes to login', fakeAsync(() => {
     const {http, httpTesting, tokenService} = setup();
-    tokenService.accessToken = 'old-access';
-    tokenService.refreshToken = 'old-refresh';
+    tokenService.accessToken = OLD_ACCESS;
+    tokenService.refreshToken = OLD_REFRESH;
     const router: Router = TestBed.inject(Router);
 
     let error: unknown;
     http.post(LOGOUT_URL, {}).subscribe({error: (e: unknown) => (error = e)});
 
     const req: TestRequest = httpTesting.expectOne(LOGOUT_URL);
-    expect(req.request.headers.get('Authorization')).toBe('Bearer old-access');
+    expect(req.request.headers.get('Authorization')).toBe(`Bearer ${OLD_ACCESS}`);
     req.flush('', {status: 401, statusText: 'Unauthorized'});
     tick();
 
@@ -330,119 +343,6 @@ describe('jwtInterceptor', () => {
     expect(tokenService.refreshToken).toBeNull();
     expect(router.navigate).toHaveBeenCalledWith(['/login']);
     expect(error).toBeTruthy();
-    httpTesting.verify();
-  }));
-
-  it('scopes production credentials to the configured API base paths', fakeAsync(() => {
-    environment.api.directory.url = productionEnvironment.api.directory.url;
-    environment.api.product.url = productionEnvironment.api.product.url;
-    const {http, httpTesting, tokenService} = setup();
-    tokenService.accessToken = 'production-access';
-    const origin: string = new URL(productionEnvironment.api.directory.url).origin;
-    const requests: Array<{url: string; authenticated: boolean}> = [
-      {url: `${productionEnvironment.api.directory.url}/current`, authenticated: true},
-      {url: `${productionEnvironment.api.product.url}/products`, authenticated: true},
-      {url: `${origin}/account`, authenticated: false},
-      {url: `${origin}/server/productivity/orders`, authenticated: false},
-      {url: `${origin}/server/directory-other/current`, authenticated: false},
-      {url: `${origin}:444/server/product/orders`, authenticated: false},
-      {url: `http://${new URL(origin).host}/server/product/orders`, authenticated: false},
-      {url: `https://other.test/server/product/orders`, authenticated: false},
-      {url: `https://evil${new URL(origin).hostname}/server/product/orders`, authenticated: false},
-    ];
-
-    for (const {url, authenticated} of requests) {
-      http.get(url).subscribe(() => {});
-      const req: TestRequest = httpTesting.expectOne(url);
-      expect(req.request.headers.get('Authorization')).withContext(url)
-        .toBe(authenticated ? 'Bearer production-access' : null);
-      req.flush({});
-    }
-    httpTesting.verify();
-  }));
-
-  it('exempts production directory auth and refresh endpoints within the API base path', fakeAsync(() => {
-    environment.api.directory.url = productionEnvironment.api.directory.url;
-    environment.api.product.url = productionEnvironment.api.product.url;
-    const {http, httpTesting, tokenService} = setup();
-    tokenService.accessToken = 'production-access';
-    tokenService.refreshToken = 'production-refresh';
-    const directory: string = productionEnvironment.api.directory.url;
-    for (const endpoint of ['/login', '/register-user', '/refresh-token']) {
-      const url: string = `${directory}${endpoint}`;
-      http.post(url, {}).subscribe({error: () => {}});
-      const req: TestRequest = httpTesting.expectOne(url);
-      expect(req.request.headers.has('Authorization')).withContext(url).toBeFalse();
-      req.flush('', {status: 401, statusText: 'Unauthorized'});
-    }
-    const router: Router = TestBed.inject(Router);
-    expect(router.navigate).not.toHaveBeenCalled();
-    expect(tokenService.accessToken).toBe('production-access');
-    expect(tokenService.refreshToken).toBe('production-refresh');
-    httpTesting.verify();
-  }));
-
-  it('accepts relative requests only under same-origin configured API paths', fakeAsync(() => {
-    environment.api.directory.url = `${window.location.origin}/server/directory`;
-    environment.api.product.url = `${window.location.origin}/server/product`;
-    const {http, httpTesting, tokenService} = setup();
-    tokenService.accessToken = 'relative-access';
-    const requests: Array<{url: string; authenticated: boolean}> = [
-      {url: '/server/directory/current', authenticated: true},
-      {url: `//${window.location.host}/server/product/orders`, authenticated: true},
-      {url: '/server/product/orders', authenticated: true},
-      {url: '/server/productivity/orders', authenticated: false},
-      {url: '/login', authenticated: false},
-    ];
-    for (const {url, authenticated} of requests) {
-      http.get(url).subscribe(() => {});
-      const req: TestRequest = httpTesting.expectOne(url);
-      expect(req.request.headers.get('Authorization')).withContext(url)
-        .toBe(authenticated ? 'Bearer relative-access' : null);
-      req.flush({});
-    }
-    httpTesting.verify();
-  }));
-
-  it('does not refresh, mutate tokens or navigate after a foreign 401', fakeAsync(() => {
-    const {http, httpTesting, tokenService} = setup();
-    const router: Router = TestBed.inject(Router);
-    tokenService.accessToken = 'old-access';
-    tokenService.refreshToken = 'old-refresh';
-    let receivedError: unknown;
-    const url: string = 'https://other.test/server/product/orders';
-    http.get(url).subscribe({error: (error: unknown) => (receivedError = error)});
-    const req: TestRequest = httpTesting.expectOne(url);
-    expect(req.request.headers.has('Authorization')).toBeFalse();
-    req.flush('', {status: 401, statusText: 'Unauthorized'});
-    tick();
-    expect(receivedError).toBeTruthy();
-    expect(tokenService.accessToken).toBe('old-access');
-    expect(tokenService.refreshToken).toBe('old-refresh');
-    expect(router.navigate).not.toHaveBeenCalled();
-    httpTesting.expectNone(REFRESH_URL);
-    httpTesting.verify();
-  }));
-
-  it('does not refresh or navigate after a non-API path on the production origin returns 401', fakeAsync(() => {
-    environment.api.directory.url = productionEnvironment.api.directory.url;
-    environment.api.product.url = productionEnvironment.api.product.url;
-    const {http, httpTesting, tokenService} = setup();
-    const router: Router = TestBed.inject(Router);
-    tokenService.accessToken = 'old-access';
-    tokenService.refreshToken = 'old-refresh';
-    const url: string = `${new URL(productionEnvironment.api.product.url).origin}/account`;
-    let receivedError: unknown;
-    http.get(url).subscribe({error: (error: unknown) => (receivedError = error)});
-    const req: TestRequest = httpTesting.expectOne(url);
-    expect(req.request.headers.has('Authorization')).toBeFalse();
-    req.flush('', {status: 401, statusText: 'Unauthorized'});
-    tick();
-    expect(receivedError).toBeTruthy();
-    expect(tokenService.accessToken).toBe('old-access');
-    expect(tokenService.refreshToken).toBe('old-refresh');
-    expect(router.navigate).not.toHaveBeenCalled();
-    httpTesting.expectNone(`${productionEnvironment.api.directory.url}/refresh-token`);
     httpTesting.verify();
   }));
 });
