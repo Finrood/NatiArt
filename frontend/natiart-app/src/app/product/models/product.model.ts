@@ -14,4 +14,6 @@ export interface Product {
   tags: Set<string>;
   images: string[];
   active?: boolean;
+  newProduct?: boolean;
+  featuredProduct?: boolean;
 }

@@ -81,8 +81,9 @@ describe('CheckoutComponent', () => {
             getCartItems: (): BehaviorSubject<never[]> => new BehaviorSubject<never[]>([]),
             getCartTotal: (): BehaviorSubject<number> => new BehaviorSubject<number>(0),
             getCartTotalSnapshot: (): number => 99.9,
-            getCartItemsSnapshot: (): Array<{ product: { id: string }; quantity: number }> => [
-              { product: { id: 'prod-1' }, quantity: 1 },
+            rememberPurchase: jasmine.createSpy('rememberPurchase'),
+            getCartItemsSnapshot: (): Array<{ cartItemId: string; product: { id: string }; quantity: number }> => [
+              { cartItemId: 'line-1', product: { id: 'prod-1' }, quantity: 1 },
             ],
           },
         },
