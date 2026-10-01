@@ -67,8 +67,8 @@ public class ControllerAdvice {
     @ExceptionHandler(com.portcelana.natiart.controller.helper.OrderCreationRejectedException.class)
     public ResponseEntity<Object> handleOrderCreationRejected(
             com.portcelana.natiart.controller.helper.OrderCreationRejectedException e) {
-        return ResponseEntity.badRequest().body(java.util.Map.of(
-                "code", "ORDER_CREATION_REJECTED", "orderCreated", false));
+        return ResponseEntity.badRequest()
+                .body(java.util.Map.of("code", "ORDER_CREATION_REJECTED", "orderCreated", false));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

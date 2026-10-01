@@ -290,7 +290,9 @@ class OrderManagerImplTest {
 
         OrderDto dto = validOrder().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("missing", 1)));
 
-        assertThrows(com.portcelana.natiart.controller.helper.OrderCreationRejectedException.class, () -> orderManager.createOrder(dto, "user-1"));
+        assertThrows(
+                com.portcelana.natiart.controller.helper.OrderCreationRejectedException.class,
+                () -> orderManager.createOrder(dto, "user-1"));
         verify(productRepository, never()).decreaseStockIfAvailable(anyString(), anyInt());
         verify(orderRepository, never()).save(any());
     }

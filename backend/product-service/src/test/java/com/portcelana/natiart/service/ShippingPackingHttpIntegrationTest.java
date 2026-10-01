@@ -137,8 +137,8 @@ class ShippingPackingHttpIntegrationTest {
         final int units = scenario.equals("one") ? 1 : 3;
         final Category category =
                 categories.saveAndFlush(new Category(UUID.randomUUID().toString()));
-        final com.portcelana.natiart.model.Package packaging =
-                packages.saveAndFlush(new com.portcelana.natiart.model.Package("Unit parcel " + UUID.randomUUID(), 10, 15, 20));
+        final com.portcelana.natiart.model.Package packaging = packages.saveAndFlush(
+                new com.portcelana.natiart.model.Package("Unit parcel " + UUID.randomUUID(), 10, 15, 20));
         final Product product = products.saveAndFlush(new Product("Plate", BigDecimal.TEN)
                 .setCategory(category)
                 .setPackaging(packaging)
