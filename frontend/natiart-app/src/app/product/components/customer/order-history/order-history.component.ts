@@ -1,7 +1,8 @@
 import {CurrencyPipe, DatePipe} from '@angular/common';
-import {Component, OnInit} from '@angular/core';
+import {ChangeDetectorRef, Component, DestroyRef, inject, OnInit} from '@angular/core';
 import {RouterLink} from '@angular/router';
 
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {OrderDto} from '../../../models/order.model';
 import {OrderService} from '../../../service/order.service';
 import {TopMenuComponent} from '../top-menu/top-menu.component';
@@ -20,18 +21,22 @@ export class OrderHistoryComponent implements OnInit {
   private page = 0;
   private readonly pageSize = 20;
 
-  constructor(private readonly orderService: OrderService) {}
+  private readonly _orderService = inject(OrderService);
+  private readonly _destroyRef = inject(DestroyRef);
+  private readonly _cdr = inject(ChangeDetectorRef);
 
   ngOnInit(): void {
-    this.orderService.getMyOrders(this.page, this.pageSize).subscribe({
+    this._orderService.getMyOrders(this.page, this.pageSize).pipe(takeUntilDestroyed(this._destroyRef)).subscribe({
       next: orders => {
         this.orders = orders;
         this.hasMore = orders.length === this.pageSize;
         this.loading = false;
+        this._cdr.markForCheck();
       },
       error: () => {
         this.errorMessage = 'We could not load your order history. Please try again.';
         this.loading = false;
+        this._cdr.markForCheck();
       }
     });
   }
@@ -41,16 +46,18 @@ export class OrderHistoryComponent implements OnInit {
       return;
     }
     this.loadingMore = true;
-    this.orderService.getMyOrders(this.page + 1, this.pageSize).subscribe({
+    this._orderService.getMyOrders(this.page + 1, this.pageSize).pipe(takeUntilDestroyed(this._destroyRef)).subscribe({
       next: orders => {
         this.page += 1;
         this.orders = [...this.orders, ...orders];
         this.hasMore = orders.length === this.pageSize;
         this.loadingMore = false;
+        this._cdr.markForCheck();
       },
       error: () => {
         this.errorMessage = 'We could not load more orders. Please try again.';
         this.loadingMore = false;
+        this._cdr.markForCheck();
       }
     });
   }
