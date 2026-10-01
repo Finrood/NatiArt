@@ -72,6 +72,22 @@ describe('PaymentService', () => {
       .flush({ success: true, encodedImage: 'abc', payload: 'payload', expirationDate: '2030-01-01T00:00:00Z' });
   });
 
+  for (const invalid of [
+    {success: false, encodedImage: 'abc', payload: 'x', expirationDate: '2030-01-01'},
+    {success: true, payload: 'x', expirationDate: '2030-01-01'},
+    {success: true, encodedImage: '', payload: 'x', expirationDate: '2030-01-01'},
+    {success: true, encodedImage: 'abc', payload: ' ', expirationDate: '2030-01-01'},
+    {success: true, encodedImage: 'abc', payload: 'x', expirationDate: 'invalid'},
+    {success: true, encodedImage: 'abc', payload: 'x'},
+  ]) {
+    it('rejects malformed raw QR data before constructing an image URL: ' + JSON.stringify(invalid), () => {
+      let rejected: boolean = false;
+      service.getPixQrCode('pay_123').subscribe({next: () => fail('invalid QR emitted'), error: () => rejected = true});
+      http.expectOne(`${apiUrl}/payments/pay_123/pix-qr-code`).flush(invalid);
+      expect(rejected).toBeTrue();
+    });
+  }
+
   it('fetches payment status from the status endpoint', () => {
     service
       .getPaymentStatus('pay_123')
