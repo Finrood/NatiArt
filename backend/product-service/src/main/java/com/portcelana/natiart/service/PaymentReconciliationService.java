@@ -15,7 +15,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.payment.asaas.AsaasPaymentCreationResponse;
@@ -54,6 +56,7 @@ public class PaymentReconciliationService {
     private final OrderRepository orderRepository;
     private final OrderManager orderManager;
     private final AsaasPaymentService asaasPaymentService;
+    private final TransactionTemplate reconciliationTransaction;
 
     public PaymentReconciliationService(
             @Value("${natiart.payment.asaas.webhook-token:}") String webhookToken,
@@ -61,13 +64,15 @@ public class PaymentReconciliationService {
             PaymentWebhookEventRepository webhookEventRepository,
             OrderRepository orderRepository,
             OrderManager orderManager,
-            AsaasPaymentService asaasPaymentService) {
+            AsaasPaymentService asaasPaymentService,
+            PlatformTransactionManager transactionManager) {
         this.webhookToken = webhookToken;
         this.paymentRepository = paymentRepository;
         this.webhookEventRepository = webhookEventRepository;
         this.orderRepository = orderRepository;
         this.orderManager = orderManager;
         this.asaasPaymentService = asaasPaymentService;
+        this.reconciliationTransaction = new TransactionTemplate(transactionManager);
     }
 
     public boolean hasValidWebhookToken(String suppliedToken) {
@@ -85,9 +90,7 @@ public class PaymentReconciliationService {
             return;
         }
         final AsaasWebhookPayment providerPayment = request.getPayment();
-        final Payment localPayment = paymentRepository
-                .findById(providerPayment.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Payment webhook references an unknown payment"));
+        final Payment localPayment = lockPayment(providerPayment.getId());
         validateSnapshot(
                 localPayment,
                 providerPayment.getId(),
@@ -104,22 +107,46 @@ public class PaymentReconciliationService {
     /** Polling is recovery only; the browser status endpoint is no longer the sole paid-order transition. */
     @Scheduled(fixedDelayString = "${natiart.payment.reconciliation.fixed-delay-millis:300000}")
     public void reconcilePendingPayments() {
+        final Instant now = Instant.now();
         paymentRepository
-                .findForReconciliation(List.of("PENDING", "AWAITING_RISK_ANALYSIS"), PageRequest.of(0, 50))
-                .forEach(this::reconcileOne);
+                .findForReconciliation(
+                        List.of(
+                                "PENDING",
+                                "AWAITING_RISK_ANALYSIS",
+                                "OVERDUE",
+                                "DUNNING_REQUESTED",
+                                "AWAITING_CHARGEBACK_REVERSAL"),
+                        now,
+                        Instant.EPOCH,
+                        PageRequest.of(0, 50))
+                .forEach(paymentId -> reconcileOne(paymentId, now));
     }
 
-    private void reconcileOne(Payment localPayment) {
+    private void reconcileOne(String paymentId, Instant now) {
         try {
+            // Commit the retry lease before network egress, so failed older records yield to later work.
+            if (paymentRepository.scheduleReconciliation(paymentId, now, now.plusSeconds(60)) == 0) return;
             final AsaasPaymentCreationResponse providerPayment =
-                    asaasPaymentService.fetchPaymentForReconciliation(localPayment.getId());
-            reconcileProviderSnapshot(localPayment.getId(), providerPayment);
+                    asaasPaymentService.fetchPaymentForReconciliation(paymentId);
+            // The scheduler is a self-call; use an explicit transaction for payment + order atomicity.
+            reconciliationTransaction.executeWithoutResult(
+                    status -> reconcileProviderSnapshot(paymentId, providerPayment));
         } catch (RuntimeException e) {
-            LOGGER.warn(
-                    "Payment reconciliation deferred for provider payment [{}]: {}",
-                    localPayment.getId(),
-                    e.getMessage());
+            LOGGER.warn("Payment reconciliation deferred for provider payment [{}]: {}", paymentId, e.getMessage());
         }
+    }
+
+    private Payment lockPayment(String paymentId) {
+        // Read only the scalar ID before locking: loading Payment here could cache stale provider state.
+        final String orderId = paymentRepository
+                .findOrderIdById(paymentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment order not found during reconciliation"));
+        orderRepository
+                .findByIdForUpdate(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment order not found during reconciliation"));
+        return paymentRepository
+                .findByIdForUpdate(paymentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment not found during reconciliation"));
     }
 
     @Transactional
@@ -127,9 +154,7 @@ public class PaymentReconciliationService {
         if (providerPayment == null) {
             throw new AsaasApiException("Invalid payment provider response", HttpStatus.BAD_GATEWAY);
         }
-        final Payment localPayment = paymentRepository
-                .findById(paymentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Payment not found during reconciliation"));
+        final Payment localPayment = lockPayment(paymentId);
         validateSnapshot(
                 localPayment,
                 providerPayment.getId(),

@@ -36,6 +36,8 @@ public class Payment {
 
     private Instant providerUpdatedAt;
 
+    private Instant nextReconciliationAt;
+
     @CreatedDate
     @Column(updatable = false)
     private Instant createdAt;
@@ -89,6 +91,10 @@ public class Payment {
     public Payment setProviderUpdatedAt(Instant providerUpdatedAt) {
         this.providerUpdatedAt = providerUpdatedAt;
         return this;
+    }
+
+    public Instant getNextReconciliationAt() {
+        return nextReconciliationAt;
     }
 
     public Instant getCreatedAt() {

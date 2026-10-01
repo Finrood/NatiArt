@@ -20,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import com.portcelana.natiart.dto.payment.asaas.AsaasWebhookRequest;
 import com.portcelana.natiart.dto.payment.asaas.AsaasWebhookRequest.AsaasWebhookPayment;
@@ -48,6 +49,9 @@ class PaymentReconciliationServiceTest {
     @Mock
     private AsaasPaymentService asaasPaymentService;
 
+    @Mock
+    private PlatformTransactionManager transactionManager;
+
     private PaymentReconciliationService reconciliationService;
 
     @BeforeEach
@@ -58,7 +62,8 @@ class PaymentReconciliationServiceTest {
                 webhookEventRepository,
                 orderRepository,
                 orderManager,
-                asaasPaymentService);
+                asaasPaymentService,
+                transactionManager);
     }
 
     @Test
@@ -72,7 +77,8 @@ class PaymentReconciliationServiceTest {
                         webhookEventRepository,
                         orderRepository,
                         orderManager,
-                        asaasPaymentService)
+                        asaasPaymentService,
+                        transactionManager)
                 .hasValidWebhookToken("webhook-secret"));
     }
 
@@ -84,7 +90,9 @@ class PaymentReconciliationServiceTest {
                 .setTotalAmount(new BigDecimal("25.00"))
                 .setStatus(OrderStatus.PENDING);
         when(webhookEventRepository.findByProviderEventId("evt-1")).thenReturn(Optional.empty());
-        when(paymentRepository.findById("pay-1")).thenReturn(Optional.of(payment));
+        when(paymentRepository.findOrderIdById("pay-1")).thenReturn(Optional.of("order-1"));
+        when(orderRepository.findByIdForUpdate("order-1")).thenReturn(Optional.of(new CustomerOrder()));
+        when(paymentRepository.findByIdForUpdate("pay-1")).thenReturn(Optional.of(payment));
         when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
 
         reconciliationService.processWebhook(webhook("evt-1", "PAYMENT_RECEIVED", "RECEIVED", "25.00"));
@@ -109,7 +117,10 @@ class PaymentReconciliationServiceTest {
     @Test
     void amountMismatchIsRejectedBeforeOrderMutationOrEventPersistence() {
         when(webhookEventRepository.findByProviderEventId("evt-1")).thenReturn(Optional.empty());
-        when(paymentRepository.findById("pay-1")).thenReturn(Optional.of(new Payment("pay-1", "cus-1", "order-1")));
+        when(paymentRepository.findOrderIdById("pay-1")).thenReturn(Optional.of("order-1"));
+        when(orderRepository.findByIdForUpdate("order-1")).thenReturn(Optional.of(new CustomerOrder()));
+        when(paymentRepository.findByIdForUpdate("pay-1"))
+                .thenReturn(Optional.of(new Payment("pay-1", "cus-1", "order-1")));
         when(orderRepository.findById("order-1"))
                 .thenReturn(Optional.of(new CustomerOrder()
                         .setOwnerExternalId("cus-1")
@@ -127,7 +138,10 @@ class PaymentReconciliationServiceTest {
     @Test
     void paidWebhookDoesNotReviveCancelledOrder() {
         when(webhookEventRepository.findByProviderEventId("evt-1")).thenReturn(Optional.empty());
-        when(paymentRepository.findById("pay-1")).thenReturn(Optional.of(new Payment("pay-1", "cus-1", "order-1")));
+        when(paymentRepository.findOrderIdById("pay-1")).thenReturn(Optional.of("order-1"));
+        when(orderRepository.findByIdForUpdate("order-1")).thenReturn(Optional.of(new CustomerOrder()));
+        when(paymentRepository.findByIdForUpdate("pay-1"))
+                .thenReturn(Optional.of(new Payment("pay-1", "cus-1", "order-1")));
         when(orderRepository.findById("order-1"))
                 .thenReturn(Optional.of(new CustomerOrder()
                         .setOwnerExternalId("cus-1")
@@ -149,7 +163,9 @@ class PaymentReconciliationServiceTest {
                 .setStatus(OrderStatus.PENDING);
         when(webhookEventRepository.findByProviderEventId("evt-refund")).thenReturn(Optional.empty());
         when(webhookEventRepository.findByProviderEventId("evt-paid")).thenReturn(Optional.empty());
-        when(paymentRepository.findById("pay-1")).thenReturn(Optional.of(payment));
+        when(paymentRepository.findOrderIdById("pay-1")).thenReturn(Optional.of("order-1"));
+        when(orderRepository.findByIdForUpdate("order-1")).thenReturn(Optional.of(new CustomerOrder()));
+        when(paymentRepository.findByIdForUpdate("pay-1")).thenReturn(Optional.of(payment));
         when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
 
         reconciliationService.processWebhook(webhook("evt-refund", "PAYMENT_REFUNDED", "REFUNDED", "25.00"));
@@ -165,7 +181,10 @@ class PaymentReconciliationServiceTest {
     @Test
     void unsupportedProviderStatusFailsAsUpstreamError() {
         when(webhookEventRepository.findByProviderEventId("evt-1")).thenReturn(Optional.empty());
-        when(paymentRepository.findById("pay-1")).thenReturn(Optional.of(new Payment("pay-1", "cus-1", "order-1")));
+        when(paymentRepository.findOrderIdById("pay-1")).thenReturn(Optional.of("order-1"));
+        when(orderRepository.findByIdForUpdate("order-1")).thenReturn(Optional.of(new CustomerOrder()));
+        when(paymentRepository.findByIdForUpdate("pay-1"))
+                .thenReturn(Optional.of(new Payment("pay-1", "cus-1", "order-1")));
         when(orderRepository.findById("order-1"))
                 .thenReturn(Optional.of(new CustomerOrder()
                         .setOwnerExternalId("cus-1")
