@@ -6,12 +6,16 @@ import {Product} from "../models/product.model";
 import {CartItem} from "../models/CartItem.model";
 import {reportError, reportWarning} from '../../shared/service/error-reporting.service';
 
+export interface PurchasedCartLine { cartItemId: string; quantity: number; }
+interface CartPurchase { orderId: string; customerId: string; lines: PurchasedCartLine[]; completed: boolean; }
+
 @Injectable({
   providedIn: 'root'
 })
 export class CartService {
   private static readonly storageVersion = 1;
   private cartItems: CartItem[] = [];
+  private purchases: CartPurchase[] = [];
   // Use a unique identifier for the localStorage key to avoid conflicts if needed
   private localStorageKey = 'natiart-cart';
   private cartItemsSubject = new BehaviorSubject<CartItem[]>([]);
@@ -131,6 +135,34 @@ export class CartService {
     return Math.max(0, stockLimit - reserved);
   }
 
+  rememberPurchase(orderId: string, customerId: string, lines: PurchasedCartLine[]): void {
+    if (this.purchases.some((purchase: CartPurchase) => purchase.orderId === orderId)) return;
+    const purchases: CartPurchase[] = [...this.purchases,
+      {orderId, customerId, lines: lines.map((line: PurchasedCartLine) => ({...line})), completed: false}];
+    localStorage.setItem(this.localStorageKey, JSON.stringify({
+      version: 1, items: this.cartItems.filter((item: CartItem) => !item.image), purchases}));
+    this.purchases = purchases;
+  }
+
+  completePurchase(orderId: string, customerId: string): void {
+    const purchase: CartPurchase | undefined = this.purchases.find((entry: CartPurchase) =>
+      entry.orderId === orderId && entry.customerId === customerId);
+    if (!purchase || purchase.completed) return;
+    const updated: CartItem[] = this.cartItems.map((item: CartItem) => {
+      const purchased: PurchasedCartLine | undefined = purchase.lines.find((line: PurchasedCartLine) =>
+        line.cartItemId === item.cartItemId);
+      return {...item, quantity: Math.max(0, item.quantity - (purchased?.quantity ?? 0))};
+    }).filter((item: CartItem) => item.quantity > 0);
+    const purchases: CartPurchase[] = this.purchases.map((entry: CartPurchase) =>
+      entry === purchase ? {...entry, completed: true} : entry);
+    // Persist the deduction and its receipt in one write before publishing either.
+    localStorage.setItem(this.localStorageKey, JSON.stringify({version: 1, items: updated.filter((item: CartItem) => !item.image), purchases}));
+    this.cartItems = updated;
+    this.purchases = purchases;
+    this.cartItemsSubject.next([...updated]);
+    this.calculateAndEmitTotal();
+  }
+
   private generateUniqueCartItemId(): string {
     return Date.now().toString(36) + Math.random().toString(36).substring(2);
   }
@@ -149,14 +181,8 @@ export class CartService {
 
   private saveCartToLocalStorage(): void {
     try {
-      const serializableCart = this.cartItems.filter(item => !item.image);
-      if (serializableCart.length !== this.cartItems.length) {
-        reportWarning('storage');
-      }
-      localStorage.setItem(this.localStorageKey, JSON.stringify({
-        version: CartService.storageVersion,
-        items: serializableCart,
-      }));
+      const serializableCart: CartItem[] = this.cartItems.filter((item: CartItem) => !item.image);
+      localStorage.setItem(this.localStorageKey, JSON.stringify({version: 1, items: serializableCart, purchases: this.purchases}));
     } catch (e) {
       reportError('storage', e);
     }
@@ -170,7 +196,17 @@ export class CartService {
         // AS1: drop corrupt-but-parseable shape before emit — a missing or
         // duplicate cartItemId collapses map keys so remove/quantity ops hit
         // every line at once or none, and a null product NPEs the total.
-        const restored: CartItem[] = this.sanitizeRestoredCart(this.readPersistedItems(parsed));
+        const envelope = parsed as {version?: unknown; items?: unknown; purchases?: unknown};
+        const restored: CartItem[] = this.sanitizeRestoredCart(Array.isArray(parsed) ? parsed : envelope?.version === 1 ? envelope.items : []);
+        if (!Array.isArray(parsed) && envelope?.version === 1 && Array.isArray(envelope.purchases)) {
+          this.purchases = envelope.purchases.filter((entry: unknown): entry is CartPurchase => {
+            const purchase = entry as Partial<CartPurchase> | null;
+            return !!purchase && typeof purchase.orderId === 'string' && typeof purchase.customerId === 'string'
+              && typeof purchase.completed === 'boolean' && Array.isArray(purchase.lines)
+              && purchase.lines.every((line: PurchasedCartLine) => !!line && typeof line.cartItemId === 'string'
+                && Number.isSafeInteger(line.quantity) && line.quantity > 0);
+          });
+        }
         this.cartItems = restored;
         this.cartItemsSubject.next([...this.cartItems]);
         this.calculateAndEmitTotal(); // Calculate total after loading
