@@ -20,25 +20,31 @@ public class SecurityConfig {
     private final CorsConfigurationSource corsFilter;
     private final WebClient.Builder webClientBuilder;
     private final String directoryServiceUrl;
+    private final String directoryServiceValidationSecret;
     private final TokenValidationCache tokenValidationCache;
 
     public SecurityConfig(
             CorsConfigurationSource corsFilter,
             WebClient.Builder webClientBuilder,
             @Value("${directory.service.url}") String directoryServiceUrl,
-            TokenValidationCache tokenValidationCache) {
+            TokenValidationCache tokenValidationCache,
+            @Value("${directory.service.validation-secret:}") String directoryServiceValidationSecret) {
         this.corsFilter = corsFilter;
         this.webClientBuilder = webClientBuilder;
         this.directoryServiceUrl = directoryServiceUrl;
+        this.directoryServiceValidationSecret = directoryServiceValidationSecret;
         this.tokenValidationCache = tokenValidationCache;
+    }
+
+    JwtAuthFilter jwtAuthFilter() {
+        return new JwtAuthFilter(
+                webClientBuilder, directoryServiceUrl, tokenValidationCache, directoryServiceValidationSecret);
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
-                .addFilterBefore(
-                        new JwtAuthFilter(webClientBuilder, directoryServiceUrl, tokenValidationCache),
-                        BasicAuthenticationFilter.class)
+                .addFilterBefore(jwtAuthFilter(), BasicAuthenticationFilter.class)
                 .cors(cors -> cors.configurationSource(corsFilter))
                 .sessionManagement(sessions -> sessions.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(request -> request.anyRequest().permitAll());

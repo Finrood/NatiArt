@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.PaymentIdempotency;
 import com.portcelana.natiart.model.PaymentIdempotencyStatus;
@@ -62,13 +63,13 @@ public class PaymentIdempotencyService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public PaymentIdempotencyReservation reserve(
             String ownerExternalId, String idempotencyKey, String requestFingerprint, String orderId) {
-        if (orderId != null) {
-            final CustomerOrder order = orderRepository
-                    .findByIdForUpdate(orderId)
-                    .orElseThrow(() -> new IllegalArgumentException("Order is unavailable for payment"));
-            if (!ownerExternalId.equals(order.getOwnerExternalId()) || order.getStatus() != OrderStatus.PENDING) {
-                throw new IllegalArgumentException("Order is unavailable for payment");
-            }
+        final CustomerOrder order = orderId == null
+                ? null
+                : orderRepository
+                        .findByIdForUpdate(orderId)
+                        .orElseThrow(() -> new IllegalArgumentException("Order is unavailable for payment"));
+        if (order != null && !ownerExternalId.equals(order.getOwnerExternalId())) {
+            throw new IllegalArgumentException("Order is unavailable for payment");
         }
         final Optional<PaymentIdempotency> existing =
                 repository.findByOwnerExternalIdAndIdempotencyKey(ownerExternalId, idempotencyKey);
@@ -78,7 +79,13 @@ public class PaymentIdempotencyService {
             if (!java.util.Objects.equals(existing.get().getOrderId(), orderId) && !legacyCompletedReplay) {
                 throw new IllegalArgumentException("Idempotency-Key was already used for another order");
             }
+            if (!java.util.Objects.equals(existing.get().getRequestFingerprint(), requestFingerprint)) {
+                throw new ResourceAlreadyExistsException("Idempotency-Key was already used for a different payment");
+            }
             return new PaymentIdempotencyReservation(existing.get(), false);
+        }
+        if (order != null && order.getStatus() != OrderStatus.PENDING) {
+            throw new IllegalArgumentException("Only pending orders can receive a new payment");
         }
         // saveAndFlush makes the unique insert the serialization point before
         // any provider network call is possible.
