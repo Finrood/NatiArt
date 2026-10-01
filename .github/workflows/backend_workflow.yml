@@ -5,11 +5,13 @@ on:
     branches: [ "master" ]
     paths:
       - "backend/**"
+      - ".dockerignore"
       - ".github/workflows/backend_workflow.yml"
   pull_request:
     branches: [ "master" ]
     paths:
       - "backend/**"
+      - ".dockerignore"
       - ".github/workflows/backend_workflow.yml"
 
 # Least privilege: the build only reads the repo.
@@ -84,3 +86,14 @@ jobs:
             backend/product-service/build/test-results/test/*.xml
             backend/product-service/build/reports/tests/test/**/*
           retention-days: 7
+
+  container-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Build and start both backend images with clean and dirty host contexts
+        run: bash backend/scripts/smoke_images.sh

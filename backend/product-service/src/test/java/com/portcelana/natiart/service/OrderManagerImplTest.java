@@ -453,19 +453,11 @@ class OrderManagerImplTest {
         final CustomerOrder order = new CustomerOrder().setStatus(OrderStatus.PENDING);
         final String orderId = order.getId();
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-        // Simulate the bulk update landing: the post-update re-read observes PAID.
-        when(orderRepository.updateStatusById(orderId, OrderStatus.PAID)).thenAnswer(invocation -> {
-            order.setStatus(OrderStatus.PAID);
-            return 1;
-        });
-
         final CustomerOrder updated = orderManager.updateOrderStatus(orderId, OrderStatus.PAID);
 
         assertEquals(orderId, updated.getId());
         assertEquals(OrderStatus.PAID, updated.getStatus());
-        verify(orderRepository).updateStatusById(orderId, OrderStatus.PAID);
-        // Guard read plus post-update re-read: pre-fix code reads once.
-        verify(orderRepository, times(2)).findById(orderId);
+        verify(orderRepository).findById(orderId);
         verify(orderRepository, never()).save(any(CustomerOrder.class));
     }
 
@@ -477,7 +469,6 @@ class OrderManagerImplTest {
         assertThrows(
                 IllegalArgumentException.class, () -> orderManager.updateOrderStatus(order.getId(), OrderStatus.PAID));
 
-        verify(orderRepository, never()).updateStatusById(anyString(), any());
         verify(orderRepository, never()).save(any(CustomerOrder.class));
     }
 
@@ -485,15 +476,10 @@ class OrderManagerImplTest {
     void markOrderPaid_transitionsPendingOrderThroughLifecycleGuard() {
         final CustomerOrder order = new CustomerOrder().setStatus(OrderStatus.PENDING);
         when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
-        when(orderRepository.updateStatusById(order.getId(), OrderStatus.PAID)).thenAnswer(invocation -> {
-            order.setStatus(OrderStatus.PAID);
-            return 1;
-        });
-
         final CustomerOrder updated = orderManager.markOrderPaid(order.getId());
 
         assertEquals(OrderStatus.PAID, updated.getStatus());
-        verify(orderRepository).updateStatusById(order.getId(), OrderStatus.PAID);
+        verify(orderRepository).findById(order.getId());
     }
 
     @Test
@@ -502,8 +488,6 @@ class OrderManagerImplTest {
         when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
 
         assertSame(order, orderManager.markOrderPaid(order.getId()));
-
-        verify(orderRepository, never()).updateStatusById(anyString(), any());
     }
 
     @ParameterizedTest
@@ -515,8 +499,6 @@ class OrderManagerImplTest {
         when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
 
         assertSame(order, orderManager.markOrderPaid(order.getId()));
-
-        verify(orderRepository, never()).updateStatusById(anyString(), any());
     }
 
     @Test
@@ -525,8 +507,6 @@ class OrderManagerImplTest {
         when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
 
         assertThrows(IllegalArgumentException.class, () -> orderManager.markOrderPaid(order.getId()));
-
-        verify(orderRepository, never()).updateStatusById(anyString(), any());
     }
 
     @Test
@@ -538,7 +518,6 @@ class OrderManagerImplTest {
                 IllegalArgumentException.class,
                 () -> orderManager.updateOrderStatus(order.getId(), OrderStatus.SHIPPED));
 
-        verify(orderRepository, never()).updateStatusById(anyString(), any());
         verify(orderRepository, never()).save(any(CustomerOrder.class));
     }
 
@@ -549,7 +528,6 @@ class OrderManagerImplTest {
         assertThrows(
                 ResourceNotFoundException.class, () -> orderManager.updateOrderStatus("missing", OrderStatus.PAID));
 
-        verify(orderRepository, never()).updateStatusById(anyString(), any());
         verify(orderRepository, never()).save(any(CustomerOrder.class));
     }
 

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.PaymentIdempotency;
 import com.portcelana.natiart.model.PaymentIdempotencyStatus;
@@ -62,9 +63,7 @@ public class PaymentIdempotencyService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public PaymentIdempotencyReservation reserve(
             String ownerExternalId, String idempotencyKey, String requestFingerprint, String orderId) {
-        if (orderId != null) {
-            lockPendingOrder(ownerExternalId, orderId);
-        }
+        final CustomerOrder order = orderId == null ? null : lockOwnedOrder(ownerExternalId, orderId);
         final Optional<PaymentIdempotency> existing =
                 repository.findByOwnerExternalIdAndIdempotencyKey(ownerExternalId, idempotencyKey);
         if (existing.isPresent()) {
@@ -73,7 +72,11 @@ public class PaymentIdempotencyService {
             if (!java.util.Objects.equals(existing.get().getOrderId(), orderId) && !legacyCompletedReplay) {
                 throw new IllegalArgumentException("Idempotency-Key was already used for another order");
             }
+            requireFingerprint(existing.get(), requestFingerprint);
             return new PaymentIdempotencyReservation(existing.get(), false);
+        }
+        if (order != null && order.getStatus() != OrderStatus.PENDING) {
+            throw new IllegalArgumentException("Only pending orders can receive a new payment");
         }
         // saveAndFlush makes the unique insert the serialization point before
         // any provider network call is possible.
@@ -98,16 +101,21 @@ public class PaymentIdempotencyService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public PaymentIdempotencyReservation reserveForOrder(
             String ownerExternalId, String orderId, String idempotencyKey, String requestFingerprint) {
-        lockPendingOrder(ownerExternalId, orderId);
+        final CustomerOrder order = lockOwnedOrder(ownerExternalId, orderId);
         final Optional<PaymentIdempotency> existingOrder =
                 repository.findByOwnerExternalIdAndOrderId(ownerExternalId, orderId);
         if (existingOrder.isPresent()) {
+            requireFingerprint(existingOrder.get(), requestFingerprint);
             return new PaymentIdempotencyReservation(existingOrder.get(), false);
         }
         final Optional<PaymentIdempotency> existingKey =
                 repository.findByOwnerExternalIdAndIdempotencyKey(ownerExternalId, idempotencyKey);
         if (existingKey.isPresent()) {
+            requireFingerprint(existingKey.get(), requestFingerprint);
             return new PaymentIdempotencyReservation(existingKey.get(), false);
+        }
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new IllegalArgumentException("Only pending orders can receive a new payment");
         }
         try {
             final PaymentIdempotency record =
@@ -121,13 +129,20 @@ public class PaymentIdempotencyService {
         }
     }
 
-    private void lockPendingOrder(String ownerExternalId, String orderId) {
+    private void requireFingerprint(PaymentIdempotency record, String requestFingerprint) {
+        if (!java.util.Objects.equals(record.getRequestFingerprint(), requestFingerprint)) {
+            throw new ResourceAlreadyExistsException("Idempotency-Key was already used for a different payment");
+        }
+    }
+
+    private CustomerOrder lockOwnedOrder(String ownerExternalId, String orderId) {
         final CustomerOrder order = orderRepository
                 .findByIdForUpdate(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Order is unavailable for payment"));
-        if (!ownerExternalId.equals(order.getOwnerExternalId()) || order.getStatus() != OrderStatus.PENDING) {
+        if (!ownerExternalId.equals(order.getOwnerExternalId())) {
             throw new IllegalArgumentException("Order is unavailable for payment");
         }
+        return order;
     }
 
     @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)

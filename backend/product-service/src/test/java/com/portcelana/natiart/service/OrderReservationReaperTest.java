@@ -25,8 +25,9 @@ class OrderReservationReaperTest {
 
     @Test
     void expiredPendingIdsAreCancelledThroughLifecycleService() {
-        when(orderRepository.findPendingOrderIdsBefore(any(), any(), any(Pageable.class)))
+        when(orderRepository.findPendingOrderIdsBefore(any(), any(), any(), any(Pageable.class)))
                 .thenReturn(List.of("order-1", "order-2"));
+        when(orderRepository.scheduleReservationRetry(any(), any(), any())).thenReturn(1);
         final OrderReservationReaper reaper = new OrderReservationReaper(orderRepository, orderManager, 1000);
 
         reaper.expireAbandonedOrders();
@@ -37,11 +38,12 @@ class OrderReservationReaperTest {
 
     @Test
     void failedCancellationDoesNotStopTheRemainingSweep() {
-        when(orderRepository.findPendingOrderIdsBefore(any(), any(), any(Pageable.class)))
+        when(orderRepository.findPendingOrderIdsBefore(any(), any(), any(), any(Pageable.class)))
                 .thenReturn(List.of("order-1", "order-2"));
         org.mockito.Mockito.doThrow(new RuntimeException("locked"))
                 .when(orderManager)
                 .cancelPendingOrder("order-1", null);
+        when(orderRepository.scheduleReservationRetry(any(), any(), any())).thenReturn(1);
         final OrderReservationReaper reaper = new OrderReservationReaper(orderRepository, orderManager, 1000);
 
         reaper.expireAbandonedOrders();

@@ -174,6 +174,22 @@ class OrderCancellationJpaTest {
                 10, productRepository.findById(seed.productId()).orElseThrow().getStockQuantity());
     }
 
+    @Test
+    void staleAdministrativeEditCannotOverwriteReleasedStock() {
+        final Seed seed = seed(false);
+        final Product stale = productRepository.findById(seed.productId()).orElseThrow();
+        orderManager.cancelPendingOrder(seed.orderId(), "cus_MINE");
+        stale.setActive(false);
+        assertThrows(
+                org.springframework.dao.OptimisticLockingFailureException.class,
+                () -> productRepository.saveAndFlush(stale));
+        assertEquals(
+                10, productRepository.findById(seed.productId()).orElseThrow().getStockQuantity());
+        assertEquals(
+                OrderStatus.CANCELLED,
+                orderRepository.findById(seed.orderId()).orElseThrow().getStatus());
+    }
+
     private Seed seed(boolean withPayment) {
         return new TransactionTemplate(transactionManager).execute(ignored -> {
             final Category category = categoryRepository.save(new Category("vases-" + System.nanoTime()));

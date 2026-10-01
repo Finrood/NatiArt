@@ -35,14 +35,19 @@ public class OrderReservationReaper {
 
     @Scheduled(fixedDelayString = "${natiart.order.reservation.reaper-delay-millis:60000}")
     public void expireAbandonedOrders() {
-        final Instant cutoff = Instant.now().minusMillis(reservationTtlMillis);
+        final Instant now = Instant.now();
+        final Instant cutoff = now.minusMillis(reservationTtlMillis);
         orderRepository
-                .findPendingOrderIdsBefore(OrderStatus.PENDING, cutoff, PageRequest.of(0, 100))
-                .forEach(this::expireOne);
+                .findPendingOrderIdsBefore(OrderStatus.PENDING, cutoff, now, PageRequest.of(0, 100))
+                .forEach(id -> expireOne(id, now));
     }
 
-    private void expireOne(String orderId) {
+    private void expireOne(String orderId, Instant now) {
         try {
+            // Commit due-date advancement independently so an uncertain charge or
+            // failed cancellation cannot monopolize the next bounded sweep.
+            if (orderRepository.scheduleReservationRetry(orderId, OrderStatus.PENDING, now.plusSeconds(60)) == 0)
+                return;
             orderManager.cancelPendingOrder(orderId, null);
         } catch (RuntimeException e) {
             LOGGER.warn("Could not expire pending order [{}]: {}", orderId, e.getMessage());

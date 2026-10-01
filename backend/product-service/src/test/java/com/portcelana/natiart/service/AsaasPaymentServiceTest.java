@@ -91,7 +91,16 @@ class AsaasPaymentServiceTest {
     }
 
     private AsaasPaymentService newService(RestTemplate restTemplate, PaymentRepository paymentRepository) {
-        return newService(restTemplate, paymentRepository, mock(OrderRepository.class));
+        return newService(restTemplate, paymentRepository, ownedTenRealOrderRepository());
+    }
+
+    private OrderRepository ownedTenRealOrderRepository() {
+        final OrderRepository orderRepository = mock(OrderRepository.class);
+        when(orderRepository.findById("ord_1"))
+                .thenReturn(Optional.of(new CustomerOrder()
+                        .setTotalAmount(new BigDecimal("10.00"))
+                        .setOwnerExternalId("cus_MINE")));
+        return orderRepository;
     }
 
     private AsaasPaymentService newService(
@@ -178,6 +187,29 @@ class AsaasPaymentServiceTest {
     }
 
     @Test
+    void createPaymentRejectsMissingOrderBeforeReservationOrProviderCall() {
+        final RestTemplate restTemplate = mock(RestTemplate.class);
+        final PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        final OrderRepository orderRepository = mock(OrderRepository.class);
+        final PaymentIdempotencyService idempotencyService = mock(PaymentIdempotencyService.class);
+        final AsaasPaymentService service =
+                newService(restTemplate, paymentRepository, orderRepository, idempotencyService);
+
+        for (String orderId : new String[] {null, "", "  "}) {
+            final PaymentCreationRequest request = new PaymentCreationRequest(
+                    PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX, orderId);
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> service.createPayment(request, "cus_MINE", "payment-attempt"));
+        }
+        final PaymentCreationRequest legacyRequest = new PaymentCreationRequest(
+                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX);
+        assertThrows(IllegalArgumentException.class, () -> service.createPayment(legacyRequest, "cus_MINE"));
+
+        verifyNoInteractions(restTemplate, paymentRepository, orderRepository, idempotencyService);
+    }
+
+    @Test
     void createPaymentRejectsNonPositiveValue() {
         final AsaasPaymentService service = newService();
         assertThrows(
@@ -237,14 +269,18 @@ class AsaasPaymentServiceTest {
     @Test
     void parsePaymentStatus_mapsKnownStatuses() {
         assertEquals(PaymentStatus.PENDING, AsaasPaymentService.parsePaymentStatus("PENDING"));
-        assertEquals(PaymentStatus.COMPLETED, AsaasPaymentService.parsePaymentStatus("COMPLETED"));
+        assertEquals(PaymentStatus.COMPLETED, AsaasPaymentService.parsePaymentStatus("RECEIVED"));
+        assertEquals(PaymentStatus.COMPLETED, AsaasPaymentService.parsePaymentStatus("CONFIRMED"));
     }
 
     @Test
     void parsePaymentStatus_rejectsUnknownOrNullStatus() {
-        assertThrows(IllegalArgumentException.class, () -> AsaasPaymentService.parsePaymentStatus("OVERDUE"));
-        assertThrows(IllegalArgumentException.class, () -> AsaasPaymentService.parsePaymentStatus(null));
-        assertThrows(IllegalArgumentException.class, () -> AsaasPaymentService.parsePaymentStatus(""));
+        assertEquals(
+                HttpStatus.BAD_GATEWAY,
+                assertThrows(AsaasApiException.class, () -> AsaasPaymentService.parsePaymentStatus("OVERDUE"))
+                        .getHttpStatus());
+        assertThrows(AsaasApiException.class, () -> AsaasPaymentService.parsePaymentStatus(null));
+        assertThrows(AsaasApiException.class, () -> AsaasPaymentService.parsePaymentStatus(""));
     }
 
     @Test
@@ -332,7 +368,11 @@ class AsaasPaymentServiceTest {
                 () -> newService(restTemplate, mock(PaymentRepository.class))
                         .createPayment(
                                 new PaymentCreationRequest(
-                                        PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX),
+                                        PaymentProcessor.ASAAS,
+                                        "cus_MINE",
+                                        new BigDecimal("10.00"),
+                                        PaymentMethod.PIX,
+                                        "ord_1"),
                                 "cus_MINE"));
 
         verify(restTemplate).postForEntity(eq(PAYMENTS_URL), any(), eq(AsaasPaymentCreationResponse.class));
@@ -492,7 +532,11 @@ class AsaasPaymentServiceTest {
                 () -> response[0] = newService(restTemplate, paymentRepository)
                         .createPayment(
                                 new PaymentCreationRequest(
-                                        PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX),
+                                        PaymentProcessor.ASAAS,
+                                        "cus_MINE",
+                                        new BigDecimal("10.00"),
+                                        PaymentMethod.PIX,
+                                        "ord_1"),
                                 "cus_MINE"));
 
         assertEquals("pay-9", response[0].getPaymentId());
@@ -504,6 +548,7 @@ class AsaasPaymentServiceTest {
         verify(paymentRepository)
                 .save(argThat(
                         payment -> "pay-9".equals(payment.getId()) && "cus_MINE".equals(payment.getOwnerExternalId())));
+        verify(paymentRepository).findByOrderIdAndOwnerExternalId("ord_1", "cus_MINE");
     }
 
     @Test
@@ -512,12 +557,15 @@ class AsaasPaymentServiceTest {
         final PaymentRepository paymentRepository = mock(PaymentRepository.class);
         final PaymentIdempotencyService idempotencyService = mock(PaymentIdempotencyService.class);
         final AtomicReference<PaymentIdempotency> storedReservation = new AtomicReference<>();
-        when(idempotencyService.reserve(anyString(), eq("payment-attempt-1"), anyString()))
+        when(idempotencyService.reserveForOrder(anyString(), eq("ord_1"), eq("payment-attempt-1"), anyString()))
                 .thenAnswer(invocation -> {
                     PaymentIdempotency reservation = storedReservation.get();
                     if (reservation == null) {
                         reservation = new PaymentIdempotency(
-                                invocation.getArgument(0), invocation.getArgument(1), invocation.getArgument(2));
+                                invocation.getArgument(0),
+                                invocation.getArgument(2),
+                                invocation.getArgument(3),
+                                invocation.getArgument(1));
                         storedReservation.set(reservation);
                         return new PaymentIdempotencyReservation(reservation, true);
                     }
@@ -538,7 +586,7 @@ class AsaasPaymentServiceTest {
         when(upstream.getDateCreated()).thenReturn(LocalDate.of(2026, 9, 8));
         when(upstream.getCustomer()).thenReturn("cus_MINE");
         when(upstream.getBillingType()).thenReturn("PIX");
-        when(upstream.getStatus()).thenReturn("PENDING");
+        when(upstream.getStatus()).thenReturn("RECEIVED");
         when(upstream.getDueDate()).thenReturn(LocalDate.of(2026, 9, 9));
         when(upstream.getInvoiceUrl()).thenReturn("http://invoice");
         when(upstream.getInvoiceNumber()).thenReturn("004");
@@ -552,21 +600,25 @@ class AsaasPaymentServiceTest {
                 .thenReturn(ResponseEntity.ok(upstream));
 
         final AsaasPaymentService service =
-                newService(restTemplate, paymentRepository, mock(OrderRepository.class), idempotencyService);
+                newService(restTemplate, paymentRepository, ownedTenRealOrderRepository(), idempotencyService);
         final PaymentCreationRequest request = new PaymentCreationRequest(
-                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX);
+                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX, "ord_1");
 
         assertEquals(
                 "pay-idempotent",
                 service.createPayment(request, "cus_MINE", "payment-attempt-1").getPaymentId());
         assertEquals(
-                "pay-idempotent",
-                service.createPayment(request, "cus_MINE", "payment-attempt-1").getPaymentId());
+                PaymentStatus.COMPLETED,
+                service.createPayment(request, "cus_MINE", "payment-attempt-1").getStatus());
         assertThrows(
                 ResourceAlreadyExistsException.class,
                 () -> service.createPayment(
                         new PaymentCreationRequest(
-                                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.01"), PaymentMethod.PIX),
+                                PaymentProcessor.ASAAS,
+                                "cus_MINE",
+                                new BigDecimal("10.00"),
+                                PaymentMethod.CREDIT_CARD,
+                                "ord_1"),
                         "cus_MINE",
                         "payment-attempt-1"));
 
@@ -842,6 +894,7 @@ class AsaasPaymentServiceTest {
                 .getPaymentStatus("pay-complete", "cus_MINE");
 
         assertEquals(PaymentStatus.COMPLETED, response.getStatus());
+        assertEquals("ord-1", response.getOrderId());
         verifyNoInteractions(orderManager);
     }
 
@@ -921,7 +974,11 @@ class AsaasPaymentServiceTest {
                 () -> newService(restTemplate, paymentRepository)
                         .createPayment(
                                 new PaymentCreationRequest(
-                                        PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX),
+                                        PaymentProcessor.ASAAS,
+                                        "cus_MINE",
+                                        new BigDecimal("10.00"),
+                                        PaymentMethod.PIX,
+                                        "ord_1"),
                                 "cus_MINE"));
 
         assertEquals(HttpStatus.BAD_GATEWAY, thrown.getHttpStatus());
@@ -947,7 +1004,11 @@ class AsaasPaymentServiceTest {
                 () -> newService(restTemplate, paymentRepository)
                         .createPayment(
                                 new PaymentCreationRequest(
-                                        PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX),
+                                        PaymentProcessor.ASAAS,
+                                        "cus_MINE",
+                                        new BigDecimal("10.00"),
+                                        PaymentMethod.PIX,
+                                        "ord_1"),
                                 "cus_MINE"));
 
         assertEquals(HttpStatus.BAD_GATEWAY, thrown.getHttpStatus());
@@ -996,7 +1057,11 @@ class AsaasPaymentServiceTest {
                 () -> newService(restTemplate, paymentRepository)
                         .createPayment(
                                 new PaymentCreationRequest(
-                                        PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX),
+                                        PaymentProcessor.ASAAS,
+                                        "cus_MINE",
+                                        new BigDecimal("10.00"),
+                                        PaymentMethod.PIX,
+                                        "ord_1"),
                                 "cus_MINE"));
 
         assertEquals(HttpStatus.BAD_GATEWAY, thrown.getHttpStatus());
@@ -1009,12 +1074,15 @@ class AsaasPaymentServiceTest {
         final PaymentRepository paymentRepository = mock(PaymentRepository.class);
         final PaymentIdempotencyService idempotencyService = mock(PaymentIdempotencyService.class);
         final AtomicReference<PaymentIdempotency> reservationReference = new AtomicReference<>();
-        when(idempotencyService.reserve(anyString(), eq("payment-null-body"), anyString()))
+        when(idempotencyService.reserveForOrder(anyString(), eq("ord_1"), eq("payment-null-body"), anyString()))
                 .thenAnswer(invocation -> {
                     PaymentIdempotency reservation = reservationReference.get();
                     if (reservation == null) {
                         reservation = new PaymentIdempotency(
-                                invocation.getArgument(0), invocation.getArgument(1), invocation.getArgument(2));
+                                invocation.getArgument(0),
+                                invocation.getArgument(2),
+                                invocation.getArgument(3),
+                                invocation.getArgument(1));
                         reservationReference.set(reservation);
                         return new PaymentIdempotencyReservation(reservation, true);
                     }
@@ -1030,9 +1098,9 @@ class AsaasPaymentServiceTest {
                 .thenReturn(ResponseEntity.ok((AsaasPaymentCreationResponse) null));
 
         final AsaasPaymentService service =
-                newService(restTemplate, paymentRepository, mock(OrderRepository.class), idempotencyService);
+                newService(restTemplate, paymentRepository, ownedTenRealOrderRepository(), idempotencyService);
         final PaymentCreationRequest request = new PaymentCreationRequest(
-                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX);
+                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX, "ord_1");
 
         final AsaasApiException firstFailure = assertThrows(
                 AsaasApiException.class, () -> service.createPayment(request, "cus_MINE", "payment-null-body"));
@@ -1064,7 +1132,11 @@ class AsaasPaymentServiceTest {
         final PaymentCreationResponse response = newService(restTemplate, paymentRepository)
                 .createPayment(
                         new PaymentCreationRequest(
-                                PaymentProcessor.ASAAS, "cus_MINE", new BigDecimal("10.00"), PaymentMethod.PIX),
+                                PaymentProcessor.ASAAS,
+                                "cus_MINE",
+                                new BigDecimal("10.00"),
+                                PaymentMethod.PIX,
+                                "ord_1"),
                         "cus_MINE");
 
         assertEquals("pay-201", response.getPaymentId());
