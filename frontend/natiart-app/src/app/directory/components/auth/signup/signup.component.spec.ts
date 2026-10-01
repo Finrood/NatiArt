@@ -30,6 +30,38 @@ describe('SignupComponent', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
+  it('submits signup with optional phone left blank', () => {
+    const fixture = TestBed.createComponent(SignupComponent);
+    const component = fixture.componentInstance;
+    component.signupForm.patchValue({
+      credentials: {
+        username: 'user@natiart.test',
+        password: 'Password123!',
+        confirmPassword: 'Password123!',
+      },
+      profile: {
+        firstname: 'Ana',
+        lastname: 'Silva',
+        cpf: '123.456.789-09',
+        phone: '',
+        country: 'Brazil',
+        state: 'SP',
+        city: 'São Paulo',
+        neighborhood: 'Centro',
+        zipCode: '12345-678',
+        street: 'Rua Principal',
+      },
+    });
+    signupService.registerUser.and.returnValue(new Subject<User>().asObservable());
+
+    expect(component.signupForm.valid).toBeTrue();
+    component.doRegisterUser();
+
+    expect(signupService.registerUser).toHaveBeenCalledOnceWith(jasmine.objectContaining({
+      profile: jasmine.objectContaining({phone: '', state: 'SP'}),
+    }));
+  });
+
   it('ignores duplicate submissions while registration is in flight', () => {
     const fixture = TestBed.createComponent(SignupComponent);
     const component: SignupComponent = fixture.componentInstance;
