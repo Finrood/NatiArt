@@ -54,7 +54,7 @@ class CartManagerImplTest {
         assertEquals(3, result.get(0).getQuantity());
         assertEquals("Plate", result.get(0).getProductDto().getLabel());
         assertEquals(1, result.get(1).getQuantity());
-        assertNull(result.get(0).getPersonalizationDto());
+        assertNull(result.get(0).getPersonalization());
     }
 
     @Test

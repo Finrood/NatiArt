@@ -96,7 +96,7 @@ class OrderViewServiceJpaTest {
                 "yes",
                 detail.getItems()
                         .getFirst()
-                        .getPersonalizationDto()
+                        .getPersonalization()
                         .getPersonalizationOptions()
                         .get(PersonalizationOption.GOLDEN_BORDER));
         assertEquals(

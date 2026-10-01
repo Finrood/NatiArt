@@ -1,4 +1,5 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
+import {HttpErrorResponse} from '@angular/common/http';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
@@ -12,6 +13,8 @@ import { PaymentService } from '../../../service/payment.service';
 import { AuthenticationService } from '../../../../directory/service/authentication.service';
 import { User, RoleName } from '../../../../directory/models/user.model';
 import { OrderDto } from '../../../models/order.model';
+import { ShippingQuote, ShippingService } from '../../../service/shipping.service';
+import { ProductService } from '../../../service/product.service';
 
 describe('CheckoutComponent', () => {
   let fixture: ComponentFixture<CheckoutComponent>;
@@ -21,6 +24,17 @@ describe('CheckoutComponent', () => {
   let createOrderSpy: jasmine.Spy;
   let isLoggedInSubject: BehaviorSubject<boolean>;
   let currentUserSubject: BehaviorSubject<User | null>;
+  let cartItemsSnapshot: Array<{
+    cartItemId: string;
+    product: { id: string };
+    quantity: number;
+    goldBorder?: boolean;
+    image?: File;
+    customImageUploadId?: string;
+    requiresArtworkReselection?: boolean;
+  }>;
+  let uploadCustomerImageSpy: jasmine.Spy;
+  let setCustomImageUploadIdSpy: jasmine.Spy;
 
   const loggedInUser: User = {
     id: 'u1',
@@ -68,6 +82,9 @@ describe('CheckoutComponent', () => {
     currentUserSubject = new BehaviorSubject<User | null>(loggedInUser);
     createPixPaymentSpy = jasmine.createSpy('createPixPayment');
     createOrderSpy = jasmine.createSpy('createOrder');
+    uploadCustomerImageSpy = jasmine.createSpy('uploadCustomerImage');
+    setCustomImageUploadIdSpy = jasmine.createSpy('setCustomImageUploadId').and.returnValue(of(undefined));
+    cartItemsSnapshot = [{cartItemId: 'line-1', product: {id: 'prod-1'}, quantity: 1}];
 
     await TestBed.configureTestingModule({
       imports: [CheckoutComponent],
@@ -81,10 +98,15 @@ describe('CheckoutComponent', () => {
             getCartItems: (): BehaviorSubject<never[]> => new BehaviorSubject<never[]>([]),
             getCartTotal: (): BehaviorSubject<number> => new BehaviorSubject<number>(0),
             getCartTotalSnapshot: (): number => 99.9,
+            getCartItemsSnapshot: () => cartItemsSnapshot,
+            setCustomImageUploadId: setCustomImageUploadIdSpy,
+            invalidateArtwork: (id: string): void => {
+              for (const item of cartItemsSnapshot) if (item.customImageUploadId === id) {
+                delete item.customImageUploadId;
+                item.requiresArtworkReselection = !item.image;
+              }
+            },
             rememberPurchase: jasmine.createSpy('rememberPurchase'),
-            getCartItemsSnapshot: (): Array<{ cartItemId: string; product: { id: string }; quantity: number }> => [
-              { cartItemId: 'line-1', product: { id: 'prod-1' }, quantity: 1 },
-            ],
           },
         },
         {
@@ -107,6 +129,10 @@ describe('CheckoutComponent', () => {
           provide: PaymentService,
           useValue: { createPixPayment: createPixPaymentSpy },
         },
+        {
+          provide: ProductService,
+          useValue: { uploadCustomerImage: uploadCustomerImageSpy },
+        },
       ],
     }).compileComponents();
 
@@ -114,6 +140,22 @@ describe('CheckoutComponent', () => {
     routerNavigateSpy = spyOn(router, 'navigate').and.resolveTo(true);
     fixture = TestBed.createComponent(CheckoutComponent);
     component = fixture.componentInstance;
+    const quote: ShippingQuote = {
+      quoteId: 'quote-1',
+      destinationPostalCode: '01001000',
+      serviceId: 'correios-pac',
+      serviceName: 'PAC',
+      expiresAt: '2099-01-01T00:00:00Z',
+      itemAmount: 99.9,
+      shippingAmount: 7.5,
+      totalAmount: 107.4,
+      items: [{productId: 'prod-1', quantity: 1, unitPrice: 99.9, lineAmount: 99.9}],
+    };
+    component.shippingQuote = quote;
+    (component as unknown as {shippingQuoteFingerprint: string}).shippingQuoteFingerprint = JSON.stringify({
+      zipCode: '01001000',
+      items: [{productId: 'prod-1', quantity: 1}],
+    });
     const createdOrder: OrderDto = {
       id: 'order-123',
       firstname: 'Ada',
@@ -136,6 +178,109 @@ describe('CheckoutComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('fetches an authoritative quote before entering payment', async () => {
+    const quoteService = TestBed.inject(ShippingService);
+    const quote: ShippingQuote = {
+      quoteId: 'fresh-quote',
+      destinationPostalCode: '01001000',
+      serviceId: 'correios-pac',
+      serviceName: 'PAC',
+      expiresAt: '2099-01-01T00:00:00Z',
+      itemAmount: 99.9,
+      shippingAmount: 7.5,
+      totalAmount: 107.4,
+      items: [{productId: 'prod-1', quantity: 1, unitPrice: 99.9, lineAmount: 99.9}],
+    };
+    spyOn(quoteService, 'createQuote').and.returnValue(of(quote));
+    component.shippingQuote = null;
+    (component as unknown as {shippingQuoteFingerprint: string | null}).shippingQuoteFingerprint = null;
+    component.currentStep = 2;
+
+    await component.nextStep();
+
+    expect(quoteService.createQuote).toHaveBeenCalledWith({
+      zipCode: '01001000',
+      items: [{productId: 'prod-1', quantity: 1}],
+    });
+    expect(component.shippingQuote as unknown as ShippingQuote).toEqual(quote);
+    expect(component.currentStep).toBe(3);
+  });
+
+  it('quotes two personalized variants and uses owned artwork ids in the order', async () => {
+    const artwork = new File(['art'], 'art.png', {type: 'image/png'});
+    const uploadId = '2b7f4d7e-6e55-4a8f-a8b2-f2b7069e4d2c';
+    cartItemsSnapshot = [
+      {cartItemId: 'line-gold', product: {id: 'prod-1'}, quantity: 1, goldBorder: true},
+      {cartItemId: 'line-art', product: {id: 'prod-1'}, quantity: 2, image: artwork},
+    ];
+    uploadCustomerImageSpy.and.returnValue(of({uploadId}));
+    const quoteService = TestBed.inject(ShippingService);
+    spyOn(quoteService, 'createQuote').and.returnValue(of({
+      quoteId: 'variant-quote', destinationPostalCode: '01001000', serviceId: 'pac', serviceName: 'PAC',
+      expiresAt: '2099-01-01T00:00:00Z', itemAmount: 37.5, shippingAmount: 8, totalAmount: 45.5,
+      items: [
+        {productId: 'prod-1', personalizationKey: 'GOLDEN_BORDER=true', quantity: 1, unitPrice: 12.5, lineAmount: 12.5},
+        {productId: 'prod-1', personalizationKey: `CUSTOM_IMAGE=${uploadId}`, quantity: 2, unitPrice: 12.5, lineAmount: 25},
+      ],
+    }));
+    component.shippingQuote = null;
+    component.currentStep = 2;
+
+    await component.nextStep();
+
+    expect(quoteService.createQuote).toHaveBeenCalledWith({
+      zipCode: '01001000',
+      items: [
+        {productId: 'prod-1', quantity: 1, personalization: {personalizationOptions: {GOLDEN_BORDER: 'true'}}},
+        {productId: 'prod-1', quantity: 2, personalization: {personalizationOptions: {CUSTOM_IMAGE: uploadId}}},
+      ],
+    });
+    expect(component.currentStep).toBe(3);
+    const orderRequest = await (component as unknown as {buildOrderRequest: () => Promise<OrderDto>}).buildOrderRequest();
+    expect(orderRequest.items).toEqual([
+      jasmine.objectContaining({productId: 'prod-1', quantity: 1, personalization: {personalizationOptions: {GOLDEN_BORDER: 'true'}}}),
+      jasmine.objectContaining({productId: 'prod-1', quantity: 2, personalization: {personalizationOptions: {CUSTOM_IMAGE: uploadId}}}),
+    ]);
+    expect(orderRequest.shippingQuoteId).toBe('variant-quote');
+    expect(uploadCustomerImageSpy).toHaveBeenCalledOnceWith(artwork);
+    expect(setCustomImageUploadIdSpy).toHaveBeenCalledOnceWith('line-art', uploadId);
+  });
+
+  it('invalidates a definitively rejected artwork ID and uploads the retained File once on retry', async () => {
+    const file: File = new File(['art'], 'art.png', {type: 'image/png'});
+    cartItemsSnapshot = [{cartItemId: 'line-art', product: {id: 'prod-1'}, quantity: 1,
+      image: file, customImageUploadId: 'expired-id'}];
+    createOrderSpy.and.returnValue(throwError(() => new HttpErrorResponse({status: 400,
+      error: {code: 'CUSTOM_ARTWORK_UNAVAILABLE', uploadId: 'expired-id', orderCreated: false}})));
+    (component as unknown as {shippingQuoteFingerprint: string}).shippingQuoteFingerprint =
+      (component as unknown as {currentShippingQuoteFingerprint(): string}).currentShippingQuoteFingerprint();
+    await component.onProcessPixPayment(loggedInUser);
+    const oldKey: string = createOrderSpy.calls.first().args[1];
+    expect(cartItemsSnapshot[0].customImageUploadId).toBeUndefined();
+    expect(uploadCustomerImageSpy).not.toHaveBeenCalled();
+    expect(createPixPaymentSpy).not.toHaveBeenCalled();
+    uploadCustomerImageSpy.and.returnValue(of({uploadId: 'fresh-id'}));
+    createOrderSpy.and.returnValue(of({id: 'fresh-order', totalAmount: 10}));
+    spyOn(TestBed.inject(ShippingService), 'createQuote').and.returnValue(of({quoteId: 'fresh-quote', expiresAt: '2099-01-01T00:00:00Z'} as ShippingQuote));
+    await (component as unknown as {loadShippingQuote(): Promise<boolean>}).loadShippingQuote();
+    await component.onProcessPixPayment(loggedInUser);
+    expect(uploadCustomerImageSpy).toHaveBeenCalledOnceWith(file);
+    expect(createOrderSpy.calls.mostRecent().args[0].items[0].personalization.personalizationOptions.CUSTOM_IMAGE).toBe('fresh-id');
+    expect(createOrderSpy.calls.mostRecent().args[1]).not.toBe(oldKey);
+  });
+
+  it('retains the artwork ID and same order key after an ambiguous response', async () => {
+    cartItemsSnapshot = [{cartItemId: 'line-art', product: {id: 'prod-1'}, quantity: 1, customImageUploadId: 'owned-id'}];
+    createOrderSpy.and.returnValue(throwError(() => new HttpErrorResponse({status: 0})));
+    (component as unknown as {shippingQuoteFingerprint: string}).shippingQuoteFingerprint =
+      (component as unknown as {currentShippingQuoteFingerprint(): string}).currentShippingQuoteFingerprint();
+    await component.onProcessPixPayment(loggedInUser);
+    await component.onProcessPixPayment(loggedInUser);
+    expect(cartItemsSnapshot[0].customImageUploadId).toBe('owned-id');
+    expect(createOrderSpy.calls.argsFor(0)[1]).toBe(createOrderSpy.calls.argsFor(1)[1]);
+    expect(uploadCustomerImageSpy).not.toHaveBeenCalled();
   });
 
   it('keeps checkout errors visible until dismissed (O3)', async () => {
@@ -179,7 +324,22 @@ describe('CheckoutComponent', () => {
       complement: '',
     });
     component.checkoutForm.get('paymentInfo.paymentMethod')?.setValue('PIX');
-    component.checkoutForm.get('billingInfo')?.patchValue({ zipCode: '01001-000' });
+    component.checkoutForm.get('billingInfo')?.patchValue({zipCode: '01001-000'});
+    component.shippingQuote = {
+      quoteId: 'quote-1',
+      destinationPostalCode: '01001000',
+      serviceId: 'correios-pac',
+      serviceName: 'PAC',
+      expiresAt: '2099-01-01T00:00:00Z',
+      itemAmount: 99.9,
+      shippingAmount: 7.5,
+      totalAmount: 107.4,
+      items: [{productId: 'prod-1', quantity: 1, unitPrice: 99.9, lineAmount: 99.9}],
+    };
+    (component as unknown as {shippingQuoteFingerprint: string}).shippingQuoteFingerprint = JSON.stringify({
+      zipCode: '01001000',
+      items: [{productId: 'prod-1', quantity: 1}],
+    });
     expect(component.checkoutForm.invalid).toBeFalse();
 
     const first: Promise<void> = component.onSubmit();

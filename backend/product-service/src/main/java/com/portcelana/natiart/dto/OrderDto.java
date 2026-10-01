@@ -28,6 +28,10 @@ public class OrderDto {
     private OrderStatus status;
     private String ownerExternalId;
     private String paymentId;
+    private String shippingQuoteId;
+    private String shippingServiceId;
+    private String shippingDestinationPostalCode;
+    private Instant shippingQuoteExpiresAt;
 
     public OrderDto() {}
 
@@ -51,6 +55,10 @@ public class OrderDto {
                         .toList())
                 .setDeliveryAmount(customerOrder.getDeliveryAmount())
                 .setTotalAmount(customerOrder.getTotalAmount())
+                .setShippingQuoteId(customerOrder.getShippingQuoteId())
+                .setShippingServiceId(customerOrder.getShippingServiceId())
+                .setShippingDestinationPostalCode(customerOrder.getShippingDestinationPostalCode())
+                .setShippingQuoteExpiresAt(customerOrder.getShippingQuoteExpiresAt())
                 .setStatus(customerOrder.getStatus())
                 .setOwnerExternalId(customerOrder.getOwnerExternalId());
     }
@@ -223,6 +231,42 @@ public class OrderDto {
 
     public OrderDto setPaymentId(String paymentId) {
         this.paymentId = paymentId;
+        return this;
+    }
+
+    public String getShippingQuoteId() {
+        return shippingQuoteId;
+    }
+
+    public OrderDto setShippingQuoteId(String shippingQuoteId) {
+        this.shippingQuoteId = shippingQuoteId;
+        return this;
+    }
+
+    public String getShippingServiceId() {
+        return shippingServiceId;
+    }
+
+    public OrderDto setShippingServiceId(String shippingServiceId) {
+        this.shippingServiceId = shippingServiceId;
+        return this;
+    }
+
+    public String getShippingDestinationPostalCode() {
+        return shippingDestinationPostalCode;
+    }
+
+    public OrderDto setShippingDestinationPostalCode(String shippingDestinationPostalCode) {
+        this.shippingDestinationPostalCode = shippingDestinationPostalCode;
+        return this;
+    }
+
+    public Instant getShippingQuoteExpiresAt() {
+        return shippingQuoteExpiresAt;
+    }
+
+    public OrderDto setShippingQuoteExpiresAt(Instant shippingQuoteExpiresAt) {
+        this.shippingQuoteExpiresAt = shippingQuoteExpiresAt;
         return this;
     }
 }

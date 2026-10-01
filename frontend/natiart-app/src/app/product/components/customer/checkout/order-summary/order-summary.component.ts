@@ -1,17 +1,20 @@
 import {ChangeDetectionStrategy, Component, Input, OnDestroy, OnInit} from '@angular/core';
-import { CurrencyPipe } from "@angular/common";
+import { CurrencyPipe, DatePipe } from "@angular/common";
 import {CartItem} from "../../../../models/CartItem.model";
 import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
 import {ProductService} from "../../../../service/product.service";
 import {Subject} from "rxjs";
 import {takeUntil} from "rxjs/operators";
 import {RouterLink} from "@angular/router";
+import {ShippingQuote, ShippingQuoteItem} from "../../../../service/shipping.service";
+import {PersonalizationOption} from '../../../../models/support/personalization-option';
 
 @Component({
   selector: 'app-order-summary',
   standalone: true,
   imports: [
     CurrencyPipe,
+    DatePipe,
     RouterLink
 ],
   templateUrl: './order-summary.component.html',
@@ -21,6 +24,7 @@ import {RouterLink} from "@angular/router";
 export class OrderSummaryComponent implements OnInit, OnDestroy {
   @Input() cartItems: CartItem[] | null = null;
   @Input() cartTotal: number | null = 0;
+  @Input() shippingQuote: ShippingQuote | null = null;
 
   imageUrls: { [cartItemId: string]: SafeUrl | string } = {};
   private objectUrlsCreated: string[] = [];
@@ -98,6 +102,29 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
 
   private isCartLineLive(cartItemId: string): boolean {
     return (this.cartItems ?? []).some((item: CartItem): boolean => item.cartItemId === cartItemId);
+  }
+
+  getItemAmount(item: CartItem): number {
+    return this.quoteItemFor(item)?.lineAmount
+      ?? item.product.markedPrice * item.quantity;
+  }
+
+  getDisplayedItemUnitPrice(item: CartItem): number {
+    return this.quoteItemFor(item)?.unitPrice
+      ?? item.product.markedPrice;
+  }
+
+  private quoteItemFor(item: CartItem): ShippingQuoteItem | undefined {
+    const options: string[] = [];
+    if (item.goldBorder) {
+      options.push(`${PersonalizationOption.GOLDEN_BORDER}=true`);
+    }
+    if (item.customImageUploadId) {
+      options.push(`${PersonalizationOption.CUSTOM_IMAGE}=${item.customImageUploadId}`);
+    }
+    const personalizationKey = options.sort().join('|');
+    return this.shippingQuote?.items.find(quoted => quoted.productId === item.product.id
+      && (quoted.personalizationKey ?? '') === personalizationKey);
   }
 
   ngOnDestroy(): void {

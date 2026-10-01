@@ -24,6 +24,7 @@ import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.OrderDto;
 import com.portcelana.natiart.dto.OrderItemDto;
+import com.portcelana.natiart.dto.PersonalizationDto;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
@@ -54,10 +55,10 @@ public class OrderManagerImpl implements OrderManager {
             OrderRepository orderRepository,
             ProductManager productManager,
             com.portcelana.natiart.repository.ProductRepository productRepository,
-            ShippingService shippingService) {
+            ShippingQuoteService shippingQuoteService) {
         this(
                 orderRepository,
-                new OrderCreationService(orderRepository, productManager, productRepository, shippingService));
+                new OrderCreationService(orderRepository, productManager, productRepository, shippingQuoteService));
     }
 
     @Override
@@ -153,6 +154,14 @@ public class OrderManagerImpl implements OrderManager {
 
         try {
             return orderCreationService.createOrder(orderDto, ownerExternalId, normalizedKey, fingerprint);
+        } catch (UnusableCustomerUploadException exception) {
+            // A concurrent same-key creator may have claimed the artwork and committed first.
+            // Reload its order before declaring the claim definitively rejected.
+            if (normalizedKey != null) {
+                final Optional<CustomerOrder> winner = findOrder(ownerExternalId, normalizedKey);
+                if (winner.isPresent()) return returnReplayOrReject(winner.get(), fingerprint);
+            }
+            throw exception;
         } catch (DataIntegrityViolationException e) {
             // The unique index is the serialization point. This code runs
             // after the losing transaction has rolled back, so reloading here
@@ -209,6 +218,7 @@ public class OrderManagerImpl implements OrderManager {
         append(canonical, order == null ? null : order.getZipCode());
         append(canonical, order == null ? null : order.getStreet());
         append(canonical, order == null ? null : order.getComplement());
+        append(canonical, order == null ? null : order.getShippingQuoteId());
 
         final List<String> items = new ArrayList<>();
         if (order != null && order.getItems() != null) {
@@ -216,18 +226,7 @@ public class OrderManagerImpl implements OrderManager {
                 final StringBuilder itemValue = new StringBuilder();
                 append(itemValue, item == null ? null : item.getProductId());
                 append(itemValue, item == null ? null : item.getQuantity());
-                if (item == null
-                        || item.getPersonalizationDto() == null
-                        || item.getPersonalizationDto().getPersonalizationOptions() == null) {
-                    append(itemValue, null);
-                } else {
-                    item.getPersonalizationDto().getPersonalizationOptions().entrySet().stream()
-                            .sorted(Map.Entry.comparingByKey())
-                            .forEach(entry -> {
-                                append(itemValue, entry.getKey());
-                                append(itemValue, entry.getValue());
-                            });
-                }
+                append(itemValue, canonicalPersonalization(item == null ? null : item.getPersonalization()));
                 items.add(itemValue.toString());
             }
         }
@@ -258,6 +257,17 @@ public class OrderManagerImpl implements OrderManager {
         }
         final String text = String.valueOf(value);
         target.append(text.length()).append(':').append(text);
+    }
+
+    private String canonicalPersonalization(PersonalizationDto personalization) {
+        if (personalization == null || personalization.getPersonalizationOptions() == null) {
+            return personalization == null ? "" : "invalid";
+        }
+        return personalization.getPersonalizationOptions().entrySet().stream()
+                .sorted((left, right) -> String.valueOf(left.getKey()).compareTo(String.valueOf(right.getKey())))
+                .map(entry -> String.valueOf(entry.getKey()) + "=" + String.valueOf(entry.getValue()))
+                .reduce((left, right) -> left + "|" + right)
+                .orElse("");
     }
 
     @Override

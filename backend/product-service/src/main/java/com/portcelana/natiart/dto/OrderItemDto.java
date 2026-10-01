@@ -12,7 +12,7 @@ public class OrderItemDto {
     private String productSku;
     private Integer quantity;
     private BigDecimal price;
-    private PersonalizationDto personalizationDto;
+    private PersonalizationDto personalization;
 
     public OrderItemDto() {}
 
@@ -31,7 +31,7 @@ public class OrderItemDto {
                                 : customerOrderItem.getProduct().getId())
                 .setQuantity(customerOrderItem.getQuantity())
                 .setPrice(customerOrderItem.getPrice())
-                .setPersonalizationDto(PersonalizationDto.from(customerOrderItem.getPersonalization()));
+                .setPersonalization(PersonalizationDto.from(customerOrderItem.getPersonalization()));
     }
 
     public String getId() {
@@ -97,12 +97,12 @@ public class OrderItemDto {
         return this;
     }
 
-    public PersonalizationDto getPersonalizationDto() {
-        return personalizationDto;
+    public PersonalizationDto getPersonalization() {
+        return personalization;
     }
 
-    public OrderItemDto setPersonalizationDto(PersonalizationDto personalizationDto) {
-        this.personalizationDto = personalizationDto;
+    public OrderItemDto setPersonalization(PersonalizationDto personalization) {
+        this.personalization = personalization;
         return this;
     }
 }
