@@ -268,6 +268,94 @@ latest_verdict() { # $1 = PR number; prints the FIRST LINE of the newest VERDICT
     latest_verdict_body "$1" | grep -m1 '^VERDICT:' || true
 }
 
+latest_review_record() { # $1=PR; each trusted reviewer's latest formal state, including ordinary prose vetoes
+    local reviews
+    reviews="$(gh pr view "$1" --json reviews 2>/dev/null)" || return 1
+    jq -r --arg trusted "${NATIART_TRUSTED_REVIEWERS:-}" '
+        ($trusted | split(",")) as $allowed
+        | [.reviews[]? | select(.author.login as $login | $allowed | index($login))
+            | select(.state == "APPROVED" or .state == "CHANGES_REQUESTED" or .state == "DISMISSED")]
+        | group_by(.author.login) | map(sort_by(.submittedAt) | last)
+        | if any(.state == "CHANGES_REQUESTED") then
+            map(select(.state == "CHANGES_REQUESTED")) | sort_by(.submittedAt) | last
+          else map(select(.state == "APPROVED")) | sort_by(.submittedAt) | last end
+        | if . == null then empty else
+            [.author.login, .state, (.commit.oid // ""), ((.body // "") | ltrimstr(" ") | split("\n")[0])] | @tsv end' <<<"$reviews"
+}
+
+login_in_list() { # $1 = authenticated login; $2 = comma-separated allowlist
+    local login="$1" configured="$2" allowed_login
+    local -a allowed
+    [[ -n "$login" && -n "$configured" ]] || return 1
+    IFS=',' read -r -a allowed <<<"$configured"
+    for allowed_login in "${allowed[@]}"; do
+        [[ "$login" == "$allowed_login" ]] && return 0
+    done
+    return 1
+}
+
+trusted_latest_verdict() { # $1 = PR, $2 = exact head SHA; formal review only
+    local record reviewer state review_sha body pr_author
+    record="$(latest_review_record "$1")"
+    [[ "$record" == *$'\t'* ]] || return 1
+    IFS=$'\t' read -r reviewer state review_sha body <<<"$record"
+    [[ "$state" == APPROVED && "$review_sha" == "$2" && "$2" =~ ^[0-9a-f]{40}$ ]] || return 1
+    login_in_list "$reviewer" "${NATIART_TRUSTED_REVIEWERS:-}" || return 1
+    pr_author="$(gh pr view "$1" --json author --jq '.author.login // empty' 2>/dev/null)" || return 1
+    [[ -n "$pr_author" && "$reviewer" != "$pr_author" ]] || return 1
+    printf '%s\n' "$body" | sed -n '1p'
+}
+
+is_head_bound_approval() { # $1 = first verdict line; only full 40-character SHAs qualify
+    [[ "${1:-}" =~ ^VERDICT:\ APPROVE\ \(reviewed\ [0-9a-f]{40}\)$ ]]
+}
+
+pr_is_loop_owned() { # $1 = PR number; authenticated author + exact ownership marker
+    local author body
+    author="$(gh pr view "$1" --json author --jq '.author.login // empty' 2>/dev/null)" || return 1
+    body="$(gh pr view "$1" --json body --jq '.body // empty' 2>/dev/null)" || return 1
+    login_in_list "$author" "${NATIART_LOOP_AUTHORS:-Finrood}" || return 1
+    grep -qxF 'Loop-Owner: natiart-improvement-loop' <<<"$body"
+}
+
+pr_base_at_head() { # $1=PR $2=captured SHA; immutable compare base, fail closed on incomplete metadata
+    local base
+    [[ "${2:-}" =~ ^[0-9a-f]{40}$ ]] || return 1
+    base="$(gh pr view "$1" --json baseRefOid --jq .baseRefOid 2>/dev/null)" || return 1
+    [[ "$base" =~ ^[0-9a-f]{40}$ ]] || return 1
+    printf '%s' "$base"
+}
+
+pr_files_at_head() { # $1=PR $2=captured SHA; files never come from a later mutable PR head
+    local base
+    base="$(pr_base_at_head "$1" "$2")" || return 1
+    gh api --paginate "repos/{owner}/{repo}/compare/$base...$2" --jq 'if (.files | length) >= 300 then error("comparison file limit reached") else .files[].filename end' 2>/dev/null
+}
+
+pr_patch_at_head() { # $1=PR $2=captured SHA; exact dependency patch
+    local base
+    base="$(pr_base_at_head "$1" "$2")" || return 1
+    gh api "repos/{owner}/{repo}/compare/$base...$2" -H 'Accept: application/vnd.github.diff' 2>/dev/null
+}
+
+pr_checks_at_head() { # $1=full captured SHA; includes checks and legacy status contexts
+    [[ "${1:-}" =~ ^[0-9a-f]{40}$ ]] || return 1
+    local runs statuses
+    runs="$(gh api --paginate "repos/{owner}/{repo}/commits/$1/check-runs?per_page=100" --jq \
+        '.check_runs[] | [.name, (if .status != "completed" then "pending" elif .conclusion == "success" then "pass" else "fail" end), "", .html_url] | @tsv' 2>/dev/null)" || return 1
+    statuses="$(gh api "repos/{owner}/{repo}/commits/$1/status" --jq \
+        '.statuses[] | [.context, (if .state == "success" then "pass" elif .state == "pending" then "pending" else "fail" end), "", .target_url] | @tsv' 2>/dev/null)" || return 1
+    printf '%s\n%s\n' "$runs" "$statuses"
+}
+
+merge_pr_at_head() { # $1 = PR number; $2 = reviewed full head SHA
+    local current_head
+    [[ "${2:-}" =~ ^[0-9a-f]{40}$ ]] || return 1
+    current_head="$(gh pr view "$1" --json headRefOid --jq .headRefOid 2>/dev/null)" || return 1
+    [[ "$current_head" == "$2" ]] || return 1
+    gh pr merge "$1" --merge --delete-branch --match-head-commit "$2"
+}
+
 verdict_model() { # $1 = PR number; prints the Model: value of the newest
     # VERDICT body, or empty when unattributable (feeds the cycle log so every
     # posted verdict is attributable without re-reading the PR).
