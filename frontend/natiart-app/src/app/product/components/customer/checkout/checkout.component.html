@@ -27,8 +27,22 @@
         <!-- Form Content -->
         <div class="bg-white p-8 rounded-2xl shadow-lg">
           @if (!(isLoggedIn$ | async)) {
-            <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-md mb-6" role="status" i18n>Please sign in or register before checking out. Guest checkout is currently unavailable.
+            <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-md mb-6" role="status" i18n>
+              Please sign in or register before checking out. Guest checkout is currently unavailable.
             </div>
+          }
+          @if (hasSavedAttempt) {
+            <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-md mb-6" role="status" i18n>
+              Your saved PIX checkout will resume with its original order details. Payment progress is checked before another charge is requested.
+            </div>
+          }
+          @for (item of (cartItems$ | async) ?? []; track item.cartItemId) {
+            @if (item.requiresArtworkReselection) {
+              <label class="block mb-4" data-artwork-reselection><span i18n>
+                Select artwork again for {{ item.product.label }}. The previous upload is no longer available.</span>
+                <input type="file" accept="image/*" (change)="reselectArtwork(item.cartItemId, $event)">
+              </label>
+            }
           }
           <form [formGroup]="checkoutForm" (ngSubmit)="onSubmit()">
 
@@ -38,7 +52,8 @@
                 <h2 class="text-3xl font-bold text-gray-800 mb-6" i18n>Your Information</h2>
                 <app-user-info-step [checkoutForm]="checkoutForm"></app-user-info-step>
                 <div class="mt-8 flex justify-end">
-                  <app-button type="button" (click)="nextStep()" color="primary" size="md" [disabled]="checkoutForm.get('userInfo')?.invalid" i18n>Next: Shipping
+                  <app-button type="button" (click)="nextStep()" color="primary" size="md" [disabled]="checkoutForm.get('userInfo')?.invalid" i18n>
+                    Next: Shipping
                   </app-button>
                 </div>
               </section>
@@ -51,7 +66,9 @@
                 <app-shipping-info-step [checkoutForm]="checkoutForm" (sameShippingAsBillingChange)="onSameShippingChange($event)"></app-shipping-info-step>
                 <div class="mt-8 flex justify-between">
                   <app-button type="button" (click)="prevStep()" color="secondary" size="md" i18n>Back</app-button>
-                  <app-button type="button" (click)="nextStep()" color="primary" size="md" [disabled]="checkoutForm.get('shippingInfo')?.invalid" i18n>Next: Payment</app-button>
+                  <app-button type="button" (click)="nextStep()" color="primary" size="md" [disabled]="checkoutForm.get('shippingInfo')?.invalid || isLoadingQuote">
+                    {{ isLoadingQuote ? calculatingShipping : nextPayment }}
+                  </app-button>
                 </div>
               </section>
             }
@@ -63,15 +80,15 @@
                 <app-payment-info-step [checkoutForm]="checkoutForm"></app-payment-info-step>
                 <div class="mt-8 flex justify-between">
                   <app-button type="button" (click)="prevStep()" color="secondary" size="md" i18n>Back</app-button>
-                  <app-button type="submit" [disabled]="!checkoutForm.valid || (isLoading$ | async) === true || isSubmitting" color="primary" size="md" [block]="true">
+                  <app-button type="submit" [disabled]="(!checkoutForm.valid && !hasSavedAttempt) || (isLoading$ | async) === true || isSubmitting" color="primary" size="md" [block]="true">
                     @if (!(isLoading$ | async) && !isSubmitting) {
-                      <span i18n>Place Order</span>
+                      <span i18n>{{ hasSavedAttempt ? 'Resume saved checkout' : 'Place Order' }}</span>
                     }
                     @if ((isLoading$ | async) || isSubmitting) {
                       <span class="flex items-center">
                         <app-loading-spinner class="mr-2"></app-loading-spinner>
-                        <ng-container i18n>Processing...
-                      </ng-container></span>
+                        Processing...
+                      </span>
                     }
                   </app-button>
                 </div>
@@ -98,7 +115,7 @@
       <!-- Right Column: Order Summary -->
       <div class="lg:col-span-1">
         <div class="sticky top-12 bg-white p-6 rounded-2xl shadow-lg">
-          <app-order-summary [cartItems]="cartItems$ | async" [cartTotal]="cartTotal$ | async"></app-order-summary>
+          <app-order-summary [cartItems]="cartItems$ | async" [cartTotal]="cartTotal$ | async" [shippingQuote]="shippingQuote"></app-order-summary>
         </div>
       </div>
 

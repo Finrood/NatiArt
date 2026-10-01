@@ -1,5 +1,5 @@
 // START OF FILE: src/app/product/components/customer/cart/cart.component.ts
-import {ChangeDetectionStrategy, Component, OnDestroy, OnInit, ViewChild, inject} from '@angular/core'; // Import SecurityContext
+import {ChangeDetectionStrategy, Component, inject, OnDestroy, OnInit, ViewChild} from '@angular/core'; // Import SecurityContext
 import {BehaviorSubject, combineLatest, Observable, of, Subject} from 'rxjs';
 import {catchError, finalize, map, startWith, takeUntil, tap} from 'rxjs/operators';
 import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
@@ -24,6 +24,7 @@ interface CartState {
 
 @Component({
   selector: 'app-cart',
+  standalone: true,
   imports: [
     ConfirmationModalComponent,
     RouterLink,
@@ -50,10 +51,10 @@ export class CartComponent implements OnInit, OnDestroy {
   private objectUrlsCreated: string[] = []; // Keep track of created blob URLs
   private destroy$ = new Subject<void>();
 
-  private readonly _cartService: CartService = inject(CartService);
-  private readonly _productService: ProductService = inject(ProductService);
-  private readonly _sanitizer: DomSanitizer = inject(DomSanitizer);
-  private readonly _router: Router = inject(Router);
+  private readonly _cartService = inject(CartService);
+  private readonly _productService = inject(ProductService);
+  private readonly _sanitizer = inject(DomSanitizer);
+  private readonly _router = inject(Router);
 
   constructor() {
     this.cartState$ = combineLatest([
@@ -100,7 +101,7 @@ export class CartComponent implements OnInit, OnDestroy {
       $localize`Failed to remove item. Please try again.`
     );
     this.confirmationModal.title = $localize`Remove Item`;
-    this.confirmationModal.message = `Are you sure you want to remove this instance of "${item.product.label}"${item.image ? ' (with custom image)' : ''} from your cart?`;
+    this.confirmationModal.message = `Are you sure you want to remove this instance of "${item.product.label}"${item.image || item.customImageUploadId ? ' (with custom image)' : ''} from your cart?`;
     this.confirmationModal.confirmText = 'Remove';
     this.confirmationModal.cancelText = $localize`Cancel`;
     this.confirmationModal.isOpen = true;
@@ -132,6 +133,16 @@ export class CartComponent implements OnInit, OnDestroy {
     this.modalAction = null;
   }
 
+
+  reselectArtwork(item: CartItem, event: Event): void {
+    const file: File | undefined = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/') || file.size === 0 || file.size > 5_000_000) {
+      this.setError($localize`Select an image smaller than 5 MB.`);
+      return;
+    }
+    this._cartService.reselectArtwork(item.cartItemId, file);
+  }
 
   proceedToCheckout(): void {
     this._router.navigate(['/checkout']).catch(error => {

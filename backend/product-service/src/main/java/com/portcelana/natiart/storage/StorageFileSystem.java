@@ -181,6 +181,18 @@ public class StorageFileSystem implements Storage {
         }
     }
 
+    @Override
+    public void deleteFile(URI uri) {
+        if (!uri.isOpaque()) {
+            throw new IllegalArgumentException("Deletion requires a logical storage key");
+        }
+        try {
+            Files.deleteIfExists(resolveAllowedFile(uri).toPath());
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to delete stored file", e);
+        }
+    }
+
     /**
      * Resolves a write target under one of the allowed roots, mirroring the read-path
      * confinement in {@link #resolveAllowedFile(URI)} so uploads cannot escape via
