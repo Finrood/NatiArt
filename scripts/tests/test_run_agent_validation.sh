@@ -24,11 +24,12 @@ chmod +x "$FAKEBIN/mktemp"
 cat >"$FAKEBIN/gh" <<'EOF'
 #!/usr/bin/env bash
 set -Eeuo pipefail
-[[ "${1:-} ${2:-}" == 'pr list' ]] || exit 2
+if [[ "${1:-} ${2:-}" == 'api user' ]]; then printf 'loop-machine\n'; exit 0; fi
+[[ "${1:-} ${2:-}" == 'pr view' ]] || exit 2
 if [[ -f "$FAKE_STATE" && "$(cat "$FAKE_STATE")" == 2 ]]; then
-    printf '[{"number":42,"headRefOid":"2222222222222222222222222222222222222222"}]\n'
+    printf '{"headRefOid":"1111111111111111111111111111111111111111","reviews":[{"id":"new","author":{"login":"loop-machine"},"commit":{"oid":"1111111111111111111111111111111111111111"},"body":"VERDICT: REQUEST_CHANGES (reviewed 1111111111111111111111111111111111111111)"}]}\n' 
 else
-    printf '[{"number":42,"headRefOid":"1111111111111111111111111111111111111111"}]\n'
+    printf '{"headRefOid":"1111111111111111111111111111111111111111","reviews":[]}\n'
 fi
 EOF
 chmod +x "$FAKEBIN/gh"
@@ -47,13 +48,13 @@ printf 'VERDICT: REQUEST_CHANGES (reviewed deadbeef)\n'
 EOF
 chmod +x "$FAKEBIN/opencode"
 cat >"$ROOT/models.conf" <<'EOF'
-PRIORITY=("opencode|fake|fake/model|xhigh")
+PRIORITY=("opencode|fake|fake/model|xhigh|fake-family")
 EOF
 
 umask 022
 PATH="$FAKEBIN:$PATH" NATIART_MODELS_CONF="$ROOT/models.conf" NATIART_OUTCOME_DIR="$ROOT/outcomes" \
     NATIART_LOG_TRACE="$ROOT/trace" FAKE_STATE="$ROOT/state" \
-    bash "$RUN_AGENT" --role cycle --budget 00030 --stall 00020 retry \
+    bash "$RUN_AGENT" --role review --review-pr 42 --budget 00030 --stall 00020 retry \
     >"$ROOT/run.log" 2>&1
 
 grep -q 'NATIART_ACTIVE_MODEL=fake' "$ROOT/run.log"
@@ -93,7 +94,7 @@ for invalid_entry in \
     'opencode||fake/model|xhigh' \
     'opencode|label||xhigh' \
     'other|label|fake/model|xhigh' \
-    'opencode|label|fake/model|xhigh|extra' \
+    'opencode|label|fake/model|xhigh|family|extra' \
     'opencode|bad label|fake/model|xhigh' \
     'opencode|label|bad model|xhigh'; do
     printf 'PRIORITY=("%s")\n' "$invalid_entry" > "$ROOT/invalid-models.conf"

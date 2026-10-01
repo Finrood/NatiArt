@@ -34,8 +34,8 @@ assert_contains() { # $1 haystack, $2 needle, $3 name
 # --- empty thinking level: loud config error (exit 2), never provider default ---
 cat > "$WORK/empty-think.conf" <<'EOF'
 PRIORITY=(
-  "opencode|opencode-muse|opencode/muse-spark-1.3-contributor-free|"
-  "cline|cline-glm|zai/glm-5.3-flash|xhigh"
+  "opencode|opencode-muse|opencode/muse-spark-1.3-contributor-free||muse-spark-1.3"
+  "cline|cline-glm|zai/glm-5.3-flash|xhigh|glm-5.3-flash"
 )
 EOF
 empty_out=$(NATIART_MODELS_CONF="$WORK/empty-think.conf" bash "$RUN_AGENT" --check-only dummy 2>&1) && empty_rc=0 || empty_rc=$?
@@ -45,8 +45,8 @@ assert_contains "$empty_out" "no thinking level" "empty thinking level -> loud r
 # --- non-xhigh level: warned but runnable (policy: highest available) ---
 cat > "$WORK/medium-think.conf" <<'EOF'
 PRIORITY=(
-  "opencode|opencode-muse|opencode/muse-spark-1.3-contributor-free|xhigh"
-  "cline|cline-glm|zai/glm-5.3-flash|medium"
+  "opencode|opencode-muse|opencode/muse-spark-1.3-contributor-free|xhigh|muse-spark-1.3"
+  "cline|cline-glm|zai/glm-5.3-flash|medium|glm-5.3-flash"
 )
 EOF
 medium_out=$(NATIART_MODELS_CONF="$WORK/medium-think.conf" bash "$RUN_AGENT" --check-only dummy 2>&1) && medium_rc=0 || medium_rc=$?

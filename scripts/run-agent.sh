@@ -151,11 +151,11 @@ fi
 # level silently downgrades to whatever the provider picks, so it is a loud
 # config error, not a default.
 for _conf_entry in "${PRIORITY[@]}"; do
-    if [[ ! "$_conf_entry" =~ ^[^\|]+\|[^\|]+\|[^\|]+\|[^\|]*$ ]]; then
-        log_err "agent-models.conf entry must contain CLI|label|model_id|thinking_level fields."
+    if [[ ! "$_conf_entry" =~ ^[^\|]+\|[^\|]+\|[^\|]+\|[^\|]*\|[^\|]+$ ]]; then
+        log_err "agent-models.conf entry must contain CLI|label|model_id|thinking_level|canonical_model_family fields."
         exit 2
     fi
-    IFS='|' read -r _conf_cli _conf_label _conf_model _conf_think <<< "$_conf_entry"
+    IFS='|' read -r _conf_cli _conf_label _conf_model _conf_think _conf_family <<< "$_conf_entry"
     case "$_conf_cli" in
         opencode|cline) ;;
         *) log_err "agent-models.conf entry '$_conf_label' uses unsupported CLI '$_conf_cli'."; exit 2 ;;
@@ -165,6 +165,7 @@ for _conf_entry in "${PRIORITY[@]}"; do
         log_err "agent-models.conf entry has an invalid label or model ID."
         exit 2
     fi
+    [[ "$_conf_family" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || { log_err "agent-models.conf entry has an invalid model family."; exit 2; }
     if [[ -z "${_conf_think:-}" ]]; then
         log_err "agent-models.conf entry '$_conf_label' has no thinking level (policy: always xhigh, never provider default)."
         exit 2
@@ -185,12 +186,25 @@ done
 # INFERENCE_CAP_ERROR/429, Anthropic-style 529 overload/capacity.
 QUOTA_RE='quota|rate.?limit(ed)?|429|too many requests|insufficient[_ ]quota|(monthly|daily|usage|free tier) (quota|limit)|credits? (depleted|exhausted)|billing issu|out of (free )?usage|overloaded_error|overload(ed)?[^[:alnum:]]*(capacity|server)|529'
 
-# Reviewer/author independence: drop skipped models up front (substring match on
-# cli:model_id or label). A skip list that empties the pool is ignored — never
-# idle when a model could run.
+# Reviewer/author independence: resolve skip tokens to canonical model families,
+# then drop every gateway/CLI entry for those families. A skip list that empties
+# the pool is a hard manual-review condition, not permission to review with the
+# same weights under another alias.
 EFFECTIVE=()
+SKIP_FAMILIES=()
 for entry in "${PRIORITY[@]}"; do
-    IFS='|' read -r cli label model_id think <<< "$entry"
+    IFS='|' read -r cli label model_id think family <<< "$entry"
+    family="${family:-$label}"
+    for s in ${SKIP[@]+"${SKIP[@]}"}; do
+        if [[ "$cli:$model_id" == *"$s"* || "$label" == *"$s"* || "$family" == *"$s"* || "$s" == *"$cli:$model_id"* || "$s" == *"$label"* || "$s" == *"$family"* ]]; then
+            SKIP_FAMILIES+=("$family")
+            break
+        fi
+    done
+done
+for entry in "${PRIORITY[@]}"; do
+    IFS='|' read -r cli label model_id think family <<< "$entry"
+    family="${family:-$label}"
     case "$cli" in
         opencode) bin="opencode" ;;
         cline) bin="cline" ;;
@@ -201,10 +215,8 @@ for entry in "${PRIORITY[@]}"; do
         continue
     fi
     skip_hit=""
-    for s in ${SKIP[@]+"${SKIP[@]}"}; do
-        # Bidirectional: footers carry cli:model_id[/think] (needle longer than
-        # haystack), labels carry short names — either direction may contain.
-        if [[ "$cli:$model_id" == *"$s"* || "$label" == *"$s"* || "$s" == *"$cli:$model_id"* || "$s" == *"$label"* ]]; then skip_hit="$s"; break; fi
+    for skip_family in "${SKIP_FAMILIES[@]}"; do
+        if [[ "$family" == "$skip_family" ]]; then skip_hit="$skip_family"; break; fi
     done
     if [[ -n "$skip_hit" ]]; then
         log "Skipping $label ($model_id) for independence (matched --skip '$skip_hit')."
@@ -213,8 +225,8 @@ for entry in "${PRIORITY[@]}"; do
     fi
 done
 if [[ "${#EFFECTIVE[@]}" -eq 0 && "${#SKIP[@]}" -gt 0 ]]; then
-    log "WARNING: --skip emptied the model pool; ignoring skips."
-    EFFECTIVE=("${PRIORITY[@]}")
+    log_err "--skip removed every runnable model family; independent review is unavailable. Manual review is required."
+    exit 4
 fi
 if [[ "${#EFFECTIVE[@]}" -eq 0 ]]; then
     log_err "No runnable models: every CLI is missing (not a quota event — needs a human)."
@@ -224,7 +236,7 @@ fi
 if [[ "$CHECK_ONLY" -eq 1 ]]; then
     log "Check-only: effective priority list (first = preferred):"
     for entry in "${EFFECTIVE[@]}"; do
-        IFS='|' read -r cli label model_id think <<< "$entry"
+        IFS='|' read -r cli label model_id think family <<< "$entry"
         log "  - [$cli] $label ($model_id${think:+, $think})"
     done
     printf '%s\n' "$(echo "${EFFECTIVE[0]}" | cut -d'|' -f2)"
@@ -275,27 +287,50 @@ close_attempt() { # persist recovery context, then release the private log
 
 DELIVERABLE_BASELINE=""
 DELIVERABLE_AFTER=""
-capture_deliverable_state() { # $1=output file; authenticated GitHub state
+DELIVERABLE_REFS=""
+DELIVERABLE_RESULT=""
+LOOP_LOGIN=""
+
+capture_deliverable_state() { # targeted, authenticated GitHub state
     case "$ROLE" in
         review) gh pr view "$REVIEW_PR" --json headRefOid,reviews > "$1" ;;
-        cycle) gh pr list --state all --limit 1000 --json number,headRefOid > "$1" ;;
+        cycle) gh pr list --state open --author "$LOOP_LOGIN" --limit 1000 --json number,headRefOid,headRefName,author > "$1" ;;
     esac
 }
 
-role_deliverable_present() { # true only for a new pushed PR head or new review on the exact head
+role_deliverable_present() {
     if ! capture_deliverable_state "$DELIVERABLE_AFTER"; then return 1; fi
     case "$ROLE" in
         review)
-            jq -e --slurpfile before "$DELIVERABLE_BASELINE" '
+            jq -e --arg login "$LOOP_LOGIN" --slurpfile before "$DELIVERABLE_BASELINE" '
                 .headRefOid == $before[0].headRefOid and
-                any(.reviews[]; .commit.oid == $before[0].headRefOid and
-                    (.body | test("^VERDICT: (APPROVE|REQUEST_CHANGES)")) and
+                any(.reviews[]; .author.login == $login and
+                    .commit.oid == $before[0].headRefOid and
+                    (.body | test("^VERDICT: (APPROVE|REQUEST_CHANGES) \\(reviewed " + $before[0].headRefOid + "\\)")) and
                     (.id as $id | ($before[0].reviews | map(.id) | index($id) | not)))
             ' "$DELIVERABLE_AFTER" >/dev/null ;;
         cycle)
-            jq -e --slurpfile before "$DELIVERABLE_BASELINE" '
-                any(.[]; . as $pr |
-                    all($before[0][]; .number != $pr.number or .headRefOid != $pr.headRefOid))
+            local branch sha local_sha remote_sha baseline_sha
+            [[ -s "$DELIVERABLE_RESULT" ]] || return 1
+            jq -e --arg cycle "$NATIART_CYCLE_ID" '
+                type == "object" and .cycle == $cycle and
+                (.branch | type == "string") and (.sha | test("^[0-9a-f]{40}$"))
+            ' "$DELIVERABLE_RESULT" >/dev/null || return 1
+            branch="$(jq -r .branch "$DELIVERABLE_RESULT")"
+            sha="$(jq -r .sha "$DELIVERABLE_RESULT")"
+            case "$branch" in fix/*|perf/*|chore/*|docs/*|feature/*) ;; *) return 1 ;; esac
+            git check-ref-format --branch "$branch" >/dev/null 2>&1 || return 1
+            local_sha="$(git -C "$REPO" rev-parse "refs/heads/$branch" 2>/dev/null)" || return 1
+            baseline_sha="$(awk -F '\t' -v branch="$branch" '$1 == branch {print $2}' "$DELIVERABLE_REFS")"
+            [[ "$local_sha" == "$sha" && "$baseline_sha" != "$sha" ]] || return 1
+            # The explicitly named result must exist locally AND have been pushed.
+            remote_sha="$(git -C "$REPO" ls-remote --heads origin "refs/heads/$branch" | awk 'NR == 1 {print $1}')" || return 1
+            [[ "$remote_sha" == "$sha" ]] || return 1
+            jq -e --arg login "$LOOP_LOGIN" --arg branch "$branch" --arg sha "$sha" \
+                --slurpfile before "$DELIVERABLE_BASELINE" '
+                any(.[]; .author.login == $login and .headRefName == $branch and
+                    .headRefOid == $sha and (. as $pr |
+                    all($before[0][]; .number != $pr.number or .headRefOid != $sha)))
             ' "$DELIVERABLE_AFTER" >/dev/null ;;
     esac
 }
@@ -339,6 +374,8 @@ cleanup_runner() {
     ATT_LOG=""
     [[ -z "${DELIVERABLE_BASELINE:-}" ]] || rm -f "$DELIVERABLE_BASELINE"
     [[ -z "${DELIVERABLE_AFTER:-}" ]] || rm -f "$DELIVERABLE_AFTER"
+    [[ -z "$DELIVERABLE_REFS" ]] || rm -f "$DELIVERABLE_REFS"
+    [[ -z "$DELIVERABLE_RESULT" ]] || rm -f "$DELIVERABLE_RESULT"
     PID=""
     return "$status"
 }
@@ -348,6 +385,15 @@ trap 'exit 143' TERM INT HUP
 
 DELIVERABLE_BASELINE="$(mktemp "$TMP_ROOT/natiart-deliverable-before-XXXXXX.json")"
 DELIVERABLE_AFTER="$(mktemp "$TMP_ROOT/natiart-deliverable-after-XXXXXX.json")"
+LOOP_LOGIN="$(gh api user --jq .login)" || { log_err "Cannot authenticate deliverable author."; exit 2; }
+[[ "$LOOP_LOGIN" =~ ^[A-Za-z0-9][A-Za-z0-9-]*$ ]] || exit 2
+DELIVERABLE_REFS="$(mktemp "$TMP_ROOT/natiart-deliverable-refs-XXXXXX.tsv")"
+DELIVERABLE_RESULT="$(mktemp "$TMP_ROOT/natiart-deliverable-result-XXXXXX.json")"
+git -C "$REPO" for-each-ref --format='%(refname:short)%09%(objectname)' refs/heads/ > "$DELIVERABLE_REFS"
+export NATIART_CYCLE_ID="${NATIART_CYCLE_ID:-$(cat /proc/sys/kernel/random/uuid)}"
+export NATIART_DELIVERABLE_FILE="$DELIVERABLE_RESULT"
+PROMPT+="
+Deliverable attribution: cycle $NATIART_CYCLE_ID. For implementation, write JSON to $NATIART_DELIVERABLE_FILE after committing and pushing: {\"cycle\":\"$NATIART_CYCLE_ID\",\"branch\":\"exact intended branch\",\"sha\":\"full produced and pushed SHA\"}. The supervisor verifies local and remote refs and the authenticated PR author. For review, submit a head-bound verdict as the authenticated reviewer on the specified target."
 if ! capture_deliverable_state "$DELIVERABLE_BASELINE"; then
     log_err "Cannot inspect GitHub deliverable state before launching a worker."
     exit 2
@@ -358,6 +404,7 @@ launch_attempt() { # $1=cli $2=model_id $3=think; spawns child bg, sets $PID
     # Tell the agent which model it is running as (PR footers / review verdicts
     # name it; agents read it via `echo "$NATIART_MODEL"` in their bash tool).
     export NATIART_MODEL="$cli:$model_id${think:+/$think}"
+    export NATIART_MODEL_FAMILY="$family"
     # Repo root for prompts that reference $REPO_ROOT (review worktrees).
     export REPO_ROOT="$REPO"
     case "$cli" in
@@ -394,7 +441,7 @@ attempt=0
 BLOCKED_ROUNDS=0 # consecutive full-pool blocked rounds (drives backoff below)
 while true; do
     for entry in "${EFFECTIVE[@]}"; do
-        IFS='|' read -r cli label model_id think <<< "$entry"
+        IFS='|' read -r cli label model_id think family <<< "$entry"
 
         remaining=$(( DEADLINE - $(date +%s) ))
         if (( remaining <= 10 )); then
@@ -410,8 +457,6 @@ while true; do
 
         same_retry=0
         while :; do # retry-same-model loop: silence ≠ quota (see below)
-            # Allocate a new private pathname for every attempt, including a
-            # same-model retry; never recreate a removed pathname by redirect.
             ATT_LOG="$(mktemp "$TMP_ROOT/natiart-agent-attempt-XXXXXX.log")"
             log "Attempt $attempt/${label}: $cli :: $model_id${think:+, thinking=$think} (${remaining}s left)"
             if ! launch_attempt "$cli" "$model_id" "$think"; then
