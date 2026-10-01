@@ -79,6 +79,8 @@ class CartManagerImplTest {
         when(productManager.getProductOrDie("p1")).thenReturn(product);
         when(cartItemRepository.findCartItemByUsernameAndProductForUpdate("jane", "p1"))
                 .thenReturn(Optional.of(existing));
+        when(cartItemRepository.findCartItemByUsernameAndProductWithDetails("jane", "p1"))
+                .thenReturn(Optional.of(existing));
 
         final CartItemDto result = cartManager.createCartItem("jane", "p1");
 

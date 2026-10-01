@@ -50,7 +50,10 @@ public class CartManagerImpl implements CartManager {
                         "Cart line for product [" + product.getLabel() + "] must not exceed " + MAX_LINE_QUANTITY);
             }
             existing.increaseQuantity();
-            return CartItemDto.from(existing);
+            final CartItem detailed = cartItemRepository
+                    .findCartItemByUsernameAndProductWithDetails(username, productId)
+                    .orElseThrow(() -> new IllegalStateException("Locked cart line disappeared"));
+            return CartItemDto.from(detailed);
         }
         final CartItem cartItem = cartItemRepository.save(new CartItem(username, product));
         return CartItemDto.from(cartItem);
