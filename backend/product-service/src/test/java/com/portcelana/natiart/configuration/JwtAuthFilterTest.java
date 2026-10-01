@@ -15,7 +15,9 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 
 import org.junit.jupiter.api.AfterEach;
@@ -27,6 +29,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -124,6 +127,18 @@ class JwtAuthFilterTest {
         });
         server.start();
         return new JwtAuthFilter(WebClient.builder(), "http://localhost:" + port, emptyCache());
+    }
+
+    private void startCapturingValidationService(List<String> receivedSecrets) {
+        server.createContext("/validate-token", exchange -> {
+            receivedSecrets.add(exchange.getRequestHeaders().getFirst("X-Internal-Service-Token"));
+            final byte[] body = VALID_AUTH_JSON.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
     }
 
     private MockHttpServletRequest requestWithToken() {
@@ -263,6 +278,50 @@ class JwtAuthFilterTest {
         }
 
         verify(builder, times(1)).build();
+    }
+
+    @Test
+    void configuredSecurityFilterSendsServiceCredentialOnColdAndExpiredCacheMisses() throws Exception {
+        final List<String> receivedSecrets = new CopyOnWriteArrayList<>();
+        startCapturingValidationService(receivedSecrets);
+        final AuthenticationResponseDto dto =
+                new ObjectMapper().readValue(VALID_AUTH_JSON, AuthenticationResponseDto.class);
+        final TokenValidationCache cache = mock(TokenValidationCache.class);
+        when(cache.get("test-token")).thenReturn(Optional.empty(), Optional.of(dto), Optional.empty());
+        final SecurityConfig securityConfig = new SecurityConfig(
+                mock(CorsConfigurationSource.class),
+                WebClient.builder(),
+                "http://localhost:" + port,
+                cache,
+                "configured-service-secret");
+        final JwtAuthFilter filter = securityConfig.jwtAuthFilter();
+
+        for (int i = 0; i < 3; i++) {
+            final MockHttpServletResponse response = new MockHttpServletResponse();
+            final MockFilterChain chain = new MockFilterChain();
+            filter.doFilter(requestWithToken("POST", "/cart/item/p1/add"), response, chain);
+            assertEquals(200, response.getStatus());
+            assertNotNull(chain.getRequest());
+            SecurityContextHolder.clearContext();
+        }
+
+        assertEquals(List.of("configured-service-secret", "configured-service-secret"), receivedSecrets);
+        verify(cache, times(2)).put(eq("test-token"), any(AuthenticationResponseDto.class));
+    }
+
+    @Test
+    void unconfiguredSecurityFilterOmitsServiceCredential() throws Exception {
+        final List<String> receivedSecrets = new CopyOnWriteArrayList<>();
+        startCapturingValidationService(receivedSecrets);
+        final SecurityConfig securityConfig = new SecurityConfig(
+                mock(CorsConfigurationSource.class), WebClient.builder(), "http://localhost:" + port, emptyCache(), "");
+        final JwtAuthFilter filter = securityConfig.jwtAuthFilter();
+
+        filter.doFilter(
+                requestWithToken("POST", "/cart/item/p1/add"), new MockHttpServletResponse(), new MockFilterChain());
+
+        assertEquals(1, receivedSecrets.size());
+        assertNull(receivedSecrets.get(0));
     }
 
     @Test

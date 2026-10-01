@@ -1,4 +1,4 @@
-import {HttpClient, HttpInterceptorFn} from '@angular/common/http';
+import {HttpClient, HttpContextToken, HttpInterceptorFn} from '@angular/common/http';
 import {inject} from '@angular/core';
 import {Router} from "@angular/router";
 import {BehaviorSubject, catchError, filter, first, switchMap, throwError, timeout} from "rxjs";
@@ -63,7 +63,7 @@ const isRefreshTokenRequest = (url: string): boolean =>
 const isLogoutRequest = (url: string): boolean =>
   isEndpoint(url, [environment.api.directory.endpoints.logout]);
 
-const RETRY_HEADER = 'X-Auth-Retried';
+const RETRY_CONTEXT = new HttpContextToken<boolean>(() => false);
 const REFRESH_TIMEOUT_MS = 10000;
 
 let refreshInProgress$: BehaviorSubject<string | null> | null = null;
@@ -115,13 +115,11 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const http = inject(HttpClient);
 
-  const alreadyRetried = req.headers.has(RETRY_HEADER);
+  const alreadyRetried = req.context.get(RETRY_CONTEXT);
 
-  const cloned = (tokenService.accessToken && !alreadyRetried)
+  const cloned = tokenService.accessToken && !alreadyRetried
     ? req.clone({setHeaders: {Authorization: `Bearer ${tokenService.accessToken}`}})
-    : (alreadyRetried
-      ? req.clone({headers: req.headers.delete(RETRY_HEADER)})
-      : req);
+    : req;
 
   return next(cloned).pipe(
     catchError(error => {
@@ -141,7 +139,8 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
           filter(token => token !== null),
           first(),
           switchMap(token => next(req.clone({
-            setHeaders: {Authorization: `Bearer ${token}`, [RETRY_HEADER]: '1'}
+            context: req.context.set(RETRY_CONTEXT, true),
+            setHeaders: {Authorization: `Bearer ${token}`}
           }))),
           catchError(refreshError => {
             router.navigate(['/login']);
