@@ -238,27 +238,50 @@ close_attempt() { # persist recovery context, then release the private log
 
 DELIVERABLE_BASELINE=""
 DELIVERABLE_AFTER=""
-capture_deliverable_state() { # $1=output file; authenticated GitHub state
+DELIVERABLE_REFS=""
+DELIVERABLE_RESULT=""
+LOOP_LOGIN=""
+
+capture_deliverable_state() { # targeted, authenticated GitHub state
     case "$ROLE" in
         review) gh pr view "$REVIEW_PR" --json headRefOid,reviews > "$1" ;;
-        cycle) gh pr list --state all --limit 1000 --json number,headRefOid > "$1" ;;
+        cycle) gh pr list --state open --author "$LOOP_LOGIN" --limit 1000 --json number,headRefOid,headRefName,author > "$1" ;;
     esac
 }
 
-role_deliverable_present() { # true only for a new pushed PR head or new review on the exact head
+role_deliverable_present() {
     if ! capture_deliverable_state "$DELIVERABLE_AFTER"; then return 1; fi
     case "$ROLE" in
         review)
-            jq -e --slurpfile before "$DELIVERABLE_BASELINE" '
+            jq -e --arg login "$LOOP_LOGIN" --slurpfile before "$DELIVERABLE_BASELINE" '
                 .headRefOid == $before[0].headRefOid and
-                any(.reviews[]; .commit.oid == $before[0].headRefOid and
-                    (.body | test("^VERDICT: (APPROVE|REQUEST_CHANGES)")) and
+                any(.reviews[]; .author.login == $login and
+                    .commit.oid == $before[0].headRefOid and
+                    (.body | test("^VERDICT: (APPROVE|REQUEST_CHANGES) \\(reviewed " + $before[0].headRefOid + "\\)")) and
                     (.id as $id | ($before[0].reviews | map(.id) | index($id) | not)))
             ' "$DELIVERABLE_AFTER" >/dev/null ;;
         cycle)
-            jq -e --slurpfile before "$DELIVERABLE_BASELINE" '
-                any(.[]; . as $pr |
-                    all($before[0][]; .number != $pr.number or .headRefOid != $pr.headRefOid))
+            local branch sha local_sha remote_sha baseline_sha
+            [[ -s "$DELIVERABLE_RESULT" ]] || return 1
+            jq -e --arg cycle "$NATIART_CYCLE_ID" '
+                type == "object" and .cycle == $cycle and
+                (.branch | type == "string") and (.sha | test("^[0-9a-f]{40}$"))
+            ' "$DELIVERABLE_RESULT" >/dev/null || return 1
+            branch="$(jq -r .branch "$DELIVERABLE_RESULT")"
+            sha="$(jq -r .sha "$DELIVERABLE_RESULT")"
+            case "$branch" in fix/*|perf/*|chore/*|docs/*|feature/*) ;; *) return 1 ;; esac
+            git check-ref-format --branch "$branch" >/dev/null 2>&1 || return 1
+            local_sha="$(git -C "$REPO" rev-parse "refs/heads/$branch" 2>/dev/null)" || return 1
+            baseline_sha="$(awk -F '\t' -v branch="$branch" '$1 == branch {print $2}' "$DELIVERABLE_REFS")"
+            [[ "$local_sha" == "$sha" && "$baseline_sha" != "$sha" ]] || return 1
+            # The explicitly named result must exist locally AND have been pushed.
+            remote_sha="$(git -C "$REPO" ls-remote --heads origin "refs/heads/$branch" | awk 'NR == 1 {print $1}')" || return 1
+            [[ "$remote_sha" == "$sha" ]] || return 1
+            jq -e --arg login "$LOOP_LOGIN" --arg branch "$branch" --arg sha "$sha" \
+                --slurpfile before "$DELIVERABLE_BASELINE" '
+                any(.[]; .author.login == $login and .headRefName == $branch and
+                    .headRefOid == $sha and (. as $pr |
+                    all($before[0][]; .number != $pr.number or .headRefOid != $sha)))
             ' "$DELIVERABLE_AFTER" >/dev/null ;;
     esac
 }
@@ -302,6 +325,8 @@ cleanup_runner() {
     ATT_LOG=""
     [[ -z "${DELIVERABLE_BASELINE:-}" ]] || rm -f "$DELIVERABLE_BASELINE"
     [[ -z "${DELIVERABLE_AFTER:-}" ]] || rm -f "$DELIVERABLE_AFTER"
+    [[ -z "$DELIVERABLE_REFS" ]] || rm -f "$DELIVERABLE_REFS"
+    [[ -z "$DELIVERABLE_RESULT" ]] || rm -f "$DELIVERABLE_RESULT"
     PID=""
     return "$status"
 }
@@ -311,6 +336,15 @@ trap 'exit 143' TERM INT HUP
 
 DELIVERABLE_BASELINE="$(mktemp "$TMP_ROOT/natiart-deliverable-before-XXXXXX.json")"
 DELIVERABLE_AFTER="$(mktemp "$TMP_ROOT/natiart-deliverable-after-XXXXXX.json")"
+LOOP_LOGIN="$(gh api user --jq .login)" || { log_err "Cannot authenticate deliverable author."; exit 2; }
+[[ "$LOOP_LOGIN" =~ ^[A-Za-z0-9][A-Za-z0-9-]*$ ]] || exit 2
+DELIVERABLE_REFS="$(mktemp "$TMP_ROOT/natiart-deliverable-refs-XXXXXX.tsv")"
+DELIVERABLE_RESULT="$(mktemp "$TMP_ROOT/natiart-deliverable-result-XXXXXX.json")"
+git -C "$REPO" for-each-ref --format='%(refname:short)%09%(objectname)' refs/heads/ > "$DELIVERABLE_REFS"
+export NATIART_CYCLE_ID="${NATIART_CYCLE_ID:-$(cat /proc/sys/kernel/random/uuid)}"
+export NATIART_DELIVERABLE_FILE="$DELIVERABLE_RESULT"
+PROMPT+="
+Deliverable attribution: cycle $NATIART_CYCLE_ID. For implementation, write JSON to $NATIART_DELIVERABLE_FILE after committing and pushing: {\"cycle\":\"$NATIART_CYCLE_ID\",\"branch\":\"exact intended branch\",\"sha\":\"full produced and pushed SHA\"}. The supervisor verifies local and remote refs and the authenticated PR author. For review, submit a head-bound verdict as the authenticated reviewer on the specified target."
 if ! capture_deliverable_state "$DELIVERABLE_BASELINE"; then
     log_err "Cannot inspect GitHub deliverable state before launching a worker."
     exit 2

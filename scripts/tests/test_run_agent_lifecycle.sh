@@ -4,27 +4,40 @@
 set -Eeuo pipefail
 
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-RUN_AGENT="$TEST_DIR/../run-agent.sh"
+RUN_AGENT_SOURCE="$TEST_DIR/../run-agent.sh"
 ROOT="$(mktemp -d)"
 trap 'rm -rf "$ROOT"' EXIT
 
+# Run the unchanged production runner in an isolated local Git repository.
+git init --bare -q "$ROOT/remote.git"
+git clone -q "$ROOT/remote.git" "$ROOT/repo"
+git -C "$ROOT/repo" config user.name fixture
+git -C "$ROOT/repo" config user.email fixture@example.invalid
+mkdir -p "$ROOT/repo/scripts"
+cp "$RUN_AGENT_SOURCE" "$ROOT/repo/scripts/run-agent.sh"
+printf 'base\n' > "$ROOT/repo/README"
+git -C "$ROOT/repo" add .
+git -C "$ROOT/repo" commit -qm base
+git -C "$ROOT/repo" push -q origin HEAD:master
+RUN_AGENT="$ROOT/repo/scripts/run-agent.sh"
 FAKEBIN="$ROOT/bin"
 mkdir -p "$FAKEBIN" "$ROOT/outcomes"
 cat >"$FAKEBIN/gh" <<'EOF'
 #!/usr/bin/env bash
 set -Eeuo pipefail
 case "${1:-} ${2:-}" in
+    'api user') printf 'loop-machine\n' ;;
     'pr view')
         if [[ -f "$FAKE_REVIEW_STATE" ]]; then
-            printf '{"headRefOid":"%s","reviews":[{"id":"new-review","body":"VERDICT: REQUEST_CHANGES (reviewed %s)","commit":{"oid":"%s"}}]}\n' \
-                "$FAKE_HEAD" "$FAKE_HEAD" "$FAKE_HEAD"
+            printf '{"headRefOid":"%s","reviews":[{"id":"new-review","body":"VERDICT: REQUEST_CHANGES (reviewed %s)","author":{"login":"%s"},"commit":{"oid":"%s"}}]}\n' \
+                "$FAKE_HEAD" "$FAKE_HEAD" "${FAKE_REVIEW_AUTHOR:-loop-machine}" "$FAKE_HEAD"
         else
             printf '{"headRefOid":"%s","reviews":[]}\n' "$FAKE_HEAD"
         fi
         ;;
     'pr list')
         if [[ -f "$FAKE_CYCLE_STATE" ]]; then
-            printf '[{"number":42,"headRefOid":"%s"}]\n' "$FAKE_HEAD"
+            printf '[{"number":42,"headRefOid":"%s","headRefName":"fix/produced","author":{"login":"%s"}}]\n' "$(cat "$FAKE_CYCLE_STATE")" "${FAKE_PR_AUTHOR:-loop-machine}"
         else
             printf '[{"number":42,"headRefOid":"%s"}]\n' "$FAKE_OLD_HEAD"
         fi
@@ -61,12 +74,25 @@ case "$mode" in
         touch "$FAKE_REVIEW_STATE"
         printf 'review submitted\n'
         ;;
+    foreign)
+        # Concurrent foreign activity has no locally produced result manifest.
+        printf '%s\n' "$FAKE_HEAD" > "$FAKE_CYCLE_STATE"
+        touch "$FAKE_REVIEW_STATE"
+        ;;
     mention)
         printf 'VERDICT: REQUEST_CHANGES (reviewed %s)\nPR #42\n' "$FAKE_HEAD"
         ;;
     cycle-push)
-        touch "$FAKE_CYCLE_STATE"
-        printf 'pushed PR #42\n'
+        git checkout -qb fix/produced
+        printf 'produced\n' >> README
+        git add README
+        git commit -qm produced
+        git push -q origin fix/produced
+        sha="$(git rev-parse HEAD)"
+        printf '%s\n' "$sha" > "$FAKE_CYCLE_STATE"
+        jq -n --arg cycle "$NATIART_CYCLE_ID" --arg branch fix/produced --arg sha "$sha" \
+            '{cycle:$cycle,branch:$branch,sha:$sha}' > "$NATIART_DELIVERABLE_FILE"
+        printf 'pushed PR #42\n' 
         ;;
     *)
         printf 'clean exit without a role deliverable\n'
@@ -122,6 +148,15 @@ if FAKE_MODE=mention "${common[@]}" bash "$RUN_AGENT" --role cycle --budget 30 m
     echo "printed PR number was accepted without a pushed head" >&2
     exit 1
 fi
+if FAKE_MODE=foreign FAKE_PR_AUTHOR=human "${common[@]}" bash "$RUN_AGENT" --role cycle --budget 30 foreign \
+    >"$ROOT/foreign.log" 2>&1; then
+    echo 'foreign PR change was accepted as worker output' >&2; exit 1
+fi
+if FAKE_MODE=foreign FAKE_REVIEW_AUTHOR=human "${common[@]}" bash "$RUN_AGENT" --role review --review-pr 42 --budget 30 foreign \
+    >"$ROOT/foreign-review.log" 2>&1; then
+    echo 'foreign review was accepted as worker output' >&2; exit 1
+fi
+rm -f "$ROOT/review-state" "$ROOT/cycle-state"
 FAKE_MODE=cycle-push "${common[@]}" bash "$RUN_AGENT" --role cycle --budget 30 push \
     >"$ROOT/cycle-push.log" 2>&1
 grep -q 'NATIART_ACTIVE_MODEL=fake' "$ROOT/cycle-push.log"
