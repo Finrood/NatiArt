@@ -76,8 +76,7 @@ class ProductImageOrderPersistenceTest {
         final String uploadId = UUID.randomUUID().toString();
         final InputFile upload =
                 new InputFile(new ByteArrayInputStream(new byte[] {1}), "image/webp", uploadId + ".webp", 1);
-        when(storage.uploadFile(any(String.class), any(InputFile.class), any(String.class)))
-                .thenReturn(URI.create("file:///owned/new"));
+        when(storage.uploadFile(any(String.class), any(InputFile.class))).thenReturn(URI.create("file:///owned/new"));
         final ProductDto dto = new ProductDto("Art", BigDecimal.TEN)
                 .setId(id)
                 .setCategoryId(category.getId())

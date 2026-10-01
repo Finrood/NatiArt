@@ -320,9 +320,7 @@ public class ProductManagerImpl implements ProductManager {
 
     private String uploadImage(Product product, InputFile inputFile) {
         final String imagePath = IMAGE_KEY_PREFIX + product.getId() + "/" + UUID.randomUUID();
-        return storageService
-                .uploadFile(imagePath, inputFile)
-                .toString();
+        return storageService.uploadFile(imagePath, inputFile).toString();
     }
 
     private static String requireNonBlankLabel(String label) {
