@@ -5,12 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.util.List;
@@ -137,10 +140,31 @@ class ProductManagerImplTest {
     }
 
     @Test
+    void createProductWritesStableImageKeyWithoutAProcessRelativeLocation() {
+        final Category category = new Category("Tableware");
+        final InputFile image = new InputFile(new ByteArrayInputStream(new byte[] {1}), "image/webp", "mug.webp", 1);
+        when(categoryManager.getCategoryOrDie("cat-1")).thenReturn(category);
+        when(packageManager.getPackage(null)).thenReturn(Optional.empty());
+        when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(storageService.uploadFile(any(String.class), eq(image)))
+                .thenReturn(URI.create("file:products/stable.webp"));
+
+        final Product created = productManager.createProduct(
+                new ProductDto("Mug", BigDecimal.TEN).setCategoryId("cat-1"), List.of(image));
+
+        verify(storageService)
+                .uploadFile(
+                        argThat(key -> key.startsWith("products/" + created.getId() + "/")
+                                && key.length() > ("products/" + created.getId() + "/").length()),
+                        eq(image));
+        assertEquals(List.of("file:products/stable.webp"), created.getImages());
+    }
+
+    @Test
     void inverseVisibility_existingProduct_flipsAtomicallyWithoutReadModifyWrite() {
         final Product product = new Product("Mug", BigDecimal.TEN);
         when(productRepository.toggleActiveById(product.getId())).thenReturn(1);
-        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
+        when(productRepository.findByIdWithImages(product.getId())).thenReturn(Optional.of(product));
 
         final Product toggled = productManager.inverseVisibility(product.getId());
 
