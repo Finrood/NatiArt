@@ -5,6 +5,8 @@ import {EmptyError, firstValueFrom, map, Observable, Subject, throwError} from '
 import {CartItem} from '../../../models/CartItem.model';
 import {OrderDto} from '../../../models/order.model';
 import {CartService, PurchasedCartLine} from '../../../service/cart.service';
+import {ProductService} from '../../../service/product.service';
+import {HttpErrorResponse} from '@angular/common/http';
 import {OrderService} from '../../../service/order.service';
 import {Router} from '@angular/router';
 import {PaymentService} from "../../../service/payment.service";
@@ -22,6 +24,7 @@ import {CustomCpfValidators} from "../../../../directory/validator/CustomCpfVali
 import {CustomCepValidators} from "../../../../directory/validator/CustomCepValidators";
 import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportError} from '../../../../shared/service/error-reporting.service';
+import {PersonalizationOption} from '../../../models/support/personalization-option';
 
 @Component({
   selector: 'app-checkout',
@@ -63,6 +66,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   private readonly _fb = inject(FormBuilder);
   private readonly _cartService = inject(CartService);
+  private readonly _productService = inject(ProductService);
   private readonly _authenticationService = inject(AuthenticationService);
   private readonly _orderService = inject(OrderService);
   private readonly _paymentService = inject(PaymentService);
@@ -228,7 +232,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         return;
       }
 
-      const orderRequest = this.buildOrderRequest();
+      const orderRequest = await this.buildOrderRequest();
       const fingerprint = JSON.stringify(orderRequest);
       if (this.checkoutFingerprint !== fingerprint) {
         this.currentOrder = null;
@@ -282,21 +286,67 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       this.paymentIdempotencyKey = crypto.randomUUID();
 
     } catch (error) {
+      if (!this.currentOrder && error instanceof HttpErrorResponse && error.status === 400 &&
+        error.error?.code === 'CUSTOM_ARTWORK_UNAVAILABLE' && error.error?.orderCreated === false &&
+        typeof error.error?.uploadId === 'string') {
+        this._cartService.invalidateArtwork(error.error.uploadId);
+        this.checkoutFingerprint = null;
+        this.orderIdempotencyKey = crypto.randomUUID();
+        this.paymentIdempotencyKey = crypto.randomUUID();
+        this.clearInfoMessage();
+        this.setErrorMessage('Your artwork is no longer available. Retry to upload your selected file, or select it again below.');
+        this._cdr.markForCheck();
+        return;
+      }
       reportError('payment', error);
+      this.clearInfoMessage();
       this.setErrorMessage('Could not process PIX payment. Please try again.');
     }
     this._cdr.detectChanges();
   }
 
-  private buildOrderRequest(): OrderDto {
+  reselectArtwork(cartItemId: string, event: Event): void {
+    const input: HTMLInputElement = event.target as HTMLInputElement;
+    const file: File | undefined = input.files?.[0];
+    if (file) this._cartService.reselectArtwork(cartItemId, file);
+    input.value = '';
+    this._cdr.markForCheck();
+  }
+
+  private async buildOrderRequest(): Promise<OrderDto> {
     const userInfo = this.checkoutForm.get('userInfo')?.getRawValue();
     const shippingInfo = this.checkoutForm.get('shippingInfo')?.getRawValue();
-    const items = this._cartService.getCartItemsSnapshot().map(item => {
+    const items = await Promise.all(this._cartService.getCartItemsSnapshot().map(async item => {
       if (!item.product.id) {
         throw new Error('A cart item is missing its product identifier.');
       }
-      return {productId: item.product.id, quantity: item.quantity};
-    });
+      if (item.requiresArtworkReselection) throw new Error('Select your artwork again before checkout.');
+      let uploadId = item.customImageUploadId;
+      if (item.image && !uploadId) {
+        this.setInfoMessage('Uploading your custom artwork...');
+        const upload = await firstValueFrom(this._productService.uploadCustomerImage(item.image));
+        if (!upload?.uploadId || upload.uploadId.trim().length === 0) {
+          throw new Error('The artwork upload did not return an upload identifier.');
+        }
+        uploadId = upload.uploadId;
+        await firstValueFrom(this._cartService.setCustomImageUploadId(item.cartItemId, uploadId));
+      }
+      if (item.image && !uploadId) {
+        throw new Error('A custom artwork line is missing its upload identifier.');
+      }
+
+      const personalizationOptions: Partial<Record<PersonalizationOption, string>> = {};
+      if (item.goldBorder) {
+        personalizationOptions[PersonalizationOption.GOLDEN_BORDER] = 'true';
+      }
+      if (uploadId) {
+        personalizationOptions[PersonalizationOption.CUSTOM_IMAGE] = uploadId;
+      }
+      const personalization = Object.keys(personalizationOptions).length > 0
+        ? {personalizationOptions}
+        : undefined;
+      return {productId: item.product.id, quantity: item.quantity, personalization};
+    }));
 
     if (items.length === 0) {
       throw new Error('Cannot create an order from an empty cart.');

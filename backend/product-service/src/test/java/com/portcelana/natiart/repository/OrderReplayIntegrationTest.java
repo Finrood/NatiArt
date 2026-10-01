@@ -106,7 +106,13 @@ class OrderReplayIntegrationTest {
         when(shippingService.getOrderShippingAmount("01001000")).thenReturn(BigDecimal.ZERO);
         return new OrderManagerImpl(
                 orderRepository,
-                new OrderCreationService(orderRepository, productManager, productRepository, shippingService));
+                new OrderCreationService(
+                        orderRepository,
+                        productManager,
+                        productRepository,
+                        shippingService,
+                        mock(com.portcelana.natiart.service.CustomerUploadService.class),
+                        BigDecimal.ZERO));
     }
 
     private OrderDto orderRequest(String productId) {

@@ -61,7 +61,7 @@ export class CartService {
       });
     } else {
       const existingItem = this.cartItems.find(item =>
-        item.product.id === product.id && item.goldBorder === goldBorder && !item.image
+        item.product.id === product.id && item.goldBorder === goldBorder && !item.image && !item.customImageUploadId && !item.requiresArtworkReselection
       );
       if (existingItem) {
         existingItem.quantity += acceptedQuantity;
@@ -74,6 +74,45 @@ export class CartService {
 
     this.updateCart();
     return of(undefined);
+  }
+
+  setCustomImageUploadId(cartItemId: string, uploadId: string): Observable<void> {
+    if (!uploadId || uploadId.trim().length === 0) {
+      reportWarning('cart');
+      return of(undefined);
+    }
+    const item = this.cartItems.find(candidate => candidate.cartItemId === cartItemId);
+    if (!item) {
+      reportWarning('cart');
+      return of(undefined);
+    }
+    item.customImageUploadId = uploadId;
+    this.updateCart();
+    return of(undefined);
+  }
+
+  invalidateArtwork(uploadId: string): void {
+    for (const item of this.cartItems) {
+      if (item.customImageUploadId !== uploadId) continue;
+      delete item.customImageUploadId;
+      item.requiresArtworkReselection = !item.image;
+    }
+    this.updateCart();
+  }
+
+  reselectArtwork(cartItemId: string, file: File): void {
+    if (!file.type.startsWith('image/') || file.size > 5_000_000 || file.size === 0) return;
+    const item: CartItem | undefined = this.cartItems.find((candidate: CartItem) => candidate.cartItemId === cartItemId);
+    if (!item) return;
+    item.image = file;
+    delete item.customImageUploadId;
+    item.requiresArtworkReselection = false;
+    this.updateCart();
+  }
+
+  private serializableItems(items: CartItem[]): Omit<CartItem, 'image'>[] {
+    return items.map(({image, ...item}: CartItem) => ({...item,
+      requiresArtworkReselection: item.requiresArtworkReselection || (!!image && !item.customImageUploadId)}));
   }
 
   removeFromCart(cartItemId: string): Observable<void> {
@@ -140,7 +179,7 @@ export class CartService {
     const purchases: CartPurchase[] = [...this.purchases,
       {orderId, customerId, lines: lines.map((line: PurchasedCartLine) => ({...line})), completed: false}];
     localStorage.setItem(this.localStorageKey, JSON.stringify({
-      version: 1, items: this.cartItems.filter((item: CartItem) => !item.image), purchases}));
+      version: 1, items: this.serializableItems(this.cartItems), purchases}));
     this.purchases = purchases;
   }
 
@@ -156,7 +195,7 @@ export class CartService {
     const purchases: CartPurchase[] = this.purchases.map((entry: CartPurchase) =>
       entry === purchase ? {...entry, completed: true} : entry);
     // Persist the deduction and its receipt in one write before publishing either.
-    localStorage.setItem(this.localStorageKey, JSON.stringify({version: 1, items: updated.filter((item: CartItem) => !item.image), purchases}));
+    localStorage.setItem(this.localStorageKey, JSON.stringify({version: 1, items: this.serializableItems(updated), purchases}));
     this.cartItems = updated;
     this.purchases = purchases;
     this.cartItemsSubject.next([...updated]);
@@ -181,7 +220,7 @@ export class CartService {
 
   private saveCartToLocalStorage(): void {
     try {
-      const serializableCart: CartItem[] = this.cartItems.filter((item: CartItem) => !item.image);
+      const serializableCart = this.serializableItems(this.cartItems);
       localStorage.setItem(this.localStorageKey, JSON.stringify({version: 1, items: serializableCart, purchases: this.purchases}));
     } catch (e) {
       reportError('storage', e);
@@ -291,6 +330,11 @@ export class CartService {
       return false;
     }
     if (typeof line.product.stockQuantity !== 'number' || !Number.isSafeInteger(line.product.stockQuantity) || line.product.stockQuantity < 1) {
+      return false;
+    }
+    if (line.requiresArtworkReselection !== undefined && typeof line.requiresArtworkReselection !== 'boolean') return false;
+    if (line.customImageUploadId !== undefined
+      && (typeof line.customImageUploadId !== 'string' || line.customImageUploadId.trim().length === 0)) {
       return false;
     }
     return true;
