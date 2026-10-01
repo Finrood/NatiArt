@@ -33,6 +33,7 @@ describe('jwtInterceptor', () => {
     // Instantiate authentication before any HTTP service is resolved or
     // tests seed tokens so its bootstrap lookup cannot remain pending.
     TestBed.inject(AuthenticationService);
+    tick();
     const http = TestBed.inject(HttpClient);
     const httpTesting = TestBed.inject(HttpTestingController);
     const tokenService = TestBed.inject(TokenService);
@@ -52,9 +53,9 @@ describe('jwtInterceptor', () => {
     const {http, httpTesting, tokenService} = setup();
     tokenService.accessToken = 'abc';
 
-    http.get('/products').subscribe(() => {
+    http.get(`${environment.api.product.url}/products`).subscribe(() => {
     });
-    const req = httpTesting.expectOne('/products');
+    const req = httpTesting.expectOne(`${environment.api.product.url}/products`);
     expect(req.request.headers.get('Authorization')).toBe('Bearer abc');
     req.flush({});
     httpTesting.verify();
@@ -87,12 +88,12 @@ describe('jwtInterceptor', () => {
     const {http, httpTesting, tokenService} = setup();
     tokenService.accessToken = 'abc';
 
-    http.get('/api/search?q=login').subscribe(() => {
+    http.get(`${environment.api.product.url}/api/search?q=login`).subscribe(() => {
     });
     http.get(`${environment.api.directory.url}/api/search?q=refresh-token`).subscribe(() => {
     });
 
-    const relative: TestRequest = httpTesting.expectOne('/api/search?q=login');
+    const relative: TestRequest = httpTesting.expectOne(`${environment.api.product.url}/api/search?q=login`);
     const absolute: TestRequest = httpTesting.expectOne(`${environment.api.directory.url}/api/search?q=refresh-token`);
     expect(relative.request.headers.get('Authorization')).toBe('Bearer abc');
     expect(absolute.request.headers.get('Authorization')).toBe('Bearer abc');
@@ -108,7 +109,7 @@ describe('jwtInterceptor', () => {
     http.get('https://other.test/login').subscribe(() => {
     });
     const req: TestRequest = httpTesting.expectOne('https://other.test/login');
-    expect(req.request.headers.get('Authorization')).toBe('Bearer abc');
+    expect(req.request.headers.has('Authorization')).toBeFalse();
     req.flush({});
     httpTesting.verify();
   }));
@@ -172,13 +173,13 @@ describe('jwtInterceptor', () => {
     tokenService.refreshToken = OLD_REFRESH;
 
     let body: any;
-    http.get('/api/secure').subscribe({
+    http.get(`${environment.api.product.url}/api/secure`).subscribe({
       next: (r) => (body = r),
       error: () => {
       },
     });
 
-    const first = httpTesting.expectOne('/api/secure');
+    const first = httpTesting.expectOne(`${environment.api.product.url}/api/secure`);
     expect(first.request.headers.get('Authorization')).toBe(`Bearer ${OLD_ACCESS}`);
     first.flush('', {status: 401, statusText: 'Unauthorized'});
     tick();
@@ -189,8 +190,8 @@ describe('jwtInterceptor', () => {
     refresh.flush({accessToken: NEW_ACCESS, refreshToken: NEW_REFRESH});
     tick();
 
-    // And the original request is retried with the new bearer + the retry guard header.
-    const retried = httpTesting.expectOne('/api/secure');
+    // And the original request is retried with the new bearer without a network retry header.
+    const retried = httpTesting.expectOne(`${environment.api.product.url}/api/secure`);
     expect(retried.request.headers.get('Authorization')).toBe(`Bearer ${NEW_ACCESS}`);
     // The retried request must NOT re-trigger another refresh if it also fails.
     expect(retried.request.context.get(AUTH_RETRY_CONTEXT)).toBeTrue();
@@ -206,15 +207,15 @@ describe('jwtInterceptor', () => {
     tokenService.accessToken = OLD_ACCESS;
     tokenService.refreshToken = OLD_REFRESH;
 
-    http.get('/a').subscribe({next: () => {
+    http.get(`${environment.api.product.url}/a`).subscribe({next: () => {
     }, error: () => {
     }});
-    http.get('/b').subscribe({next: () => {
+    http.get(`${environment.api.product.url}/b`).subscribe({next: () => {
     }, error: () => {
     }});
 
-    const reqA = httpTesting.expectOne('/a');
-    const reqB = httpTesting.expectOne('/b');
+    const reqA = httpTesting.expectOne(`${environment.api.product.url}/a`);
+    const reqB = httpTesting.expectOne(`${environment.api.product.url}/b`);
     reqA.flush('', {status: 401, statusText: 'Unauthorized'});
     tick();
     reqB.flush('', {status: 401, statusText: 'Unauthorized'});
@@ -225,8 +226,8 @@ describe('jwtInterceptor', () => {
     refresh.flush({accessToken: NEW_ACCESS, refreshToken: NEW_REFRESH});
     tick();
 
-    httpTesting.expectOne('/a').flush({});
-    httpTesting.expectOne('/b').flush({});
+    httpTesting.expectOne(`${environment.api.product.url}/a`).flush({});
+    httpTesting.expectOne(`${environment.api.product.url}/b`).flush({});
     tick();
     httpTesting.verify();
   }));
@@ -237,15 +238,15 @@ describe('jwtInterceptor', () => {
     tokenService.refreshToken = OLD_REFRESH;
 
     let error: any;
-    http.get('/api/secure').subscribe({error: (e) => (error = e)});
+    http.get(`${environment.api.product.url}/api/secure`).subscribe({error: (e) => (error = e)});
 
-    const first = httpTesting.expectOne('/api/secure');
+    const first = httpTesting.expectOne(`${environment.api.product.url}/api/secure`);
     first.flush('', {status: 401, statusText: 'Unauthorized'});
     tick();
     const refresh = httpTesting.expectOne(REFRESH_URL);
     refresh.flush({accessToken: NEW_ACCESS, refreshToken: NEW_REFRESH});
     tick();
-    const retried = httpTesting.expectOne('/api/secure');
+    const retried = httpTesting.expectOne(`${environment.api.product.url}/api/secure`);
     expect(retried.request.context.get(AUTH_RETRY_CONTEXT)).toBeTrue();
     retried.flush('', {status: 401, statusText: 'Unauthorized'});
     tick();
@@ -262,8 +263,8 @@ describe('jwtInterceptor', () => {
     tokenService.refreshToken = OLD_REFRESH;
 
     let firstError: unknown;
-    http.get('/first').subscribe({error: (error: unknown) => (firstError = error)});
-    httpTesting.expectOne('/first').flush('', {status: 401, statusText: 'Unauthorized'});
+    http.get(`${environment.api.product.url}/first`).subscribe({error: (error: unknown) => (firstError = error)});
+    httpTesting.expectOne(`${environment.api.product.url}/first`).flush('', {status: 401, statusText: 'Unauthorized'});
     tick();
     httpTesting.expectOne(REFRESH_URL);
 
@@ -276,14 +277,14 @@ describe('jwtInterceptor', () => {
     tokenService.accessToken = SECOND_ACCESS;
     tokenService.refreshToken = SECOND_REFRESH;
     let secondBody: unknown;
-    http.get('/second').subscribe({next: (body: unknown) => (secondBody = body)});
-    httpTesting.expectOne('/second').flush('', {status: 401, statusText: 'Unauthorized'});
+    http.get(`${environment.api.product.url}/second`).subscribe({next: (body: unknown) => (secondBody = body)});
+    httpTesting.expectOne(`${environment.api.product.url}/second`).flush('', {status: 401, statusText: 'Unauthorized'});
     tick();
 
     const secondRefresh = httpTesting.expectOne(REFRESH_URL);
     secondRefresh.flush({accessToken: NEW_ACCESS, refreshToken: NEW_REFRESH});
     tick();
-    httpTesting.expectOne('/second').flush({ok: true});
+    httpTesting.expectOne(`${environment.api.product.url}/second`).flush({ok: true});
     tick();
 
     expect(secondBody).toEqual({ok: true});
@@ -297,12 +298,12 @@ describe('jwtInterceptor', () => {
     tokenService.refreshToken = OLD_REFRESH;
 
     let error: unknown;
-    http.get('/api/secure').subscribe({error: (e: unknown) => (error = e)});
-    httpTesting.expectOne('/api/secure').flush('', {status: 401, statusText: 'Unauthorized'});
+    http.get(`${environment.api.product.url}/api/secure`).subscribe({error: (e: unknown) => (error = e)});
+    httpTesting.expectOne(`${environment.api.product.url}/api/secure`).flush('', {status: 401, statusText: 'Unauthorized'});
     tick();
     httpTesting.expectOne(REFRESH_URL).flush({accessToken: NEW_ACCESS, refreshToken: NEW_REFRESH});
     tick();
-    httpTesting.expectOne('/api/secure').flush('', {status: 400, statusText: 'Bad Request'});
+    httpTesting.expectOne(`${environment.api.product.url}/api/secure`).flush('', {status: 400, statusText: 'Bad Request'});
     tick();
 
     expect(error).toBeTruthy();

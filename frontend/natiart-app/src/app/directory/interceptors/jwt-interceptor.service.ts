@@ -1,53 +1,43 @@
 import {HttpContextToken, HttpInterceptorFn} from '@angular/common/http';
-import {inject} from '@angular/core';
+import {inject, Injector} from '@angular/core';
 import {Router} from "@angular/router";
 import {catchError, switchMap, throwError} from "rxjs";
+import {AuthenticationService} from "../service/authentication.service";
 import {TokenService} from "../service/token.service";
 import {environment} from "../../../environments/environment";
-import {AuthenticationService} from "../service/authentication.service";
 
-const viaCepHostname = (): string => {
+const parsedUrl = (url: string): URL | null => {
   try {
-    return new URL(environment.api.viaCep.url).hostname;
+    return new URL(url, window.location.origin);
   } catch {
-    return 'viacep.com.br';
+    return null;
   }
 };
 
-const isExcludedDomain = (url: string): boolean => {
-  try {
-    const cleanUrl = url.startsWith('http') ? url : `https://${url}`;
-    const hostname = new URL(cleanUrl).hostname;
-    return hostname.endsWith(viaCepHostname());
-  } catch {
+const basePath = (url: URL): string => url.pathname.replace(/\/+$/, '');
+
+const isWithinApi = (request: URL, apiUrl: string): boolean => {
+  const api = parsedUrl(apiUrl);
+  if (!api || request.origin !== api.origin) {
     return false;
   }
+  const path = basePath(api);
+  return path === '' || request.pathname === path || request.pathname.startsWith(`${path}/`);
 };
 
 const isEndpoint = (url: string, endpoints: string[]): boolean => {
-  const base: string = environment.api.directory.url;
-  for (const endpoint of endpoints) {
-    if (url === endpoint || url === `${base}${endpoint}`) {
-      return true;
-    }
-    try {
-      if (/^https?:\/\//i.test(url)) {
-        const parsed: URL = new URL(url);
-        const baseParsed: URL = new URL(base);
-        if (parsed.origin === baseParsed.origin && parsed.pathname === endpoint) {
-          return true;
-        }
-      } else {
-        const parsed: URL = new URL(url, 'http://placeholder.local');
-        if (parsed.pathname === endpoint) {
-          return true;
-        }
-      }
-    } catch {
-      // Unparseable URL: fail closed, it is not an exempt endpoint.
-    }
+  const request = parsedUrl(url);
+  const directory = parsedUrl(environment.api.directory.url);
+  if (!request || !directory || !isWithinApi(request, environment.api.directory.url)) {
+    return false;
   }
-  return false;
+  return endpoints.some(endpoint => request.pathname === `${basePath(directory)}/${endpoint.replace(/^\/+/, '')}`);
+};
+
+const isConfiguredApiUrl = (url: string): boolean => {
+  const request = parsedUrl(url);
+  return request !== null && [environment.api.directory.url, environment.api.product.url]
+    .some(apiUrl => isWithinApi(request, apiUrl));
 };
 
 const directoryAuthEndpoints = (): string[] => {
@@ -65,25 +55,30 @@ const isLogoutRequest = (url: string): boolean =>
   isEndpoint(url, [environment.api.directory.endpoints.logout]);
 
 export const AUTH_RETRY_CONTEXT = new HttpContextToken<boolean>(() => false);
-
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
-  if (isExcludedDomain(req.url) || isAuthRequest(req.url) || isRefreshTokenRequest(req.url)) {
+  if (!isConfiguredApiUrl(req.url) || isAuthRequest(req.url) || isRefreshTokenRequest(req.url)) {
     return next(req);
   }
 
   const tokenService = inject(TokenService);
   const router = inject(Router);
-  const authenticationService = inject(AuthenticationService);
+  const injector = inject(Injector);
 
   const alreadyRetried = req.context.get(AUTH_RETRY_CONTEXT);
 
-  const cloned = (tokenService.accessToken && !alreadyRetried)
+  // A caller-supplied credential belongs to the caller. The interceptor only
+  // manages credentials for requests that do not already carry Authorization.
+  if (req.headers.has('Authorization') && !alreadyRetried) {
+    return next(req);
+  }
+
+  const cloned = tokenService.accessToken && !alreadyRetried
     ? req.clone({setHeaders: {Authorization: `Bearer ${tokenService.accessToken}`}})
     : req;
 
   return next(cloned).pipe(
     catchError(error => {
-      if (error.status === 401 && !isAuthRequest(req.url) && !isRefreshTokenRequest(req.url) && !alreadyRetried) {
+      if (error.status === 401 && !alreadyRetried) {
         if (isLogoutRequest(req.url)) {
           // Explicit logout must never mint fresh tokens: end the local
           // session instead of refreshing-then-retrying the signout.
@@ -95,17 +90,15 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
           router.navigate(['/login']);
           return throwError(() => error);
         }
-        return authenticationService.refreshAccessToken().pipe(
-          catchError(refreshError => {
-            if (refreshError.status === 401 || refreshError.status === 403) {
-              router.navigate(['/login']);
-            }
-            return throwError(() => refreshError);
-          }),
+        return injector.get(AuthenticationService).refreshAccessToken().pipe(
           switchMap(token => next(req.clone({
             setHeaders: {Authorization: `Bearer ${token}`},
-            context: req.context.set(AUTH_RETRY_CONTEXT, true),
+            context: req.context.set(AUTH_RETRY_CONTEXT, true)
           }))),
+          catchError(refreshError => {
+            if (refreshError.status === 401 || refreshError.status === 403) router.navigate(['/login']);
+            return throwError(() => refreshError);
+          })
         );
       }
       return throwError(() => error);
