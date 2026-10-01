@@ -162,6 +162,12 @@ public class OrderManagerImpl implements OrderManager {
                 if (winner.isPresent()) return returnReplayOrReject(winner.get(), fingerprint);
             }
             throw exception;
+        } catch (IllegalArgumentException | ResourceNotFoundException e) {
+            if (normalizedKey != null) {
+                final Optional<CustomerOrder> winner = findOrder(ownerExternalId, normalizedKey);
+                if (winner.isPresent()) return returnReplayOrReject(winner.get(), fingerprint);
+            }
+            throw new com.portcelana.natiart.controller.helper.OrderCreationRejectedException(e);
         } catch (DataIntegrityViolationException e) {
             // The unique index is the serialization point. This code runs
             // after the losing transaction has rolled back, so reloading here

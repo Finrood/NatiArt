@@ -117,21 +117,16 @@ class ArtworkRecoveryHttpIntegrationTest {
                 .thenAnswer(invocation -> {
                     final List<com.portcelana.natiart.dto.OrderItemDto> items = invocation.getArgument(3);
                     return new com.portcelana.natiart.model.ShippingQuote()
-                            .setItems(items.stream()
-                                    .map(item -> new com.portcelana.natiart.model.ShippingQuoteItem(
-                                            product.getId(),
-                                            PersonalizationRules.canonical(
-                                                    item.getPersonalization().getPersonalizationOptions()),
-                                            item.getQuantity(),
-                                            BigDecimal.TEN,
-                                            product.getVersion()))
-                                    .toList())
-                            .setShippingAmount(BigDecimal.ZERO)
-                            .setItemAmount(BigDecimal.TEN)
-                            .setTotalAmount(BigDecimal.TEN)
-                            .setServiceId("1")
-                            .setDestinationPostalCode("88010000")
-                            .setExpiresAt(java.time.Instant.now().plusSeconds(900));
+                        .setItems(items.stream()
+                                .map(item -> new com.portcelana.natiart.model.ShippingQuoteItem(product.getId(),
+                                        PersonalizationRules.canonical(item.getPersonalization() == null ? Map.of() : item.getPersonalization().getPersonalizationOptions()),
+                                        item.getQuantity(), BigDecimal.TEN, product.getVersion())).toList())
+                        .setShippingAmount(BigDecimal.ZERO)
+                        .setItemAmount(BigDecimal.TEN)
+                        .setTotalAmount(BigDecimal.TEN)
+                        .setServiceId("1")
+                        .setDestinationPostalCode("88010000")
+                        .setExpiresAt(java.time.Instant.now().plusSeconds(900));
                 });
         return product;
     }
@@ -179,10 +174,31 @@ class ArtworkRecoveryHttpIntegrationTest {
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType("application/json")
                         .content(json.writeValueAsString(request(product, foreign.getId()))))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isBadRequest());
         assertEquals(before, orders.count());
         assertEquals(2, products.findById(product.getId()).orElseThrow().getStockQuantity());
         assertEquals(null, uploads.findById(foreign.getId()).orElseThrow().getConsumedAt());
+    }
+
+    @org.junit.jupiter.api.Test
+    void stockRejectionIsAuthoritativeAndCorrectedOrderCreatesOnce() throws Exception {
+        final Product product = product();
+        final long before = orders.count();
+        final OrderDto rejected = request(product, UUID.randomUUID().toString());
+        rejected.getItems().getFirst().setQuantity(3).setPersonalization(null);
+        http.perform(post("/orders/create").header("Idempotency-Key", "rejected-stock")
+                .contentType("application/json").content(json.writeValueAsString(rejected)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("ORDER_CREATION_REJECTED"))
+                .andExpect(jsonPath("$.orderCreated").value(false));
+        assertEquals(before, orders.count());
+        assertEquals(2, products.findById(product.getId()).orElseThrow().getStockQuantity());
+        rejected.getItems().getFirst().setQuantity(1);
+        http.perform(post("/orders/create").header("Idempotency-Key", "corrected-stock")
+                .contentType("application/json").content(json.writeValueAsString(rejected)))
+                .andExpect(status().isOk());
+        assertEquals(before + 1, orders.count());
+        assertEquals(1, products.findById(product.getId()).orElseThrow().getStockQuantity());
     }
 
     @ParameterizedTest
