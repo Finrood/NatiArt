@@ -22,6 +22,18 @@ describe('CheckoutComponent', () => {
   let isLoggedInSubject: BehaviorSubject<boolean>;
   let currentUserSubject: BehaviorSubject<User | null>;
 
+  it('requires a house number or N/A and bounds it to the persisted size', () => {
+    const houseNumber = component.checkoutForm.get('shippingInfo.houseNumber')!;
+    houseNumber.setValue('');
+    expect(houseNumber.hasError('required')).toBeTrue();
+    houseNumber.setValue('N/A');
+    expect(houseNumber.valid).toBeTrue();
+    houseNumber.setValue('a'.repeat(255));
+    expect(houseNumber.valid).toBeTrue();
+    houseNumber.setValue('a'.repeat(256));
+    expect(houseNumber.hasError('maxlength')).toBeTrue();
+  });
+
   const loggedInUser: User = {
     id: 'u1',
     username: 'user@example.test',
@@ -125,6 +137,7 @@ describe('CheckoutComponent', () => {
       neighborhood: 'Centro',
       zipCode: '01001000',
       street: 'Praca da Se',
+      houseNumber: '10',
       items: [],
       deliveryAmount: 7.5,
       totalAmount: 107.4,
@@ -138,12 +151,38 @@ describe('CheckoutComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('rejects an address longer than the stored column before checkout', () => {
-    const street = component.checkoutForm.get('shippingInfo.street')!;
-    street.setValue('x'.repeat(256));
-    expect(street.invalid).toBeTrue();
-    street.setValue('x'.repeat(255));
-    expect(street.valid).toBeTrue();
+  it('preserves a buyer-edited address and house number across user refreshes', () => {
+    const shipping = component.checkoutForm.get('shippingInfo')!;
+    shipping.get('street')!.setValue('Rua Escolhida');
+    shipping.get('houseNumber')!.setValue('42');
+    shipping.markAsDirty();
+
+    currentUserSubject.next({
+      ...loggedInUser,
+      profile: {...loggedInUser.profile!, street: 'Rua do Perfil', city: 'Outra Cidade'}
+    });
+
+    expect(shipping.get('street')!.value).toBe('Rua Escolhida');
+    expect(shipping.get('houseNumber')!.value).toBe('42');
+    expect(shipping.get('city')!.value).toBe('Sao Paulo');
+  });
+
+  it('does not overwrite an address typed before a delayed profile arrives', () => {
+    fixture.destroy();
+    currentUserSubject.next(null);
+    const delayedFixture = TestBed.createComponent(CheckoutComponent);
+    delayedFixture.detectChanges();
+    const shipping = delayedFixture.componentInstance.checkoutForm.get('shippingInfo')!;
+    shipping.get('street')!.setValue('Rua Manual');
+    shipping.get('houseNumber')!.setValue('15');
+    shipping.markAsDirty();
+
+    currentUserSubject.next(loggedInUser);
+
+    expect(shipping.get('street')!.value).toBe('Rua Manual');
+    expect(shipping.get('houseNumber')!.value).toBe('15');
+    expect(shipping.get('country')!.value).toBe('Brazil');
+    delayedFixture.destroy();
   });
 
   it('keeps checkout errors visible until dismissed (O3)', async () => {
@@ -184,10 +223,10 @@ describe('CheckoutComponent', () => {
       neighborhood: 'Centro',
       zipCode: '01001-000',
       street: 'Praca da Se',
+      houseNumber: '10',
       complement: '',
     });
     component.checkoutForm.get('paymentInfo.paymentMethod')?.setValue('PIX');
-    component.checkoutForm.get('billingInfo')?.patchValue({ zipCode: '01001-000' });
     expect(component.checkoutForm.invalid).toBeFalse();
 
     const first: Promise<void> = component.onSubmit();
@@ -257,10 +296,10 @@ describe('CheckoutComponent', () => {
       neighborhood: 'Centro',
       zipCode: '01001-000',
       street: 'Praca da Se',
+      houseNumber: '10',
       complement: '',
     });
     component.checkoutForm.get('paymentInfo.paymentMethod')?.setValue('PIX');
-    component.checkoutForm.get('billingInfo')?.patchValue({ zipCode: '01001-000' });
     expect(component.checkoutForm.invalid).toBeFalse();
 
     await component.onSubmit();

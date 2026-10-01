@@ -47,6 +47,8 @@ public class CustomerOrder {
 
     private String street;
 
+    private String houseNumber;
+
     private String complement;
 
     @Column(nullable = false)
@@ -177,6 +179,15 @@ public class CustomerOrder {
 
     public CustomerOrder setStreet(String street) {
         this.street = street;
+        return this;
+    }
+
+    public String getHouseNumber() {
+        return houseNumber;
+    }
+
+    public CustomerOrder setHouseNumber(String houseNumber) {
+        this.houseNumber = houseNumber;
         return this;
     }
 

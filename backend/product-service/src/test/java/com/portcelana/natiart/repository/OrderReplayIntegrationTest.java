@@ -111,9 +111,15 @@ class OrderReplayIntegrationTest {
 
     private OrderDto orderRequest(String productId) {
         return new OrderDto()
+                .setHouseNumber("N/A")
                 .setFirstname("Jane")
                 .setLastname("Customer")
                 .setEmail("jane@example.com")
+                .setCountry("Brazil")
+                .setState("SP")
+                .setCity("City")
+                .setNeighborhood("Area")
+                .setStreet("Street")
                 .setZipCode("01001000")
                 .setItems(List.of(new OrderItemDto().setProductId(productId).setQuantity(1)));
     }

@@ -77,6 +77,7 @@ public class OrderCreationService {
                 .setNeighborhood(orderDto.getNeighborhood())
                 .setZipCode(destinationCep)
                 .setStreet(orderDto.getStreet())
+                .setHouseNumber(orderDto.getHouseNumber())
                 .setComplement(orderDto.getComplement())
                 .setDeliveryAmount(serverDeliveryAmount);
 
@@ -119,6 +120,7 @@ public class OrderCreationService {
     }
 
     static String validateContactDetails(OrderDto orderDto) {
+        orderDto.setHouseNumber(DomainValidation.requiredText(orderDto.getHouseNumber(), "houseNumber", 255));
         orderDto.setFirstname(DomainValidation.requiredText(orderDto.getFirstname(), "firstname", 255));
         orderDto.setLastname(DomainValidation.requiredText(orderDto.getLastname(), "lastname", 255));
         orderDto.setEmail(DomainValidation.requiredText(orderDto.getEmail(), "email", 255));

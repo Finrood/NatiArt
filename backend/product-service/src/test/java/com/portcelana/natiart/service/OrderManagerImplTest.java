@@ -66,6 +66,7 @@ class OrderManagerImplTest {
 
     private OrderDto validOrder() {
         return new OrderDto()
+                .setHouseNumber("N/A")
                 .setFirstname("Test")
                 .setLastname("Customer")
                 .setEmail("customer@example.com")
@@ -190,8 +191,10 @@ class OrderManagerImplTest {
 
     @Test
     void createOrderRejectsDuplicateProductLinesBeforeReservingStock() {
-        OrderDto dto =
-                new OrderDto().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p1", 1), item("p1", 1)));
+        OrderDto dto = new OrderDto()
+                .setHouseNumber("N/A")
+                .setDeliveryAmount(BigDecimal.ZERO)
+                .setItems(List.of(item("p1", 1), item("p1", 1)));
 
         assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
         verify(productManager, never()).getProductsOrDie(any());
@@ -400,6 +403,7 @@ class OrderManagerImplTest {
     @Test
     void createOrderRejectsMissingContactDetailsBeforeReservingStock() {
         OrderDto dto = new OrderDto()
+                .setHouseNumber("N/A")
                 .setFirstname(null)
                 .setLastname("Customer")
                 .setEmail("customer@example.com")

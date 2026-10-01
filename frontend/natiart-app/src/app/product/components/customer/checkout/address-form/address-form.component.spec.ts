@@ -2,21 +2,23 @@ import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testin
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
-import { FormBuilder, FormGroup } from '@angular/forms';
-import { Subject, of } from 'rxjs';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Subject, of, throwError } from 'rxjs';
 
 import { AddressFormComponent } from './address-form.component';
 import { SignupService } from '../../../../../directory/service/signup.service';
 import { ViaCEPResponse } from '../../../../../directory/models/viaCEPResponse.model';
+import { CustomCepValidators } from '../../../../../directory/validator/CustomCepValidators';
 
 function makeAddressForm(fb: FormBuilder): FormGroup {
   return fb.group({
-    zipCode: [''],
-    street: [''],
-    city: [''],
-    neighborhood: [''],
-    state: [''],
-    country: [''],
+    zipCode: ['', [Validators.required, CustomCepValidators.validCep()]],
+    street: ['', Validators.required],
+    city: ['', Validators.required],
+    neighborhood: ['', Validators.required],
+    state: ['', Validators.required],
+    country: ['Brazil', Validators.required],
+    houseNumber: ['', Validators.required],
     complement: ['']
   });
 }
@@ -42,6 +44,16 @@ describe('AddressFormComponent', () => {
       imports: [AddressFormComponent],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     }).compileComponents();
+  });
+
+  it('renders the house-number limit and no-number instruction', () => {
+    const fixture = TestBed.createComponent(AddressFormComponent);
+    fixture.componentInstance.addressFormGroup = makeAddressForm(TestBed.inject(FormBuilder));
+    fixture.detectChanges();
+    const input: HTMLInputElement = fixture.nativeElement.querySelector('[formControlName="houseNumber"]');
+    expect(input.maxLength).toBe(255);
+    expect(fixture.nativeElement.textContent).toContain('Enter N/A');
+    fixture.destroy();
   });
 
   it('should create', () => {
@@ -71,21 +83,33 @@ describe('AddressFormComponent', () => {
     fixture.destroy();
   }));
 
-  it('does not look up a malformed CEP with eight embedded digits', fakeAsync(() => {
-    const signupService: SignupService = TestBed.inject(SignupService);
-    const lookupSpy = spyOn(signupService, 'getAddressFromZipCode');
-    const fixture = TestBed.createComponent(AddressFormComponent);
-    fixture.componentInstance.addressFormGroup = makeAddressForm(TestBed.inject(FormBuilder));
-    fixture.detectChanges();
+  for (const failure of ['not found', 'network error'] as const) {
+    it(`allows a complete manual address after a CEP ${failure}`, fakeAsync(() => {
+      const signupService = TestBed.inject(SignupService);
+      spyOn(signupService, 'getAddressFromZipCode').and.returnValue(
+        failure === 'not found'
+          ? of({...viaCepResponse(''), erro: true})
+          : throwError(() => new Error('offline'))
+      );
+      const fixture = TestBed.createComponent(AddressFormComponent);
+      const form = makeAddressForm(TestBed.inject(FormBuilder));
+      fixture.componentInstance.addressFormGroup = form;
+      fixture.detectChanges();
 
-    const zip = fixture.componentInstance.addressFormGroup.get('zipCode')!;
-    zip.setValue('abc88010000');
-    tick(400);
+      form.get('zipCode')!.setValue('01001000');
+      tick(400);
+      expect(form.get('zipCode')!.valid).toBeTrue();
+      expect(form.get('country')!.value).toBe('Brazil');
+      expect(fixture.componentInstance.errorMessage).toContain('manually');
 
-    expect(zip.hasError('invalidCep')).toBeTrue();
-    expect(lookupSpy).not.toHaveBeenCalled();
-    fixture.destroy();
-  }));
+      form.patchValue({
+        state: 'SP', city: 'Sao Paulo', neighborhood: 'Centro',
+        street: 'Rua Manual', houseNumber: '10'
+      });
+      expect(form.valid).toBeTrue();
+      fixture.destroy();
+    }));
+  }
 
   it('drops a stale lookup response when a newer CEP is entered', fakeAsync(() => {
     const first$: Subject<ViaCEPResponse> = new Subject<ViaCEPResponse>();
@@ -103,12 +127,13 @@ describe('AddressFormComponent', () => {
     expect(lookupSpy).toHaveBeenCalledTimes(1);
 
     form.get('zipCode')!.setValue('22222222');
+    // Cancel immediately on the value change, even before the next debounce expires.
+    first$.next({...viaCepResponse('Rua Antiga'), erro: true});
+    tick(0);
+    expect(form.get('street')!.value).not.toBe('Rua Antiga');
     tick(400);
     expect(lookupSpy).toHaveBeenCalledTimes(2);
 
-    // The stale first response arrives after the second lookup started: ignored.
-    first$.next({...viaCepResponse('Rua Antiga'), erro: true});
-    tick(0);
     second$.next(viaCepResponse('Rua Nova'));
     tick(0);
 

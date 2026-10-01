@@ -51,13 +51,13 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   isLoggedIn$: Observable<boolean>;
   currentUser$: Observable<User | null>;
   isLoading$: Observable<boolean>;
-  sameShippingAsBilling = true;
   currentStep = 1;
 
   private currentOrder: OrderDto | null = null;
   private checkoutFingerprint: string | null = null;
   private orderIdempotencyKey = crypto.randomUUID();
   private paymentIdempotencyKey = crypto.randomUUID();
+  private hasPrefilledProfile = false;
 
   private destroy$ = new Subject<void>();
 
@@ -79,22 +79,14 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         phone: ['', [Validators.pattern('[()0-9 -]*'), Validators.maxLength(255)]],
       }),
       shippingInfo: this._fb.group({
-        country: ['Brazil', Validators.required],
+        country: ['Brazil', [Validators.required, Validators.maxLength(255)]],
         state: ['', [Validators.required, Validators.maxLength(255)]],
         city: ['', [Validators.required, Validators.maxLength(255)]],
         neighborhood: ['', [Validators.required, Validators.maxLength(255)]],
         zipCode: ['', [Validators.required, CustomCepValidators.validCep()]],
         street: ['', [Validators.required, Validators.maxLength(255)]],
+        houseNumber: ['', [Validators.required, Validators.maxLength(255)]],
         complement: ['', Validators.maxLength(255)],
-      }),
-      billingInfo: this._fb.group({
-        country: ['Brazil'],
-        state: [''],
-        city: [''],
-        neighborhood: [''],
-        zipCode: ['', Validators.pattern(/^\d{5}-\d{3}$/)],
-        street: [''],
-        complement: [''],
       }),
       paymentInfo: this._fb.group({
         paymentMethod: ['', Validators.required],
@@ -154,35 +146,37 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       .pipe(
         takeUntil(this.destroy$),
         tap(user => {
-          if (user && user.profile) {
-            this.checkoutForm.patchValue({
-              userInfo: {
-                firstname: user.profile.firstname,
-                lastname: user.profile.lastname,
-                email: user.username,
-                cpf: this.formatCpf(user.profile.cpf),
-                phone: user.profile.phone,
-              },
-              shippingInfo: {
-                country: user.profile.country || 'Brazil',
-                state: user.profile.state,
-                city: user.profile.city,
-                neighborhood: user.profile.neighborhood,
-                zipCode: user.profile.zipCode,
-                street: user.profile.street,
-                complement: user.profile.complement,
-              },
+          if (!user?.profile || this.hasPrefilledProfile) {
+            return;
+          }
+          this.hasPrefilledProfile = true;
+          const userInfo = this.checkoutForm.get('userInfo');
+          const shippingInfo = this.checkoutForm.get('shippingInfo');
+          if (userInfo?.pristine) {
+            userInfo.patchValue({
+              firstname: user.profile.firstname,
+              lastname: user.profile.lastname,
+              email: user.username,
+              cpf: this.formatCpf(user.profile.cpf),
+              phone: user.profile.phone,
             });
-            if (this.sameShippingAsBilling) {
-              this.checkoutForm.get('billingInfo')?.patchValue(this.checkoutForm.get('shippingInfo')?.value);
+            if (userInfo.invalid) {
+              userInfo.markAllAsTouched();
             }
-
-            // Mark controls as touched if they are invalid after pre-filling
-            if (this.checkoutForm.get('userInfo')?.invalid) {
-              this.checkoutForm.get('userInfo')?.markAllAsTouched();
-            }
-            if (this.checkoutForm.get('shippingInfo')?.invalid) {
-              this.checkoutForm.get('shippingInfo')?.markAllAsTouched();
+          }
+          if (shippingInfo?.pristine) {
+            shippingInfo.patchValue({
+              country: user.profile.country || 'Brazil',
+              state: user.profile.state,
+              city: user.profile.city,
+              neighborhood: user.profile.neighborhood,
+              zipCode: user.profile.zipCode,
+              street: user.profile.street,
+              complement: user.profile.complement,
+            });
+            // House number is deliberately left to the buyer; profile has no number field.
+            if (shippingInfo.invalid) {
+              shippingInfo.markAllAsTouched();
             }
           }
         })
@@ -193,11 +187,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.checkoutForm.get('paymentInfo.paymentMethod')?.valueChanges
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.updatePaymentValidators());
-  }
-
-  onSameShippingChange(isSame: boolean): void {
-    this.sameShippingAsBilling = isSame;
-    this._cdr.detectChanges();
   }
 
   updatePaymentValidators(): void {
@@ -313,6 +302,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       neighborhood: shippingInfo.neighborhood,
       zipCode: shippingInfo.zipCode.replace(/\D/g, ''),
       street: shippingInfo.street,
+      houseNumber: shippingInfo.houseNumber,
       complement: shippingInfo.complement,
       items,
       deliveryAmount: 0,
