@@ -14,7 +14,6 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-admin-package-management',
-  standalone: true,
   imports: [
     AsyncPipe,
     ReactiveFormsModule,
@@ -42,8 +41,8 @@ export class PackageManagementComponent implements OnInit, AfterViewInit {
 
   @ViewChild('alertMessages') alertMessagesComponent!: AlertMessageComponent;
 
-  private readonly _packageService = inject(PackageService);
-  private readonly _fb = inject(FormBuilder);
+  private readonly _packageService: PackageService = inject(PackageService);
+  private readonly _fb: FormBuilder = inject(FormBuilder);
 
   constructor() {
     this.packageForm = this._fb.group({
@@ -114,7 +113,7 @@ export class PackageManagementComponent implements OnInit, AfterViewInit {
         if (generation === this.formGeneration) {
           this.closeModal();
         }
-        this.showAlert('Package created successfully', 'success');
+        this.showAlert($localize`Package created successfully`, 'success');
       },
       error: (error) => {
         reportError('package', error);
@@ -133,7 +132,7 @@ export class PackageManagementComponent implements OnInit, AfterViewInit {
         if (generation === this.formGeneration) {
           this.closeModal();
         }
-        this.showAlert('Package updated successfully', 'success');
+        this.showAlert($localize`Package updated successfully`, 'success');
       },
       error: (error) => {
         reportError('package', error);
@@ -144,23 +143,23 @@ export class PackageManagementComponent implements OnInit, AfterViewInit {
 
   deletePackage(id: string): void {
     const pack = this.packages.value.find(item => item.id === id);
-    if (!pack || !window.confirm(`Delete package "${pack.label}"?`)) {
+    if (!pack || !window.confirm($localize`Delete package "${pack.label}:PACKAGE_LABEL:"?`)) {
       return;
     }
     this._packageService.deletePackage(id).subscribe({
       next: () => {
         this.packages.next(this.packages.value.filter(p => p.id !== id));
-        this.showAlert('Package deleted successfully', 'success');
+        this.showAlert($localize`Package deleted successfully`, 'success');
       },
       error: (error: HttpErrorResponse) => {
         reportError('package', error);
-        let errorMessage = 'An error occurred while deleting the package.';
+        let errorMessage = $localize`An error occurred while deleting the package.`;
         if (error.status === 400) {
-          errorMessage = 'Package is used by products. Reassign those products before deleting this package.';
+          errorMessage = $localize`Package is used by products. Reassign those products before deleting this package.`;
         } else if (error.status === 404) {
-          errorMessage = 'Package not found. It may have been already deleted.';
+          errorMessage = $localize`Package not found. It may have been already deleted.`;
         } else if (error.status === 403) {
-          errorMessage = 'You do not have permission to delete this package.';
+          errorMessage = $localize`You do not have permission to delete this package.`;
         }
         this.showAlert(errorMessage, 'error');
       }
@@ -172,7 +171,7 @@ export class PackageManagementComponent implements OnInit, AfterViewInit {
       next: (response) => this.packages.next(response),
       error: (error) => {
         reportError('package', error);
-        this.showAlert('Unable to load packages. Please retry.', 'error');
+        this.showAlert($localize`Unable to load packages. Please retry.`, 'error');
       }
     });
   }
@@ -198,11 +197,11 @@ export class PackageManagementComponent implements OnInit, AfterViewInit {
 
   private writeErrorMessage(error: HttpErrorResponse): string {
     if (error.status === 409) {
-      return 'A package with this label already exists.';
+      return $localize`A package with this label already exists.`;
     }
     if (error.status === 0) {
-      return 'The package service is unavailable. Please retry.';
+      return $localize`The package service is unavailable. Please retry.`;
     }
-    return 'Unable to save the package. Your changes are still in the form.';
+    return $localize`Unable to save the package. Your changes are still in the form.`;
   }
 }

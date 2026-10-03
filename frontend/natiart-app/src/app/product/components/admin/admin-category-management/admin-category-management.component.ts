@@ -14,7 +14,6 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-admin-category-management',
-  standalone: true,
   imports: [CommonModule, ReactiveFormsModule, NatiartFormFieldComponent, AlertMessageComponent, ButtonComponent],
   templateUrl: './admin-category-management.component.html',
   styleUrls: ['./admin-category-management.component.css']
@@ -106,7 +105,7 @@ export class CategoryManagementComponent implements OnInit, AfterViewInit {
         if (generation === this.formGeneration) {
           this.closeModal();
         }
-        this.showAlert('Category created successfully', 'success');
+        this.showAlert($localize`Category created successfully`, 'success');
       },
       error: (error) => {
         reportError('category', error);
@@ -125,7 +124,7 @@ export class CategoryManagementComponent implements OnInit, AfterViewInit {
         if (generation === this.formGeneration) {
           this.closeModal();
         }
-        this.showAlert('Category updated successfully', 'success');
+        this.showAlert($localize`Category updated successfully`, 'success');
       },
       error: (error) => {
         reportError('category', error);
@@ -136,23 +135,23 @@ export class CategoryManagementComponent implements OnInit, AfterViewInit {
 
   deleteCategory(id: string): void {
     const category = this._categories$.value.find(item => item.id === id);
-    if (!category || !window.confirm(`Delete category "${category.label}"?`)) {
+    if (!category || !window.confirm($localize`Delete category "${category.label}:CATEGORY_LABEL:"?`)) {
       return;
     }
     this.categoryService.deleteCategory(id).subscribe({
       next: () => {
         this._categories$.next(this._categories$.value.filter(cat => cat.id !== id));
-        this.showAlert('Category deleted successfully', 'success');
+        this.showAlert($localize`Category deleted successfully`, 'success');
       },
       error: (error: HttpErrorResponse) => {
         reportError('category', error);
-        let errorMessage = 'An error occurred while deleting the category.';
+        let errorMessage = $localize`An error occurred while deleting the category.`;
         if (error.status === 400) {
-          errorMessage = 'Category is used by products. Reassign those products before deleting this category.';
+          errorMessage = $localize`Category is used by products. Reassign those products before deleting this category.`;
         } else if (error.status === 404) {
-          errorMessage = 'Category not found. It may have been already deleted.';
+          errorMessage = $localize`Category not found. It may have been already deleted.`;
         } else if (error.status === 403) {
-          errorMessage = 'You do not have permission to delete this category.';
+          errorMessage = $localize`You do not have permission to delete this category.`;
         }
         this.showAlert(errorMessage, 'error');
       }
@@ -178,7 +177,7 @@ export class CategoryManagementComponent implements OnInit, AfterViewInit {
       },
       error: (error) => {
         reportError('category', error);
-        this.showAlert('Unable to change category visibility. Please retry.', 'error');
+        this.showAlert($localize`Unable to change category visibility. Please retry.`, 'error');
       }
     });
   }
@@ -188,7 +187,7 @@ export class CategoryManagementComponent implements OnInit, AfterViewInit {
       next: (response) => this._categories$.next(response),
       error: (error) => {
         reportError('category', error);
-        this.showAlert('Unable to load categories. Please retry.', 'error');
+        this.showAlert($localize`Unable to load categories. Please retry.`, 'error');
       }
     });
   }
@@ -214,11 +213,11 @@ export class CategoryManagementComponent implements OnInit, AfterViewInit {
 
   private writeErrorMessage(error: HttpErrorResponse): string {
     if (error.status === 409) {
-      return 'A category with this label already exists.';
+      return $localize`A category with this label already exists.`;
     }
     if (error.status === 0) {
-      return 'The category service is unavailable. Please retry.';
+      return $localize`The category service is unavailable. Please retry.`;
     }
-    return 'Unable to save the category. Your changes are still in the form.';
+    return $localize`Unable to save the category. Your changes are still in the form.`;
   }
 }
