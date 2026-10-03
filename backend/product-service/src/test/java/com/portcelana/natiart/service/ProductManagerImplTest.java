@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
@@ -151,9 +152,22 @@ class ProductManagerImplTest {
         final BigDecimal boundary = new BigDecimal("99999999.99");
 
         final Product created = productManager.createProduct(
-                new ProductDto("Mug", boundary).setCategoryId("cat-1").setStockQuantity(0), null);
+                new ProductDto("Mug", boundary)
+                        .setCategoryId("cat-1")
+                        .setStockQuantity(0)
+                        .setWeightKg(BigDecimal.ONE),
+                null);
 
         assertEquals(boundary, created.getOriginalPrice());
+    }
+
+    @Test
+    void createProduct_missingShippingWeight_rejectsBeforePersistence() {
+        final ProductDto dto = new ProductDto("Mug", BigDecimal.TEN).setCategoryId("cat-1");
+
+        assertThrows(IllegalArgumentException.class, () -> productManager.createProduct(dto, null));
+
+        verifyNoInteractions(categoryManager, packageManager, productRepository, storageService);
     }
 
     @Test
@@ -162,8 +176,10 @@ class ProductManagerImplTest {
         when(categoryManager.getCategoryOrDie("cat-1")).thenReturn(category);
         when(packageManager.getPackage(null)).thenReturn(Optional.empty());
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        final ProductDto dto =
-                new ProductDto("  Mug  ", BigDecimal.TEN).setCategoryId("cat-1").setImages(null);
+        final ProductDto dto = new ProductDto("  Mug  ", BigDecimal.TEN)
+                .setCategoryId("cat-1")
+                .setWeightKg(BigDecimal.ONE)
+                .setImages(null);
 
         final Product created = productManager.createProduct(dto, null);
 
@@ -183,7 +199,8 @@ class ProductManagerImplTest {
                 .thenReturn(URI.create("file:products/stable.webp"));
 
         final Product created = productManager.createProduct(
-                new ProductDto("Mug", BigDecimal.TEN).setCategoryId("cat-1"), List.of(image));
+                new ProductDto("Mug", BigDecimal.TEN).setCategoryId("cat-1").setWeightKg(BigDecimal.ONE),
+                List.of(image));
 
         verify(storageService)
                 .uploadFile(

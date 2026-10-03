@@ -1,4 +1,4 @@
-import {Component, OnInit, ViewChild} from '@angular/core';
+import {Component, OnInit, ViewChild, inject} from '@angular/core';
 import {HttpErrorResponse} from '@angular/common/http';
 import {PackageService} from '../../../service/package.service';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
@@ -12,7 +12,6 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-admin-package-management',
-  standalone: true,
   imports: [
     AsyncPipe,
     ReactiveFormsModule,
@@ -32,8 +31,11 @@ export class PackageManagementComponent implements OnInit {
 
   @ViewChild('alertMessages') alertMessagesComponent!: AlertMessageComponent;
 
-  constructor(private packageService: PackageService, private fb: FormBuilder) {
-    this.packageForm = this.fb.group({
+  private readonly _packageService: PackageService = inject(PackageService);
+  private readonly _fb: FormBuilder = inject(FormBuilder);
+
+  constructor() {
+    this.packageForm = this._fb.group({
       id: [''],
       label: ['', [Validators.required, Validators.maxLength(255), Validators.pattern(/\S/)]],
       height: ['', [Validators.required, Validators.min(0.01), Validators.max(200)]],
@@ -84,7 +86,7 @@ export class PackageManagementComponent implements OnInit {
 
   addPackage(): void {
     const pack: Package = this.packageForm.value;
-    this.packageService.addPackage(pack).subscribe({
+    this._packageService.addPackage(pack).subscribe({
       next: (response) => {
         this.packages.next([...this.packages.value, response]);
         this.closeModal();
@@ -95,7 +97,7 @@ export class PackageManagementComponent implements OnInit {
 
   updatePackage(): void {
     const pack: Package = this.packageForm.value;
-    this.packageService.updatePackage(pack.id!, pack).subscribe({
+    this._packageService.updatePackage(pack.id!, pack).subscribe({
       next: (response: Package) => {
         this.packages.next(
           this.packages.value.map(p => p.id === response.id ? response : p)
@@ -107,20 +109,20 @@ export class PackageManagementComponent implements OnInit {
   }
 
   deletePackage(id: string): void {
-    this.packageService.deletePackage(id).subscribe({
+    this._packageService.deletePackage(id).subscribe({
       next: () => {
         this.packages.next(this.packages.value.filter(p => p.id !== id));
-        this.showAlert('Package deleted successfully', 'success');
+        this.showAlert($localize`Package deleted successfully`, 'success');
       },
       error: (error: HttpErrorResponse) => {
         reportError('package', error);
-        let errorMessage = 'An error occurred while deleting the package.';
+        let errorMessage = $localize`An error occurred while deleting the package.`;
         if (error.status === 400) {
-          errorMessage = 'Package contains existing products. Delete them before deleting this package';
+          errorMessage = $localize`Package contains existing products. Delete them before deleting this package`;
         } else if (error.status === 404) {
-          errorMessage = 'Package not found. It may have been already deleted.';
+          errorMessage = $localize`Package not found. It may have been already deleted.`;
         } else if (error.status === 403) {
-          errorMessage = 'You do not have permission to delete this package.';
+          errorMessage = $localize`You do not have permission to delete this package.`;
         }
         this.showAlert(errorMessage, 'error');
       }
@@ -128,7 +130,7 @@ export class PackageManagementComponent implements OnInit {
   }
 
   private getPackages(): void {
-    this.packageService.getPackages().subscribe({
+    this._packageService.getPackages().subscribe({
       next: (response) => this.packages.next(response),
       error: (error) => reportError('package', error)
     });

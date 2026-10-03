@@ -35,19 +35,19 @@ export class PasswordRequirementsComponent {
     const results = checkPasswordRequirements(this.password, this.requirements);
     return [
       {
-        text: `Minimum ${this.requirements.minLength} characters`,
+        text: $localize`Minimum ${this.requirements.minLength}:MIN_LENGTH: characters`,
         valid: results.hasMinLength
       },
       {
-        text: 'Contains lowercase letter',
+        text: $localize`Contains lowercase letter`,
         valid: results.hasLower
       },
       {
-        text: 'Contains uppercase letter',
+        text: $localize`Contains uppercase letter`,
         valid: results.hasUpper
       },
       {
-        text: 'Contains number',
+        text: $localize`Contains number`,
         valid: results.hasNumber
       }
     ];

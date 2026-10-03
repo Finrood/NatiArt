@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
+import com.portcelana.natiart.controller.helper.ShippingQuoteNotValidException;
 import com.portcelana.natiart.controller.helper.UserNotAllowedException;
 import com.portcelana.natiart.service.AsaasApiException;
 import com.portcelana.natiart.service.UpstreamServiceException;
@@ -24,6 +25,20 @@ import com.portcelana.natiart.service.support.InputValidationException;
 @org.springframework.web.bind.annotation.ControllerAdvice
 public class ControllerAdvice {
     private static final Logger LOGGER = LoggerFactory.getLogger(ControllerAdvice.class);
+
+    /** A rejected artwork claim rolls back the order transaction before this response is rendered. */
+    @ExceptionHandler(com.portcelana.natiart.service.UnusableCustomerUploadException.class)
+    public ResponseEntity<Object> handleUnusableCustomerUpload(
+            com.portcelana.natiart.service.UnusableCustomerUploadException exception) {
+        return ResponseEntity.badRequest()
+                .body(java.util.Map.of(
+                        "code",
+                        "CUSTOM_ARTWORK_UNAVAILABLE",
+                        "uploadId",
+                        exception.getUploadId(),
+                        "orderCreated",
+                        false));
+    }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Object> handleAccessDeniedException(AccessDeniedException e) {
@@ -50,6 +65,13 @@ public class ControllerAdvice {
     public ResponseEntity<Object> handleNumberFormatException(NumberFormatException e) {
         LOGGER.debug("Rejected non-numeric request input: {}", e.getMessage());
         return new ResponseEntity<>("Invalid request", HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(com.portcelana.natiart.controller.helper.OrderCreationRejectedException.class)
+    public ResponseEntity<Object> handleOrderCreationRejected(
+            com.portcelana.natiart.controller.helper.OrderCreationRejectedException e) {
+        return ResponseEntity.badRequest()
+                .body(java.util.Map.of("code", "ORDER_CREATION_REJECTED", "orderCreated", false));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -92,6 +114,12 @@ public class ControllerAdvice {
     @ExceptionHandler(ResourceAlreadyExistsException.class)
     public ResponseEntity<Object> handleResourceAlreadyExistsException(ResourceAlreadyExistsException e) {
         LOGGER.debug("Exception caught in controller: ", e);
+        return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
+    }
+
+    @ExceptionHandler(ShippingQuoteNotValidException.class)
+    public ResponseEntity<Object> handleShippingQuoteNotValidException(ShippingQuoteNotValidException e) {
+        LOGGER.debug("Shipping quote rejected: ", e);
         return new ResponseEntity<>(e.getMessage(), e.getHttpStatus());
     }
 

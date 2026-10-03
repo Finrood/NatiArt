@@ -14,6 +14,7 @@ interface CartPurchase { orderId: string; customerId: string; lines: PurchasedCa
 })
 export class CartService {
   private readonly maxProductQuantity = 100;
+  private static readonly storageVersion = 1;
   private cartItems: CartItem[] = [];
   private purchases: CartPurchase[] = [];
   // Use a unique identifier for the localStorage key to avoid conflicts if needed
@@ -37,39 +38,82 @@ export class CartService {
   }
 
   addToCart(product: Product, quantity: number, goldBorder?: boolean, image?: File): Observable<void> {
-    const alreadyInCart = this.cartItems
-      .filter(item => item.product.id === product.id)
-      .reduce((total, item) => total + item.quantity, 0);
-    const available = Math.max(0, this.quantityLimit(product) - alreadyInCart);
-    const accepted = Math.min(Number.isFinite(quantity) ? Math.floor(quantity) : 0, available);
-    if (accepted <= 0) {
+    if (!Number.isSafeInteger(quantity) || quantity < 1 ||
+        typeof product.id !== 'string' || product.id.trim().length === 0 ||
+        !Number.isFinite(product.markedPrice) || product.markedPrice < 0 ||
+        !Number.isSafeInteger(product.stockQuantity) || product.stockQuantity < 1) {
       reportWarning('cart');
       return of(undefined);
     }
-    // If a custom image is provided, ALWAYS treat it as a new, unique item.
-    if (image) {
-      const newCartItemId = this.generateUniqueCartItemId();
-      const newItem: CartItem = { cartItemId: newCartItemId, product, quantity: accepted, goldBorder, image };
-      this.cartItems.push(newItem);
-    } else {
-      // If no custom image, check if an identical item (product + goldBorder) already exists.
-      const existingItem = this.cartItems.find(item =>
-        item.product.id === product.id &&
-        item.goldBorder === goldBorder &&
-        !item.image // Ensure we only group items *without* custom images
-      );
+    const available = this.availableStock(product);
+    if (available < 1) {
+      reportWarning('cart');
+      return of(undefined);
+    }
+    const acceptedQuantity = Math.min(quantity, available);
+    if (acceptedQuantity < quantity) {
+      reportWarning('cart');
+    }
 
+    // An uploaded image keeps its own line, but every variant shares the same product stock.
+    if (image) {
+      this.cartItems.push({
+        cartItemId: this.generateUniqueCartItemId(), product, quantity: acceptedQuantity, goldBorder, image
+      });
+    } else {
+      const existingItem = this.cartItems.find(item =>
+        item.product.id === product.id && item.goldBorder === goldBorder && !item.image && !item.customImageUploadId && !item.requiresArtworkReselection
+      );
       if (existingItem) {
-        existingItem.quantity += accepted;
+        existingItem.quantity += acceptedQuantity;
       } else {
-        const newCartItemId = this.generateUniqueCartItemId();
-        const newItem: CartItem = { cartItemId: newCartItemId, product, quantity: accepted, goldBorder };
-        this.cartItems.push(newItem);
+        this.cartItems.push({
+          cartItemId: this.generateUniqueCartItemId(), product, quantity: acceptedQuantity, goldBorder
+        });
       }
     }
 
     this.updateCart();
     return of(undefined);
+  }
+
+  setCustomImageUploadId(cartItemId: string, uploadId: string): Observable<void> {
+    if (!uploadId || uploadId.trim().length === 0) {
+      reportWarning('cart');
+      return of(undefined);
+    }
+    const item = this.cartItems.find(candidate => candidate.cartItemId === cartItemId);
+    if (!item) {
+      reportWarning('cart');
+      return of(undefined);
+    }
+    item.customImageUploadId = uploadId;
+    this.updateCart();
+    return of(undefined);
+  }
+
+  invalidateArtwork(uploadId: string): void {
+    for (const item of this.cartItems) {
+      if (item.customImageUploadId !== uploadId) continue;
+      delete item.customImageUploadId;
+      item.requiresArtworkReselection = !item.image;
+    }
+    this.updateCart();
+  }
+
+  reselectArtwork(cartItemId: string, file: File): void {
+    if (!file.type.startsWith('image/') || file.size > 5_000_000 || file.size === 0) return;
+    const item: CartItem | undefined = this.cartItems.find((candidate: CartItem) => candidate.cartItemId === cartItemId);
+    if (!item) return;
+    item.image = file;
+    delete item.customImageUploadId;
+    item.requiresArtworkReselection = false;
+    this.updateCart();
+  }
+
+  private serializableItems(items: CartItem[]): Omit<CartItem, 'image'>[] {
+    return items.map(({image, ...item}: CartItem) => ({...item,
+      requiresArtworkReselection: item.requiresArtworkReselection || (!!image && !item.customImageUploadId)}));
   }
 
   removeFromCart(cartItemId: string): Observable<void> {
@@ -80,21 +124,23 @@ export class CartService {
 
   updateItemQuantity(cartItemId: string, quantity: number): Observable<void> {
     const itemIndex = this.cartItems.findIndex(item => item.cartItemId === cartItemId);
-    if (itemIndex > -1) {
-      const item = this.cartItems[itemIndex];
-      // Removal is removeFromCart's job: quantities floor at 1 so a 0 update
-      // can never silently mean delete (BW1 dead-branch fix).
-      const otherQuantity = this.cartItems
-        .filter(other => other.cartItemId !== cartItemId && other.product.id === item.product.id)
-        .reduce((total, other) => total + other.quantity, 0);
-      const maximum = this.quantityLimit(item.product) - otherQuantity;
-      const newQuantity: number = Math.max(1, Math.min(Number.isFinite(quantity) ? Math.floor(quantity) : 1, maximum));
-      item.quantity = newQuantity;
-      this.cartItems[itemIndex] = item;
-      this.updateCart();
-    } else {
+    if (itemIndex < 0 || !Number.isSafeInteger(quantity)) {
       reportWarning('cart');
+      return of(undefined);
     }
+    const item = this.cartItems[itemIndex];
+    if (!Number.isSafeInteger(item.product.stockQuantity) || item.product.stockQuantity < 1) {
+      reportWarning('cart');
+      return of(undefined);
+    }
+    const available = this.availableStock(item.product, cartItemId);
+    if (available < 1) {
+      reportWarning('cart');
+      return of(undefined);
+    }
+    // Removal is removeFromCart's job; a zero update still floors at one.
+    item.quantity = Math.max(1, Math.min(quantity, available));
+    this.updateCart();
     return of(undefined);
   }
 
@@ -118,12 +164,23 @@ export class CartService {
     return [...this.cartItems];
   }
 
+  private availableStock(product: Product, excludedCartItemId?: string): number {
+    const variants = this.cartItems.filter(item => item.product.id === product.id);
+    const stockLimit = variants.reduce(
+      (limit, item) => Math.min(limit, item.product.stockQuantity), product.stockQuantity
+    );
+    const reserved = variants.reduce(
+      (total, item) => total + (item.cartItemId === excludedCartItemId ? 0 : item.quantity), 0
+    );
+    return Math.max(0, Math.min(this.maxProductQuantity, stockLimit) - reserved);
+  }
+
   rememberPurchase(orderId: string, customerId: string, lines: PurchasedCartLine[]): void {
     if (this.purchases.some((purchase: CartPurchase) => purchase.orderId === orderId)) return;
     const purchases: CartPurchase[] = [...this.purchases,
       {orderId, customerId, lines: lines.map((line: PurchasedCartLine) => ({...line})), completed: false}];
     localStorage.setItem(this.localStorageKey, JSON.stringify({
-      version: 1, items: this.cartItems.filter((item: CartItem) => !item.image), purchases}));
+      version: 1, items: this.serializableItems(this.cartItems), purchases}));
     this.purchases = purchases;
   }
 
@@ -139,7 +196,7 @@ export class CartService {
     const purchases: CartPurchase[] = this.purchases.map((entry: CartPurchase) =>
       entry === purchase ? {...entry, completed: true} : entry);
     // Persist the deduction and its receipt in one write before publishing either.
-    localStorage.setItem(this.localStorageKey, JSON.stringify({version: 1, items: updated.filter((item: CartItem) => !item.image), purchases}));
+    localStorage.setItem(this.localStorageKey, JSON.stringify({version: 1, items: this.serializableItems(updated), purchases}));
     this.cartItems = updated;
     this.purchases = purchases;
     this.cartItemsSubject.next([...updated]);
@@ -148,12 +205,6 @@ export class CartService {
 
   private generateUniqueCartItemId(): string {
     return Date.now().toString(36) + Math.random().toString(36).substring(2);
-  }
-
-  private quantityLimit(product: Product): number {
-    return Number.isFinite(product.stockQuantity)
-      ? Math.min(this.maxProductQuantity, Math.max(0, Math.floor(product.stockQuantity)))
-      : 0;
   }
 
   private calculateAndEmitTotal(): void {
@@ -170,7 +221,7 @@ export class CartService {
 
   private saveCartToLocalStorage(): void {
     try {
-      const serializableCart: CartItem[] = this.cartItems.filter((item: CartItem) => !item.image);
+      const serializableCart = this.serializableItems(this.cartItems);
       localStorage.setItem(this.localStorageKey, JSON.stringify({version: 1, items: serializableCart, purchases: this.purchases}));
     } catch (e) {
       reportError('storage', e);
@@ -203,7 +254,11 @@ export class CartService {
     } catch (e) {
       reportError('storage', e);
       this.cartItems = [];
-      localStorage.removeItem(this.localStorageKey);
+      try {
+        localStorage.removeItem(this.localStorageKey);
+      } catch (storageError) {
+        reportError('storage', storageError);
+      }
       this.cartItemsSubject.next([]);
       this.calculateAndEmitTotal(); // Emit 0 total
     }
@@ -213,21 +268,26 @@ export class CartService {
     if (!Array.isArray(parsed)) {
       return [];
     }
-    const seenIds: Set<string> = new Set<string>();
+    const lines = parsed.filter((entry): entry is CartItem & {product: Product & {id: string}} =>
+      this.isRestorableCartLine(entry)
+    );
+    const stockLimits = new Map<string, number>();
+    for (const line of lines) {
+      stockLimits.set(line.product.id, Math.min(
+        stockLimits.get(line.product.id) ?? Math.min(line.product.stockQuantity, this.maxProductQuantity), Math.min(line.product.stockQuantity, this.maxProductQuantity)
+      ));
+    }
+    const seenIds = new Set<string>();
+    const reservedByProduct = new Map<string, number>();
     const valid: CartItem[] = [];
-    for (const entry of parsed) {
-      if (!this.isRestorableCartLine(entry)) {
-        continue;
-      }
-      const line: CartItem = entry as CartItem;
-      const alreadyRestored = valid
-        .filter(item => item.product.id === line.product.id)
-        .reduce((total, item) => total + item.quantity, 0);
-      const available = this.quantityLimit(line.product) - alreadyRestored;
+    for (const line of lines) {
+      const reserved = reservedByProduct.get(line.product.id) ?? 0;
+      const available = (stockLimits.get(line.product.id) ?? 0) - reserved;
       if (available < 1) {
         continue;
       }
-      line.quantity = Math.min(line.quantity, Math.floor(available));
+      line.quantity = Math.min(line.quantity, available);
+      reservedByProduct.set(line.product.id, reserved + line.quantity);
       if (seenIds.has(line.cartItemId)) {
         // Duplicate identity: mint a fresh id so keyed ops stay 1:1.
         line.cartItemId = this.generateUniqueCartItemId();
@@ -238,7 +298,19 @@ export class CartService {
     return valid;
   }
 
-  private isRestorableCartLine(entry: unknown): entry is CartItem {
+  private readPersistedItems(parsed: unknown): unknown {
+    if (Array.isArray(parsed)) {
+      // Accept the pre-versioned format for one migration cycle.
+      return parsed;
+    }
+    if (typeof parsed !== 'object' || parsed === null) {
+      return [];
+    }
+    const envelope = parsed as {version?: unknown; items?: unknown};
+    return envelope.version === CartService.storageVersion ? envelope.items : [];
+  }
+
+  private isRestorableCartLine(entry: unknown): entry is CartItem & {product: Product & {id: string}} {
     if (typeof entry !== 'object' || entry === null) {
       return false;
     }
@@ -252,7 +324,18 @@ export class CartService {
     if (typeof line.product.id !== 'string' || line.product.id.trim().length === 0) {
       return false;
     }
-    if (typeof line.quantity !== 'number' || !Number.isInteger(line.quantity) || line.quantity < 1) {
+    if (typeof line.quantity !== 'number' || !Number.isSafeInteger(line.quantity) || line.quantity < 1) {
+      return false;
+    }
+    if (typeof line.product.markedPrice !== 'number' || !Number.isFinite(line.product.markedPrice) || line.product.markedPrice < 0) {
+      return false;
+    }
+    if (typeof line.product.stockQuantity !== 'number' || !Number.isSafeInteger(line.product.stockQuantity) || line.product.stockQuantity < 1) {
+      return false;
+    }
+    if (line.requiresArtworkReselection !== undefined && typeof line.requiresArtworkReselection !== 'boolean') return false;
+    if (line.customImageUploadId !== undefined
+      && (typeof line.customImageUploadId !== 'string' || line.customImageUploadId.trim().length === 0)) {
       return false;
     }
     return true;

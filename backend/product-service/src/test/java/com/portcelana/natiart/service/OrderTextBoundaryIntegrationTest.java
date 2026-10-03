@@ -46,7 +46,7 @@ import com.portcelana.natiart.repository.ProductRepository;
 import tools.jackson.databind.json.JsonMapper;
 
 @DataJpaTest(properties = {"spring.sql.init.mode=never", "spring.jpa.open-in-view=false"})
-@Import({OrderManagerImpl.class, OrderCreationService.class})
+@Import({OrderManagerImpl.class, OrderCreationService.class, OrderViewService.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class OrderTextBoundaryIntegrationTest {
     @Autowired
@@ -65,7 +65,13 @@ class OrderTextBoundaryIntegrationTest {
     private ProductManager productManager;
 
     @MockitoBean
-    private ShippingService shipping;
+    private ShippingQuoteService shipping;
+
+    @MockitoBean
+    private CustomerUploadService customerUploads;
+
+    @Autowired
+    private OrderViewService views;
 
     private MockMvc http;
     private final JsonMapper json = JsonMapper.builder().build();
@@ -74,7 +80,7 @@ class OrderTextBoundaryIntegrationTest {
     void setup() {
         final AuthenticationResponseDto.Principal principal = mock(AuthenticationResponseDto.Principal.class);
         when(principal.getExternalId()).thenReturn("owner");
-        http = MockMvcBuilders.standaloneSetup(new OrderController(manager))
+        http = MockMvcBuilders.standaloneSetup(new OrderController(manager, views))
                 .setControllerAdvice(new ControllerAdvice())
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
                     @Override
@@ -119,7 +125,13 @@ class OrderTextBoundaryIntegrationTest {
         final Product product = products.saveAndFlush(
                 new Product("Plate", BigDecimal.TEN).setCategory(category).setStockQuantity(2));
         when(productManager.getProductsOrDie(List.of(product.getId()))).thenReturn(Map.of(product.getId(), product));
-        when(shipping.getOrderShippingAmount(any())).thenReturn(BigDecimal.ZERO);
+        when(shipping.requireQuoteForOrder(any(), any(), any(), any(), any()))
+                .thenReturn(new com.portcelana.natiart.model.ShippingQuote()
+                        .setItems(List.of(new com.portcelana.natiart.model.ShippingQuoteItem(
+                                product.getId(), 1, BigDecimal.TEN, product.getVersion())))
+                        .setShippingAmount(BigDecimal.ZERO)
+                        .setItemAmount(BigDecimal.TEN)
+                        .setTotalAmount(BigDecimal.TEN));
         final OrderDto request = request("N/A")
                 .setItems(
                         List.of(new OrderItemDto().setProductId(product.getId()).setQuantity(1)));
@@ -190,7 +202,13 @@ class OrderTextBoundaryIntegrationTest {
         final Product product = products.saveAndFlush(
                 new Product("Plate", BigDecimal.TEN).setCategory(category).setStockQuantity(2));
         when(productManager.getProductsOrDie(List.of(product.getId()))).thenReturn(Map.of(product.getId(), product));
-        when(shipping.getOrderShippingAmount(any())).thenReturn(BigDecimal.ZERO);
+        when(shipping.requireQuoteForOrder(any(), any(), any(), any(), any()))
+                .thenReturn(new com.portcelana.natiart.model.ShippingQuote()
+                        .setItems(List.of(new com.portcelana.natiart.model.ShippingQuoteItem(
+                                product.getId(), 1, BigDecimal.TEN, product.getVersion())))
+                        .setShippingAmount(BigDecimal.ZERO)
+                        .setItemAmount(BigDecimal.TEN)
+                        .setTotalAmount(BigDecimal.TEN));
         final OrderDto request = request(submitted)
                 .setItems(
                         List.of(new OrderItemDto().setProductId(product.getId()).setQuantity(1)));

@@ -1,4 +1,4 @@
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit, inject} from '@angular/core';
 import {FormGroup, ReactiveFormsModule} from '@angular/forms';
 
 import {debounceTime, distinctUntilChanged, finalize, Subject, Subscription, takeUntil, tap} from 'rxjs';
@@ -14,7 +14,6 @@ import {CepFormatDirective} from "../../../../../directory/directive/cep-format-
 
 @Component({
   selector: 'app-address-form',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     NatiartFormFieldComponent,
@@ -26,7 +25,11 @@ import {CepFormatDirective} from "../../../../../directory/directive/cep-format-
 })
 export class AddressFormComponent implements OnInit, OnDestroy {
   @Input({ required: true }) addressFormGroup!: FormGroup;
-  @Input() title: string = 'Address';
+  @Input() title: string = $localize`Address`;
+
+  get zipCodeLabel(): string {
+    return this.isBillingAddress ? $localize`Billing Zip Code` : $localize`Zip Code`;
+  }
   @Input() zipCodeLookupEnabled: boolean = true;
   @Input() isBillingAddress: boolean = false; // To slightly change IDs for uniqueness
 
@@ -37,7 +40,8 @@ export class AddressFormComponent implements OnInit, OnDestroy {
   private lookupSubscription: Subscription | null = null;
   private readonly CEP_DEBOUNCE_MS: number = 400;
 
-  constructor(private signupService: SignupService, private cdr: ChangeDetectorRef) {}
+  private readonly _signupService: SignupService = inject(SignupService);
+  private readonly cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
 
   ngOnInit(): void {
     if (this.zipCodeLookupEnabled) {
@@ -72,7 +76,7 @@ export class AddressFormComponent implements OnInit, OnDestroy {
 
     this.isLoadingAddress = true;
     this.cdr.markForCheck();
-    this.lookupSubscription = this.signupService.getAddressFromZipCode(cleanZipCode)
+    this.lookupSubscription = this._signupService.getAddressFromZipCode(cleanZipCode)
       .pipe(
         finalize(() => {
           this.isLoadingAddress = false;
@@ -84,7 +88,7 @@ export class AddressFormComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (data: ViaCEPResponse) => {
           if (data.erro) {
-            this.setErrorMessage('CEP not found. Please enter address manually.');
+            this.setErrorMessage($localize`CEP not found. Please enter address manually.`);
             this.addressFormGroup.patchValue({
               street: '', city: '', neighborhood: '', state: '', country: 'Brazil'
             });
@@ -109,7 +113,7 @@ export class AddressFormComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         },
         error: () => {
-          this.setErrorMessage('Error fetching address. Please enter manually.');
+          this.setErrorMessage($localize`Error fetching address. Please enter manually.`);
           this.addressFormGroup.patchValue({
             street: '', city: '', neighborhood: '', state: '', country: 'Brazil'
           });
