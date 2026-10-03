@@ -8,7 +8,6 @@ import {PaymentMethod} from "../../../../models/paymentMethod.model";
 
 @Component({
   selector: 'app-payment-info-step',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     NatiartFormFieldComponent
