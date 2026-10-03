@@ -36,6 +36,7 @@ import com.portcelana.natiart.dto.AuthenticationResponseDto;
 import com.portcelana.natiart.dto.OrderDto;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.service.OrderManager;
+import com.portcelana.natiart.service.OrderViewService;
 
 @WebMvcTest(controllers = OrderController.class)
 @Import({SecurityConfig.class, MvcConfig.class})
@@ -56,6 +57,9 @@ class OrderControllerSecurityTest {
 
     @MockitoBean
     private OrderManager orderManager;
+
+    @MockitoBean
+    private OrderViewService orderViewService;
 
     @MockitoBean
     private org.springframework.web.reactive.function.client.WebClient.Builder webClientBuilder;
@@ -161,6 +165,7 @@ class OrderControllerSecurityTest {
                     .andExpect(status().isOk());
 
             verify(orderManager).createOrder(any(OrderDto.class), eq("cus_MINE"), isNull());
+            verify(orderViewService).getCustomerOrder(any(), eq("cus_MINE"));
         } finally {
             SecurityContextHolder.clearContext();
         }
