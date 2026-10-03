@@ -1,0 +1,32 @@
+plugins {
+    id("base")
+}
+
+def npmCommand = System.getProperty("os.name").toLowerCase().contains("windows") ? "npm.cmd" : "npm"
+
+tasks.register("npmCi", Exec) {
+    workingDir(projectDir)
+    commandLine(npmCommand, "ci")
+}
+
+tasks.register("npmBuild", Exec) {
+    dependsOn("npmCi")
+    workingDir(projectDir)
+    commandLine(npmCommand, "run", "build", "--", "--configuration", "production")
+}
+
+tasks.register("npmTest", Exec) {
+    dependsOn("npmCi")
+    workingDir(projectDir)
+    commandLine(npmCommand, "test", "--", "--watch=false", "--browsers=ChromeHeadless")
+}
+
+tasks.register("verifyProductionArtifacts", Exec) {
+    dependsOn("npmBuild")
+    workingDir(projectDir)
+    commandLine("node", "scripts/verify-production-artifacts.mjs")
+}
+
+tasks.named("build") {
+    dependsOn("verifyProductionArtifacts", "npmTest")
+}
