@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.springframework.data.domain.Pageable;
 
 import com.portcelana.natiart.dto.CategoryDto;
+import com.portcelana.natiart.dto.PagedResponseDto;
 import com.portcelana.natiart.model.Category;
 
 public interface CategoryManager {
@@ -16,6 +17,9 @@ public interface CategoryManager {
     Category getActiveCategoryOrDie(String categoryId);
 
     List<Category> getCategories(Pageable pageable);
+
+    /** Returns a filtered page; inactive records are available only to authorized admin callers. */
+    PagedResponseDto<CategoryDto> getCategoriesPage(Pageable pageable, boolean includeInactive);
 
     List<Category> getActiveCategories(Pageable pageable);
 

@@ -70,6 +70,11 @@ public interface ProductRepository extends JpaRepository<Product, String> {
             "SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.images LEFT JOIN FETCH p.category LEFT JOIN FETCH p.packaging WHERE p.id IN :ids")
     List<Product> findAllWithImagesByIds(@Param("ids") List<String> ids);
 
+    @Query("SELECT p.id FROM Product p WHERE (:categoryId IS NULL OR p.category.id = :categoryId) "
+            + "AND (:query = '' OR LOWER(p.label) LIKE CONCAT('%', :query, '%')) "
+            + "AND (:includeInactive = true OR (p.active = true AND p.category.active = true))")
+    Page<String> findCatalogIds(String categoryId, String query, boolean includeInactive, Pageable pageable);
+
     @Query(
             "SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.images LEFT JOIN FETCH p.category LEFT JOIN FETCH p.packaging WHERE p.id IN :ids AND p.active = true AND p.category.active = true")
     List<Product> findAllActiveWithImagesByIds(@Param("ids") List<String> ids);
