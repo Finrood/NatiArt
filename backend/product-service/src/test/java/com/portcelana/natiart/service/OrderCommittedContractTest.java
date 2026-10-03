@@ -1,11 +1,12 @@
 package com.portcelana.natiart.service;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -25,6 +26,8 @@ import com.portcelana.natiart.dto.OrderDto;
 import com.portcelana.natiart.dto.OrderItemDto;
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Product;
+import com.portcelana.natiart.model.ShippingQuote;
+import com.portcelana.natiart.model.ShippingQuoteItem;
 import com.portcelana.natiart.repository.CategoryRepository;
 import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.ProductRepository;
@@ -51,7 +54,10 @@ class OrderCommittedContractTest {
     private ProductManager productManager;
 
     @MockitoBean
-    private ShippingService shipping;
+    private ShippingQuoteService shipping;
+
+    @MockitoBean
+    private CustomerUploadService uploads;
 
     private TransactionTemplate transaction;
 
@@ -61,7 +67,32 @@ class OrderCommittedContractTest {
         when(productManager.getProductsOrDie(anyList()))
                 .thenAnswer(invocation -> products.findAllById(invocation.<List<String>>getArgument(0)).stream()
                         .collect(Collectors.toMap(Product::getId, product -> product)));
-        when(shipping.getOrderShippingAmount(anyString())).thenReturn(BigDecimal.ZERO);
+        when(shipping.requireQuoteForOrder(any(), any(), any(), anyList(), any()))
+                .thenAnswer(invocation -> {
+                    final List<OrderItemDto> items = invocation.getArgument(3);
+                    final java.util.Map<String, Product> byId = invocation.getArgument(4);
+                    final List<ShippingQuoteItem> quoted = items.stream()
+                            .map(item -> {
+                                final Product product = byId.get(item.getProductId());
+                                return new ShippingQuoteItem(
+                                        product.getId(),
+                                        item.getQuantity(),
+                                        product.getOriginalPrice(),
+                                        product.getVersion());
+                            })
+                            .toList();
+                    final BigDecimal total = quoted.stream()
+                            .map(item -> item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    return new ShippingQuote()
+                            .setItems(quoted)
+                            .setShippingAmount(BigDecimal.ZERO)
+                            .setItemAmount(total)
+                            .setTotalAmount(total)
+                            .setServiceId("fixture")
+                            .setDestinationPostalCode("01001000")
+                            .setExpiresAt(Instant.now().plusSeconds(900));
+                });
     }
 
     private String seed(int stock) {

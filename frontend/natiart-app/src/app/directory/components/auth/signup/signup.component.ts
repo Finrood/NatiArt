@@ -1,4 +1,4 @@
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject} from '@angular/core';
 import {HttpErrorResponse} from '@angular/common/http';
 import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {CustomPasswordValidators} from '../../../validator/CustomPasswordValidators';
@@ -19,7 +19,6 @@ import {finalize} from 'rxjs/operators';
 
 @Component({
   selector: 'app-signup',
-  standalone: true,
   templateUrl: './signup.component.html',
   styleUrls: ['./signup.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -38,12 +37,13 @@ export class SignupComponent implements OnInit {
   errorMessage = '';
   isSubmitting = false;
 
-  constructor(
-    private fb: FormBuilder,
-    private router: Router,
-    private signupService: SignupService,
-    private changeDetectorRef: ChangeDetectorRef,
-  ) {
+  private readonly _fb: FormBuilder = inject(FormBuilder);
+  private readonly _router: Router = inject(Router);
+  private readonly _signupService: SignupService = inject(SignupService);
+
+  private readonly _changeDetectorRef: ChangeDetectorRef = inject(ChangeDetectorRef);
+
+  constructor() {
     this.signupForm = this.initForm();
   }
 
@@ -70,7 +70,7 @@ export class SignupComponent implements OnInit {
     }
     if (this.signupForm.invalid) {
       this.signupForm.markAllAsTouched();
-      this.setErrorMessage('Please fill all required fields correctly.');
+      this.setErrorMessage($localize`Please fill all required fields correctly.`);
       return;
     }
 
@@ -82,14 +82,14 @@ export class SignupComponent implements OnInit {
     };
 
     this.isSubmitting = true;
-    this.signupService.registerUser(userRegistration)
+    this._signupService.registerUser(userRegistration)
       .pipe(finalize(() => {
         this.isSubmitting = false;
-        this.changeDetectorRef.markForCheck();
+        this._changeDetectorRef.markForCheck();
       }))
       .subscribe({
         next: () => {
-          this.router.navigate(['/login'])
+          this._router.navigate(['/login'])
             .then(() => {
             });
         },
@@ -109,13 +109,13 @@ export class SignupComponent implements OnInit {
   }
 
   private initForm(): FormGroup {
-    return this.fb.group({
-      credentials: this.fb.group({
+    return this._fb.group({
+      credentials: this._fb.group({
         username: ['', [Validators.required, Validators.email]],
         password: ['', [Validators.required, CustomPasswordValidators.passwordComplexity()]],
         confirmPassword: ['', Validators.required],
       }, {validators: CustomPasswordValidators.passwordMatchValidator}),
-      profile: this.fb.group({
+      profile: this._fb.group({
         firstname: ['', Validators.required],
         lastname: ['', Validators.required],
         cpf: ['', [Validators.required, CustomCpfValidators.validCpf()]],
@@ -133,21 +133,21 @@ export class SignupComponent implements OnInit {
 
   private setErrorMessage(message: string): void {
     this.errorMessage = message;
-    this.changeDetectorRef.markForCheck();
+    this._changeDetectorRef.markForCheck();
   }
 
   private clearErrorMessage(): void {
     this.errorMessage = '';
-    this.changeDetectorRef.markForCheck();
+    this._changeDetectorRef.markForCheck();
   }
 
   private registrationErrorMessage(error: HttpErrorResponse): string {
     if (error.status === 409) {
-      return 'An account with this email already exists.';
+      return $localize`An account with this email already exists.`;
     }
     if (error.status === 0) {
-      return 'The service is unavailable. Please try again.';
+      return $localize`The service is unavailable. Please try again.`;
     }
-    return 'Registration failed. Please try again.';
+    return $localize`Registration failed. Please try again.`;
   }
 }

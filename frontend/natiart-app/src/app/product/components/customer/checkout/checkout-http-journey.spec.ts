@@ -32,6 +32,7 @@ describe('Rendered checkout HTTP journey', (): void => {
   beforeEach(async (): Promise<void> => {
     localStorage.removeItem('natiart-cart');
     localStorage.removeItem('natiart-purchases');
+    localStorage.removeItem('natiart-checkout-attempt:user%40example.test');
     const currentUser: BehaviorSubject<User | null> = new BehaviorSubject<User | null>(user);
     await TestBed.configureTestingModule({
       imports: [JourneyHostComponent], providers: [provideHttpClient(), provideHttpClientTesting(),
@@ -64,6 +65,14 @@ describe('Rendered checkout HTTP journey', (): void => {
     void TestBed.inject(Router).navigateByUrl('/checkout');
     flushMicrotasks(); fixture.detectChanges();
     click('Next: Shipping'); click('Next: Payment');
+    flushMicrotasks();
+    const quote: TestRequest = http.expectOne((request): boolean => request.url.endsWith('/shipping/quote'));
+    expect(quote.request.body.items).toEqual([{productId: 'product-1', quantity: 1}]);
+    quote.flush({quoteId: 'quote-1', destinationPostalCode: '01001000', serviceId: 'fixture',
+      serviceName: 'Fixture', expiresAt: '2099-01-01T00:00:00Z', itemAmount: 99.9,
+      shippingAmount: 7.5, totalAmount: 107.4,
+      items: [{productId: 'product-1', quantity: 1, unitPrice: 99.9, lineAmount: 99.9}]});
+    flushMicrotasks(); fixture.detectChanges();
     const method: HTMLSelectElement = (fixture.nativeElement as HTMLElement)
       .querySelector<HTMLSelectElement>('select[formControlName="paymentMethod"]')!;
     method.value = 'PIX'; method.dispatchEvent(new Event('change')); fixture.detectChanges();
@@ -99,11 +108,20 @@ describe('Rendered checkout HTTP journey', (): void => {
     fixture.destroy();
   }));
 
-  it('renders an order conflict and never sends a payment request', fakeAsync((): void => {
+  it('retains an ambiguous order conflict and never sends a payment request', fakeAsync((): void => {
     submit().flush({message: 'Stock changed'}, {status: 409, statusText: 'Conflict'});
     flushMicrotasks(); fixture.detectChanges();
-    expect((fixture.nativeElement as HTMLElement).querySelector('[role="alert"]')?.textContent).toContain('Could not process');
+    expect((fixture.nativeElement as HTMLElement).querySelector('[role="alert"]')?.textContent).toContain('Could not confirm your saved checkout');
+    expect(localStorage.getItem('natiart-checkout-attempt:user%40example.test')).not.toBeNull();
     expect(TestBed.inject(Router).url).toBe('/checkout');
+    http.expectNone((request): boolean => request.url.endsWith('/payments/create'));
+  }));
+  it('releases a typed pre-acceptance rejection for shipping review without charging', fakeAsync((): void => {
+    submit().flush({code: 'ORDER_CREATION_REJECTED', orderCreated: false}, {status: 400, statusText: 'Bad Request'});
+    flushMicrotasks(); fixture.detectChanges();
+    expect(localStorage.getItem('natiart-checkout-attempt:user%40example.test')).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Shipping Address');
+    expect((fixture.nativeElement as HTMLElement).querySelector('[role="alert"]')).not.toBeNull();
     http.expectNone((request): boolean => request.url.endsWith('/payments/create'));
   }));
 });
