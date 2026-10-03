@@ -1,3 +1,4 @@
+import {AccessibleDialogComponent} from '../../../../shared/components/accessible-dialog.component';
 import {Component, EventEmitter, Input, Output} from '@angular/core';
 
 import {FormsModule} from '@angular/forms';
@@ -9,7 +10,7 @@ import {reportWarning} from '../../../../shared/service/error-reporting.service'
 @Component({
   selector: 'app-personalization-modal',
   standalone: true, // Add standalone: true
-  imports: [FormsModule, ButtonComponent],
+  imports: [FormsModule, ButtonComponent, AccessibleDialogComponent],
   templateUrl: './personalization-modal.component.html',
   styleUrl: './personalization-modal.component.css'
 })

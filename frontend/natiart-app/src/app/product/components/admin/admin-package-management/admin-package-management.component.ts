@@ -1,3 +1,4 @@
+import {AccessibleDialogComponent} from '../../../../shared/components/accessible-dialog.component';
 import {AfterViewInit, DestroyRef, signal, inject, Component, OnInit, ViewChild} from '@angular/core';
 import {HttpErrorResponse} from '@angular/common/http';
 import {PackageService} from '../../../service/package.service';
@@ -23,6 +24,7 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
     AlertMessageComponent,
     NatiartFormFieldComponent,
     ButtonComponent,
+    AccessibleDialogComponent,
     PageControlsComponent
 ],
   templateUrl: './admin-package-management.component.html',

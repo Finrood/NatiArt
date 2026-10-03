@@ -407,6 +407,22 @@
     "5332517454777298957": "Subscribe to receive updates and exclusive offers.",
     "4616894645263562158": "Your email address",
     "6767075847177447992": "© {$INTERPOLATION} NatiArt. All rights reserved. ",
-    "4876879933381167729": "Could not load this page. Please retry."
+    "4876879933381167729": "Could not load this page. Please retry.",
+    "325849755190761496": "Category editor",
+    "6265833527589511257": "Package editor",
+    "8369637467319812234": "Product editor",
+    "2284412968331781353": "Dismiss cart error",
+    "1830574627828566234": "carousel",
+    "5757588546955305337": "Featured artwork",
+    "2990917986093229644": "Previous banner",
+    "8573934203165961050": "Next banner",
+    "3007970314840364299": "Slide {$INTERPOLATION} of {$INTERPOLATION_1}",
+    "1193681772570480447": "Rotation off (reduced motion)",
+    "1872560845362468217": "Resume rotation",
+    "733436353599016708": "Pause rotation",
+    "8321201790225705418": "Personalize your product",
+    "4266320720634993254": "Navigation menu",
+    "1446670643492611810": "Hide password",
+    "5554528553553249088": "Show password"
   }
 }

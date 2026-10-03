@@ -33,22 +33,22 @@ describe('SignupCredentialsComponent', () => {
     }
     type('password', 'Abc123');
     expect(fixture.nativeElement.textContent).toContain(`Minimum ${DEFAULT_REQUIREMENTS.minLength} characters`);
-    expect(fixture.nativeElement.querySelector('#password-errors').textContent).toContain('at least 8 characters');
+    expect(fixture.nativeElement.querySelector('#' + fixture.nativeElement.querySelector('input[formControlName="password"]').getAttribute('aria-describedby')).textContent).toContain('at least 8 characters');
     expect(form.get('password')!.hasError('passwordComplexity')).toBeTrue();
     type('password', 'Abc12345');
     const confirm = type('confirmPassword', 'Different123');
-    const error: HTMLElement = fixture.nativeElement.querySelector('#confirmPassword-errors');
+    const error: HTMLElement = fixture.nativeElement.querySelector('#' + fixture.nativeElement.querySelector('input[formControlName="confirmPassword"]').getAttribute('aria-describedby'));
     expect(error.getAttribute('role')).toBe('alert');
     expect(error.textContent).toContain('Passwords do not match');
     expect(confirm.getAttribute('aria-describedby')).toBe(error.id);
     expect(confirm.getAttribute('aria-invalid')).toBe('true');
     expect(fixture.nativeElement.querySelector('button').disabled).toBeTrue();
     type('confirmPassword', 'Abc12345');
-    expect(fixture.nativeElement.querySelector('#confirmPassword-errors')).toBeNull();
+    expect(fixture.nativeElement.querySelector('#' + error.id)).toBeNull();
     expect(fixture.nativeElement.querySelector('button').disabled).toBeFalse();
     type('password', 'Ab1' + '😀'.repeat(18));
     expect(form.get('password')!.hasError('passwordTooLong')).toBeTrue();
-    expect(fixture.nativeElement.querySelector('#password-errors').textContent).toContain('maximum 72 UTF-8 bytes');
+    expect(fixture.nativeElement.querySelector('#' + fixture.nativeElement.querySelector('input[formControlName="password"]').getAttribute('aria-describedby')).textContent).toContain('maximum 72 UTF-8 bytes');
     form.reset();
     expect(() => fixture.detectChanges()).not.toThrow();
     fixture.destroy();

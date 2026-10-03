@@ -84,7 +84,7 @@
 <app-page-controls [page]="pages.$page()" [total]="pages.$total()" [hasNext]="pages.$hasNext()"
     [loading]="pages.$loading()" [error]="pages.$error()" (pageChange)="pages.load($event)"></app-page-controls>
   @if (modalVisible) {
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <app-accessible-dialog label="Product editor" i18n-label (dismiss)="closeModal()">
       <div
         class="relative bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto transform transition-transform duration-300 ease-in-out">
         <!-- Loading overlay -->
@@ -248,6 +248,6 @@
           </div>
         </form>
       </div>
-    </div>
+    </app-accessible-dialog>
   }
 </div>

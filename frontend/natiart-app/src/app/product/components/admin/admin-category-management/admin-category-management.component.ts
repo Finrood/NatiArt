@@ -1,3 +1,4 @@
+import {AccessibleDialogComponent} from '../../../../shared/components/accessible-dialog.component';
 import {AfterViewInit, DestroyRef, signal, Component, inject, OnInit, ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
@@ -16,7 +17,7 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-admin-category-management',
-  imports: [CommonModule, ReactiveFormsModule, NatiartFormFieldComponent, AlertMessageComponent, ButtonComponent, PageControlsComponent],
+  imports: [CommonModule, ReactiveFormsModule, NatiartFormFieldComponent, AlertMessageComponent, ButtonComponent, PageControlsComponent, AccessibleDialogComponent],
   templateUrl: './admin-category-management.component.html',
   styleUrls: ['./admin-category-management.component.css']
 })
