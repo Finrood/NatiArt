@@ -28,8 +28,8 @@ dependencies {
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     runtimeOnly("com.h2database:h2")
-    implementation("com.auth0:java-jwt:4.6.0")
+    implementation("com.auth0:java-jwt:4.6.1")
     implementation("org.postgresql:postgresql:42.7.13")
-    implementation("org.apache.commons:commons-lang3:3.20.0")
+    implementation("org.apache.commons:commons-lang3:3.21.0")
     implementation("org.sejda.imageio:webp-imageio:0.1.6")
 }
