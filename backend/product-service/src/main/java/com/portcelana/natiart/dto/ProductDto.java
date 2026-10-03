@@ -18,6 +18,7 @@ public class ProductDto {
     private BigDecimal originalPrice;
     private BigDecimal markedPrice;
     private int stockQuantity;
+    private BigDecimal weightKg;
     private String categoryId;
     private String packageId;
     private Boolean hasFixedGoldenBorder;
@@ -40,6 +41,7 @@ public class ProductDto {
                 .setDescription(product.getDescription().orElse(null))
                 .setMarkedPrice(product.getMarkedPrice().orElseGet(product::getOriginalPrice))
                 .setStockQuantity(product.getStockQuantity())
+                .setWeightKg(product.getWeightKg())
                 .setCategoryId(product.getCategory().map(Category::getId).orElse(null))
                 .setPackageId(product.getPackaging().map(Package::getId).orElse(null))
                 .setHasFixedGoldenBorder(product.getHasFixedGoldenBorder().orElse(null))
@@ -102,6 +104,15 @@ public class ProductDto {
 
     public ProductDto setStockQuantity(int stockQuantity) {
         this.stockQuantity = stockQuantity;
+        return this;
+    }
+
+    public BigDecimal getWeightKg() {
+        return weightKg;
+    }
+
+    public ProductDto setWeightKg(BigDecimal weightKg) {
+        this.weightKg = weightKg;
         return this;
     }
 
