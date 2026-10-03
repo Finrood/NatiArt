@@ -81,6 +81,8 @@
   </div>
 
   <!-- Product Modal -->
+<app-page-controls [page]="pages.$page()" [total]="pages.$total()" [hasNext]="pages.$hasNext()"
+    [loading]="pages.$loading()" [error]="pages.$error()" (pageChange)="pages.load($event)"></app-page-controls>
   @if (modalVisible) {
     <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div
@@ -146,6 +148,12 @@
                 </option>
               }
             </select>
+              @if (categoryOptions.$hasNext() || categoryOptions.$error()) {
+                <button type="button" class="underline mt-2" [disabled]="categoryOptions.$loading()"
+                  (click)="categoryOptions.load(categoryOptions.$error() ? categoryOptions.$page() : categoryOptions.$page() + 1)">
+                  @if (categoryOptions.$error()) { <span i18n>Retry categories</span> } @else { <span i18n>Load more categories</span> }</button>
+                @if (categoryOptions.$error()) { <p role="alert">{{ categoryOptions.$error() }}</p> }
+              }
           </div>
           <!-- Package Select -->
           <div class="mb-4">
@@ -158,6 +166,12 @@
                 </option>
               }
             </select>
+              @if (packageOptions.$hasNext() || packageOptions.$error()) {
+                <button type="button" class="underline mt-2" [disabled]="packageOptions.$loading()"
+                  (click)="packageOptions.load(packageOptions.$error() ? packageOptions.$page() : packageOptions.$page() + 1)">
+                  @if (packageOptions.$error()) { <span i18n>Retry packages</span> } @else { <span i18n>Load more packages</span> }</button>
+                @if (packageOptions.$error()) { <p role="alert">{{ packageOptions.$error() }}</p> }
+              }
           </div>
           <!-- Fixed Golden Border Checkbox -->
           <div class="mb-4">

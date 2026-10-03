@@ -14,6 +14,7 @@ import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
 
 import com.portcelana.natiart.dto.CategoryDto;
+import com.portcelana.natiart.dto.PagedResponseDto;
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.service.CategoryManager;
 
@@ -49,10 +50,23 @@ public class CategoryController {
         return categories.stream().map(CategoryDto::from).toList();
     }
 
+    @GetMapping("/categories/page")
+    public PagedResponseDto<CategoryDto> getCategoriesPage(
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        return categoryManager.getCategoriesPage(toPageable(page, size), false);
+    }
+
+    @GetMapping("/admin/categories/page")
+    @PreAuthorize("hasRole('ADMIN')")
+    public PagedResponseDto<CategoryDto> getAdminCategoriesPage(
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        return categoryManager.getCategoriesPage(toPageable(page, size), true);
+    }
+
     private static Pageable toPageable(int page, int size) {
         final int safePage = Math.max(0, page);
         final int safeSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
-        return PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "label"));
+        return PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "label", "id"));
     }
 
     private static boolean isAdmin() {

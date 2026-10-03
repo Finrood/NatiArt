@@ -14,11 +14,11 @@ import com.portcelana.natiart.model.Category;
 
 @Repository
 public interface CategoryRepository extends JpaRepository<Category, String> {
+    Page<Category> findByActiveTrue(Pageable pageable);
+
     Optional<Category> findCategoryByLabel(String label);
 
     Optional<Category> findByIdAndActiveTrue(String id);
-
-    Page<Category> findByActiveTrue(Pageable pageable);
 
     @Modifying
     @Query("UPDATE Category c SET c.active = CASE WHEN c.active = true THEN false ELSE true END WHERE c.id = :id")

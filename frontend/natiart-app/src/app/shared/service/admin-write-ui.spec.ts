@@ -40,7 +40,7 @@ for (const resource of [
       http = TestBed.inject(HttpTestingController);
       fixture = TestBed.createComponent(resource.component as Type<unknown>);
       fixture.detectChanges();
-      http.expectOne(url).flush([{id: 'used', label: 'Existing art', active: true, ...resource.extra}]);
+      http.expectOne((request) => request.url === `${environment.api.product.url}/admin/${resource.path}/page` && request.params.get('page') === '0' && request.params.get('size') === '20').flush({items: [{id: 'used', label: 'Existing art', active: true, ...resource.extra}], page: 0, size: 20, total: 1, hasNext: false});
       fixture.detectChanges();
     });
     afterEach(() => {fixture.destroy(); http.verify();});
@@ -60,6 +60,7 @@ for (const resource of [
       expect(fixture.nativeElement.textContent).toContain('with this label already exists');
       submit();
       http.expectOne((request) => request.method === 'POST').flush({id: 'new', label: 'My art', ...resource.extra});
+      http.expectOne((request) => request.method === 'GET').flush({items: [], page: 0, size: 20, total: 0, hasNext: false});
       fixture.detectChanges();
       expect(fixture.nativeElement.querySelector('form')).toBeNull();
     });
@@ -73,6 +74,7 @@ for (const resource of [
       click('Add New ' + resource.title);
       fill('New art');
       pending.flush({id: 'old', label: 'Old art', ...resource.extra});
+      http.expectOne((request) => request.method === 'GET').flush({items: [], page: 0, size: 20, total: 0, hasNext: false});
       fixture.detectChanges();
       expect(fixture.nativeElement.querySelector('input[formControlName="label"]').value).toBe('New art');
       expect(fixture.nativeElement.querySelector('button[type="submit"]').disabled).toBeFalse();
