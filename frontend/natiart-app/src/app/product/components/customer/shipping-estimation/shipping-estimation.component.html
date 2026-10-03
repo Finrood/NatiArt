@@ -1,9 +1,9 @@
 <section aria-labelledby="shipping-estimation-title" class="bg-white rounded-lg shadow-md p-6 mt-8 relative">
-  <h2 class="text-2xl font-semibold mb-4 text-gray-800" id="shipping-estimation-title">Shipping Estimation</h2>
+  <h2 class="text-2xl font-semibold mb-4 text-gray-800" id="shipping-estimation-title" i18n>Shipping Estimation</h2>
 
   <form [formGroup]="shippingForm" class="space-y-4">
     <div>
-      <label class="block text-sm font-medium text-gray-700" for="cep">CEP (Postal Code)</label>
+      <label class="block text-sm font-medium text-gray-700" for="cep" i18n>CEP (Postal Code)</label>
       <input
         aria-describedby="cep-error"
         cepFormat
@@ -17,8 +17,7 @@
         <p
           class="mt-2 text-sm text-red-600"
           id="cep-error"
-          >
-          Please enter a valid CEP (8 digits).
+           i18n>Please enter a valid CEP (8 digits).
         </p>
       }
     </div>

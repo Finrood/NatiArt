@@ -43,8 +43,9 @@ class DatabaseTokenValidationCacheTest {
     void storesOnlyDigestAndReadsEntriesSharedBySeparateCacheInstances() throws Exception {
         final TokenValidationCacheRepository repository = mock(TokenValidationCacheRepository.class);
         final ObjectMapper mapper = new ObjectMapper();
-        final AuthenticationResponseDto response =
-                mapper.readValue("{\"authenticated\":true,\"name\":\"customer\"}", AuthenticationResponseDto.class);
+        final AuthenticationResponseDto response = mapper.readValue(
+                "{\"authenticated\":true,\"name\":\"customer\",\"principal\":{\"id\":\"user-1\"}}",
+                AuthenticationResponseDto.class);
         final String token = tokenWithExpiration(NOW + 60_000L);
         final String digest = DatabaseTokenValidationCache.digest(token);
         final TokenValidationCacheEntry entry =
@@ -84,8 +85,9 @@ class DatabaseTokenValidationCacheTest {
     void capsEntriesAtSignedExpirationAndRejectsStaleRowsAfterExpiration() throws Exception {
         final TokenValidationCacheRepository repository = mock(TokenValidationCacheRepository.class);
         final ObjectMapper mapper = new ObjectMapper();
-        final AuthenticationResponseDto response =
-                mapper.readValue("{\"authenticated\":true,\"name\":\"customer\"}", AuthenticationResponseDto.class);
+        final AuthenticationResponseDto response = mapper.readValue(
+                "{\"authenticated\":true,\"name\":\"customer\",\"principal\":{\"id\":\"user-1\"}}",
+                AuthenticationResponseDto.class);
         final String token = tokenWithExpiration(NOW + 1_000L);
         final String digest = DatabaseTokenValidationCache.digest(token);
         final AtomicReference<TokenValidationCacheEntry> stored = new AtomicReference<>();
@@ -130,8 +132,9 @@ class DatabaseTokenValidationCacheTest {
     void doesNotCacheTokensWithoutUsableFutureExpiration() throws Exception {
         final TokenValidationCacheRepository repository = mock(TokenValidationCacheRepository.class);
         final ObjectMapper mapper = new ObjectMapper();
-        final AuthenticationResponseDto response =
-                mapper.readValue("{\"authenticated\":true,\"name\":\"customer\"}", AuthenticationResponseDto.class);
+        final AuthenticationResponseDto response = mapper.readValue(
+                "{\"authenticated\":true,\"name\":\"customer\",\"principal\":{\"id\":\"user-1\"}}",
+                AuthenticationResponseDto.class);
         final DatabaseTokenValidationCache cache =
                 new DatabaseTokenValidationCache(repository, mapper, 30_000L, 10, CLOCK);
 

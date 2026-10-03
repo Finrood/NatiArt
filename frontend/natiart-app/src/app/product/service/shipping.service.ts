@@ -2,11 +2,44 @@ import {Injectable} from '@angular/core';
 import {HttpClient} from "@angular/common/http";
 import {Observable} from "rxjs";
 import {environment} from "../../../environments/environment";
+import {PersonalizationDto} from '../models/orderItem.model';
 
 export interface ShippingEstimate {
+  serviceId?: string;
   service: string;
   price: number;
   estimatedDeliveryDays: number;
+}
+
+export interface ShippingQuoteItemRequest {
+  productId: string;
+  quantity: number;
+  personalization?: PersonalizationDto;
+}
+
+export interface ShippingQuoteRequest {
+  zipCode: string;
+  items: ShippingQuoteItemRequest[];
+}
+
+export interface ShippingQuoteItem {
+  productId: string;
+  personalizationKey?: string;
+  quantity: number;
+  unitPrice: number;
+  lineAmount: number;
+}
+
+export interface ShippingQuote {
+  quoteId: string;
+  destinationPostalCode: string;
+  serviceId: string;
+  serviceName: string;
+  expiresAt: string;
+  itemAmount: number;
+  shippingAmount: number;
+  totalAmount: number;
+  items: ShippingQuoteItem[];
 }
 
 export interface ShippingEstimateRequest {
@@ -29,5 +62,9 @@ export class ShippingService {
 
   calculateShipping(request: ShippingEstimateRequest): Observable<ShippingEstimate[]> {
     return this.http.post<ShippingEstimate[]>(`${this.apiUrl}/estimate`, request);
+  }
+
+  createQuote(request: ShippingQuoteRequest): Observable<ShippingQuote> {
+    return this.http.post<ShippingQuote>(`${this.apiUrl}/quote`, request);
   }
 }
