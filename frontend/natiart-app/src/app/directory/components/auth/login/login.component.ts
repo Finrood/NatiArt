@@ -1,4 +1,4 @@
-import {Component, OnInit} from '@angular/core';
+import {Component, OnInit, inject} from '@angular/core';
 import {HttpErrorResponse} from '@angular/common/http';
 import {Router} from "@angular/router";
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from "@angular/forms";
@@ -33,13 +33,13 @@ export class LoginComponent implements OnInit {
   errorMessage: string = '';
   isSubmitting: boolean = false;
 
-  constructor(
-    private fb: FormBuilder,
-    private router: Router,
-    private authenticationService: AuthenticationService,
-    private tokenService: TokenService,
-    private redirectService: RedirectService
-  ) {
+  private readonly _fb: FormBuilder = inject(FormBuilder);
+  private readonly _router: Router = inject(Router);
+  private readonly _authenticationService: AuthenticationService = inject(AuthenticationService);
+  private readonly _tokenService: TokenService = inject(TokenService);
+  private readonly _redirectService: RedirectService = inject(RedirectService);
+
+  constructor() {
     this.loginForm = this.initForm();
   }
 
@@ -48,8 +48,8 @@ export class LoginComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    if (this.tokenService.accessToken) {
-      this.authenticationService.fetchCurrentUser()
+    if (this._tokenService.accessToken) {
+      this._authenticationService.fetchCurrentUser()
         .subscribe({
           next: () => this.redirectToSavedUrlOrDashboard(),
           error: () => {
@@ -72,14 +72,14 @@ export class LoginComponent implements OnInit {
     }
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
-      this.setErrorMessage('Please fill all required fields correctly.');
+      this.setErrorMessage($localize`Please fill all required fields correctly.`);
       return;
     }
 
     const credentials = this.credentialsForm.value;
     this.isSubmitting = true;
 
-    this.authenticationService.login(credentials)
+    this._authenticationService.login(credentials)
       .pipe(finalize(() => this.isSubmitting = false))
       .subscribe({
         next: (user: User) => {
@@ -87,20 +87,20 @@ export class LoginComponent implements OnInit {
           this.redirectToSavedUrlOrDashboard();
         },
         error: (error: HttpErrorResponse) => {
-          this.setErrorMessage('Invalid email or password. Please try again.');
+          this.setErrorMessage($localize`Invalid email or password. Please try again.`);
           reportError('login', error);
         }
       });
   }
 
   private redirectToSavedUrlOrDashboard() {
-    const redirectUrl = this.redirectService.getRedirectUrl();
+    const redirectUrl = this._redirectService.getRedirectUrl();
     if (redirectUrl) {
-      this.router.navigateByUrl(redirectUrl)
+      this._router.navigateByUrl(redirectUrl)
         .then(() => {
         });
     } else {
-      this.router.navigate(['/dashboard'])
+      this._router.navigate(['/dashboard'])
         .then(() => {
         });
     }
@@ -115,8 +115,8 @@ export class LoginComponent implements OnInit {
   }
 
   private initForm(): FormGroup {
-    return this.fb.group({
-      credentials: this.fb.group({
+    return this._fb.group({
+      credentials: this._fb.group({
         username: ['', [Validators.required, Validators.email]],
         password: ['', [Validators.required]]
       })

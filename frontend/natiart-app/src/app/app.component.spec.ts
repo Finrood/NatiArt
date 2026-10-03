@@ -23,10 +23,10 @@ describe('AppComponent', () => {
     expect(app).toBeTruthy();
   });
 
-  it(`should have the 'authentication-app' title`, () => {
+  it(`should have the 'NatiArt' title`, () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
-    expect(app.title).toEqual('authentication-app');
+    expect(app.title).toEqual('NatiArt');
   });
 
   it('should render the router outlet', () => {

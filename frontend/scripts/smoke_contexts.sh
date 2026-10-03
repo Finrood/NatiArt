@@ -36,7 +36,7 @@ copy_dist() { # image tag, destination
     local id
     id="$(docker create "$1")"
     containers+=("$id")
-    docker cp "$id:/app/dist" "$2"
+    docker cp "$id:/usr/share/nginx/html" "$2"
     docker rm "$id" >/dev/null
 }
 

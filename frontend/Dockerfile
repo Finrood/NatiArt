@@ -13,19 +13,15 @@ COPY natiart-app .
 ARG NODE_ENV=production
 RUN npm run build -- --configuration=$NODE_ENV
 
-# Stage 2: Final (minimal runtime to populate volume)
-FROM alpine:3.20
+# Stage 2: serve the immutable release directly.
+FROM nginx:1.27-alpine
+ENV NATIART_PUBLIC_SCHEME=https
 
-WORKDIR /app
+COPY nginx.conf /etc/nginx/templates/default.conf.template
+COPY --chmod=755 docker/25-publish-assets.sh /docker-entrypoint.d/25-publish-assets.sh
 
-# Copy built assets
-COPY --from=build /app/natiart-app/dist/nati-art-frontend/browser /app/dist
+VOLUME /var/lib/natiart-assets
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s CMD wget -q -O /dev/null http://127.0.0.1/healthz || exit 1
+COPY --from=build /app/natiart-app/dist/nati-art-frontend/browser /usr/share/nginx/html
 
-# Use a non-root user (uid/gid 1000 for consistency)
-RUN addgroup -g 1000 -S appgroup && \
-    adduser -u 1000 -S appuser -G appgroup
-
-USER appuser
-
-# Keep container running to populate the volume
-CMD ["tail", "-f", "/dev/null"]
+EXPOSE 80
