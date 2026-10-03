@@ -1,14 +1,12 @@
-import {Directive, HostListener, Renderer2} from '@angular/core';
+import {Directive, inject, HostListener, Renderer2} from '@angular/core';
 import {NgControl} from '@angular/forms';
 
 @Directive({
   selector: '[cepFormat]'
 })
 export class CepFormatDirective {
-  constructor(
-    private renderer: Renderer2,
-    private control: NgControl
-  ) {}
+  private readonly _renderer = inject(Renderer2);
+  private readonly _control = inject(NgControl);
 
   @HostListener('input', ['$event'])
   onInput(event: InputEvent) {
@@ -29,12 +27,11 @@ export class CepFormatDirective {
 
   private updateValue(input: HTMLInputElement, formattedValue: string, cleanValue: string) {
     const previousValue = input.value;
+    if (this._control.control?.value !== cleanValue) {
+      this._control.control?.setValue(cleanValue, {emitEvent: true, emitModelToViewChange: false});
+    }
     if (previousValue !== formattedValue) {
-      this.renderer.setProperty(input, 'value', formattedValue);
-      this.control.control?.setValue(cleanValue, {
-        emitEvent: true,
-        emitModelToViewChange: false
-      });
+      this._renderer.setProperty(input, 'value', formattedValue);
 
       this.adjustCursorPosition(input, previousValue, formattedValue);
     }

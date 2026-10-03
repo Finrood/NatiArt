@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
+import com.portcelana.natiart.dto.PagedResponseDto;
 import com.portcelana.natiart.dto.ProductDto;
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Package;
@@ -38,6 +39,7 @@ public class ProductManagerImpl implements ProductManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductManagerImpl.class);
     private static final BigDecimal MAX_PRODUCT_WEIGHT_KG = BigDecimal.valueOf(1000);
     private static final String IMAGE_KEY_PREFIX = "products/";
+    private static final int MAX_IMAGES_PER_PRODUCT = 10;
 
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
@@ -45,6 +47,7 @@ public class ProductManagerImpl implements ProductManager {
     private final CategoryManager categoryManager;
     private final PackageManager packageManager;
     private final StorageService storageService;
+    private final ProductImageLifecycle imageLifecycle;
 
     public ProductManagerImpl(
             ProductRepository productRepository,
@@ -52,13 +55,15 @@ public class ProductManagerImpl implements ProductManager {
             CartItemRepository cartItemRepository,
             CategoryManager categoryManager,
             PackageManager packageManager,
-            StorageService storageService) {
+            StorageService storageService,
+            ProductImageLifecycle imageLifecycle) {
         this.productRepository = productRepository;
         this.orderRepository = orderRepository;
         this.cartItemRepository = cartItemRepository;
         this.categoryManager = categoryManager;
         this.packageManager = packageManager;
         this.storageService = storageService;
+        this.imageLifecycle = imageLifecycle;
     }
 
     @Override
@@ -98,6 +103,14 @@ public class ProductManagerImpl implements ProductManager {
 
     @Override
     @Transactional(readOnly = true)
+    public Product getActiveProductWithImagesOrDie(String id) {
+        return productRepository
+                .findActiveByIdWithImages(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product with id [" + id + "] not found"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Map<String, Product> getProductsOrDie(Collection<String> ids) {
         final Map<String, Product> byId = productRepository.findAllById(ids).stream()
                 .collect(Collectors.toMap(Product::getId, Function.identity()));
@@ -117,8 +130,20 @@ public class ProductManagerImpl implements ProductManager {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Product> getActiveProducts(Pageable pageable) {
+        return fetchPageWithImages(productRepository.findAllActiveIds(pageable), true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Product> getNewProducts(Pageable pageable) {
         return fetchPageWithImages(productRepository.findAllIdsByNewProduct(true, pageable));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Product> getActiveNewProducts(Pageable pageable) {
+        return fetchPageWithImages(productRepository.findAllActiveIdsByNewProduct(true, pageable), true);
     }
 
     @Override
@@ -129,17 +154,36 @@ public class ProductManagerImpl implements ProductManager {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Product> getActiveFeaturedProducts(Pageable pageable) {
+        return fetchPageWithImages(productRepository.findAllActiveIdsByFeaturedProduct(true, pageable), true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Product> getProductsByCategory(Category category, Pageable pageable) {
         return fetchPageWithImages(productRepository.findAllIdsByCategory(category, pageable));
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<Product> getActiveProductsByCategory(Category category, Pageable pageable) {
+        return fetchPageWithImages(productRepository.findAllActiveIdsByCategory(category, pageable), true);
+    }
+
     private List<Product> fetchPageWithImages(Page<String> idPage) {
+        return fetchPageWithImages(idPage, false);
+    }
+
+    private List<Product> fetchPageWithImages(Page<String> idPage, boolean activeOnly) {
         final List<String> ids = idPage.getContent();
         if (ids.isEmpty()) {
             return List.of();
         }
-        final Map<String, Product> byId = productRepository.findAllWithImagesByIds(ids).stream()
-                .collect(Collectors.toMap(Product::getId, Function.identity()));
+        final List<Product> fetched = activeOnly
+                ? productRepository.findAllActiveWithImagesByIds(ids)
+                : productRepository.findAllWithImagesByIds(ids);
+        final Map<String, Product> byId =
+                fetched.stream().collect(Collectors.toMap(Product::getId, Function.identity()));
         return ids.stream()
                 .map(byId::get)
                 // A product deleted between the id-page query and the fetch query simply drops from the page
@@ -152,6 +196,29 @@ public class ProductManagerImpl implements ProductManager {
     @Transactional(readOnly = true)
     public boolean existsByCategory(Category category) {
         return productRepository.existsByCategory(category);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PagedResponseDto<ProductDto> getProductsPage(
+            String categoryId, String query, Pageable pageable, boolean includeInactive) {
+        final String normalizedCategory = categoryId == null || categoryId.isBlank() ? null : categoryId.trim();
+        final String normalizedQuery = query == null ? "" : query.trim().toLowerCase(java.util.Locale.ROOT);
+        if (normalizedQuery.length() > 200) throw new IllegalArgumentException("Search is limited to 200 characters");
+        final Page<String> ids =
+                productRepository.findCatalogIds(normalizedCategory, normalizedQuery, includeInactive, pageable);
+        final Map<String, Product> products = fetchPageWithImages(ids, !includeInactive).stream()
+                .collect(Collectors.toMap(Product::getId, Function.identity()));
+        return new PagedResponseDto<>(
+                ids.getContent().stream()
+                        .map(products::get)
+                        .filter(Objects::nonNull)
+                        .map(ProductDto::from)
+                        .toList(),
+                ids.getTotalElements(),
+                ids.getNumber(),
+                ids.getSize(),
+                ids.hasNext());
     }
 
     @Override
@@ -196,8 +263,8 @@ public class ProductManagerImpl implements ProductManager {
         requirePositiveWeight(productDto.getWeightKg());
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
         final Optional<Package> pack = packageManager.getPackage(productDto.getPackageId());
-        final Product product = getProductOrDie(productDto.getId())
-                .setLabel(label)
+        final Product product = getProductOrDie(productDto.getId());
+        product.setLabel(label)
                 .setDescription(productDto.getDescription())
                 .setCategory(category)
                 .setPackaging(pack.orElse(null))
@@ -213,8 +280,9 @@ public class ProductManagerImpl implements ProductManager {
 
         final List<String> imagesUris = processImages(product, productDto.getImages(), imagesInput);
         product.setImages(imagesUris);
+        final Product saved = productRepository.save(product);
 
-        return productRepository.save(product);
+        return saved;
     }
 
     @Override
@@ -230,6 +298,7 @@ public class ProductManagerImpl implements ProductManager {
             throw new IllegalArgumentException(
                     "Product [" + product.getLabel() + "] is referenced by an order or cart; deactivate it instead");
         }
+        imageLifecycle.prepareReferences(product.getImages(), List.of());
         productRepository.delete(product);
     }
 
@@ -262,24 +331,37 @@ public class ProductManagerImpl implements ProductManager {
 
     private List<String> processImages(Product product, List<String> existingImages, List<InputFile> newImages) {
         final List<InputFile> uploads = newImages != null ? newImages : List.of();
-        LOGGER.info(
-                "Processing [{}] images for product labelled [{}] with id [{}]",
-                uploads.size(),
-                product.getLabel(),
-                product.getId());
+        try {
+            final List<String> retainedImages = existingImages != null ? existingImages : List.of();
+            if (retainedImages.size() + uploads.size() > MAX_IMAGES_PER_PRODUCT) {
+                throw new IllegalArgumentException(
+                        "A product may contain at most " + MAX_IMAGES_PER_PRODUCT + " images");
+            }
+            LOGGER.info(
+                    "Processing [{}] images for product labelled [{}] with id [{}]",
+                    uploads.size(),
+                    product.getLabel(),
+                    product.getId());
 
-        final List<String> imagesUris = existingImages != null ? new ArrayList<>(existingImages) : new ArrayList<>();
+            imageLifecycle.prepareReferences(product.getImages(), retainedImages);
+            final List<String> imagesUris = new ArrayList<>(retainedImages);
 
-        List<String> newUris = uploads.parallelStream()
-                .map(inputFile -> {
-                    final String imageKey = IMAGE_KEY_PREFIX + product.getId() + "/" + UUID.randomUUID();
-                    final URI imageUri = storageService.uploadFile(imageKey, inputFile);
-                    return imageUri.toString();
-                })
-                .toList();
-
-        imagesUris.addAll(newUris);
-        return imagesUris;
+            for (InputFile inputFile : uploads) {
+                final String imagePath = IMAGE_KEY_PREFIX + product.getId() + "/" + UUID.randomUUID();
+                imagesUris.add(imageLifecycle
+                        .upload(product.getId(), imagePath, UUID.randomUUID().toString(), inputFile)
+                        .toString());
+            }
+            return imagesUris;
+        } finally {
+            for (InputFile input : uploads) {
+                try {
+                    input.inputStream().close();
+                } catch (java.io.IOException error) {
+                    LOGGER.warn("Unable to close product upload input");
+                }
+            }
+        }
     }
 
     private static String requireNonBlankLabel(String label) {

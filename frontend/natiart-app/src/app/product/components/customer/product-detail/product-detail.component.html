@@ -17,7 +17,7 @@
               [class.cursor-zoom-out]="isZoomed"
               (mousemove)="updateZoomPosition($event)"
               (mouseleave)="isZoomed = false"
-              (click)="toggleZoom($event)">
+              (click)="toggleZoom($event)" tabindex="0" role="button" aria-label="Toggle image zoom" (keydown.enter)="zoomKey($event)">
               <img (error)="imageFailed($productImages()[selectedImageIndex]?.key || '')" #mainImage
                 [src]="imageUrls[selectedImageIndex] || emptyImage"
                 alt="{{product.label}} - Main Image" i18n-alt
@@ -45,7 +45,7 @@
             <!-- Thumbnails -->
             <div class="flex mt-4 space-x-2 overflow-x-auto pb-2">
               @for (imgEntry of $productImages(); track imgEntry.key; let i = $index) {
-                <img (error)="imageFailed(imgEntry.key)" (click)="selectImage(imgEntry.key)"
+                <img (error)="imageFailed(imgEntry.key)" (click)="selectImage(imgEntry.key)" tabindex="0" role="button" (keydown.enter)="selectImage(imgEntry.key)" (keydown.space)="$event.preventDefault(); selectImage(imgEntry.key)" [attr.aria-label]="imageLabel(i + 1)"
                   [src]="imgEntry.url || emptyImage"
                   alt="{{product.label}} Thumbnail {{ i + 1 }}" i18n-alt
                   class="w-20 h-20 object-contain border-2 cursor-pointer transition-colors duration-200 rounded"

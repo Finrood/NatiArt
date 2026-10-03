@@ -24,6 +24,7 @@ import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.repository.CategoryRepository;
 import com.portcelana.natiart.repository.PackageRepository;
 import com.portcelana.natiart.repository.ProductRepository;
+import com.portcelana.natiart.service.CategoryManager;
 import com.portcelana.natiart.service.ImageConversionService;
 import com.portcelana.natiart.service.ProductManager;
 
@@ -55,9 +56,9 @@ class ProductDetailContractTest {
         final Product detached = products.findByIdWithImages(saved.getId()).orElseThrow();
         entityManager.clear();
         final ProductManager manager = mock(ProductManager.class);
-        when(manager.getProductWithImagesOrDie(saved.getId())).thenReturn(detached);
+        when(manager.getActiveProductWithImagesOrDie(saved.getId())).thenReturn(detached);
         final MockMvc mvc = MockMvcBuilders.standaloneSetup(
-                        new ProductController(manager, mock(ImageConversionService.class)))
+                        new ProductController(manager, mock(CategoryManager.class), mock(ImageConversionService.class)))
                 .build();
         mvc.perform(get("/products/{id}", saved.getId()))
                 .andExpect(status().isOk())

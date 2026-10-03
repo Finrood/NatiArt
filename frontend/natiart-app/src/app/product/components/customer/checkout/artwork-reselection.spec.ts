@@ -33,7 +33,7 @@ describe('Restored artwork reselection', (): void => {
       {provide: AuthenticationService, useValue: {isLoggedIn$: of(true), currentUser$: of(user), fetchCurrentUser: (): unknown => of(user)}},
       {provide: OrderService, useValue: {orderProcessing$: of(false), createOrder: create}},
       {provide: ShippingService, useValue: {createQuote: (): unknown => of({quoteId: 'quote', expiresAt: '2099-01-01T00:00:00Z', itemAmount: 10, shippingAmount: 0, totalAmount: 10, items: []} as unknown as ShippingQuote)}},
-      {provide: ProductService, useValue: {uploadCustomerImage: upload}},
+      {provide: ProductService, useValue: {imageInvalidations: of(), getImage: (): unknown => of(new Blob()), uploadCustomerImage: upload}},
       {provide: PaymentService, useValue: {createPixPayment: (): unknown => of({paymentId: 'paid'})}},
     ]}).compileComponents();
     spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);

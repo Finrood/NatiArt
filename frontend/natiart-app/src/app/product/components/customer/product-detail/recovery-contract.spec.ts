@@ -8,6 +8,7 @@ import {ProductDetailComponent} from './product-detail.component';
 import {TopMenuComponent} from '../top-menu/top-menu.component';
 import {LeftMenuComponent} from '../left-menu/left-menu.component';
 import {Product} from '../../../models/product.model';
+import {ProductService} from '../../../service/product.service';
 
 @Component({selector: 'app-top-menu', template: ''}) class HeaderStub {}
 @Component({selector: 'app-left-menu', template: ''}) class SidebarStub {}
@@ -37,7 +38,7 @@ describe('Product detail rendered HTTP recovery contract', (): void => {
   }
 
   it('positions an existing lens on the first zoom click and safely handles later removal', async (): Promise<void> => {
-    reply('first', ['art']); http.expectOne((request): boolean => new URL(request.urlWithParams).searchParams.get('path') === 'art').flush(bytes()); await fixture.whenStable();
+    reply('first', ['art']); http.expectOne((request): boolean => new URL(request.urlWithParams, document.baseURI).searchParams.get('path') === 'art').flush(bytes()); await fixture.whenStable();
     const container: HTMLElement = (fixture.nativeElement as HTMLElement).querySelector('.cursor-zoom-in')!;
     const rect: DOMRect = container.getBoundingClientRect();
     expect((): void => { container.dispatchEvent(new MouseEvent('click', {bubbles: true, clientX: rect.left + 10, clientY: rect.top + 10})); }).not.toThrow();
@@ -63,10 +64,10 @@ describe('Product detail rendered HTTP recovery contract', (): void => {
 
   it('keeps server image order and selects the clicked identity after out-of-order responses', async (): Promise<void> => {
     reply('first', ['image-z', 'image-a', 'image-m']);
-    const requests = http.match((request): boolean => new URL(request.urlWithParams).pathname.endsWith('/images'));
-    requests.find((request): boolean => new URL(request.request.urlWithParams).searchParams.get('path') === 'image-a')!.flush(bytes());
-    requests.find((request): boolean => new URL(request.request.urlWithParams).searchParams.get('path') === 'image-m')!.flush(bytes());
-    requests.find((request): boolean => new URL(request.request.urlWithParams).searchParams.get('path') === 'image-z')!.flush(bytes()); await fixture.whenStable();
+    const requests = http.match((request): boolean => new URL(request.urlWithParams, document.baseURI).pathname.endsWith('/images'));
+    requests.find((request): boolean => new URL(request.request.urlWithParams, document.baseURI).searchParams.get('path') === 'image-a')!.flush(bytes());
+    requests.find((request): boolean => new URL(request.request.urlWithParams, document.baseURI).searchParams.get('path') === 'image-m')!.flush(bytes());
+    requests.find((request): boolean => new URL(request.request.urlWithParams, document.baseURI).searchParams.get('path') === 'image-z')!.flush(bytes()); await fixture.whenStable();
     expect(fixture.componentInstance.$productImages().map((entry): string => entry.key)).toEqual(['image-z', 'image-a', 'image-m']);
     const root: HTMLElement = fixture.nativeElement; const thumbnails: NodeListOf<HTMLImageElement> = root.querySelectorAll('img.cursor-pointer');
     thumbnails[1].click(); await fixture.whenStable();
@@ -77,14 +78,29 @@ describe('Product detail rendered HTTP recovery contract', (): void => {
   it('falls back once for failed image HTTP or decoding, revoking raw bytes without another GET', async (): Promise<void> => {
     const revoke: jasmine.Spy = spyOn(URL, 'revokeObjectURL');
     reply('first', ['missing', 'decode']);
-    http.expectOne((request): boolean => new URL(request.urlWithParams).searchParams.get('path') === 'missing').flush(null, {status: 404, statusText: 'Missing'});
-    http.expectOne((request): boolean => new URL(request.urlWithParams).searchParams.get('path') === 'decode').flush(bytes()); await fixture.whenStable();
+    http.expectOne((request): boolean => new URL(request.urlWithParams, document.baseURI).searchParams.get('path') === 'missing').flush(null, {status: 404, statusText: 'Missing'});
+    http.expectOne((request): boolean => new URL(request.urlWithParams, document.baseURI).searchParams.get('path') === 'decode').flush(bytes()); await fixture.whenStable();
     const root: HTMLElement = fixture.nativeElement; const thumbs: NodeListOf<HTMLImageElement> = root.querySelectorAll('img.cursor-pointer');
     expect(thumbs[0].src.startsWith('data:image/svg+xml')).toBeTrue();
     const decoded: string = thumbs[1].src; thumbs[1].dispatchEvent(new Event('error')); await fixture.whenStable();
     expect(revoke).toHaveBeenCalledWith(decoded); expect(thumbs[1].src.startsWith('data:image/svg+xml')).toBeTrue();
     thumbs[1].dispatchEvent(new Event('error')); await fixture.whenStable(); expect(revoke.calls.count()).toBe(1);
     expect(fixture.componentInstance.$productImages().every((entry): boolean => entry.state === 'error')).toBeTrue();
+  });
+
+  it('refreshes the visible detail image on a successful product edit and releases its old URL', async (): Promise<void> => {
+    const revoke: jasmine.Spy = spyOn(URL, 'revokeObjectURL');
+    reply('first', ['art']);
+    http.expectOne((request): boolean => new URL(request.urlWithParams, document.baseURI).searchParams.get('path') === 'art').flush(bytes());
+    await fixture.whenStable();
+    const oldUrl: string = fixture.componentInstance.$productImages()[0].url!;
+    TestBed.inject(ProductService).updateProduct('first', new FormData()).subscribe();
+    http.expectOne((request): boolean => request.method === 'PUT' && request.url.endsWith('/products/first')).flush(payload('first', ['art']));
+    expect(revoke).toHaveBeenCalledWith(oldUrl);
+    http.expectOne((request): boolean => new URL(request.urlWithParams, document.baseURI).searchParams.get('path') === 'art').flush(bytes());
+    await fixture.whenStable();
+    expect(fixture.componentInstance.$productImages()[0].state).toBe('loaded');
+    expect(fixture.componentInstance.$productImages()[0].url).not.toBe(oldUrl);
   });
 
   it('cancels a personalization refresh when the route leaves its product', async (): Promise<void> => {
@@ -99,7 +115,7 @@ describe('Product detail rendered HTTP recovery contract', (): void => {
   it('cancels pending images and related requests immediately on rapid route change', async (): Promise<void> => {
     http.expectOne((request): boolean => request.url.endsWith('/products/first')).flush(payload('first', ['old']));
     const oldRelated = http.expectOne((request): boolean => request.url.endsWith('/products'));
-    const oldImage = http.expectOne((request): boolean => new URL(request.urlWithParams).searchParams.get('path') === 'old');
+    const oldImage = http.expectOne((request): boolean => new URL(request.urlWithParams, document.baseURI).searchParams.get('path') === 'old');
     params.next(convertToParamMap({id: 'next'})); expect(oldRelated.cancelled).toBeTrue(); expect(oldImage.cancelled).toBeTrue();
     const next = http.expectOne((request): boolean => request.url.endsWith('/products/next'));
     params.next(convertToParamMap({id: 'last'})); expect(next.cancelled).toBeTrue(); reply('last'); await fixture.whenStable();

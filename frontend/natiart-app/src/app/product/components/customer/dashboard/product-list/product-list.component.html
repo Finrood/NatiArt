@@ -8,11 +8,9 @@
           <!-- Product Image -->
           <div class="relative h-64 overflow-hidden">
             <a [routerLink]="product.id ? ['/product', product.id] : null">
-              @if (product.id && imageUrls[product.id]) {
-                <img [src]="imageUrls[product.id]" [alt]="product.label" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">
-              } @else {
-                <div class="w-full h-full bg-gray-200 animate-pulse"></div>
-              }
+              <img [src]="imageUrls[product.id ?? 'card-' + $index] || emptyImage" [alt]="product.label"
+                (error)="images.failed(product.id ?? 'card-' + $index)" [attr.aria-busy]="images.states()[product.id ?? 'card-' + $index] === 'loading'"
+                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">
             </a>
             <div class="absolute top-3 right-3 flex flex-col space-y-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <button class="p-2 rounded-full bg-white/80 hover:bg-white backdrop-blur-sm text-secondary">
