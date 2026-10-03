@@ -57,10 +57,9 @@
         <div class="flex justify-end space-x-2">
           <app-button type="button" (click)="closeModal()" color="secondary" size="md" i18n>Cancel
           </app-button>
-          <app-button type="submit" color="primary" size="md" i18n>{isEditingPackage.value, select, true {Update} other {Add}}</app-button>
+          <app-button type="submit" [disabled]="isSubmitting || packageForm.invalid" color="primary" size="md" i18n>{isEditingPackage.value, select, true {Update} other {Add}}</app-button>
         </div>
       </form>
     </div>
   </div>
 }
-
