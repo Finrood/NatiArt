@@ -1,10 +1,12 @@
-import {Component, inject, OnInit, ViewChild} from '@angular/core';
+import {AfterViewInit, DestroyRef, signal, Component, inject, OnInit, ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {CategoryService} from '../../../service/category.service';
 import {Category} from '../../../models/category.model';
 import {BehaviorSubject} from 'rxjs';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import {finalize} from 'rxjs/operators';
 import {NatiartFormFieldComponent} from "../../../../shared/components/natiart-form-field/natiart-form-field.component";
 import {AlertMessageComponent} from "../../../../shared/components/alert-message/alert-message.component";
 import {ButtonComponent} from "../../../../shared/components/button.component";
@@ -16,16 +18,30 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
   templateUrl: './admin-category-management.component.html',
   styleUrls: ['./admin-category-management.component.css']
 })
-export class CategoryManagementComponent implements OnInit {
+export class CategoryManagementComponent implements OnInit, AfterViewInit {
   private _categories$ = new BehaviorSubject<Category[]>([]);
   categories$ = this._categories$.asObservable();
 
+  readonly $visibilityPending = signal<ReadonlySet<string>>(new Set<string>());
+
+  isVisibilityPending(id: string | undefined): boolean {
+    return !!id && this.$visibilityPending().has(id);
+  }
+
   isEditingCategory: boolean = false;
-  modalVisible: boolean = false;
+  readonly $modalVisible = signal(false);
+  get modalVisible(): boolean { return this.$modalVisible(); }
+  set modalVisible(value: boolean) { this.$modalVisible.set(value); }
+  readonly $isSubmitting = signal(false);
+  get isSubmitting(): boolean { return this.$isSubmitting(); }
+  set isSubmitting(value: boolean) { this.$isSubmitting.set(value); }
+  private readonly _destroyed = inject(DestroyRef);
 
   categoryForm: FormGroup;
   private categoryService = inject(CategoryService);
   private fb = inject(FormBuilder);
+  private formGeneration = 0;
+  private pendingAlerts: Array<{message: string; type: 'success' | 'error'}> = [];
 
   @ViewChild('alertMessages') alertMessageComponent!: AlertMessageComponent;
 
@@ -42,7 +58,12 @@ export class CategoryManagementComponent implements OnInit {
     this.getCategories();
   }
 
+  ngAfterViewInit(): void {
+    this.pendingAlerts.splice(0).forEach(alert => this.showAlert(alert.message, alert.type));
+  }
+
   openModal(category?: Category): void {
+    this.formGeneration++;
     this.isEditingCategory = !!category;
     if (category) {
       this.categoryForm.setValue({
@@ -58,43 +79,65 @@ export class CategoryManagementComponent implements OnInit {
   }
 
   closeModal(): void {
+    this.formGeneration++;
     this.modalVisible = false;
     this.categoryForm.reset();
   }
 
   submitForm(): void {
+    if (this.isSubmitting) {
+      return;
+    }
     if (this.categoryForm.valid) {
-      this.isEditingCategory ? this.updateCategory() : this.addCategory();
+      this.isSubmitting = true;
+      const generation = this.formGeneration;
+      this.isEditingCategory ? this.updateCategory(generation) : this.addCategory(generation);
     } else {
       this.validateAllFormFields(this.categoryForm);
     }
   }
 
-  addCategory(): void {
+  addCategory(generation = this.formGeneration): void {
     const category: Category = this.categoryForm.value;
-    this.categoryService.addCategory(category).subscribe({
+    this.categoryService.addCategory(category).pipe(takeUntilDestroyed(this._destroyed), finalize(() => this.isSubmitting = false)).subscribe({
       next: (response) => {
         this._categories$.next([...this._categories$.value, response]);
-        this.closeModal();
+        if (generation === this.formGeneration) {
+          this.closeModal();
+        }
+        this.showAlert($localize`Category created successfully`, 'success');
       },
-      error: (error) => reportError('category', error)
+      error: (error) => {
+        reportError('category', error);
+        this.showAlert(this.writeErrorMessage(error), 'error');
+      }
     });
   }
 
-  updateCategory(): void {
+  updateCategory(generation = this.formGeneration): void {
     const category: Category = this.categoryForm.value;
-    this.categoryService.updateCategory(category.id!, category).subscribe({
+    this.categoryService.updateCategory(category.id!, category).pipe(takeUntilDestroyed(this._destroyed), finalize(() => this.isSubmitting = false)).subscribe({
       next: (response: Category) => {
         this._categories$.next(
           this._categories$.value.map(cat => cat.id === response.id ? response : cat)
         );
-        this.closeModal();
+        if (generation === this.formGeneration) {
+          this.closeModal();
+        }
+        this.showAlert($localize`Category updated successfully`, 'success');
       },
-      error: (error) => reportError('category', error)
+      error: (error) => {
+        reportError('category', error);
+        this.showAlert(this.writeErrorMessage(error), 'error');
+      }
     });
   }
 
   deleteCategory(id: string): void {
+    const category = this._categories$.value.find(item => item.id === id);
+    if (!category || !window.confirm($localize`Delete category "${category.label}:CATEGORY_LABEL:"?`)) {
+      return;
+    }
     this.categoryService.deleteCategory(id).subscribe({
       next: () => {
         this._categories$.next(this._categories$.value.filter(cat => cat.id !== id));
@@ -104,7 +147,7 @@ export class CategoryManagementComponent implements OnInit {
         reportError('category', error);
         let errorMessage = $localize`An error occurred while deleting the category.`;
         if (error.status === 400) {
-          errorMessage = $localize`Category contains existing products. Delete them before deleting this category`;
+          errorMessage = $localize`Category is used by products. Reassign those products before deleting this category.`;
         } else if (error.status === 404) {
           errorMessage = $localize`Category not found. It may have been already deleted.`;
         } else if (error.status === 403) {
@@ -116,20 +159,36 @@ export class CategoryManagementComponent implements OnInit {
   }
 
   toggleCategoryVisibility(category: Category): void {
-    this.categoryService.inverseCategoryVisibility(category.id!).subscribe({
+    const id: string | undefined = category.id;
+    if (!id || this.isVisibilityPending(id)) return;
+    this.$visibilityPending.update((pending: ReadonlySet<string>) => new Set([...pending, id]));
+    this.categoryService.inverseCategoryVisibility(id).pipe(
+      takeUntilDestroyed(this._destroyed),
+      finalize(() => this.$visibilityPending.update((pending: ReadonlySet<string>) => {
+        const remaining: Set<string> = new Set(pending);
+        remaining.delete(id);
+        return remaining;
+      }))
+    ).subscribe({
       next: (response: Category) => {
         this._categories$.next(
           this._categories$.value.map(cat => cat.id === response.id ? response : cat)
         );
       },
-      error: (error) => reportError('category', error)
+      error: (error) => {
+        reportError('category', error);
+        this.showAlert($localize`Unable to change category visibility. Please retry.`, 'error');
+      }
     });
   }
 
   private getCategories(): void {
     this.categoryService.getCategories().subscribe({
       next: (response) => this._categories$.next(response),
-      error: (error) => reportError('category', error)
+      error: (error) => {
+        reportError('category', error);
+        this.showAlert($localize`Unable to load categories. Please retry.`, 'error');
+      }
     });
   }
 
@@ -145,6 +204,20 @@ export class CategoryManagementComponent implements OnInit {
   }
 
   private showAlert(message: string, type: 'success' | 'error'): void {
-    this.alertMessageComponent.showAlert({ message, type });
+    if (this.alertMessageComponent) {
+      this.alertMessageComponent.showAlert({ message, type });
+    } else {
+      this.pendingAlerts.push({message, type});
+    }
+  }
+
+  private writeErrorMessage(error: HttpErrorResponse): string {
+    if (error.status === 409) {
+      return $localize`A category with this label already exists.`;
+    }
+    if (error.status === 0) {
+      return $localize`The category service is unavailable. Please retry.`;
+    }
+    return $localize`Unable to save the category. Your changes are still in the form.`;
   }
 }

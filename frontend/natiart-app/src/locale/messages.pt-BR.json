@@ -424,6 +424,23 @@
     "753153473833797966": "enviado",
     "335930395199885743": "entregue",
     "3790237263254602448": "cancelado",
+    "1691707173740821203": "Categoria criada com sucesso",
+    "852051812672257593": "Categoria atualizada com sucesso",
+    "8877983935888759615": "Excluir a categoria \"{$CATEGORY_LABEL}\"?",
+    "8512825063307116853": "A categoria é usada por produtos. Reatribua esses produtos antes de excluí-la.",
+    "8400368791889264810": "Não foi possível alterar a visibilidade da categoria. Tente novamente.",
+    "6444827110721855515": "Não foi possível carregar as categorias. Tente novamente.",
+    "4614109237305856412": "Já existe uma categoria com esse nome.",
+    "9025542632900306434": "O serviço de categorias está indisponível. Tente novamente.",
+    "8522892970907027293": "Não foi possível salvar a categoria. Suas alterações continuam no formulário.",
+    "564012089501465066": "Embalagem criada com sucesso",
+    "3839574855818968039": "Embalagem atualizada com sucesso",
+    "485098877552399283": "Excluir a embalagem \"{$PACKAGE_LABEL}\"?",
+    "5075778767489033605": "A embalagem é usada por produtos. Reatribua esses produtos antes de excluí-la.",
+    "5592690539959181253": "Não foi possível carregar as embalagens. Tente novamente.",
+    "5450434156157818067": "Já existe uma embalagem com esse nome.",
+    "7366802516970412749": "O serviço de embalagens está indisponível. Tente novamente.",
+    "6908837411625254968": "Não foi possível salvar a embalagem. Suas alterações continuam no formulário.",
     "5806884108640249370": "Máximo de {$MAX_BYTES} bytes em UTF-8"
   }
 }
