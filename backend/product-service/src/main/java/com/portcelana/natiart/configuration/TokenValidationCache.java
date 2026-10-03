@@ -9,4 +9,7 @@ public interface TokenValidationCache {
     Optional<AuthenticationResponseDto> get(String token);
 
     void put(String token, AuthenticationResponseDto response);
+
+    /** Remove successful validations when directory changes an account's authority. */
+    void evictUser(String userId);
 }
