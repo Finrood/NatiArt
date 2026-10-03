@@ -51,6 +51,9 @@ class ProductVisibilityIntegrationTest {
     @MockitoBean
     private StorageService storageService;
 
+    @MockitoBean
+    private ProductImageLifecycle imageLifecycle;
+
     @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void toggleMapsCompleteDetachedResponseAndCommitsVisibility() {

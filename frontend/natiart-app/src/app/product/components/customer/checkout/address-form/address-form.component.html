@@ -15,7 +15,7 @@
   }
 
   @if (errorMessage) {
-    <p class="text-sm text-error">{{ errorMessage }}</p>
+    <p class="text-sm text-error" role="alert">{{ errorMessage }}</p>
   }
 
   <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -44,6 +44,14 @@
       <input [id]="isBillingAddress ? 'billingStreet' : 'shippingStreet'" formControlName="street" placeholder="123 Main St"
         class="form-input" i18n-placeholder>
     </app-natiart-form-field>
+
+    @if (addressFormGroup.get('houseNumber')) {
+      <app-natiart-form-field label="House number" controlName="houseNumber" [inputId]="isBillingAddress ? 'billingHouseNumber' : 'shippingHouseNumber'" [form]="addressFormGroup" i18n-label>
+        <input [id]="isBillingAddress ? 'billingHouseNumber' : 'shippingHouseNumber'" formControlName="houseNumber"
+          maxlength="255" placeholder="Number or N/A" i18n-placeholder class="form-input" autocomplete="address-line2">
+        <p class="mt-1 text-xs text-secondary-light" i18n>Enter N/A when the address has no house number.</p>
+      </app-natiart-form-field>
+    }
 
     <app-natiart-form-field label="Address Complement" controlName="complement" [inputId]="isBillingAddress ? 'billingComplement' : 'shippingComplement'" [form]="addressFormGroup" [isOptional]="true" i18n-label>
       <input [id]="isBillingAddress ? 'billingComplement' : 'shippingComplement'" formControlName="complement"
