@@ -119,7 +119,7 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(cloned).pipe(
     catchError(error => {
-      if (error.status === 401 && !alreadyRetried) {
+      if (error.status === 401 && !isAuthRequest(req.url) && !isRefreshTokenRequest(req.url) && !alreadyRetried) {
         if (isLogoutRequest(req.url)) {
           // Explicit logout must never mint fresh tokens: end the local
           // session instead of refreshing-then-retrying the signout.
