@@ -12,6 +12,12 @@ export class TopBannerComponent implements OnInit, OnDestroy {
   get currentBannerIndex(): number { return this.$currentBannerIndex(); }
   set currentBannerIndex(value: number) { this.$currentBannerIndex.set(value); }
   readonly bannerImages: string[] = ['assets/img/a1.webp'];
+  bannerLabel(index: number): string {
+    return $localize`Go to banner ${index}:IMAGE_NUMBER:`;
+  }
+
+  get rotationLabel(): string { return this.$reducedMotion() ? $localize`Rotation off (reduced motion)` : this.$paused() ? $localize`Resume rotation` : $localize`Pause rotation`; }
+
   private bannerInterval: ReturnType<typeof setInterval> | undefined;
   private media: MediaQueryList | null = null;
   private pointerInside: boolean = false;

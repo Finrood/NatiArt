@@ -13,7 +13,6 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-admin-category-management',
-  standalone: true,
   imports: [CommonModule, ReactiveFormsModule, NatiartFormFieldComponent, AlertMessageComponent, ButtonComponent, AccessibleDialogComponent],
   templateUrl: './admin-category-management.component.html',
   styleUrls: ['./admin-category-management.component.css']
@@ -100,17 +99,17 @@ export class CategoryManagementComponent implements OnInit {
     this.categoryService.deleteCategory(id).subscribe({
       next: () => {
         this._categories$.next(this._categories$.value.filter(cat => cat.id !== id));
-        this.showAlert('Category deleted successfully', 'success');
+        this.showAlert($localize`Category deleted successfully`, 'success');
       },
       error: (error: HttpErrorResponse) => {
         reportError('category', error);
-        let errorMessage = 'An error occurred while deleting the category.';
+        let errorMessage = $localize`An error occurred while deleting the category.`;
         if (error.status === 400) {
-          errorMessage = 'Category contains existing products. Delete them before deleting this category';
+          errorMessage = $localize`Category contains existing products. Delete them before deleting this category`;
         } else if (error.status === 404) {
-          errorMessage = 'Category not found. It may have been already deleted.';
+          errorMessage = $localize`Category not found. It may have been already deleted.`;
         } else if (error.status === 403) {
-          errorMessage = 'You do not have permission to delete this category.';
+          errorMessage = $localize`You do not have permission to delete this category.`;
         }
         this.showAlert(errorMessage, 'error');
       }

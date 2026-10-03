@@ -8,7 +8,7 @@ The carousel has visible keyboard controls and explicit pause/resume. Focus and 
 
 ## Verification
 
-204 ChromeHeadless specs cover native modal/background focus, nested scroll restoration, rendered category/package/product/personalization/cart journeys, projected labels and errors, password state, and pause/reduced-motion carousel behavior.
+256 ChromeHeadless specs cover native modal/background focus, nested scroll restoration, rendered category/package/product/personalization/cart journeys, projected labels and errors, password state, and pause/reduced-motion carousel behavior.
 
 A separate local browser probe used the real components and disposable HTTP fixtures. Keyboard checks confirmed signup Email → Password tab order; Enter opened all three admin editors; Escape restored each Add button; reverse tab remained within the category modal; personalization Escape restored its opener; cart removal started on Cancel and Escape preserved the line and restored Remove. Clicking Billing Zip Code focused `billingZipCode`. End selected carousel slide 4 and Enter changed Pause to Resume. This is browser keyboard and accessibility-tree evidence, not a claim of a dedicated screen-reader audit.
 

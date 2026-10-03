@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -26,11 +26,7 @@ public interface CartItemRepository extends JpaRepository<CartItem, String> {
             "SELECT DISTINCT c FROM CartItem c LEFT JOIN FETCH c.product p LEFT JOIN FETCH p.images LEFT JOIN FETCH c.personalization WHERE c.username = :username")
     List<CartItem> findCartItemsByUsername(@Param("username") String username);
 
-    /**
-     * Loads one cart line with the associations touched by its add response.
-     * The add path runs inside a transaction, but the DTO still otherwise
-     * triggers separate lazy selects for product details and images.
-     */
+    /** Loads a cart line and its DTO associations in one query. */
     @Query(
             "SELECT DISTINCT c FROM CartItem c LEFT JOIN FETCH c.product p LEFT JOIN FETCH p.images LEFT JOIN FETCH p.category LEFT JOIN FETCH p.packaging LEFT JOIN FETCH c.personalization WHERE c.username = :username AND p.id = :productId")
     Optional<CartItem> findCartItemByUsernameAndProductWithDetails(
@@ -38,36 +34,18 @@ public interface CartItemRepository extends JpaRepository<CartItem, String> {
 
     Optional<CartItem> findCartItemByUsernameAndProduct(String username, Product product);
 
+    /** Locks the line before the last-unit delete decision. */
+    @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT c FROM CartItem c WHERE c.username = :username AND c.product.id = :productId")
+    Optional<CartItem> findCartItemByUsernameAndProductForUpdate(
+            @Param("username") String username, @Param("productId") String productId);
+
     /**
      * Empties a user's cart in one statement. The rows are never read on this
      * path, so loading them first only to delete them one by one is pure
      * overhead on the checkout flow.
      */
     void deleteByUsername(String username);
-
-    /**
-     * Atomically increments the line quantity without a read-modify-write round
-     * trip, so concurrent adds for the same user and product cannot lose
-     * increments — but only while the line stays below the caller's cap, so a
-     * tight add-loop cannot grow one row without limit. Returns the number of
-     * rows affected (0 when no line exists or the line already reached the cap;
-     * the caller distinguishes the two with a follow-up lookup).
-     */
-    @Modifying
-    @Query(
-            "UPDATE CartItem c SET c.quantity = c.quantity + 1 WHERE c.username = :username AND c.product.id = :productId AND c.quantity < :cap")
-    int incrementQuantityIfBelowCap(
-            @Param("username") String username, @Param("productId") String productId, @Param("cap") int cap);
-
-    /**
-     * Atomically decrements the line quantity, but only while more than one unit
-     * remains. Returns the number of rows affected (0 when no line exists or the
-     * last unit remains — the caller then deletes the line).
-     */
-    @Modifying
-    @Query(
-            "UPDATE CartItem c SET c.quantity = c.quantity - 1 WHERE c.username = :username AND c.product.id = :productId AND c.quantity > 1")
-    int decrementQuantityIfGreaterThanOne(@Param("username") String username, @Param("productId") String productId);
 
     /**
      * Removes one cart line by user and product. Declared void on purpose:

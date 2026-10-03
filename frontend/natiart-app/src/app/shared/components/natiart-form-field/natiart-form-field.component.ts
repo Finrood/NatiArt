@@ -46,6 +46,8 @@ export class NatiartFormFieldComponent implements OnInit {
       .subscribe((): void => this._changeDetector.markForCheck());
   }
 
+  get passwordVisibilityLabel(): string { return this.showPassword ? $localize`Hide password` : $localize`Show password`; }
+
   togglePasswordVisibility(): void {
     this.$showPassword.update((visible: boolean): boolean => !visible);
     if (this.nativeControl instanceof HTMLInputElement) this.nativeControl.type = this.showPassword ? 'text' : 'password';

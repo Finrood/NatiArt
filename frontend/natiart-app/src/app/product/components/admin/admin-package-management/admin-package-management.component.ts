@@ -13,7 +13,6 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-admin-package-management',
-  standalone: true,
   imports: [
     AsyncPipe,
     ReactiveFormsModule,
@@ -34,8 +33,8 @@ export class PackageManagementComponent implements OnInit {
 
   @ViewChild('alertMessages') alertMessagesComponent!: AlertMessageComponent;
 
-  private readonly _packageService = inject(PackageService);
-  private readonly _fb = inject(FormBuilder);
+  private readonly _packageService: PackageService = inject(PackageService);
+  private readonly _fb: FormBuilder = inject(FormBuilder);
 
   constructor() {
     this.packageForm = this._fb.group({
@@ -115,17 +114,17 @@ export class PackageManagementComponent implements OnInit {
     this._packageService.deletePackage(id).subscribe({
       next: () => {
         this.packages.next(this.packages.value.filter(p => p.id !== id));
-        this.showAlert('Package deleted successfully', 'success');
+        this.showAlert($localize`Package deleted successfully`, 'success');
       },
       error: (error: HttpErrorResponse) => {
         reportError('package', error);
-        let errorMessage = 'An error occurred while deleting the package.';
+        let errorMessage = $localize`An error occurred while deleting the package.`;
         if (error.status === 400) {
-          errorMessage = 'Package contains existing products. Delete them before deleting this package';
+          errorMessage = $localize`Package contains existing products. Delete them before deleting this package`;
         } else if (error.status === 404) {
-          errorMessage = 'Package not found. It may have been already deleted.';
+          errorMessage = $localize`Package not found. It may have been already deleted.`;
         } else if (error.status === 403) {
-          errorMessage = 'You do not have permission to delete this package.';
+          errorMessage = $localize`You do not have permission to delete this package.`;
         }
         this.showAlert(errorMessage, 'error');
       }

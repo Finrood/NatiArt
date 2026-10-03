@@ -16,7 +16,7 @@
       <app-button (click)="togglePasswordVisibility()" type="button"
         color="primary"
         class="absolute inset-y-0 right-8 pr-3 flex items-center text-sm leading-5 focus:outline-none z-30 transition-colors duration-200"
-        [aria-label]="showPassword ? 'Hide password' : 'Show password'" [aria-pressed]="showPassword">
+        [aria-label]="passwordVisibilityLabel" [aria-pressed]="showPassword">
         <span class="w-5 h-5 flex items-center justify-center">
           @if (!showPassword) {
             <svg class="w-5 h-5" fill="none" stroke="currentColor"
@@ -56,36 +56,35 @@
   @if (showErrors()) {
     <div class="text-error text-sm space-y-1" [id]="resolvedInputId + '-error'" role="alert">
       @if (control?.errors?.['required']) {
-        <p>{{ label }} is required</p>
+        <p i18n>{{ label }} is required</p>
       }
       @if (control?.errors?.['email']) {
-        <p>Please enter a valid email</p>
+        <p i18n>Please enter a valid email</p>
       }
       @if (control?.errors?.['minlength']) {
-        <p>
-          Minimum length {{ control!.errors!['minlength'].requiredLength }} characters
+        <p i18n>Minimum length {{ control!.errors!['minlength'].requiredLength }} characters
         </p>
       }
       @if (control?.errors?.['pattern']) {
-        <p>Invalid format</p>
+        <p i18n>Invalid format</p>
       }
       @if (control?.errors?.['invalidCpf']) {
-        <p>Invalid CPF</p>
+        <p i18n>Invalid CPF</p>
       }
       @if (control?.errors?.['invalidCep']) {
-        <p>Invalid CEP</p>
+        <p i18n>Invalid CEP</p>
       }
       @if (control?.errors?.['invalidCepLength']) {
-        <p>CEP must be 8 digits</p>
+        <p i18n>CEP must be 8 digits</p>
       }
       @if (control?.errors?.['cepNotFound']) {
-        <p>CEP not found</p>
+        <p i18n>CEP not found</p>
       }
       @if (control?.errors?.['fetchError']) {
-        <p>Error fetching address</p>
+        <p i18n>Error fetching address</p>
       }
       @if (control?.errors?.['passwordMismatch']) {
-        <p>Passwords do not match</p>
+        <p i18n>Passwords do not match</p>
       }
     </div>
   }

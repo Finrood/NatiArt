@@ -19,10 +19,10 @@ export class ConfirmationModalComponent {
   readonly $isOpen = signal(false);
   @Input() get isOpen(): boolean { return this.$isOpen(); }
   set isOpen(value: boolean) { this.$isOpen.set(value); }
-  @Input() title: string = 'Confirm Action';
-  @Input() message: string = 'Are you sure you want to perform this action?';
-  @Input() confirmText: string = 'Confirm';
-  @Input() cancelText: string = 'Cancel';
+  @Input() title = $localize`Confirm Action`;
+  @Input() message = $localize`Are you sure you want to perform this action?`;
+  @Input() confirmText = $localize`Confirm`;
+  @Input() cancelText = $localize`Cancel`;
   @Output() confirm = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();
   onConfirm(): void { this.confirm.emit(); }

@@ -1,4 +1,4 @@
-import {inject, Component, ElementRef, OnDestroy, OnInit, Renderer2, ViewChild} from '@angular/core';
+import {Component, ElementRef, OnDestroy, OnInit, Renderer2, ViewChild, inject} from '@angular/core';
 import { AsyncPipe, CurrencyPipe, KeyValuePipe, NgStyle } from "@angular/common";
 import {FormsModule} from "@angular/forms";
 import {BehaviorSubject, Subscription, of} from "rxjs";
@@ -6,7 +6,7 @@ import {catchError, switchMap, tap} from "rxjs/operators";
 import {Product} from "../../../models/product.model";
 import {ActivatedRoute, ParamMap, RouterLink} from "@angular/router";
 import {ProductService} from "../../../service/product.service";
-import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
+import {DomSanitizer, Meta, SafeUrl, Title} from "@angular/platform-browser";
 import {TopMenuComponent} from "../top-menu/top-menu.component";
 import {LeftMenuComponent} from "../left-menu/left-menu.component";
 import {CartService} from "../../../service/cart.service";
@@ -18,7 +18,6 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-product-detail',
-  standalone: true, // Add standalone: true if not already
   imports: [
     AsyncPipe,
     FormsModule,
@@ -36,6 +35,10 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
   styleUrls: ['./product-detail.component.css']
 })
 export class ProductDetailComponent implements OnInit, OnDestroy {
+  imageLabel(index: number): string {
+    return $localize`View product image ${index}:IMAGE_NUMBER:`;
+  }
+
   product$ = new BehaviorSubject<Product | null>(null);
   quantity: number = 1;
   relatedProducts$ = new BehaviorSubject<Product[]>([]);
@@ -62,8 +65,8 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   private readonly _sanitizer = inject(DomSanitizer);
   private readonly _renderer = inject(Renderer2);
   private readonly _cartService = inject(CartService);
-
-  constructor() {}
+  private readonly _title = inject(Title);
+  private readonly _meta = inject(Meta);
 
 
   get transformScale(): string {
@@ -77,6 +80,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     // overwrite the current view.
     const subscription = this._route.paramMap.pipe(
       tap((): void => {
+        this.setStorefrontMetadata();
         this.isLoading = true;
         this.loadError = null;
         this.product$.next(null);
@@ -97,14 +101,14 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       switchMap((params: ParamMap) => {
         const productId: string | null = params.get('id');
         if (!productId) {
-          throw new Error('Missing product id');
+          throw new Error($localize`Missing product id`);
         }
         return this._productService.getProduct(productId);
       }),
       catchError((error: unknown) => {
         reportError('product-loading', error);
         this.product$.next(null);
-        this.loadError = 'Could not load this product. Please try again.';
+        this.loadError = $localize`Could not load this product. Please try again.`;
         this.isLoading = false;
         return of(null);
       })
@@ -114,6 +118,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
           return;
         }
         this.product$.next(product);
+        this.setProductMetadata(product);
         this.updateProductImages(product);
         this.loadRelatedProducts(product.categoryId);
         this.isLoading = false;
@@ -126,6 +131,31 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     this.subscriptions.forEach(subscription => subscription.unsubscribe());
     this.revokeImageMap(this.imageUrls);
     this.revokeImageMap(this.relatedImageUrls);
+    this.setStorefrontMetadata();
+  }
+
+  private setStorefrontMetadata(): void {
+    this._title.setTitle($localize`NatiArt | Handmade Art`);
+    this._meta.updateTag({
+      name: 'description',
+      content: $localize`Browse products from NatiArt.`
+    });
+    this._meta.updateTag({property: 'og:title', content: $localize`NatiArt | Handmade Art`});
+    this._meta.updateTag({property: 'og:description', content: $localize`Browse products from NatiArt.`});
+    this._meta.updateTag({property: 'og:type', content: 'website'});
+  }
+
+  private setProductMetadata(product: Product): void {
+    const title = `${product.label} | NatiArt`;
+    const description = (product.description || `${product.label} | NatiArt`)
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 160);
+    this._title.setTitle(title);
+    this._meta.updateTag({name: 'description', content: description});
+    this._meta.updateTag({property: 'og:title', content: title});
+    this._meta.updateTag({property: 'og:description', content: description});
+    this._meta.updateTag({property: 'og:type', content: 'product'});
   }
 
   private revokeImageMap(map: { [key: string]: SafeUrl | string | null }): void {

@@ -4,9 +4,8 @@
 
   <!-- Header with "Add New Category" Button -->
   <div class="flex justify-between items-center mb-4">
-    <h2 class="text-2xl sm:text-3xl font-light">Categories</h2>
-    <app-button (click)="openModal()" color="primary" size="md">
-      Add New Category
+    <h2 class="text-2xl sm:text-3xl font-light" i18n>Categories</h2>
+    <app-button (click)="openModal()" color="primary" size="md" i18n>Add New Category
     </app-button>
   </div>
 
@@ -19,14 +18,12 @@
         <h3 class="text-xl font-semibold mb-2">{{ category.label }}</h3>
         <p class="text-gray-600 mb-4">{{ category.description }}</p>
         <div class="flex flex-wrap justify-between gap-2">
-          <app-button (click)="openModal(category)" color="primary" size="sm">
-            Edit
+          <app-button (click)="openModal(category)" color="primary" size="sm" i18n>Edit
           </app-button>
-          <app-button (click)="deleteCategory(category.id!)" color="danger" size="sm">
-            Delete
+          <app-button (click)="deleteCategory(category.id!)" color="danger" size="sm" i18n>Delete
           </app-button>
           <app-button (click)="toggleCategoryVisibility(category)" color="primary" size="sm">
-            <span>{{ category.active ? 'Hide' : 'Show' }}</span>
+            <span i18n>{category.active, select, true {Hide} other {Show}}</span>
             <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
               @if (category.active) {
                 <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
@@ -54,29 +51,24 @@
 
   <!-- Modal (shown when modalVisible) -->
   @if (modalVisible) {
-    <app-accessible-dialog label="Category editor" (dismiss)="closeModal()">
+    <app-accessible-dialog label="Category editor" i18n-label (dismiss)="closeModal()">
       <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4 transform transition-transform duration-300 ease-in-out">
-        <h3 class="text-2xl mb-4 font-light">
-          {{ isEditingCategory ? 'Edit Category' : 'Add Category' }}
-        </h3>
+        <h3 class="text-2xl mb-4 font-light" i18n>{isEditingCategory, select, true {Edit Category} other {Add Category}}</h3>
         <form (ngSubmit)="submitForm()" [formGroup]="categoryForm">
           <!-- Custom Input for Label -->
-          <app-natiart-form-field label="Label" controlName="label" [form]="categoryForm">
+          <app-natiart-form-field label="Label" controlName="label" [form]="categoryForm" i18n-label>
             <input type="text" formControlName="label" placeholder="Category label"
-              class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
+              class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm" i18n-placeholder>
           </app-natiart-form-field>
           <!-- Custom Input for Description -->
-          <app-natiart-form-field label="Description" controlName="description" [form]="categoryForm">
+          <app-natiart-form-field label="Description" controlName="description" [form]="categoryForm" i18n-label>
             <textarea formControlName="description" rows="3" placeholder="Category description"
-            class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm"></textarea>
+            class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm" i18n-placeholder></textarea>
           </app-natiart-form-field>
           <div class="flex justify-end space-x-2">
-            <app-button type="button" (click)="closeModal()" color="secondary" size="md">
-              Cancel
+            <app-button type="button" (click)="closeModal()" color="secondary" size="md" i18n>Cancel
             </app-button>
-            <app-button type="submit" color="primary" size="md">
-              {{ isEditingCategory ? 'Update' : 'Add' }}
-            </app-button>
+            <app-button type="submit" color="primary" size="md" i18n>{isEditingCategory, select, true {Update} other {Add}}</app-button>
           </div>
         </form>
       </div>
