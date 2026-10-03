@@ -52,7 +52,7 @@ export class PasswordResetComponent implements OnInit {
       return;
     }
     if (!this._token) {
-      this.$errorMessage.set('This reset link is missing or invalid. Please request a new one.');
+      this.$errorMessage.set($localize`This reset link is missing or invalid. Please request a new one.`);
       return;
     }
     if (this.form.invalid) {
@@ -74,7 +74,7 @@ export class PasswordResetComponent implements OnInit {
           void this._router.navigate(['/login']);
         },
         error: (error: HttpErrorResponse) => {
-          this.$errorMessage.set('This reset link is invalid or expired. Please request a new one.');
+          this.$errorMessage.set($localize`This reset link is invalid or expired. Please request a new one.`);
           reportError('password-reset', error);
         }
       });

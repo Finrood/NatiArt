@@ -1,5 +1,5 @@
 import {fakeAsync, TestBed, tick} from '@angular/core/testing';
-import {provideHttpClient, withInterceptors} from '@angular/common/http';
+import {HttpClient, provideHttpClient, withInterceptors} from '@angular/common/http';
 import {HttpTestingController, provideHttpClientTesting} from '@angular/common/http/testing';
 import {Router} from '@angular/router';
 import {PasswordResetService} from './password-reset.service';
@@ -40,7 +40,19 @@ describe('Anonymous recovery with stale browser session', () => {
       tick();
     }));
   }
-  for (const path of ['/forgot-password', '/reset-password']) {
+  it('retains managed credentials for non-POST recovery paths', fakeAsync(() => {
+    TestBed.inject(AuthenticationService);
+    tick();
+    const tokens = TestBed.inject(TokenService);
+    tokens.accessToken = 'revoked-access';
+    const url = environment.api.directory.url + environment.api.directory.endpoints.passwordReset;
+    TestBed.inject(HttpClient).get(url).subscribe();
+    const request = TestBed.inject(HttpTestingController).expectOne(url);
+    expect(request.request.headers.get('Authorization')).toBe('Bearer revoked-access');
+    request.flush({});
+  }));
+
+  for (const path of ['', '/en', '/pt-BR'].flatMap(prefix => [prefix + '/forgot-password', prefix + '/reset-password'])) {
     it('keeps recovery usable during rejected stored-session bootstrap on ' + path, fakeAsync(() => {
       const previous = window.location.pathname;
       window.history.pushState(null, '', path);

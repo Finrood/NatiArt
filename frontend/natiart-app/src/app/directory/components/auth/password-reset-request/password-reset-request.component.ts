@@ -41,9 +41,9 @@ export class PasswordResetRequestComponent {
     this._passwordResetService.requestReset(this.form.controls.username.value)
       .pipe(takeUntilDestroyed(this._destroyRef), finalize((): void => this.$isSubmitting.set(false)))
       .subscribe({
-        next: (response): void => this.$message.set(response.message),
+        next: (): void => this.$message.set($localize`If this address belongs to an account, check your email for recovery instructions. If no message arrives, try again later.`),
         error: (error: HttpErrorResponse) => {
-          this.$errorMessage.set('We could not process that request. Please try again shortly.');
+          this.$errorMessage.set($localize`We could not process that request. Please try again shortly.`);
           reportError('password-reset-request', error);
         }
       });

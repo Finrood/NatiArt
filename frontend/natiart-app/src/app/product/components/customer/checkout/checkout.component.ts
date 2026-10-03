@@ -1,10 +1,13 @@
+import {HttpErrorResponse} from '@angular/common/http';
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnDestroy, OnInit} from '@angular/core';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {EmptyError, firstValueFrom, map, Observable, Subject, throwError} from 'rxjs';
 import {CartItem} from '../../../models/CartItem.model';
 import {OrderDto} from '../../../models/order.model';
+import {OrderItemDto} from '../../../models/orderItem.model';
 import {CartService, PurchasedCartLine} from '../../../service/cart.service';
+import {ProductService} from '../../../service/product.service';
 import {OrderService} from '../../../service/order.service';
 import {Router} from '@angular/router';
 import {PaymentService} from "../../../service/payment.service";
@@ -22,6 +25,19 @@ import {CustomCpfValidators} from "../../../../directory/validator/CustomCpfVali
 import {CustomCepValidators} from "../../../../directory/validator/CustomCepValidators";
 import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportError} from '../../../../shared/service/error-reporting.service';
+import {ShippingQuote, ShippingQuoteRequest, ShippingService} from '../../../service/shipping.service';
+import {PersonalizationOption} from '../../../models/support/personalization-option';
+
+interface CheckoutAttempt {
+  username: string;
+  fingerprint: string;
+  orderRequest: OrderDto;
+  purchasedCartLines: Array<{cartItemId: string; quantity: number}>;
+  orderIdempotencyKey: string;
+  paymentIdempotencyKey: string;
+  currentOrder: OrderDto | null;
+  paymentId: string | null;
+}
 
 @Component({
   selector: 'app-checkout',
@@ -42,6 +58,16 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CheckoutComponent implements OnInit, OnDestroy {
+  readonly calculatingShipping: string = $localize`Calculating shipping...`;
+  readonly nextPayment: string = $localize`Next: Payment`;
+  private readonly _fb: FormBuilder = inject(FormBuilder);
+  private readonly _cartService: CartService = inject(CartService);
+  private readonly _authenticationService: AuthenticationService = inject(AuthenticationService);
+  private readonly _orderService: OrderService = inject(OrderService);
+  private readonly _paymentService: PaymentService = inject(PaymentService);
+  private readonly _router: Router = inject(Router);
+  private readonly _cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
+
   checkoutForm: FormGroup;
   errorMessage = '';
   infoMessage = '';
@@ -53,21 +79,31 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   isLoading$: Observable<boolean>;
   sameShippingAsBilling = true;
   currentStep = 1;
+  shippingQuote: ShippingQuote | null = null;
+  isLoadingQuote = false;
+
+  private shippingQuoteFingerprint: string | null = null;
+  private readonly _productService = inject(ProductService);
+  private readonly _shippingService = inject(ShippingService);
 
   private currentOrder: OrderDto | null = null;
+  private orderRequest: OrderDto | null = null;
+  private purchasedCartLines: Array<{cartItemId: string; quantity: number}> = [];
+  private paymentId: string | null = null;
   private checkoutFingerprint: string | null = null;
-  private orderIdempotencyKey = crypto.randomUUID();
-  private paymentIdempotencyKey = crypto.randomUUID();
+  private hasPrefilledCurrentUser = false;
+  private restoredForUsername: string | null = null;
+  private attemptStorageFailed = false;
+  private destroyed = false;
+  private readonly attemptStoragePrefix = 'natiart-checkout-attempt:';
+  private orderIdempotencyKey: string = crypto.randomUUID();
+  private paymentIdempotencyKey: string = crypto.randomUUID();
+
+  get hasSavedAttempt(): boolean {
+    return this.orderRequest !== null;
+  }
 
   private destroy$ = new Subject<void>();
-
-  private readonly _fb = inject(FormBuilder);
-  private readonly _cartService = inject(CartService);
-  private readonly _authenticationService = inject(AuthenticationService);
-  private readonly _orderService = inject(OrderService);
-  private readonly _paymentService = inject(PaymentService);
-  private readonly _router = inject(Router);
-  private readonly _cdr = inject(ChangeDetectorRef);
 
   constructor() {
     this.checkoutForm = this._fb.group({
@@ -108,7 +144,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.isLoading$ = this._orderService.orderProcessing$;
   }
 
-  nextStep() {
+  async nextStep(): Promise<void> {
     if (this.currentStep === 1) {
       this.checkoutForm.get('userInfo')?.markAllAsTouched();
       if (this.checkoutForm.get('userInfo')?.invalid) {
@@ -117,6 +153,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     } else if (this.currentStep === 2) {
       this.checkoutForm.get('shippingInfo')?.markAllAsTouched();
       if (this.checkoutForm.get('shippingInfo')?.invalid) {
+        return;
+      }
+      if (!(await this.loadShippingQuote())) {
         return;
       }
     }
@@ -154,7 +193,13 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       .pipe(
         takeUntil(this.destroy$),
         tap(user => {
-          if (user && user.profile) {
+          if (user && this.restoredForUsername !== user.username) {
+            this.restoredForUsername = user.username;
+            this.hasPrefilledCurrentUser = false;
+            this.restoreAttempt(user.username);
+          }
+          if (user && user.profile && !this.hasPrefilledCurrentUser && !this.hasSavedAttempt) {
+            this.hasPrefilledCurrentUser = true;
             this.checkoutForm.patchValue({
               userInfo: {
                 firstname: user.profile.firstname,
@@ -189,6 +234,17 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       )
       .subscribe();
 
+    this.checkoutForm.get('shippingInfo')?.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.shippingQuote = null;
+        this.shippingQuoteFingerprint = null;
+        if (!this.orderRequest) {
+          this.currentOrder = null;
+          this.checkoutFingerprint = null;
+        }
+      });
+
     this.updatePaymentValidators();
     this.checkoutForm.get('paymentInfo.paymentMethod')?.valueChanges
       .pipe(takeUntil(this.destroy$))
@@ -208,11 +264,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     return this.isLoggedIn$.pipe(
       switchMap(isLoggedIn => {
         if (!isLoggedIn) {
-          this.setErrorMessage('Please sign in or register before checking out.');
-          return throwError(() => new Error('Guest checkout requires an authenticated account.'));
+          this.setErrorMessage($localize`Please sign in or register before checking out.`);
+          return throwError(() => new Error($localize`Guest checkout requires an authenticated account.`));
         } else {
           return this.currentUser$.pipe(map(user => {
-            if (!user) throw new Error('No logged-in user found.');
+            if (!user) throw new Error($localize`No logged-in user found.`);
             return user;
           }));
         }
@@ -223,37 +279,89 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   async onProcessPixPayment(user: User): Promise<void> {
     this.clearErrorMessage();
     try {
+      if (this.destroyed || this.attemptStorageFailed) {
+        return;
+      }
       if (!user || !user.externalId) {
-        this.setErrorMessage('Could not retrieve customer ID for payment. Please try again.');
+        this.setErrorMessage($localize`Could not retrieve customer ID for payment. Please try again.`);
         return;
       }
 
-      const orderRequest = this.buildOrderRequest();
-      const fingerprint = JSON.stringify(orderRequest);
-      if (this.checkoutFingerprint !== fingerprint) {
-        this.currentOrder = null;
-        this.checkoutFingerprint = fingerprint;
+      if (!this.orderRequest) {
+      if (!this.shippingQuote || this.isShippingQuoteExpired()) {
+        this.setErrorMessage($localize`The shipping total is no longer current. Return to Shipping and review the refreshed quote.`);
+        return;
+      }
+      let currentQuoteFingerprint: string;
+      try {
+        currentQuoteFingerprint = this.currentShippingQuoteFingerprint();
+      } catch {
+        this.setErrorMessage($localize`The shipping total is no longer current. Return to Shipping and review the refreshed quote.`);
+        return;
+      }
+      if (this.shippingQuoteFingerprint !== currentQuoteFingerprint) {
+        this.setErrorMessage($localize`The shipping total is no longer current. Return to Shipping and review the refreshed quote.`);
+        return;
+      }
+        const orderRequest = await this.buildOrderRequest();
+        if (this.destroyed) return;
+        this.orderRequest = orderRequest;
+        this.purchasedCartLines = this._cartService.getCartItemsSnapshot().map(
+          (item: CartItem) => ({cartItemId: item.cartItemId, quantity: item.quantity}));
+        this.checkoutFingerprint = JSON.stringify(orderRequest);
         this.orderIdempotencyKey = crypto.randomUUID();
         this.paymentIdempotencyKey = crypto.randomUUID();
-      }
-
-      if (!this.currentOrder) {
-        const purchasedLines: PurchasedCartLine[] = this._cartService.getCartItemsSnapshot().map(
-          (item: CartItem) => ({cartItemId: item.cartItemId, quantity: item.quantity}));
-        this.setInfoMessage('Creating your order...');
-        const order = await firstValueFrom(this._orderService.createOrder(orderRequest, this.orderIdempotencyKey));
-        this.clearInfoMessage();
-        if (!order?.id || order.totalAmount == null) {
-          this.setErrorMessage('Could not create your order. Please try again.');
+        // Save the immutable payload and keys before sending anything. A lost
+        // response can then replay the same order without reserving stock again.
+        if (!this.persistAttempt(user.username)) {
+          this.orderRequest = null;
+          this.checkoutFingerprint = null;
+          this.setErrorMessage($localize`Could not save your checkout. Please free browser storage and try again.`);
           return;
         }
-        this._cartService.rememberPurchase(order.id, user.externalId, purchasedLines);
-        this.currentOrder = order;
       }
 
-      const order = this.currentOrder;
+      this.setInfoMessage(this.currentOrder ? $localize`Checking your saved order...` : $localize`Creating your order...`);
+      const order = await firstValueFrom(this._orderService
+        .createOrder(this.orderRequest, this.orderIdempotencyKey)
+        .pipe(takeUntil(this.destroy$)));
+      if (this.destroyed) {
+        return;
+      }
+      this.clearInfoMessage();
       if (!order?.id || order.totalAmount == null) {
-        this.setErrorMessage('Could not retrieve your order. Please try again.');
+        this.setErrorMessage($localize`Could not confirm your order. Please try again.`);
+        return;
+      }
+      this._cartService.rememberPurchase(order.id, user.externalId, this.purchasedCartLines);
+      this.currentOrder = order;
+      this.persistAttempt(user.username);
+
+      if (order.status === 'CANCELLED' || ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED'].includes(order.status ?? '')) {
+        if (this.clearPersistedAttempt(user.username)) {
+          this.resetAttempt();
+        }
+        this.setInfoMessage(order.status === 'CANCELLED'
+          ? $localize`The saved order was cancelled. You can start a new checkout.`
+          : $localize`The saved order has already been paid.`);
+        return;
+      }
+
+      if (this.paymentId) {
+        const payment = await firstValueFrom(this._paymentService
+          .getPaymentStatus(this.paymentId)
+          .pipe(takeUntil(this.destroy$)));
+        if (this.destroyed) {
+          return;
+        }
+        if (payment.status === 'COMPLETED') {
+          if (this.clearPersistedAttempt(user.username)) {
+            this.resetAttempt();
+          }
+          this.setInfoMessage($localize`Your PIX payment has already completed.`);
+          return;
+        }
+        await this.navigateToPix(this.paymentId);
         return;
       }
 
@@ -267,40 +375,87 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
       const paymentResponse = await firstValueFrom(
         this._paymentService.createPixPayment(pixPaymentData, this.paymentIdempotencyKey)
+          .pipe(takeUntil(this.destroy$))
       );
 
-      const paymentId: string | undefined = paymentResponse?.paymentId;
-      if (!paymentId) {
-        this.setErrorMessage('Could not process PIX payment. Please try again.');
+      if (this.destroyed) {
         return;
       }
 
-      this._router.navigate(['/pix-payment', paymentId]);
-      this.currentOrder = null;
-      this.checkoutFingerprint = null;
-      this.orderIdempotencyKey = crypto.randomUUID();
-      this.paymentIdempotencyKey = crypto.randomUUID();
+      this.paymentId = paymentResponse?.paymentId ?? null;
+      if (!this.paymentId) {
+        this.setErrorMessage($localize`Could not process PIX payment. Please try again.`);
+        return;
+      }
+      this.persistAttempt(user.username);
+      await this.navigateToPix(this.paymentId);
 
     } catch (error) {
+      if (this.destroyed) {
+        return;
+      }
+      if (error instanceof EmptyError) {
+        return;
+      }
+      if (this.recoverRejectedOrder(error, user.username)) return;
       reportError('payment', error);
-      this.setErrorMessage('Could not process PIX payment. Please try again.');
+      this.setErrorMessage($localize`Could not confirm your saved checkout. Please retry; your attempt has been kept.`);
     }
-    this._cdr.detectChanges();
+    if (!this.destroyed) {
+      this._cdr.detectChanges();
+    }
   }
 
-  private buildOrderRequest(): OrderDto {
+  private async navigateToPix(paymentId: string): Promise<void> {
+    if (this.destroyed) {
+      return;
+    }
+    const navigated = await this._router.navigate(['/pix-payment', paymentId]);
+    if (!this.destroyed && !navigated) {
+      this.setErrorMessage($localize`Could not open the payment page. Your checkout is saved; please try again.`);
+    }
+  }
+
+  private recoverRejectedOrder(error: unknown, username: string): boolean {
+    if (this.currentOrder || this.paymentId || !(error instanceof HttpErrorResponse) || error.status !== 400 ||
+        error.error?.orderCreated !== false ||
+        !['ORDER_CREATION_REJECTED', 'CUSTOM_ARTWORK_UNAVAILABLE'].includes(error.error?.code)) return false;
+    if (!this.clearPersistedAttempt(username)) return true;
+    if (error.error.code === 'CUSTOM_ARTWORK_UNAVAILABLE' && typeof error.error.uploadId === 'string') {
+      this._cartService.invalidateArtwork(error.error.uploadId);
+    }
+    this.resetAttempt();
+    this.shippingQuote = null;
+    this.shippingQuoteFingerprint = null;
+    this.currentStep = 2;
+    this.clearInfoMessage();
+    this.setErrorMessage($localize`No order was created. Review your cart and artwork, then confirm shipping again.`);
+    return true;
+  }
+
+  private recoverArtwork(error: unknown): boolean {
+    if (this.orderRequest || !(error instanceof HttpErrorResponse) || error.status !== 400 ||
+        error.error?.code !== 'CUSTOM_ARTWORK_UNAVAILABLE' || error.error?.orderCreated !== false ||
+        typeof error.error.uploadId !== 'string') return false;
+    this._cartService.invalidateArtwork(error.error.uploadId);
+    this.shippingQuote = null;
+    this.shippingQuoteFingerprint = null;
+    this.setErrorMessage($localize`Your artwork is no longer available. Select it again and confirm shipping.`);
+    return true;
+  }
+
+  reselectArtwork(cartItemId: string, event: Event): void {
+    const input: HTMLInputElement = event.target as HTMLInputElement;
+    const file: File | undefined = input.files?.[0];
+    if (file) this._cartService.reselectArtwork(cartItemId, file);
+    input.value = '';
+    this._cdr.markForCheck();
+  }
+
+  private async buildOrderRequest(): Promise<OrderDto> {
     const userInfo = this.checkoutForm.get('userInfo')?.getRawValue();
     const shippingInfo = this.checkoutForm.get('shippingInfo')?.getRawValue();
-    const items = this._cartService.getCartItemsSnapshot().map(item => {
-      if (!item.product.id) {
-        throw new Error('A cart item is missing its product identifier.');
-      }
-      return {productId: item.product.id, quantity: item.quantity};
-    });
-
-    if (items.length === 0) {
-      throw new Error('Cannot create an order from an empty cart.');
-    }
+    const items = await this.buildOrderItems();
 
     return {
       firstname: userInfo.firstname,
@@ -315,15 +470,115 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       street: shippingInfo.street,
       complement: shippingInfo.complement,
       items,
-      deliveryAmount: 0,
+      shippingQuoteId: this.shippingQuote?.quoteId,
     };
   }
 
+  private async buildOrderItems(): Promise<OrderItemDto[]> {
+    const items = await Promise.all(this._cartService.getCartItemsSnapshot().map(async item => {
+      if (item.requiresArtworkReselection) throw new Error($localize`Select your artwork again before checkout.`);
+      if (item.image && !item.customImageUploadId) {
+        this.setInfoMessage($localize`Uploading your custom artwork...`);
+        const upload = await firstValueFrom(this._productService.uploadCustomerImage(item.image));
+        if (!upload?.uploadId || upload.uploadId.trim().length === 0) {
+          throw new Error($localize`The artwork upload did not return an upload identifier.`);
+        }
+        item.customImageUploadId = upload.uploadId;
+        await firstValueFrom(this._cartService.setCustomImageUploadId(item.cartItemId, upload.uploadId));
+      }
+      return this.orderItemFromCart(item);
+    }));
+    if (items.length === 0) {
+      throw new Error($localize`Cannot create an order from an empty cart.`);
+    }
+    return items;
+  }
+
+  private orderItemFromCart(item: CartItem): OrderItemDto {
+      if (!item.product.id) {
+        throw new Error($localize`A cart item is missing its product identifier.`);
+      }
+      if (item.image && !item.customImageUploadId) {
+        throw new Error($localize`A custom artwork line is missing its upload identifier.`);
+      }
+      const personalizationOptions: Partial<Record<PersonalizationOption, string>> = {};
+      if (item.goldBorder) {
+        personalizationOptions[PersonalizationOption.GOLDEN_BORDER] = 'true';
+      }
+      if (item.customImageUploadId) {
+        personalizationOptions[PersonalizationOption.CUSTOM_IMAGE] = item.customImageUploadId;
+      }
+      const personalization = Object.keys(personalizationOptions).length > 0
+        ? {personalizationOptions}
+        : undefined;
+      return {productId: item.product.id, quantity: item.quantity, personalization};
+  }
+
+  private async loadShippingQuote(): Promise<boolean> {
+    this.isLoadingQuote = true;
+    try {
+      const items = await this.buildOrderItems();
+      const request = this.buildShippingQuoteRequest(items);
+      const fingerprint = JSON.stringify(request);
+      if (this.shippingQuote
+        && this.shippingQuoteFingerprint === fingerprint
+        && !this.isShippingQuoteExpired()) {
+        return true;
+      }
+      this.setInfoMessage($localize`Calculating the shipping total...`);
+      this.shippingQuote = await firstValueFrom(this._shippingService.createQuote(request));
+      this.shippingQuoteFingerprint = fingerprint;
+      this.clearErrorMessage();
+      return true;
+    } catch (error) {
+      if (this.recoverArtwork(error)) return false;
+      reportError('checkout-shipping-quote', error);
+      this.shippingQuote = null;
+      this.shippingQuoteFingerprint = null;
+      this.setErrorMessage($localize`Shipping is unavailable for this address or cart. Please review the address and try again.`);
+      return false;
+    } finally {
+      this.isLoadingQuote = false;
+      this.clearInfoMessage();
+      this._cdr.detectChanges();
+    }
+  }
+
+  private buildShippingQuoteRequest(items?: OrderItemDto[]): ShippingQuoteRequest {
+    const shippingInfo = this.checkoutForm.get('shippingInfo')?.getRawValue();
+    const quoteItems = items ?? this._cartService.getCartItemsSnapshot().map(item => this.orderItemFromCart(item));
+    if (quoteItems.length === 0) {
+      throw new Error($localize`Cannot quote shipping for an empty cart.`);
+    }
+    return {
+      zipCode: shippingInfo.zipCode.replace(/\D/g, ''),
+      items: quoteItems.map(item => item.personalization
+        ? {productId: item.productId, quantity: item.quantity, personalization: item.personalization}
+        : {productId: item.productId, quantity: item.quantity}),
+    };
+  }
+
+  private currentShippingQuoteFingerprint(): string {
+    return JSON.stringify(this.buildShippingQuoteRequest());
+  }
+
+  private isShippingQuoteExpired(): boolean {
+    const expiresAt = this.shippingQuote ? Date.parse(this.shippingQuote.expiresAt) : NaN;
+    return !Number.isFinite(expiresAt) || expiresAt <= Date.now();
+  }
+
   async onSubmit(): Promise<void> {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.attemptStorageFailed) {
+      this.setErrorMessage($localize`Your saved checkout needs assistance before another order can be started.`);
+      return;
+    }
     this.clearErrorMessage();
-    if (this.checkoutForm.invalid) {
+    if (this.checkoutForm.invalid && !this.hasSavedAttempt) {
       this.checkoutForm.markAllAsTouched();
-      this.setErrorMessage('Please correct the errors in the form.');
+      this.setErrorMessage($localize`Please correct the errors in the form.`);
       return;
     }
     if (this.isSubmitting) {
@@ -341,53 +596,197 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         }
         throw error;
       }
-      if (!user) return;
+      if (this.destroyed || !user) return;
 
       const paymentMethod = this.checkoutForm.get('paymentInfo.paymentMethod')?.value;
 
-      if (paymentMethod === PaymentMethod.PIX) {
+      if (this.hasSavedAttempt || paymentMethod === PaymentMethod.PIX) {
         await this.onProcessPixPayment(user);
         return;
       }
 
-      this.setErrorMessage('Invalid payment method selected.');
+      this.setErrorMessage($localize`Invalid payment method selected.`);
 
     } catch (error) {
+      if (this.destroyed) {
+        return;
+      }
       reportError('checkout', error);
       if (!this.errorMessage) {
-        this.setErrorMessage('An unexpected error occurred during checkout.');
+        this.setErrorMessage($localize`An unexpected error occurred during checkout.`);
       }
     } finally {
       this.isSubmitting = false;
+      if (!this.destroyed) {
+        this._cdr.detectChanges();
+      }
     }
-    this._cdr.detectChanges();
   }
 
   private setInfoMessage(message: string): void {
+    if (this.destroyed) return;
     this.infoMessage = message;
     this._cdr.detectChanges();
   }
   private clearInfoMessage(): void {
+    if (this.destroyed) return;
     this.infoMessage = '';
     this._cdr.detectChanges();
   }
 
   private setErrorMessage(message: string): void {
+    if (this.destroyed) return;
     this.errorMessage = message;
     this._cdr.detectChanges();
   }
 
   dismissError(): void {
+    if (this.destroyed) return;
     this.errorMessage = '';
     this._cdr.detectChanges();
   }
 
   private clearErrorMessage(): void {
+    if (this.destroyed) return;
     this.errorMessage = '';
     this._cdr.detectChanges();
   }
 
+  private storageKey(username: string): string {
+    return this.attemptStoragePrefix + encodeURIComponent(username.trim().toLowerCase());
+  }
+
+  private persistAttempt(username: string): boolean {
+    if (!this.orderRequest || !this.checkoutFingerprint) {
+      return false;
+    }
+    try {
+      const attempt: CheckoutAttempt = {
+        username,
+        fingerprint: this.checkoutFingerprint,
+        orderRequest: this.orderRequest,
+        purchasedCartLines: this.purchasedCartLines,
+        orderIdempotencyKey: this.orderIdempotencyKey,
+        paymentIdempotencyKey: this.paymentIdempotencyKey,
+        currentOrder: this.currentOrder,
+        paymentId: this.paymentId,
+      };
+      localStorage.setItem(this.storageKey(username), JSON.stringify(attempt));
+      return true;
+    } catch (error) {
+      reportError('checkout-storage', error);
+      return false;
+    }
+  }
+
+  private restoreAttempt(username: string): void {
+    this.resetAttempt();
+    this.attemptStorageFailed = false;
+    try {
+      const raw = localStorage.getItem(this.storageKey(username))
+        ?? localStorage.getItem('natiart-checkout-attempt');
+      if (!raw) {
+        return;
+      }
+      const attempt = JSON.parse(raw) as Partial<CheckoutAttempt>;
+      if (attempt.username !== username) {
+        return;
+      }
+      const request = attempt.orderRequest
+        ?? (attempt.currentOrder?.id ? this.replayRequestFromOrder(attempt.currentOrder) : null);
+      if (!request || !attempt.orderIdempotencyKey || !attempt.paymentIdempotencyKey) {
+        throw new Error($localize`Saved checkout cannot be safely resumed`);
+      }
+      this.orderRequest = request;
+      this.purchasedCartLines = Array.isArray(attempt.purchasedCartLines)
+        && attempt.purchasedCartLines.every((line) => !!line && typeof line.cartItemId === 'string'
+          && line.cartItemId.trim().length > 0 && Number.isSafeInteger(line.quantity) && line.quantity > 0)
+        ? attempt.purchasedCartLines : [];
+      this.checkoutFingerprint = JSON.stringify(request);
+      this.orderIdempotencyKey = attempt.orderIdempotencyKey;
+      this.paymentIdempotencyKey = attempt.paymentIdempotencyKey;
+      this.currentOrder = attempt.currentOrder ?? null;
+      this.paymentId = attempt.paymentId ?? null;
+      this.currentStep = 3;
+      this.checkoutForm.patchValue({
+        userInfo: {
+          firstname: request.firstname,
+          lastname: request.lastname,
+          email: request.email,
+          phone: request.phone,
+        },
+        shippingInfo: {
+          country: request.country,
+          state: request.state,
+          city: request.city,
+          neighborhood: request.neighborhood,
+          zipCode: request.zipCode,
+          street: request.street,
+          complement: request.complement,
+        },
+        paymentInfo: {paymentMethod: PaymentMethod.PIX},
+      });
+      this.setInfoMessage($localize`A saved PIX checkout is ready to resume. Its order details are fixed.`);
+      if (!this.persistAttempt(username)) {
+        throw new Error($localize`Saved checkout could not be migrated`);
+      }
+      localStorage.removeItem('natiart-checkout-attempt');
+    } catch (error) {
+      this.resetAttempt();
+      this.attemptStorageFailed = true;
+      this.clearInfoMessage();
+      reportError('checkout-storage', error);
+      this.setErrorMessage($localize`Your saved checkout needs assistance before another order can be started.`);
+    }
+  }
+
+  private replayRequestFromOrder(order: OrderDto): OrderDto {
+    return {
+      firstname: order.firstname,
+      lastname: order.lastname,
+      email: order.email,
+      phone: order.phone,
+      country: order.country,
+      state: order.state,
+      city: order.city,
+      neighborhood: order.neighborhood,
+      zipCode: order.zipCode,
+      street: order.street,
+      complement: order.complement,
+      items: order.items.map(item => ({productId: item.productId, quantity: item.quantity, personalization: item.personalization})),
+      shippingQuoteId: order.shippingQuoteId,
+      deliveryAmount: order.deliveryAmount,
+    };
+  }
+
+  private clearPersistedAttempt(username: string): boolean {
+    try {
+      localStorage.removeItem(this.storageKey(username));
+      const raw = localStorage.getItem('natiart-checkout-attempt');
+      if (!raw || (JSON.parse(raw) as {username?: string}).username === username) {
+        localStorage.removeItem('natiart-checkout-attempt');
+      }
+      return true;
+    } catch (error) {
+      reportError('checkout-storage', error);
+      this.attemptStorageFailed = true;
+      this.setErrorMessage($localize`Your saved checkout needs assistance before another order can be started.`);
+      return false;
+    }
+  }
+
+  private resetAttempt(): void {
+    this.purchasedCartLines = [];
+    this.currentOrder = null;
+    this.orderRequest = null;
+    this.paymentId = null;
+    this.checkoutFingerprint = null;
+    this.orderIdempotencyKey = crypto.randomUUID();
+    this.paymentIdempotencyKey = crypto.randomUUID();
+  }
+
   ngOnDestroy(): void {
+    this.destroyed = true;
     this.destroy$.next();
     this.destroy$.complete();
   }

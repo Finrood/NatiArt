@@ -82,3 +82,8 @@ Real controller/filter/JPA tests request recovery and redeem a valid token with
 genuinely revoked access and refresh credentials. Browser interceptor tests
 verify no bearer, refresh request or recovery-triggered login navigation. Live
 SMTP configuration and delivery remain deferred to the owner.
+
+Localized `/en/` and `/pt-BR/` recovery pages, as well as legacy paths, remain
+accessible when stored-session bootstrap is rejected. Only POST recovery calls
+are exempt from browser bearer attachment. Both bundles translate recovery
+forms, statuses, validation and login navigation.

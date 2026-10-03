@@ -47,6 +47,77 @@ describe('CartService', () => {
     expect(items[0].quantity).toBe(5);
   });
 
+  it('rejects nonfinite and fractional quantities before changing cart totals', () => {
+    for (const invalid of [NaN, Infinity, 1.5]) {
+      service.addToCart(product(), invalid).subscribe();
+    }
+    expect(service.getCartItemsSnapshot()).toEqual([]);
+    expect(service.getCartTotalSnapshot()).toBe(0);
+
+    service.addToCart(product(), 2).subscribe();
+    const cartItemId = service.getCartItemsSnapshot()[0].cartItemId;
+    for (const invalid of [NaN, Infinity, 2.5]) {
+      service.updateItemQuantity(cartItemId, invalid).subscribe();
+    }
+    expect(service.getCartItemsSnapshot()[0].quantity).toBe(2);
+    expect(service.getCartTotalSnapshot()).toBe(160);
+  });
+
+  it('caps all product variants together including custom images and updates', () => {
+    service.addToCart(product(), 3, false).subscribe();
+    service.addToCart(product(), 4, true).subscribe();
+    service.addToCart(product(), 1, false, new File([], 'custom.png')).subscribe();
+
+    const items = service.getCartItemsSnapshot();
+    expect(items.map(item => item.quantity)).toEqual([3, 2]);
+    expect(items.reduce((sum, item) => sum + item.quantity, 0)).toBe(5);
+
+    service.updateItemQuantity(items[0].cartItemId, 5).subscribe();
+    expect(service.getCartItemsSnapshot().map(item => item.quantity)).toEqual([3, 2]);
+
+    service.updateItemQuantity(items[1].cartItemId, 1).subscribe();
+    service.updateItemQuantity(items[0].cartItemId, 5).subscribe();
+    expect(service.getCartItemsSnapshot().map(item => item.quantity)).toEqual([4, 1]);
+    expect(service.getCartTotalSnapshot()).toBe(400);
+  });
+
+  it('clamps restored variants to their shared product stock', () => {
+    localStorage.setItem('natiart-cart', JSON.stringify({version: 1, items: [
+      {cartItemId: 'plain', product: product(), quantity: 4, goldBorder: false},
+      {cartItemId: 'border', product: product(), quantity: 4, goldBorder: true},
+    ]}));
+
+    const restored = new CartService();
+
+    expect(restored.getCartItemsSnapshot().map(item => item.quantity)).toEqual([4, 1]);
+    expect(restored.getCartTotalSnapshot()).toBe(400);
+  });
+
+  it('keepsPersonalizationVariantsAsSeparateStableLines', () => {
+    service.addToCart(product(), 1, true).subscribe();
+    service.addToCart(product(), 1, false, new File([], 'art.png')).subscribe();
+
+    const items = service.getCartItemsSnapshot();
+    expect(items.length).toBe(2);
+    expect(items[0].cartItemId).not.toBe(items[1].cartItemId);
+
+    service.setCustomImageUploadId(items[1].cartItemId, 'upload-1').subscribe();
+    expect(service.getCartItemsSnapshot()[1].customImageUploadId).toBe('upload-1');
+    expect(JSON.parse(localStorage.getItem('natiart-cart') ?? '{}').items).toEqual([
+      jasmine.objectContaining({goldBorder: true}),
+      jasmine.objectContaining({customImageUploadId: 'upload-1'}),
+    ]);
+  });
+
+  it('preservesOrdinaryLinesWhenAnArtworkDraftCannotBeSerialized', () => {
+    service.addToCart(product(), 1).subscribe();
+    service.addToCart(product({id: 'p2'}), 1, false, new File([], 'art.png')).subscribe();
+
+    const restored = new CartService();
+    expect(restored.getCartItemsSnapshot().map(item => item.product.id)).toEqual(['p1', 'p2']);
+    expect(restored.getCartItemsSnapshot()[1].requiresArtworkReselection).toBeTrue();
+  });
+
   it('getCartTotal_emitsTheSumOfMarkedPriceTimesQuantity', () => {
     let total: number | undefined;
     service.getCartTotal().subscribe(value => total = value);
@@ -80,10 +151,14 @@ describe('CartService', () => {
     expect(restored.getCartTotalSnapshot()).toBe(160);
   });
 
-  it('doesNotPersistLinesThatCarryACustomImage', () => {
+  it('persistsOrdinaryLinesWhenACustomImageLineCannotBeRestored', () => {
     service.addToCart(product(), 1, false, new File([], 'art.png')).subscribe();
+    service.addToCart(product({id: 'p2'}), 2).subscribe();
 
-    expect(JSON.parse(localStorage.getItem('natiart-cart')!).items).toEqual([]);
+    const restored = new CartService();
+    expect(restored.getCartItemsSnapshot().map(item => item.product.id)).toEqual(['p1', 'p2']);
+    expect(restored.getCartItemsSnapshot()[0].requiresArtworkReselection).toBeTrue();
+    expect(JSON.parse(localStorage.getItem('natiart-cart')!).items.length).toBe(2);
   });
 
   it('recoversToAnEmptyCartWhenThePersistedCartIsCorrupt', () => {
@@ -170,4 +245,3 @@ describe('CartService', () => {
   });
 
 });
-

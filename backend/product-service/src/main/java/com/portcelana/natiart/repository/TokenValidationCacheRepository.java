@@ -20,4 +20,8 @@ public interface TokenValidationCacheRepository extends JpaRepository<TokenValid
     @Modifying
     @Query("DELETE FROM TokenValidationCacheEntry e WHERE e.expiresAt <= :now")
     int deleteExpired(@Param("now") long now);
+
+    @Modifying
+    @Query("DELETE FROM TokenValidationCacheEntry e WHERE e.userId = :userId")
+    int deleteByUserId(@Param("userId") String userId);
 }
