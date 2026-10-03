@@ -1,5 +1,5 @@
-import {ImageCollection, ImageLoaderService, EMPTY_PRODUCT_IMAGE} from '../../../service/image-loader.service';
-import {Component, inject, ElementRef, OnDestroy, OnInit, Renderer2, ViewChild} from '@angular/core';
+import {ImageCollection, ImageLoaderService, EMPTY_PRODUCT_IMAGE, ImageState} from "../../../service/image-loader.service";
+import {inject, signal, computed, Signal, WritableSignal, Component, ElementRef, OnDestroy, OnInit, Renderer2, ViewChild} from '@angular/core';
 import { AsyncPipe, CurrencyPipe, NgStyle } from "@angular/common";
 import {FormsModule} from "@angular/forms";
 import {BehaviorSubject, Subscription, of} from "rxjs";
@@ -7,7 +7,7 @@ import {catchError, switchMap, tap} from "rxjs/operators";
 import {Product} from "../../../models/product.model";
 import {ActivatedRoute, ParamMap, RouterLink} from "@angular/router";
 import {ProductService} from "../../../service/product.service";
-import {Meta, Title} from "@angular/platform-browser";
+import {Meta, Title} from '@angular/platform-browser';
 import {TopMenuComponent} from "../top-menu/top-menu.component";
 import {LeftMenuComponent} from "../left-menu/left-menu.component";
 import {CartService} from "../../../service/cart.service";
@@ -16,6 +16,8 @@ import {PersonalizationModalComponent} from "../personalization-modal/personaliz
 import {AddToCartButtonComponent} from "../add-to-cart-button/add-to-cart-button.component";
 import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportError} from '../../../../shared/service/error-reporting.service';
+
+interface DetailImage { key: string; url: string | null; state: ImageState; }
 
 @Component({
   selector: 'app-product-detail',
@@ -35,9 +37,6 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
   styleUrls: ['./product-detail.component.css']
 })
 export class ProductDetailComponent implements OnInit, OnDestroy {
-  readonly images: ImageCollection = inject(ImageLoaderService).create();
-  readonly emptyImage: string = EMPTY_PRODUCT_IMAGE;
-  get imageUrls(): Record<string, string> { return this.images.urls(); }
   imageLabel(index: number): string {
     return $localize`View product image ${index}:IMAGE_NUMBER:`;
   }
@@ -46,6 +45,21 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   quantity: number = 1;
   relatedProducts$ = new BehaviorSubject<Product[]>([]);
   selectedImageIndex: number = 0;
+  readonly images: ImageCollection = inject(ImageLoaderService).create();
+  readonly relatedImages: ImageCollection = inject(ImageLoaderService).create();
+  private readonly $imagePaths: WritableSignal<string[]> = signal([]);
+  readonly $productImages: Signal<DetailImage[]> = computed((): DetailImage[] => {
+    const urls: Record<string, string> = this.images.urls();
+    const states: Record<string, ImageState> = this.images.states();
+    return this.$imagePaths().map((key: string): DetailImage => ({key, url: urls[key] ?? null, state: states[key] ?? 'loading'}));
+  });
+  readonly $relatedImageUrls: Signal<Record<string, string>> = this.relatedImages.urls;
+  readonly emptyImage: string = EMPTY_PRODUCT_IMAGE;
+  get imageUrls(): Record<number, string | undefined> {
+    return Object.fromEntries(this.$productImages().map((entry: DetailImage, index: number): [number, string | undefined] => [index, entry.url ?? undefined]));
+  }
+  get relatedImageUrls(): Record<string, string> { return this.$relatedImageUrls(); }
+  readonly $zoomOrigin: WritableSignal<string> = signal('center center');
   isZoomed: boolean = false;
   zoomFactor: number = 5;
   lensSize: number = 100;
@@ -54,6 +68,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   @ViewChild('mainImage') mainImage!: ElementRef<HTMLImageElement>;
   private subscriptions: Subscription[] = [];
   private relatedSubscription: Subscription | null = null;
+  private personalizationSubscription: Subscription | null = null;
   isLoading: boolean = true;
   loadError: string | null = null;
 
@@ -61,13 +76,15 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   selectedProductForModal: Product | null = null;
   triggerElementForModal: HTMLElement | null = null;
 
+  private readonly _title: Title = inject(Title);
+  private readonly _meta: Meta = inject(Meta);
+  readonly categoryUnavailable: string = $localize`Category unavailable`;
+  readonly packageUnavailable: string = $localize`Package unavailable`;
+
   private readonly _route: ActivatedRoute = inject(ActivatedRoute);
   private readonly _productService: ProductService = inject(ProductService);
   private readonly _renderer: Renderer2 = inject(Renderer2);
   private readonly _cartService: CartService = inject(CartService);
-
-  private readonly _title = inject(Title);
-  private readonly _meta = inject(Meta);
 
 
   get transformScale(): string {
@@ -87,22 +104,29 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
         this.product$.next(null);
         this.quantity = 1;
         this.selectedImageIndex = 0;
-        this.images.update([]);
+        this.clearImages();
+        this.closePersonalizationModal();
+        this.relatedSubscription?.unsubscribe();
+        this.relatedSubscription = null;
         this.relatedProducts$.next([]);
+        this.isZoomed = false;
       }),
       switchMap((params: ParamMap) => {
         const productId: string | null = params.get('id');
         if (!productId) {
-          throw new Error($localize`Missing product id`);
+          this.loadError = $localize`Could not load this product. Please try again.`;
+          this.isLoading = false;
+          return of(null);
         }
-        return this._productService.getProduct(productId);
-      }),
-      catchError((error: unknown) => {
-        reportError('product-loading', error);
-        this.product$.next(null);
-        this.loadError = $localize`Could not load this product. Please try again.`;
-        this.isLoading = false;
-        return of(null);
+        return this._productService.getProduct(productId).pipe(
+          catchError((error: unknown) => {
+            reportError('product-loading', error);
+            this.product$.next(null);
+            this.loadError = $localize`Could not load this product. Please try again.`;
+            this.isLoading = false;
+            return of(null);
+          })
+        );
       })
     ).subscribe({
       next: (product: Product | null): void => {
@@ -111,7 +135,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
         }
         this.product$.next(product);
         this.setProductMetadata(product);
-        this.updateImages();
+        this.updateProductImages(product);
         this.loadRelatedProducts(product.categoryId);
         this.isLoading = false;
       }
@@ -120,8 +144,11 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.subscriptions.forEach(subscription => subscription.unsubscribe());
+    this.subscriptions.forEach((subscription: Subscription): void => subscription.unsubscribe());
+    this.clearImages();
     this.images.destroy();
+    this.relatedImages.destroy();
+    this.closePersonalizationModal();
     this.setStorefrontMetadata();
   }
 
@@ -149,24 +176,34 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     this._meta.updateTag({property: 'og:type', content: 'product'});
   }
 
-
-  selectImage(index: number) {
-    this.selectedImageIndex = index;
+  private clearImages(): void {
+    this.images.update([]);
+    this.relatedImages.update([]);
+    this.$imagePaths.set([]);
   }
 
-  incrementQuantity(product: Product) {
+  selectImage(key: string | number): void {
+    const index: number = typeof key === 'number' ? key : this.$productImages().findIndex((entry: DetailImage): boolean => entry.key === key);
+    if (index < 0 || index >= this.$productImages().length) return;
+    this.selectedImageIndex = index;
+    this.isZoomed = false;
+  }
+
+
+
+  incrementQuantity(product: Product): void {
     if (this.quantity < product.stockQuantity) {
       this.quantity++;
     }
   }
 
-  decrementQuantity() {
+  decrementQuantity(): void {
     if (this.quantity > 1) {
       this.quantity--;
     }
   }
 
-  addToCart(product: Product, event?: MouseEvent) { // Added optional event parameter
+  addToCart(product: Product, event?: MouseEvent): void {
     // Check if personalization is needed
     const needsPersonalization = product.availablePersonalizations?.some(
       p => p === PersonalizationOption.GOLDEN_BORDER || p === PersonalizationOption.CUSTOM_IMAGE
@@ -191,20 +228,21 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     element.dispatchEvent(new MouseEvent('click', {bubbles: true, clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2}));
   }
 
-  toggleZoom(event: MouseEvent) {
+  toggleZoom(event: MouseEvent): void {
+    if (!this.$productImages().length || this.$productImages()[this.selectedImageIndex]?.state !== 'loaded') return;
     this.isZoomed = !this.isZoomed;
-    if (this.isZoomed) {
-      this.updateZoomPosition(event);
-    }
+    if (this.isZoomed) this.updateZoomPosition(event);
   }
 
-  updateZoomPosition(event: MouseEvent) {
+  updateZoomPosition(event: MouseEvent): void {
     if (!this.isZoomed) return;
 
+    if (!this.mainImage || !this.zoomLens || !this.imageContainer) return;
     const image = this.mainImage.nativeElement;
     const lens = this.zoomLens.nativeElement;
     const container = this.imageContainer.nativeElement;
 
+    if (!container.offsetWidth || !container.offsetHeight || !image.isConnected || !lens.isConnected) return;
     const rect = container.getBoundingClientRect();
     let x = event.clientX - rect.left;
     let y = event.clientY - rect.top;
@@ -221,23 +259,25 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     const zoomX = (x / container.offsetWidth) * 100;
     const zoomY = (y / container.offsetHeight) * 100;
 
-    this._renderer.setStyle(image, 'transform-origin', `${zoomX}% ${zoomY}%`);
+    this.$zoomOrigin.set(`${zoomX}% ${zoomY}%`);
   }
 
 
-  openPersonalizationModal(product: Product, triggerElement?: HTMLElement) {
+  openPersonalizationModal(product: Product, triggerElement?: HTMLElement): void {
     this.selectedProductForModal = product;
     this.triggerElementForModal = triggerElement || null;
     this.showPersonalizationModal = true;
   }
 
-  closePersonalizationModal() {
+  closePersonalizationModal(): void {
+    this.personalizationSubscription?.unsubscribe();
+    this.personalizationSubscription = null;
     this.showPersonalizationModal = false;
     this.selectedProductForModal = null;
     this.triggerElementForModal = null;
   }
 
-  onPersonalizationComplete(result: { goldBorder?: boolean, customImage?: File }) {
+  onPersonalizationComplete(result: { goldBorder?: boolean, customImage?: File }): void {
     const selectedProduct: Product | null = this.selectedProductForModal;
     const triggerElement: HTMLElement | null = this.triggerElementForModal;
     if (!selectedProduct?.id) {
@@ -245,7 +285,8 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this._productService.getProduct(selectedProduct.id).subscribe({
+    this.personalizationSubscription?.unsubscribe();
+    this.personalizationSubscription = this._productService.getProduct(selectedProduct.id).subscribe({
       next: (currentProduct: Product): void => {
         const quantity: number = Math.min(this.quantity, currentProduct.stockQuantity);
         if (currentProduct.active === false || quantity <= 0) {
@@ -310,6 +351,18 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     }, 700);
   }
 
+  private updateProductImages(product: Product): void {
+    const paths: string[] = Array.from(new Set(product.images ?? []));
+    this.$imagePaths.set(paths);
+    this.images.update(paths.map((key: string) => ({key, source: key})));
+    this.selectedImageIndex = 0;
+  }
+
+  imageFailed(key: string): void {
+    this.images.failed(key);
+    this.isZoomed = false;
+  }
+
   private loadRelatedProducts(categoryId: string | undefined): void {
     // Cancel any in-flight related-products fetch: without this, a slow first
     // response overwrites the related list of the product viewed second.
@@ -319,8 +372,9 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     }
     if (!categoryId) {
       this.relatedProducts$.next([]);
+      this.relatedImages.update([]);
       return;
-    };
+    }
     const subscription = this._productService.getProductsByCategory(categoryId).subscribe({
       next: (products: Product[]) => {
         const currentProductId = this.product$.value?.id;
@@ -328,7 +382,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
           .filter(p => p.id !== currentProductId) // Exclude current product
           .slice(0, 4); // Limit to 4 related products
         this.relatedProducts$.next(related);
-        this.updateImages();
+        this.relatedImages.update(related.map((product: Product) => ({key: product.id!, source: product.images?.[0]})));
       },
       error: (error) => reportError('related-products', error)
     });
@@ -336,14 +390,8 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     this.subscriptions.push(subscription);
   }
 
-  get relatedImageUrls(): Record<string, string> { return this.images.urls(); }
 
-  private updateImages(): void {
-    this.images.update([
-      ...(this.product$.value?.images ?? []).map((source: string, index: number) => ({key: String(index), source})),
-      ...this.relatedProducts$.value.map((product: Product) => ({key: product.id!, source: product.images?.[0]}))
-    ]);
-  }
+  relatedImageFailed(id: string): void { this.relatedImages.failed(id); }
 
   protected readonly PersonalizationOption = PersonalizationOption;
 }

@@ -30,7 +30,7 @@ describe('AddToCartButtonComponent', () => {
     const cartService: CartService = TestBed.inject(CartService);
     const staleProduct: Product = {
       id: 'p1', label: 'Painting', originalPrice: 100, markedPrice: 80, stockQuantity: 4,
-      categoryId: 'cat-1', availablePersonalizations: [PersonalizationOption.GOLDEN_BORDER], tags: new Set<string>(), images: []
+      categoryId: 'cat-1', availablePersonalizations: [PersonalizationOption.GOLDEN_BORDER], tags: [], images: []
     };
     const currentProduct: Product = {...staleProduct, markedPrice: 95, stockQuantity: 2};
     const getProductSpy: jasmine.Spy = spyOn(productService, 'getProduct').and.returnValue(of(currentProduct));

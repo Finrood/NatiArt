@@ -48,7 +48,7 @@ describe('CartComponent', () => {
     const product: Product = {
       id: 'p1', label: 'Vase', originalPrice: 100, markedPrice: 80,
       stockQuantity: 5, categoryId: 'c1', availablePersonalizations: [],
-      tags: new Set<string>(), images: ['a.jpg'],
+      tags: [], images: ['a.jpg'],
     };
     const item: CartItem = { cartItemId: 'line-1', product, quantity: 1 };
     spyOn(cartService, 'getCartItemsSnapshot').and.returnValue([item]);
@@ -77,7 +77,7 @@ describe('CartComponent', () => {
       prepareImageUrls(items: CartItem[]): void;
     };
 
-    const product: Product = {id: 'gone-product', label: 'Old', originalPrice: 1, markedPrice: 1, stockQuantity: 1, categoryId: 'c', images: ['a.jpg'], tags: new Set<string>(), availablePersonalizations: []};
+    const product: Product = {id: 'gone-product', label: 'Old', originalPrice: 1, markedPrice: 1, stockQuantity: 1, categoryId: 'c', images: ['a.jpg'], tags: [], availablePersonalizations: []};
     internals.prepareImageUrls([{cartItemId: 'gone-line', product, quantity: 1}]);
     internals.prepareImageUrls([]);
     image$.next(new Blob(['x'], { type: 'image/png' }));

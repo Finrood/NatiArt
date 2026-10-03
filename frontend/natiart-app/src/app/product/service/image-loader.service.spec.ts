@@ -13,7 +13,7 @@ import {Product} from '../models/product.model';
 
 function line(path: string | undefined): CartItem {
   const product: Product = {id: 'p1', label: 'Vase', originalPrice: 10, markedPrice: 10, stockQuantity: 5, categoryId: 'cat',
-    availablePersonalizations: [], tags: new Set(), images: path ? [path] : []};
+    availablePersonalizations: [], tags: [], images: path ? [path] : []};
   return {cartItemId: 'same-line', product, quantity: 1};
 }
 function image(): Blob { return new Blob(['<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1"/></svg>'], {type: 'image/svg+xml'}); }

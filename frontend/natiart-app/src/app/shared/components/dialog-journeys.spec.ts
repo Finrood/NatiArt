@@ -63,7 +63,7 @@ describe('Personalization dialog boundary', () => {
 describe('Cart keyboard confirmation boundary', () => {
   it('renders an imperative cart confirmation and returns focus without removing an item on Escape', async () => {
     const remove = jasmine.createSpy('remove');
-    const product = {id: 'art', label: 'Art', originalPrice: 10, markedPrice: 10, stockQuantity: 3, categoryId: 'c', images: [], tags: new Set<string>(), availablePersonalizations: []};
+    const product = {id: 'art', label: 'Art', originalPrice: 10, markedPrice: 10, stockQuantity: 3, categoryId: 'c', images: [], tags: [], availablePersonalizations: []};
     await TestBed.configureTestingModule({imports: [CartComponent], providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
       {provide: CartService, useValue: {getCartItems: () => of([{cartItemId: 'line', quantity: 1, product}]), getCartTotal: () => of(10), getCartCount: () => of(1), removeFromCart: remove}},
       {provide: AuthenticationService, useValue: {isLoggedIn$: of(true)}}]}).compileComponents();

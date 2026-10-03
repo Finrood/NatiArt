@@ -18,26 +18,24 @@
               (mousemove)="updateZoomPosition($event)"
               (mouseleave)="isZoomed = false"
               (click)="toggleZoom($event)" tabindex="0" role="button" aria-label="Toggle image zoom" (keydown.enter)="zoomKey($event)">
-              <img (error)="images.failed(selectedImageIndex.toString())" #mainImage
+              <img (error)="imageFailed($productImages()[selectedImageIndex]?.key || '')" #mainImage
                 [src]="imageUrls[selectedImageIndex] || emptyImage"
                 alt="{{product.label}} - Main Image" i18n-alt
                 class="w-full h-auto object-contain transition-transform duration-200 ease-in-out block"
                  [ngStyle]="{
                          'transform': isZoomed ? transformScale : 'scale(1)',
-                         'transform-origin': isZoomed ? 'var(--zoom-origin, center center)' : 'center center'
+                         'transform-origin': isZoomed ? $zoomOrigin() : 'center center'
                      }">
               <!-- Zoom Lens (visible only when zoomed) -->
-              @if (isZoomed) {
-                <div #zoomLens
+                <div #zoomLens [hidden]="!isZoomed"
                   class="absolute border-2 border-primary rounded-md pointer-events-none"
                   [style.width.px]="lensSize"
                   [style.height.px]="lensSize">
                 </div>
-              }
               <!-- Zoom Icon Overlay (visible only when not zoomed) -->
               @if (!isZoomed) {
                 <div
-                  class="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                  class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                   <svg class="h-12 w-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
                   </svg>
@@ -46,9 +44,9 @@
             </div>
             <!-- Thumbnails -->
             <div class="flex mt-4 space-x-2 overflow-x-auto pb-2">
-              @for (imagePath of product.images; track $index; let i = $index) {
-                <img (click)="selectImage(i)" tabindex="0" role="button" (keydown.enter)="selectImage(i)" (keydown.space)="$event.preventDefault(); selectImage(i)" [attr.aria-label]="'View product image ' + (i + 1)"
-                  [src]="imageUrls[i] || emptyImage" (error)="images.failed(i.toString())"
+              @for (imgEntry of $productImages(); track imgEntry.key; let i = $index) {
+                <img (error)="imageFailed(imgEntry.key)" (click)="selectImage(imgEntry.key)" tabindex="0" role="button" (keydown.enter)="selectImage(imgEntry.key)" (keydown.space)="$event.preventDefault(); selectImage(imgEntry.key)" [attr.aria-label]="imageLabel(i + 1)"
+                  [src]="imgEntry.url || emptyImage"
                   alt="{{product.label}} Thumbnail {{ i + 1 }}" i18n-alt
                   class="w-20 h-20 object-contain border-2 cursor-pointer transition-colors duration-200 rounded"
                   [class.border-primary]="selectedImageIndex === i"
@@ -103,10 +101,10 @@
               <h2 class="text-xl font-semibold mb-4 text-[#333333]" i18n>Product Details</h2>
               <ul class="space-y-2 text-gray-600">
                 <!-- Display Category Label if available -->
-                <li><strong class="font-medium" i18n>Category:</strong> {{ product.categoryId }}</li> <!-- Placeholder, replace with actual category name -->
+                <li><strong class="font-medium" i18n>Category:</strong> {{ product.categoryLabel || categoryUnavailable }}</li>
                 <li><strong class="font-medium" i18n>Stock:</strong> <ng-container i18n>{{ product.stockQuantity }} available</ng-container></li>
                 <!-- Display Tags if available -->
-                @if (product.tags && product.tags.size > 0) {
+                @if (product.tags && product.tags.length > 0) {
                   <li>
                     <strong class="font-medium" i18n>Tags:</strong>
                     @for (tag of product.tags; track tag; let isLast = $last) {
@@ -118,8 +116,8 @@
                 }
                 <!-- Display Package Label if available -->
                 @if (product.packageId) {
-                  <li><strong class="font-medium" i18n>Package:</strong> {{ product.packageId }}</li>
-                  } <!-- Placeholder, replace with actual package name -->
+                  <li><strong class="font-medium" i18n>Package:</strong> {{ product.packageLabel || packageUnavailable }}</li>
+                  }
                   <!-- Display personalization info -->
                   @if (product.hasFixedGoldenBorder) {
                     <li>
@@ -153,7 +151,7 @@
                   <div class="group border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
                     <a [routerLink]="['/product', relatedProduct.id]" class="block">
                       <div class="relative aspect-square bg-gray-100"> <!-- Use aspect-square for consistent shape -->
-                        <img (error)="images.failed(relatedProduct.id!)" [alt]="relatedProduct.label"
+                        <img (error)="relatedImageFailed(relatedProduct.id!)" [alt]="relatedProduct.label"
                           [src]="relatedImageUrls[relatedProduct.id!] || emptyImage"
                           class="absolute top-0 left-0 w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 p-2"> <!-- Added padding -->
                         </div>

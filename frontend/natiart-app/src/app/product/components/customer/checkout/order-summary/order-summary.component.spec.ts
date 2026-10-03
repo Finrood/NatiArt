@@ -29,7 +29,7 @@ describe('OrderSummaryComponent', () => {
     const product: Product = {
       id: 'p1', label: 'Plate', originalPrice: 100, markedPrice: 90,
       stockQuantity: 5, categoryId: 'c1', availablePersonalizations: [],
-      tags: new Set<string>(), images: [],
+      tags: [], images: [],
     };
     const quote: ShippingQuote = {
       quoteId: 'quote-1', destinationPostalCode: '01001000', serviceId: 'pac', serviceName: 'PAC',
@@ -51,7 +51,7 @@ describe('OrderSummaryComponent', () => {
     const product: Product = {
       id: 'p1', label: 'Plate', originalPrice: 10, markedPrice: 10,
       stockQuantity: 5, categoryId: 'c1', availablePersonalizations: [],
-      tags: new Set<string>(), images: [],
+      tags: [], images: [],
     };
     const uploadId = '2b7f4d7e-6e55-4a8f-a8b2-f2b7069e4d2c';
     component.shippingQuote = {
@@ -77,7 +77,7 @@ describe('OrderSummaryComponent', () => {
     const product: Product = {
       id: 'p1', label: 'Vase', originalPrice: 100, markedPrice: 80,
       stockQuantity: 5, categoryId: 'c1', availablePersonalizations: [],
-      tags: new Set<string>(), images: ['a.jpg'],
+      tags: [], images: ['a.jpg'],
     };
     component.cartItems = [{ cartItemId: 'line-1', product, quantity: 1 }];
     const image$: Subject<Blob> = new Subject<Blob>();
@@ -104,7 +104,7 @@ describe('OrderSummaryComponent', () => {
       prepareImageUrls(items: CartItem[]): void;
     };
 
-    const product: Product = {id: 'gone-product', label: 'Old', originalPrice: 1, markedPrice: 1, stockQuantity: 1, categoryId: 'c', images: ['a.jpg'], tags: new Set<string>(), availablePersonalizations: []};
+    const product: Product = {id: 'gone-product', label: 'Old', originalPrice: 1, markedPrice: 1, stockQuantity: 1, categoryId: 'c', images: ['a.jpg'], tags: [], availablePersonalizations: []};
     internals.prepareImageUrls([{cartItemId: 'gone-line', product, quantity: 1}]);
     internals.prepareImageUrls([]);
     image$.next(new Blob(['x'], { type: 'image/png' }));
