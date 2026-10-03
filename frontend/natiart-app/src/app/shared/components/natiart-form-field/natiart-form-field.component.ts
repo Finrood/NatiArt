@@ -1,3 +1,4 @@
+import {DEFAULT_REQUIREMENTS} from '../../../directory/utils/password-utils';
 import {afterEveryRender, ChangeDetectorRef, DestroyRef, ElementRef, inject, signal, Component, EventEmitter, Input, OnInit, Output} from '@angular/core';
 import {merge} from 'rxjs';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
@@ -20,6 +21,7 @@ export class NatiartFormFieldComponent implements OnInit {
   @Input() form!: FormGroup;
   @Input() isPassword: boolean = false;
 
+  readonly passwordRequirements = DEFAULT_REQUIREMENTS;
   private static nextId: number = 0;
   private readonly generatedId: string = 'natiart-field-' + NatiartFormFieldComponent.nextId++;
   private readonly _element = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -70,7 +72,11 @@ export class NatiartFormFieldComponent implements OnInit {
     else input.removeAttribute('aria-describedby');
   }
 
+  hasPasswordMismatch(): boolean {
+    return this.controlName === 'confirmPassword' && this.form.hasError('passwordMismatch');
+  }
+
   showErrors(): boolean {
-    return !!this.control && this.control.invalid && (this.control.dirty || this.control.touched);
+    return !!this.control && (this.control.invalid || this.hasPasswordMismatch()) && (this.control.dirty || this.control.touched);
   }
 }

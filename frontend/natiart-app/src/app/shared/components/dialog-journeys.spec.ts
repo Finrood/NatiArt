@@ -20,7 +20,7 @@ for (const [component, name] of [[CategoryManagementComponent, 'Category'], [Pac
       const fixture = TestBed.createComponent(component as Type<unknown>);
       fixture.detectChanges();
       const http = TestBed.inject(HttpTestingController);
-      for (const request of http.match(() => true)) request.flush([]);
+      for (const request of http.match(() => true)) request.flush(request.request.url.endsWith('/page') ? {items: [], page: 0, size: 20, total: 0, hasNext: false} : []);
       fixture.detectChanges();
       const opener: HTMLButtonElement = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
         .find((button) => button.textContent?.trim() === 'Add New ' + name)!;

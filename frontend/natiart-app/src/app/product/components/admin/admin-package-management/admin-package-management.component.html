@@ -28,6 +28,8 @@
 </div>
 
 <!-- Modal -->
+<app-page-controls [page]="pages.$page()" [total]="pages.$total()" [hasNext]="pages.$hasNext()"
+    [loading]="pages.$loading()" [error]="pages.$error()" (pageChange)="pages.load($event)"></app-page-controls>
 @if (modalVisible) {
   <app-accessible-dialog label="Package editor" i18n-label (dismiss)="closeModal()">
     <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4 transform transition-transform duration-300 ease-in-out">
@@ -57,10 +59,9 @@
         <div class="flex justify-end space-x-2">
           <app-button type="button" (click)="closeModal()" color="secondary" size="md" i18n>Cancel
           </app-button>
-          <app-button type="submit" color="primary" size="md" i18n>{isEditingPackage.value, select, true {Update} other {Add}}</app-button>
+          <app-button type="submit" [disabled]="isSubmitting || packageForm.invalid" color="primary" size="md" i18n>{isEditingPackage.value, select, true {Update} other {Add}}</app-button>
         </div>
       </form>
     </div>
   </app-accessible-dialog>
 }
-

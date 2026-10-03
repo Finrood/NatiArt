@@ -81,6 +81,8 @@
   </div>
 
   <!-- Product Modal -->
+<app-page-controls [page]="pages.$page()" [total]="pages.$total()" [hasNext]="pages.$hasNext()"
+    [loading]="pages.$loading()" [error]="pages.$error()" (pageChange)="pages.load($event)"></app-page-controls>
   @if (modalVisible) {
     <app-accessible-dialog label="Product editor" i18n-label (dismiss)="closeModal()">
       <div
@@ -88,7 +90,7 @@
         <!-- Loading overlay -->
         @if (isSubmitting) {
           <div
-            class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+            class="absolute inset-0 bg-white/75 flex items-center justify-center z-10">
             <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div>
           </div>
         }
@@ -146,6 +148,12 @@
                 </option>
               }
             </select>
+              @if (categoryOptions.$hasNext() || categoryOptions.$error()) {
+                <button type="button" class="underline mt-2" [disabled]="categoryOptions.$loading()"
+                  (click)="categoryOptions.load(categoryOptions.$error() ? categoryOptions.$page() : categoryOptions.$page() + 1)">
+                  @if (categoryOptions.$error()) { <span i18n>Retry categories</span> } @else { <span i18n>Load more categories</span> }</button>
+                @if (categoryOptions.$error()) { <p role="alert">{{ categoryOptions.$error() }}</p> }
+              }
           </div>
           <!-- Package Select -->
           <div class="mb-4">
@@ -158,6 +166,12 @@
                 </option>
               }
             </select>
+              @if (packageOptions.$hasNext() || packageOptions.$error()) {
+                <button type="button" class="underline mt-2" [disabled]="packageOptions.$loading()"
+                  (click)="packageOptions.load(packageOptions.$error() ? packageOptions.$page() : packageOptions.$page() + 1)">
+                  @if (packageOptions.$error()) { <span i18n>Retry packages</span> } @else { <span i18n>Load more packages</span> }</button>
+                @if (packageOptions.$error()) { <p role="alert">{{ packageOptions.$error() }}</p> }
+              }
           </div>
           <!-- Fixed Golden Border Checkbox -->
           <div class="mb-4">
@@ -203,7 +217,7 @@
           <!-- Loading Overlay for Images -->
           @if (isLoadingImages) {
             <div
-              class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+              class="absolute inset-0 bg-white/75 flex items-center justify-center z-10">
               <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div>
             </div>
           }
@@ -221,7 +235,7 @@
                   <app-button type="button" (click)="removeImage(i)" color="danger" size="sm" [disabled]="isDragging" i18n>Remove
                   </app-button>
                   <div
-                    class="absolute inset-0 bg-blue-500 bg-opacity-50 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" i18n>{isTouch, select, true {Long press to reorder} other {Drag to reorder}}</div>
+                    class="absolute inset-0 bg-blue-500/50 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" i18n>{isTouch, select, true {Long press to reorder} other {Drag to reorder}}</div>
                 </div>
               }
             </div>

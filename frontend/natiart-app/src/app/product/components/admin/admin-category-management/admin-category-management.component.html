@@ -22,7 +22,7 @@
           </app-button>
           <app-button (click)="deleteCategory(category.id!)" color="danger" size="sm" i18n>Delete
           </app-button>
-          <app-button (click)="toggleCategoryVisibility(category)" color="primary" size="sm">
+          <app-button [disabled]="isVisibilityPending(category.id)" (click)="toggleCategoryVisibility(category)" color="primary" size="sm">
             <span i18n>{category.active, select, true {Hide} other {Show}}</span>
             <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
               @if (category.active) {
@@ -50,6 +50,8 @@
   </div>
 
   <!-- Modal (shown when modalVisible) -->
+<app-page-controls [page]="pages.$page()" [total]="pages.$total()" [hasNext]="pages.$hasNext()"
+    [loading]="pages.$loading()" [error]="pages.$error()" (pageChange)="pages.load($event)"></app-page-controls>
   @if (modalVisible) {
     <app-accessible-dialog label="Category editor" i18n-label (dismiss)="closeModal()">
       <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4 transform transition-transform duration-300 ease-in-out">
@@ -68,7 +70,7 @@
           <div class="flex justify-end space-x-2">
             <app-button type="button" (click)="closeModal()" color="secondary" size="md" i18n>Cancel
             </app-button>
-            <app-button type="submit" color="primary" size="md" i18n>{isEditingCategory, select, true {Update} other {Add}}</app-button>
+            <app-button type="submit" [disabled]="isSubmitting || categoryForm.invalid" color="primary" size="md" i18n>{isEditingCategory, select, true {Update} other {Add}}</app-button>
           </div>
         </form>
       </div>
