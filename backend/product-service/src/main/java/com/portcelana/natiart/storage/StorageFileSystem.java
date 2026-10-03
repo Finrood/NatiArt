@@ -169,23 +169,57 @@ public class StorageFileSystem implements Storage {
 
     @Override
     public URI uploadFile(String location, String key, InputFile inputFile) {
-        final File file = resolveAllowedWriteFile(location, key);
+        try (InputStream inputStream = inputFile.inputStream()) {
+            return writeFile(resolveAllowedWriteFile(location, key), inputStream);
+        } catch (IOException error) {
+            throw new IllegalStateException("Unable to close an image upload", error);
+        }
+    }
+
+    private URI writeFile(File file, InputStream inputStream) {
+        boolean created = false;
         try {
             Files.createDirectories(file.toPath().getParent());
-            try (InputStream inputStream = inputFile.inputStream();
-                    FileOutputStream fileOutputStream = new FileOutputStream(file)) {
-                inputStream.transferTo(fileOutputStream);
+            try (OutputStream outputStream =
+                    Files.newOutputStream(file.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+                created = true;
+                inputStream.transferTo(outputStream);
             }
-            final String relative =
-                    allowedRoots.getFirst().relativize(file.toPath()).toString().replace('\\', '/');
-            try {
-                return new URI("file", relative, null);
-            } catch (URISyntaxException e) {
-                throw new IllegalStateException("Unable to encode stored file key", e);
+            return storedKey(file);
+        } catch (IOException error) {
+            if (created) {
+                try {
+                    Files.deleteIfExists(file.toPath());
+                } catch (IOException cleanupError) {
+                    error.addSuppressed(cleanupError);
+                }
             }
+            throw new IllegalStateException("Unable to store an image", error);
+        }
+    }
+
+    @Override
+    public URI uploadTarget(String location, String key) {
+        return storedKey(resolveAllowedWriteFile(location, key));
+    }
+
+    private URI storedKey(File file) {
+        final String relative =
+                allowedRoots.getFirst().relativize(file.toPath()).toString().replace('\\', '/');
+        try {
+            return new URI("file", relative, null);
+        } catch (URISyntaxException error) {
+            throw new IllegalStateException("Unable to encode stored image key", error);
+        }
+    }
+
+    @Override
+    public void delete(URI path) {
+        final File file = resolveAllowedFile(path);
+        try {
+            Files.deleteIfExists(file.toPath());
         } catch (IOException e) {
-            throw new IllegalStateException(
-                    String.format("An error has occurred while storing file [%s] in [%s]", file.getName(), key));
+            throw new IllegalStateException("Unable to remove a stored image", e);
         }
     }
 

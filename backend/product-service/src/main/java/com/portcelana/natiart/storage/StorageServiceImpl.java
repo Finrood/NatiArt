@@ -45,6 +45,16 @@ public class StorageServiceImpl implements StorageService {
     }
 
     @Override
+    public URI uploadTarget(String location, String key) {
+        return getStorage(uploadScheme).uploadTarget(location, key);
+    }
+
+    @Override
+    public void delete(URI uri) {
+        getStorage(uri).delete(uri);
+    }
+
+    @Override
     public void deleteFile(URI uri) {
         getStorage(uri).deleteFile(uri);
     }
