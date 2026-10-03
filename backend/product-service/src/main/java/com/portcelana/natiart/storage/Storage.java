@@ -24,6 +24,8 @@ public interface Storage {
     /** Idempotently remove an owned file. */
     void delete(URI uri);
 
+    void deleteFile(URI uri);
+
     InputStream downloadFiles(Set<URI> uriSet);
 
     InputStream downloadDirectory(URI uri);

@@ -71,3 +71,5 @@ verify stream closure, partial-write cleanup and preservation of an existing
 file. Manager coverage verifies even unattempted inputs close when a batch
 fails. The suite does not use an after-test rollback as evidence of production
 commit behavior.
+
+Current customer artwork keeps the logical-key-only `deleteFile` API. Product ownership cleanup uses `delete` only after its durable ownership/reference checks and can resolve recorded primary or configured legacy references. Both deletion paths retain filesystem confinement; neither inventories or removes unknown files. `uploadTarget` returns the same logical key as the immutable CREATE_NEW upload.

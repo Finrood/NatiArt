@@ -57,6 +57,9 @@ public interface StorageService extends Serializable {
     /** Idempotently remove an owned file. */
     void delete(URI uri);
 
+    /** Delete a stored file after its ownership record expires or cannot be committed. */
+    void deleteFile(URI uri);
+
     /**
      * Store a given file in the storage
      *
