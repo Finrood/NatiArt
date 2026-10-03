@@ -74,6 +74,9 @@ class ShippingPackingHttpIntegrationTest {
     private OrderViewService views;
 
     @MockitoBean
+    private AsaasChargeSafetyService chargeSafetyService;
+
+    @MockitoBean
     private ProductManager productManager;
 
     @Autowired

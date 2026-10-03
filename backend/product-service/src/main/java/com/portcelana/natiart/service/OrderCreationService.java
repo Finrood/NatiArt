@@ -50,6 +50,7 @@ public class OrderCreationService {
     private final ShippingQuoteService shippingQuoteService;
     private final CustomerUploadService customerUploadService;
     private final BigDecimal personalizationSurcharge;
+    private final int maxOutstandingReservations;
 
     @Autowired
     public OrderCreationService(
@@ -58,7 +59,8 @@ public class OrderCreationService {
             ProductRepository productRepository,
             ShippingQuoteService shippingQuoteService,
             CustomerUploadService customerUploadService,
-            @Value("${natiart.order.personalization-surcharge:0.00}") BigDecimal personalizationSurcharge) {
+            @Value("${natiart.order.personalization-surcharge:0.00}") BigDecimal personalizationSurcharge,
+            @Value("${natiart.order.max-outstanding-reservations:5}") int maxOutstandingReservations) {
         this.orderRepository = orderRepository;
         this.productManager = productManager;
         this.productRepository = productRepository;
@@ -66,6 +68,9 @@ public class OrderCreationService {
         this.customerUploadService = customerUploadService;
         requireNonNegativeAmount(personalizationSurcharge, "personalization surcharge");
         this.personalizationSurcharge = personalizationSurcharge;
+        if (maxOutstandingReservations <= 0)
+            throw new IllegalArgumentException("The outstanding reservation limit must be positive");
+        this.maxOutstandingReservations = maxOutstandingReservations;
     }
 
     /** Test-friendly constructor for order flows without personalization uploads. */
@@ -74,12 +79,33 @@ public class OrderCreationService {
             ProductManager productManager,
             ProductRepository productRepository,
             ShippingQuoteService shippingQuoteService) {
-        this(orderRepository, productManager, productRepository, shippingQuoteService, null, BigDecimal.ZERO);
+        this(orderRepository, productManager, productRepository, shippingQuoteService, null, BigDecimal.ZERO, 5);
+    }
+
+    public OrderCreationService(
+            OrderRepository orderRepository,
+            ProductManager productManager,
+            ProductRepository productRepository,
+            ShippingQuoteService shippingQuoteService,
+            CustomerUploadService customerUploadService,
+            BigDecimal personalizationSurcharge) {
+        this(
+                orderRepository,
+                productManager,
+                productRepository,
+                shippingQuoteService,
+                customerUploadService,
+                personalizationSurcharge,
+                5);
     }
 
     @Transactional
     public CustomerOrder createOrder(
             OrderDto orderDto, String ownerExternalId, String idempotencyKey, String requestFingerprint) {
+        if (orderRepository.countByOwnerExternalIdAndStatus(ownerExternalId, OrderStatus.PENDING)
+                >= maxOutstandingReservations) {
+            throw new IllegalArgumentException("Too many unpaid orders are reserved for this account");
+        }
         validateContactDetails(orderDto);
         final Map<String, Integer> quantitiesByProduct = aggregateQuantities(orderDto.getItems());
         final Map<String, Product> products = productManager.getProductsOrDie(orderDto.getItems().stream()
