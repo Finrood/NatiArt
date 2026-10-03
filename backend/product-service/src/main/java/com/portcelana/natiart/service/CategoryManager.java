@@ -13,7 +13,11 @@ public interface CategoryManager {
 
     Category getCategoryOrDie(String categoryId);
 
+    Category getActiveCategoryOrDie(String categoryId);
+
     List<Category> getCategories(Pageable pageable);
+
+    List<Category> getActiveCategories(Pageable pageable);
 
     Category createCategory(CategoryDto categoryDto);
 

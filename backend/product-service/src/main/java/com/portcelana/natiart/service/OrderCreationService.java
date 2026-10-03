@@ -145,9 +145,11 @@ public class OrderCreationService {
 
         // Stock is reserved by product, but resolvedItems below intentionally
         // remains one line per distinct fulfillment instruction.
-        for (Map.Entry<String, Integer> entry : quantitiesByProduct.entrySet()) {
-            final Product product = products.get(entry.getKey());
-            final int reserved = productRepository.decreaseStockIfAvailable(product.getId(), entry.getValue());
+        // Acquire each product row in a stable order while preserving fulfillment line order.
+        for (String productId : quantitiesByProduct.keySet().stream().sorted().toList()) {
+            final Product product = products.get(productId);
+            final int reserved =
+                    productRepository.decreaseStockIfAvailable(product.getId(), quantitiesByProduct.get(productId));
             if (reserved == 0) {
                 throw new IllegalArgumentException("Insufficient stock for product [" + product.getLabel() + "]");
             }

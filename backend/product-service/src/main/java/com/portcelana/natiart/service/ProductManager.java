@@ -23,6 +23,8 @@ public interface ProductManager {
 
     Product getProductWithImagesOrDie(String id);
 
+    Product getActiveProductWithImagesOrDie(String id);
+
     /**
      * Loads all requested products in one query, throwing when any id is unknown.
      */
@@ -30,11 +32,19 @@ public interface ProductManager {
 
     List<Product> getProducts(Pageable pageable);
 
+    List<Product> getActiveProducts(Pageable pageable);
+
     List<Product> getNewProducts(Pageable pageable);
+
+    List<Product> getActiveNewProducts(Pageable pageable);
 
     List<Product> getFeaturedProducts(Pageable pageable);
 
+    List<Product> getActiveFeaturedProducts(Pageable pageable);
+
     List<Product> getProductsByCategory(Category category, Pageable pageable);
+
+    List<Product> getActiveProductsByCategory(Category category, Pageable pageable);
 
     boolean existsByCategory(Category category);
 
