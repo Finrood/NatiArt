@@ -25,7 +25,6 @@ import com.portcelana.natiart.service.CategoryManager;
 import com.portcelana.natiart.service.ImageConversionService;
 import com.portcelana.natiart.service.PackageManager;
 import com.portcelana.natiart.service.ProductManagerImpl;
-import com.portcelana.natiart.service.CategoryManager;
 
 class StorageImageHttpTest {
     @TempDir
@@ -47,7 +46,8 @@ class StorageImageHttpTest {
                 mock(CategoryManager.class),
                 mock(PackageManager.class),
                 new StorageServiceImpl(List.of(storage)));
-        mvc = MockMvcBuilders.standaloneSetup(new ProductController(manager, mock(CategoryManager.class), mock(ImageConversionService.class)))
+        mvc = MockMvcBuilders.standaloneSetup(
+                        new ProductController(manager, mock(CategoryManager.class), mock(ImageConversionService.class)))
                 .setControllerAdvice(new ControllerAdvice())
                 .build();
     }
