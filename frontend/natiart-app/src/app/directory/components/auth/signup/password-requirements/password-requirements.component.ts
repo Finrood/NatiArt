@@ -33,21 +33,21 @@ export class PasswordRequirementsComponent {
   get requirementsList(): Array<{text: string; valid: boolean}> {
     const results = checkPasswordRequirements(this.password, this.requirements);
     return [
-      {text: `Maximum ${this.requirements.maxUtf8Bytes} UTF-8 bytes`, valid: results.hasMaxBytes},
+      {text: $localize`Maximum ${this.requirements.maxUtf8Bytes}:MAX_BYTES: UTF-8 bytes`, valid: results.hasMaxBytes},
       {
-        text: `Minimum ${this.requirements.minLength} characters`,
+        text: $localize`Minimum ${this.requirements.minLength}:MIN_LENGTH: characters`,
         valid: results.hasMinLength
       },
       {
-        text: 'Contains lowercase letter',
+        text: $localize`Contains lowercase letter`,
         valid: results.hasLower
       },
       {
-        text: 'Contains uppercase letter',
+        text: $localize`Contains uppercase letter`,
         valid: results.hasUpper
       },
       {
-        text: 'Contains number',
+        text: $localize`Contains number`,
         valid: results.hasNumber
       }
     ];

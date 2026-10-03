@@ -42,8 +42,8 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
   shippingState$: Observable<ShippingState> = this.shippingStateSubject.asObservable();
   private destroy$ = new Subject<void>();
 
-  private readonly _fb = inject(FormBuilder);
-  private readonly _shippingService = inject(ShippingService);
+  private readonly _fb: FormBuilder = inject(FormBuilder);
+  private readonly _shippingService: ShippingService = inject(ShippingService);
 
   constructor() {
     this.shippingForm = this._fb.group({
@@ -72,7 +72,7 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
       },
       error => {
         reportError('shipping-estimation', error);
-        this.shippingStateSubject.next({status: 'error', cheapestOption: null, error: 'An unexpected error occurred.'});
+        this.shippingStateSubject.next({status: 'error', cheapestOption: null, error: $localize`An unexpected error occurred.`});
         this.shippingForm.get('cep')?.enable();
       }
     );
@@ -122,7 +122,7 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
       observer.next({
         status: 'error',
         cheapestOption: null,
-        error: 'Error fetching shipping estimates. Please try again.'
+        error: $localize`Error fetching shipping estimates. Please try again.`
       });
       observer.complete();
     });
