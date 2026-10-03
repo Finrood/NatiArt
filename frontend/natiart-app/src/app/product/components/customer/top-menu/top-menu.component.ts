@@ -1,5 +1,5 @@
 import {AccessibleDialogComponent} from '../../../../shared/components/accessible-dialog.component';
-import {inject, Component, HostListener, OnDestroy, OnInit} from '@angular/core';
+import {Component, inject, signal, HostListener, OnDestroy, OnInit} from '@angular/core';
 import { AsyncPipe } from "@angular/common";
 import {CartService} from "../../../service/cart.service";
 import {Observable, Subscription} from "rxjs";
@@ -19,7 +19,9 @@ import {RouterLink} from "@angular/router";
     styleUrl: './top-menu.component.css'
 })
 export class TopMenuComponent implements OnInit, OnDestroy {
-  isLoggedIn = false;
+  readonly $isLoggedIn = signal(false);
+  get isLoggedIn(): boolean { return this.$isLoggedIn(); }
+  set isLoggedIn(value: boolean) { this.$isLoggedIn.set(value); }
   cartItemCount$: Observable<number>;
   isCartHovered = false;
   isMobileMenuOpen = false;
@@ -29,9 +31,10 @@ export class TopMenuComponent implements OnInit, OnDestroy {
 
   private readonly _cartService = inject(CartService);
   private readonly _authService = inject(AuthenticationService);
-  constructor() { this.cartItemCount$ = this._cartService.getCartCount(); }
-  closeMobileMenu(): void { this.isMobileMenuOpen = false; }
 
+  constructor() {
+    this.cartItemCount$ = this._cartService.getCartCount();
+  }
 
   ngOnInit() {
     this.authSubscription = this._authService.isLoggedIn$.subscribe(isLoggedIn => {
@@ -51,7 +54,9 @@ export class TopMenuComponent implements OnInit, OnDestroy {
     }
   }
 
-  toggleMobileMenu() {
+  closeMobileMenu(): void { this.isMobileMenuOpen = false; }
+
+  toggleMobileMenu(): void {
     this.isMobileMenuOpen = !this.isMobileMenuOpen;
   }
 
@@ -76,7 +81,4 @@ export class TopMenuComponent implements OnInit, OnDestroy {
     }
   }
 
-  search(term: string) {
-    //TODO
-  }
 }
