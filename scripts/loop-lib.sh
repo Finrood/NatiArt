@@ -5,6 +5,72 @@
 # Callers run under `set -euo pipefail`; this file sets nothing itself.
 log() { printf '%s\n' "[$(date -Is)] $*"; }
 
+LOOP_HEARTBEAT_TITLE="[Watchdog] Loop heartbeat"
+LOOP_HEARTBEAT_MARKER="NATIART_LOOP_HEARTBEAT"
+
+heartbeat_machine_login() { # dedicated service account; owner account is human
+    local login="${NATIART_HEARTBEAT_MACHINE_LOGIN:-}"
+    [[ "$login" =~ ^[A-Za-z0-9-]{1,39}$ && "$login" != "${NATIART_LOOP_OWNER_LOGIN:-Finrood}" ]] || return 1
+    printf '%s\n' "$login"
+}
+
+heartbeat_issue_number() { # prints the open issue reserved for loop heartbeats
+    gh issue list --search "$LOOP_HEARTBEAT_TITLE in:title state:open" \
+        --json number --jq '.[0].number // empty' 2>/dev/null
+}
+
+latest_heartbeat() { # prints newest machine-readable heartbeat JSON, or empty
+    local issue machine_login
+    machine_login="$(heartbeat_machine_login)" || return 0
+    issue=$(heartbeat_issue_number) || return 1
+    [[ -n "$issue" ]] || return 0
+    gh issue view "$issue" --json comments 2>/dev/null | jq -c --arg login "$machine_login" '
+        [.comments[]? | select(.author.login == $login)
+         | select(.body | type == "string" and length <= 1800 and
+             test("^NATIART_LOOP_HEARTBEAT\\ncycle_id=[0-9]{8}T[0-9]{6}Z-[0-9]{1,7}\\ncompleted_at=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\\nreviewed_commit=[0-9a-f]{40}\\noutcome=(PR_DELIVERED|AUDIT_ONLY|RED_TEAM_COMPLETED|FAILED)\\nartifacts=[A-Za-z0-9 #,./_-]{0,500}\\nlens=[A-Za-z0-9 +:/._-]{1,100}\\nred_team_slot=(none|[0-9]{1,12})\\n?$"))
+         | . as $comment
+         | (.body | capture("cycle_id=(?<y>[0-9]{4})(?<m>[0-9]{2})(?<d>[0-9]{2})T(?<h>[0-9]{2})(?<min>[0-9]{2})(?<s>[0-9]{2})Z")) as $id
+         | (.body | capture("completed_at=(?<value>[^\\n]+)").value | fromdateiso8601) as $completed
+         | (($id.y + "-" + $id.m + "-" + $id.d + "T" + $id.h + ":" + $id.min + ":" + $id.s + "Z") | fromdateiso8601) as $started
+         | select(try (($comment.createdAt | fromdateiso8601) - $completed >= 0 and
+             ($comment.createdAt | fromdateiso8601) - $completed <= 120 and
+             $completed - $started >= 0 and $completed - $started <= 3600) catch false)
+         | {timestamp: $comment.createdAt, body: $comment.body}]
+        | sort_by(.timestamp) | last // empty'
+}
+
+emit_cycle_heartbeat() { # cycle_id commit outcome artifacts lens red_team_slot
+    local cycle_id="$1" commit="$2" outcome="$3" artifacts="$4" lens="$5" red_team_slot="$6"
+    local issue body issue_url machine_login current_login
+    [[ -n "${NATIART_HEARTBEAT_GH_TOKEN:-}" ]] || return 1
+    local -x GH_TOKEN="$NATIART_HEARTBEAT_GH_TOKEN"
+    machine_login="$(heartbeat_machine_login)" || return 1
+    current_login="$(gh api user --jq .login 2>/dev/null)" || return 1
+    [[ "$current_login" == "$machine_login" ]] || return 1
+    issue=$(heartbeat_issue_number) || return 1
+    if [[ -z "$issue" ]]; then
+        issue_url=$(gh issue create --title "$LOOP_HEARTBEAT_TITLE" \
+            --body "Machine-readable completion heartbeats for the laptop improvement loop. Do not use ordinary comments as health signals." \
+            2>/dev/null) || return 1
+        issue="${issue_url##*/}"
+    fi
+    # Keep the payload bounded and single-purpose: artifacts are reduced to
+    # loop-generated PR numbers and the remaining values are local state.
+    body=$(printf '%s\ncycle_id=%s\ncompleted_at=%s\nreviewed_commit=%s\noutcome=%s\nartifacts=%s\nlens=%s\nred_team_slot=%s\n' \
+        "$LOOP_HEARTBEAT_MARKER" "$cycle_id" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$commit" "$outcome" "$artifacts" "$lens" "$red_team_slot")
+    [[ "${#body}" -le 1800 ]] || return 1
+    gh issue comment "$issue" --body "$body" >/dev/null 2>&1
+}
+
+red_team_is_due() { # $1 = current half-hour slot, $2 = last successful slot file
+    local slot="$1" state="$2" last
+    [[ "$slot" =~ ^[0-9]+$ ]] || return 1
+    [[ -f "$state" ]] || return 0
+    last="$(cat "$state")" || return 0
+    [[ "$last" =~ ^[0-9]+$ ]] || return 0
+    (( slot < last || slot - last >= 480 ))
+}
+
 health_init_or_migrate() { # $1=file $2=current header; returns non-zero on I/O failure
     local file="$1" header="$2"
     local legacy="timestamp,slot,open_code,open_docs,repair_prs,merged,reviewed_pr,exit_status"
@@ -66,49 +132,135 @@ is_docs_only() { # $1 = PR number; true iff every changed file is under docs/
     [[ -n "$files" ]] && ! grep -qvE '^docs/' <<<"$files"
 }
 
-loop_owned_branch() { # $1=exact branch name $2=private ownership ledger
-    local branch="${1:-}" ledger="${2:-}"
+loop_origin_id() {
+    git remote get-url origin | sha256sum | awk '{print $1}'
+}
+
+loop_record_owned_tip() { # $1=branch $2=explicit cycle $3=exact produced tip $4=private ledger
+    local branch="$1" cycle="$2" sha="$3" ledger="$4" origin_id
+    [[ -n "$cycle" && "$cycle" != *$'\t'* && "$cycle" != *$'\n'* && "$sha" =~ ^[0-9a-f]{40}$ ]] || return 1
+    git check-ref-format --branch "$branch" >/dev/null 2>&1 || return 1
+    origin_id="$(loop_origin_id)" || return 1
+    printf 'natiart-owned-v1\t%s\t%s\t%s\t%s\n' "$origin_id" "$branch" "$cycle" "$sha" >> "$ledger"
+}
+
+loop_owned_branch() { # $1=branch $2=private ledger; version + origin prevent ambiguous legacy enrollment
+    local branch="${1:-}" ledger="${2:-}" origin_id
     [[ -n "$branch" && -f "$ledger" ]] || return 1
-    awk -F '\t' -v branch="$branch" '$1 == branch && NF == 3 { found=1 } END { exit !found }' "$ledger"
+    origin_id="$(loop_origin_id)" || return 1
+    awk -F '\t' -v branch="$branch" -v origin="$origin_id" \
+        '$1 == "natiart-owned-v1" && $2 == origin && $3 == branch && NF == 5 { found=1 } END { exit !found }' "$ledger"
 }
 
-loop_owned_tip() { # $1=exact branch name $2=exact recorded tip $3=private ledger
-    local branch="${1:-}" sha="${2:-}" ledger="${3:-}"
-    [[ -n "$branch" && -n "$sha" && -f "$ledger" ]] || return 1
-    awk -F '\t' -v branch="$branch" -v sha="$sha" \
-        '$1 == branch && $3 == sha && NF == 3 { found=1 } END { exit !found }' "$ledger"
+loop_owned_tip() { # $1=branch $2=exact tip $3=ledger; never infer advancement from ancestry
+    local branch="${1:-}" sha="${2:-}" ledger="${3:-}" origin_id
+    [[ "$sha" =~ ^[0-9a-f]{40}$ && -f "$ledger" ]] || return 1
+    origin_id="$(loop_origin_id)" || return 1
+    awk -F '\t' -v branch="$branch" -v sha="$sha" -v origin="$origin_id" \
+        '$1 == "natiart-owned-v1" && $2 == origin && $3 == branch && $5 == sha && NF == 5 { found=1 } END { exit !found }' "$ledger"
 }
 
-loop_record_new_branches() { # $1=before local refs $2=before remote refs $3=ledger $4=cycle id
-    local before="$1" remote_before="$2" ledger="$3" cycle_id="$4" branch sha
-    while IFS= read -r branch; do
-        [[ -n "$branch" && "$branch" != master ]] || continue
-        if grep -qxF "$branch" <<<"$remote_before"; then continue; fi
-        if loop_owned_branch "$branch" "$ledger"; then continue; fi
-        sha="$(git rev-parse "refs/heads/$branch" 2>/dev/null)" || return 1
-        printf '%s\t%s\t%s\n' "$branch" "$cycle_id" "$sha" >> "$ledger" || return 1
-    done < <(comm -13 <(printf '%s\n' "$before" | LC_ALL=C sort) \
-        <(git for-each-ref --format='%(refname:short)' refs/heads/ | LC_ALL=C sort))
+loop_forget_branch() { # $1=deleted branch $2=ledger; retire enrollment before a name can be reused
+    local branch="$1" ledger="$2" origin_id tmp
+    [[ -f "$ledger" ]] || return 0
+    origin_id="$(loop_origin_id)" || return 1
+    tmp="$(mktemp "${ledger}.tmp.XXXXXX")" || return 1
+    if awk -F '\t' -v branch="$branch" -v origin="$origin_id" \
+        '!($1 == "natiart-owned-v1" && $2 == origin && $3 == branch)' "$ledger" > "$tmp" && mv "$tmp" "$ledger"; then return 0; fi
+    rm -f "$tmp"
+    return 1
 }
 
-loop_delete_merged_remote_branch() { # $1=branch $2=private ledger
+loop_record_worker_result() { # candidate artifact, cycle, baseline refs, ledger, accepted artifact
+    local result="$1" cycle="$2" before="$3" ledger="$4" accepted="$5"
+    local origin_id branch sha pushed_sha baseline_sha local_sha remote_sha pr login state candidate
+    [[ -f "$result" && ! -L "$result" && -O "$result" ]] || return 1
+    [[ "$(stat -c %a "$result")" == 600 && "$(stat -c %s "$result")" -le 4096 ]] || return 1
+    candidate="$(head -c 4097 "$result")" || return 1
+    [[ "${#candidate}" -le 4096 ]] || return 1
+    origin_id="$(loop_origin_id)" || return 1
+    jq -e --arg cycle "$cycle" --arg origin "$origin_id" '
+        type == "object" and .cycle == $cycle and .origin == $origin and
+        (.branch | type == "string") and (.sha | type == "string" and test("^[0-9a-f]{40}$")) and
+        .pushedSha == .sha and (.pr | type == "number" and . > 0 and floor == .)
+    ' <<<"$candidate" >/dev/null || return 1
+    branch="$(jq -r .branch <<<"$candidate")"
+    sha="$(jq -r .sha <<<"$candidate")"
+    pushed_sha="$(jq -r .pushedSha <<<"$candidate")"
+    pr="$(jq -r .pr <<<"$candidate")"
+    case "$branch" in fix/*|perf/*|chore/*|docs/*|feature/*) ;; *) return 1 ;; esac
+    git check-ref-format --branch "$branch" >/dev/null 2>&1 || return 1
+    baseline_sha="$(awk -F '\t' -v branch="$branch" '$1 == branch {print $2; exit}' <<<"$before")"
+    local_sha="$(git rev-parse "refs/heads/$branch" 2>/dev/null)" || return 1
+    [[ "$local_sha" == "$sha" ]] || return 1
+    if awk -F '\t' -v branch="$branch" -v sha="$sha" \
+        '$1 == branch && $2 == sha {found=1} END {exit !found}' <<<"$before"; then return 1; fi
+    remote_sha="$(git ls-remote --heads origin "refs/heads/$branch" | awk 'NR == 1 {print $1}')" || return 1
+    [[ "$remote_sha" == "$pushed_sha" ]] || return 1
+    login="$(gh api user --jq .login)" || return 1
+    state="$(gh pr view "$pr" --json number,headRefName,headRefOid,author,state,isCrossRepository,body)" || return 1
+    jq -e --arg login "$login" --arg branch "$branch" --arg sha "$sha" --argjson pr "$pr" '
+        .number == $pr and .author.login == $login and .headRefName == $branch and
+        .headRefOid == $sha and .state == "OPEN" and .isCrossRepository == false and
+        (.body | split("\n") | index("Loop-Owner: natiart-improvement-loop") != null)
+    ' <<<"$state" >/dev/null || return 1
+    # A repaired human PR remains human-owned even when this worker advances it.
+    if [[ -n "$baseline_sha" ]] && ! loop_owned_branch "$branch" "$ledger"; then return 0; fi
+    jq -c '{cycle,origin,branch,sha,pushedSha,pr}' <<<"$candidate" > "$accepted" || return 1
+    chmod 600 "$accepted" || return 1
+    loop_record_owned_tip "$branch" "$cycle" "$sha" "$ledger"
+}
+
+loop_delete_merged_remote_branch() { # $1=branch $2=ledger; current remote tip and atomic lease on every caller
     local branch="$1" ledger="$2" remote_sha
-    if ! loop_owned_branch "$branch" "$ledger"; then
-        log "Preserving unowned remote branch $branch."
+    loop_owned_branch "$branch" "$ledger" || { log "Preserving unowned remote branch $branch."; return 0; }
+    remote_sha="$(git ls-remote --heads origin "refs/heads/$branch" 2>/dev/null | awk 'NR == 1 {print $1}')" || return 1
+    [[ -n "$remote_sha" ]] || return 0
+    loop_owned_tip "$branch" "$remote_sha" "$ledger" || { log "Preserving changed remote branch $branch."; return 0; }
+    git merge-base --is-ancestor "$remote_sha" origin/master 2>/dev/null || { log "Preserving unmerged remote branch $branch."; return 0; }
+    if git push -q --force-with-lease="refs/heads/$branch:$remote_sha" origin --delete "$branch"; then
+        loop_forget_branch "$branch" "$ledger" || return 1
         return 0
     fi
-    remote_sha="$(git rev-parse "refs/remotes/origin/$branch" 2>/dev/null)" || return 0
-    if ! loop_owned_tip "$branch" "$remote_sha" "$ledger"; then
-        log "Preserving changed remote branch $branch; its tip differs from the ownership record."
-        return 0
-    fi
-    if ! git merge-base --is-ancestor "$remote_sha" origin/master 2>/dev/null; then
-        log "Preserving unmerged remote branch $branch."
-        return 0
-    fi
-    if ! git push -q --force-with-lease="refs/heads/$branch:$remote_sha" origin --delete "$branch"; then
-        log "Remote branch $branch changed after validation or push failed; preserving it."
-    fi
+    log "Remote branch $branch changed after validation or push failed; preserving it."
+    return 1
+}
+
+loop_delete_merged_local_branch() { # $1=branch $2=ledger; expected-tip deletion protects advanced local refs
+    local branch="$1" ledger="$2" sha remote_sha
+    sha="$(git rev-parse "refs/heads/$branch" 2>/dev/null)" || return 0
+    loop_owned_tip "$branch" "$sha" "$ledger" || return 0
+    git merge-base --is-ancestor "$sha" origin/master 2>/dev/null || return 0
+    # Ref deletion must never invalidate a checked-out branch in any attached worktree.
+    if git worktree list --porcelain | grep -qxF "branch refs/heads/$branch"; then return 0; fi
+    git update-ref -d "refs/heads/$branch" "$sha" || return 1
+    remote_sha="$(git ls-remote --heads origin "refs/heads/$branch" 2>/dev/null | awk 'NR == 1 {print $1}')" || return 1
+    if [[ -z "$remote_sha" ]]; then loop_forget_branch "$branch" "$ledger"; fi
+}
+
+loop_cleanup_old_local_salvage() { # $1=ledger
+    local ledger="$1" branch
+    while read -r branch; do
+        [[ -n "$branch" ]] || continue
+        loop_delete_merged_local_branch "$branch" "$ledger" || true
+        loop_delete_merged_remote_branch "$branch" "$ledger" || true
+    done < <(git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads/salvage/ | tail -n +6)
+}
+
+loop_cleanup_merged_remote_branches() { # $1=ledger
+    local ledger="$1" branch
+    while read -r branch; do
+        [[ -n "$branch" ]] || continue
+        loop_delete_merged_remote_branch "$branch" "$ledger" || true
+    done < <(git branch -r --merged origin/master | sed 's#^ *origin/##' | grep -E '^(fix|perf|chore|docs|feature)/' | sort -u)
+}
+
+loop_cleanup_old_remote_salvage() { # $1=ledger
+    local ledger="$1" branch
+    while read -r branch; do
+        [[ -n "$branch" ]] || continue
+        loop_delete_merged_remote_branch "$branch" "$ledger" || true
+    done < <(git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/remotes/origin/salvage/ | sed 's#^origin/##' | tail -n +6)
 }
 
 is_loop_machinery_file() { # $1 = path that always requires human review
@@ -391,4 +543,15 @@ pr_checks_summary() { # $1 = PR number; prints FAIL|PASS|PENDING (never fails)
     if checks_failed <<<"$checks"; then echo "FAIL"
     elif checks_passed <<<"$checks"; then echo "PASS"
     else echo "PENDING"; fi
+}
+
+loop_valid_audit_artifact() { # exact newly produced cycle, reviewed commit, bounded structured evidence
+    local file="$1" cycle="$2" commit="$3" bytes
+    [[ -f "$file" && ! -L "$file" ]] || return 1
+    bytes="$(wc -c < "$file")" || return 1
+    [[ "$bytes" -gt 0 && "$bytes" -le 16384 ]] || return 1
+    jq -e --arg cycle "$cycle" --arg commit "$commit" '
+        type == "object" and .cycle == $cycle and .reviewed_commit == $commit and
+        all(.lens, .checked, .outcome; type == "string" and length > 0 and length <= 4000)
+    ' "$file" >/dev/null 2>&1
 }

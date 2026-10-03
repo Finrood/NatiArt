@@ -75,7 +75,7 @@ Phase 3 — review, then merge the green ones (max-2 budget, Phase 0):
 7. For each PR YOU opened this cycle (at most 3 — the script's mechanical
    reviewer covers backlog PRs, so never spawn for those), launch one
    independent reviewer, all in parallel in the background
-   (`timeout 360 scripts/run-agent.sh --role review --budget 360 --title
+   (`timeout 420 scripts/run-agent.sh --role review --review-pr <N> --budget 360 --title
    "review-pr-<N>" --skip "<the PR's Model: footer value>" "$(cat scripts/agent-review-prompt.md)
    ---
    Review PR <N>. Known status — Build: <your gh pr checks result>, Merge:
@@ -155,12 +155,22 @@ machine. Every fix commit goes on your fix branch (or the existing REPAIR PR
 branch in REPAIR MODE) and is pushed
 (`git push -u origin <branch>`) before Phase 3 ends; never commit cycle work
 to master. Exiting 0 without a pushed branch is a FAILED cycle, not a
-finished one.
+finished one. The wrapper supplies `cycle_id` and `reviewed_commit` in the
+invocation. If a successful audit-only cycle genuinely opens no PR, write the
+bounded artifact `logs/cycle-<cycle_id>.audit` with that commit, the lens and
+the concrete audit outcome; the wrapper publishes a completion heartbeat only
+after checking this artifact or an open PR. Never use an ordinary PR comment as
+the completion signal.
 
 Every PR created by this loop must contain the exact own-line marker
 `Loop-Owner: natiart-improvement-loop` in its body. The merge guard verifies
 that marker together with the authenticated PR author allowlist; branch names
 and self-described verdict text are not ownership proof.
+
+After creating and pushing a **new** loop branch, record it in this checkout:
+`source scripts/loop-lib.sh && record_loop_branch "$(git branch --show-current)"`.
+Do not register an existing repair PR branch. The cleanup job preserves branches
+without a matching local ownership record.
 
 SELF-MODIFICATION BAN: PRs touching `scripts/**`, `agents/**`, any `AGENTS.md`
 (root or module), `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.github/**`,
@@ -205,3 +215,5 @@ Hunt with that lens, never the previous cycle's lens.
   Follow it exactly.
 
 If anything is ambiguous or risky, open the PR and stop before merging.
+
+Branch cleanup attribution is handled by the supervisor from your validated deliverable result. Do not enroll branches or infer ownership from newly appearing refs. Audit-only completion grants no branch cleanup authority.

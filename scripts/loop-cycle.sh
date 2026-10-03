@@ -85,6 +85,7 @@ fi
 
 log "=== Improvement-loop cycle start (check-only=$CHECK_ONLY) ==="
 cd "$REPO"
+CYCLE_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
 
 # 0. Fast-fail gates: expired token or full disk must abort loudly, not waste
 #    a 25-minute agent run on calls that cannot succeed.
@@ -144,9 +145,9 @@ if ! git pull -q --ff-only origin master; then
     exit 1
 fi
 log "master at $(git rev-parse --short HEAD), tree clean."
-# 2b. Stray-commits guard: local master commits have no machine-verifiable
-#     ownership after the cycle returns. Do not publish or reset them; leave
-#     the checkout unchanged for the owner to inspect.
+MASTER_SHA="$(git rev-parse HEAD)"
+# Local master commits have no machine-verifiable ownership after a worker returns.
+# Preserve the checkout for manual inspection.
 LOCAL_AHEAD=$(git rev-list --count origin/master..master 2>/dev/null || echo 0)
 if [[ "$LOCAL_AHEAD" -gt 0 ]]; then
     log "master is $LOCAL_AHEAD commit(s) ahead of origin/master; refusing to publish or reset unowned commits."
@@ -411,33 +412,12 @@ fi
 # 5. Stale-branch hygiene: prune local branches whose remote is gone.
 git fetch -q --prune origin
 git branch -vv | awk '/: gone]/{print $1}' | grep -v '^\*' | while read -r gone_branch; do
-    gone_sha="$(git rev-parse "refs/heads/$gone_branch" 2>/dev/null || true)"
-    if loop_owned_tip "$gone_branch" "$gone_sha" "$OWNERSHIP_LEDGER"; then
-        git branch -d "$gone_branch" 2>/dev/null || true
-    fi
+    loop_delete_merged_local_branch "$gone_branch" "$OWNERSHIP_LEDGER" || true
 done || true
 # Salvage retention: keep the newest 5 salvage branches, and only delete older
 # branches after proving their commits are already merged into origin/master.
 # Old unmerged salvage is still recoverable WIP and must never be force-deleted.
-git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads/salvage/ 2>/dev/null | tail -n +6 | while read -r sb; do
-    sb_sha="$(git rev-parse "refs/heads/$sb" 2>/dev/null || true)"
-    if ! loop_owned_tip "$sb" "$sb_sha" "$OWNERSHIP_LEDGER"; then
-        log "Preserving unowned salvage branch $sb."
-        continue
-    fi
-    REMOTE_SB_SHA="$(git rev-parse "origin/$sb" 2>/dev/null || true)"
-    if git merge-base --is-ancestor "$sb" origin/master 2>/dev/null && \
-       { [[ -z "$REMOTE_SB_SHA" ]] || git merge-base --is-ancestor "$REMOTE_SB_SHA" origin/master 2>/dev/null; }; then
-        log "Deleting old merged salvage branch $sb."
-        git branch -D "$sb" 2>/dev/null || true
-        if [[ -n "$REMOTE_SB_SHA" ]] && ! git push -q \
-            --force-with-lease="refs/heads/$sb:$REMOTE_SB_SHA" origin --delete "$sb" 2>/dev/null; then
-            log "Remote salvage $sb changed during validation; preserving it."
-        fi
-    else
-        log "Preserving old salvage branch $sb (local or remote tip is unmerged)."
-    fi
-done
+loop_cleanup_old_local_salvage "$OWNERSHIP_LEDGER"
 
 # 5a. Mechanical verdict production. Runs every cycle, including REPAIR MODE —
 # and reviews RED PRs too: the reviewer is the one who reports machine-readable
@@ -491,7 +471,7 @@ for n in $ALL_PRS; do
     else
         RC_NOTE=""
     fi
-    timeout 660 scripts/run-agent.sh --role review --budget 600 --title "review-pr-$n" \
+    timeout 660 scripts/run-agent.sh --role review --review-pr "$n" --budget 600 --title "review-pr-$n" \
         ${AUTHOR_SKIP:+--skip "$AUTHOR_SKIP"} \
         "$(cat scripts/agent-review-prompt.md)
 ---
@@ -541,13 +521,8 @@ done || true
 # branches fully merged into master, only loop prefixes — never master,
 # dependabot/*, or unmerged work. Salvage retention uses fetched commit age and
 # verifies the remote tip is merged before deleting anything.
-git branch -r --merged origin/master 2>/dev/null | sed 's#^ *origin/##' | grep -E '^(fix|perf|chore|docs|feature)/' | sort -u | while read -r b; do
-    loop_delete_merged_remote_branch "$b" "$OWNERSHIP_LEDGER"
-done || true
-git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/remotes/origin/salvage/ 2>/dev/null | sed 's#^origin/##' | tail -n +6 | while read -r sb; do
-    [[ -z "$sb" ]] && continue
-    loop_delete_merged_remote_branch "$sb" "$OWNERSHIP_LEDGER"
-done || true
+loop_cleanup_merged_remote_branches "$OWNERSHIP_LEDGER"
+loop_cleanup_old_remote_salvage "$OWNERSHIP_LEDGER"
 
 # 6. Hand one item to the agent (non-interactive, repo permission policy applies;
 #    never --auto). Timeout keeps the 30-minute cadence honest. The lens rotates
@@ -566,9 +541,21 @@ if [[ -z "$LENS_NAME" ]]; then
     exit 1
 fi
 log "Lens of the cycle: #$(( LENS_INDEX + 1 )) $LENS_NAME (slot $SLOT)."
+RED_TEAM_SLOT="none"
+RED_TEAM_DUE=0
+RED_TEAM_STATE="$LOG_DIR/last-red-team-slot"
+LAST_RED_TEAM_SLOT="$(cat "$RED_TEAM_STATE" 2>/dev/null || echo none)"
+if red_team_is_due "$SLOT" "$RED_TEAM_STATE"; then
+    RED_TEAM_DUE=1
+fi
+if (( RED_TEAM_DUE == 1 )); then
+    RED_TEAM_SLOT="$SLOT"
+    log "Red-team cadence due: last completed slot is ${LAST_RED_TEAM_SLOT:-none}; running overdue red-team work."
+fi
 CYCLE_MSG="$(cat scripts/agent-cycle-prompt.md)
 ---
-Cycle parameters: lens of the cycle: $LENS_NAME. Backlog: $OPEN_COUNT OPEN (floor $FLOOR)."
+Cycle parameters: cycle_id=$CYCLE_ID; reviewed_commit=$MASTER_SHA; lens of the cycle: $LENS_NAME. Backlog: $OPEN_COUNT OPEN (floor $FLOOR).
+Completion contract: if this cycle opens no PR, a successful audit-only cycle MUST write the bounded artifact file logs/cycle-$CYCLE_ID.audit before finishing. Use a bounded JSON object with cycle, reviewed_commit, lens, checked and outcome; do not alter docs/audit-findings.md."
 if [[ "$BELOW_FLOOR" -eq 1 ]]; then
     CYCLE_MSG="$CYCLE_MSG BACKLOG BELOW FLOOR: generator duty is ON — end this cycle with new OPEN items or a fix, never with 'no work'."
 fi
@@ -578,15 +565,20 @@ fi
 if [[ -n "$REPAIR_PRS" ]]; then
     CYCLE_MSG="$CYCLE_MSG REPAIR MODE ON — build-failing:$FAILING conflicting:$CONFLICTING (union:$REPAIR_PRS). Follow the REPAIR MODE section: resolve conflicts first (merge origin/master, never rebase/force-push), then fix red checks, then address the latest VERDICT findings (read them via 'gh pr view <n> --json comments,reviews'). Push to the same branches; open zero new fix branches until all are green + mergeable."
 fi
-if (( SLOT % 480 == 0 )); then
-    log "Red-team cadence due: adversarial cycle."
+if (( RED_TEAM_DUE == 1 )); then
     CYCLE_MSG="$CYCLE_MSG
-$(cat scripts/redteam-addendum.md)"
+$(cat scripts/redteam-addendum.md)
+Red-team completion evidence: write logs/cycle-$CYCLE_ID.redteam with the sensitive flow, trust boundaries, attempted exploit inputs, result, and PR URL before finishing. Without that nonempty artifact, the red-team slot stays overdue."
 fi
 log "Invoking agent for one cycle item."
-BEFORE_BRANCH_REFS="$(git for-each-ref --format='%(refname:short)' refs/heads/ | LC_ALL=C sort)"
-BEFORE_REMOTE_BRANCH_REFS="$(git for-each-ref --format='%(refname:short)' refs/remotes/origin/ | sed 's#^origin/##' | LC_ALL=C sort)"
-CYCLE_OWNERSHIP_ID="$(cat /proc/sys/kernel/random/uuid)"
+BEFORE_BRANCH_REFS="$(git for-each-ref --format='%(refname:short)%09%(objectname)' refs/heads/ refs/remotes/origin/ | sed 's#^origin/##')"
+CYCLE_OWNERSHIP_ID="$CYCLE_ID"
+RESULT_DIR="$(mktemp -d "$LOOP_GIT_DIR/natiart-worker-result.XXXXXX")"
+chmod 700 "$RESULT_DIR"
+WORKER_RESULT="$RESULT_DIR/candidate.json"
+ACCEPTED_RESULT="$RESULT_DIR/accepted.json"
+: > "$WORKER_RESULT"
+chmod 600 "$WORKER_RESULT"
 # Model failover: run-agent.sh walks the priority list from
 # scripts/agent-models.conf (opencode Muse free -> cline Muse -> cline DeepSeek
 # -> cline GLM),
@@ -596,12 +588,16 @@ CYCLE_OWNERSHIP_ID="$(cat /proc/sys/kernel/random/uuid)"
 # STATUS is preset: a failing agent run must NOT trip `set -e` before the
 # reviewer-wait and health row below (a dead reviewer wait orphans the review).
 STATUS=0
-timeout 1500 scripts/run-agent.sh --role cycle --budget 1500 --title "improvement-loop $(date +%Y%m%d-%H%M)" "$CYCLE_MSG" || STATUS=$?
-if ! loop_record_new_branches "$BEFORE_BRANCH_REFS" "$BEFORE_REMOTE_BRANCH_REFS" \
-    "$OWNERSHIP_LEDGER" "$CYCLE_OWNERSHIP_ID"; then
-    log "Failed to record branch ownership; leaving all new branches untouched for manual recovery."
-    STATUS=1
+NATIART_CYCLE_ID="$CYCLE_ID" NATIART_ACCEPTED_RESULT_FILE="$WORKER_RESULT" timeout 1560 scripts/run-agent.sh --role cycle --budget 1500 --title "improvement-loop $(date +%Y%m%d-%H%M)" "$CYCLE_MSG" || STATUS=$?
+if [[ "$STATUS" -eq 0 && -s "$WORKER_RESULT" ]]; then
+    if ! loop_record_worker_result "$WORKER_RESULT" "$CYCLE_OWNERSHIP_ID" "$BEFORE_BRANCH_REFS" \
+        "$OWNERSHIP_LEDGER" "$ACCEPTED_RESULT"; then
+        log "Rejected worker attribution; leaving all new branches untouched."
+        STATUS=1
+    fi
 fi
+# Failed, audit-only and no-op workers never provide cleanup authority.
+rm -rf "$RESULT_DIR"
 if [[ "$STATUS" -eq 124 ]]; then
     log "Agent cycle hit the 25-minute timeout; leaving state for next cycle."
 fi
@@ -627,6 +623,47 @@ if [[ -n "${REVIEW_PID:-}" ]]; then
     fi
 fi
 log "Agent cycle finished with status $STATUS."
+# Completion is recorded only after the cycle's actual deliverable boundary is
+# inspected. A zero exit alone is not a heartbeat: the cycle must have an open
+# PR on its current loop branch or the explicit audit-only artifact requested in
+# the prompt. Failed/timeout cycles are published as failures so the watchdog
+# can distinguish them from host inactivity.
+CURRENT_BRANCH="$(git branch --show-current 2>/dev/null || true)"
+PR_ARTIFACTS=""
+if [[ -n "$CURRENT_BRANCH" ]] && is_loop_branch "$CURRENT_BRANCH"; then
+    PR_ARTIFACTS="$(gh pr list --state open --head "$CURRENT_BRANCH" --json number --jq '[.[].number] | map("PR #" + tostring) | join(",")' 2>/dev/null || true)"
+fi
+AUDIT_ARTIFACT="logs/cycle-$CYCLE_ID.audit"
+HEARTBEAT_OUTCOME="FAILED"
+HEARTBEAT_ARTIFACTS=""
+HEARTBEAT_RED_TEAM_SLOT="none"
+if [[ "$STATUS" -eq 0 && -n "$PR_ARTIFACTS" ]]; then
+    HEARTBEAT_OUTCOME="PR_DELIVERED"
+    HEARTBEAT_ARTIFACTS="$PR_ARTIFACTS"
+elif [[ "$STATUS" -eq 0 ]] && loop_valid_audit_artifact "$AUDIT_ARTIFACT" "$CYCLE_ID" "$MASTER_SHA"; then
+    HEARTBEAT_OUTCOME="AUDIT_ONLY"
+    HEARTBEAT_ARTIFACTS="$AUDIT_ARTIFACT"
+elif [[ "$STATUS" -eq 0 ]]; then
+    log "Cycle returned zero without a PR or audit artifact; recording FAILED heartbeat."
+else
+    log "Cycle did not complete successfully; recording FAILED heartbeat."
+fi
+RED_TEAM_ARTIFACT="logs/cycle-$CYCLE_ID.redteam"
+if [[ "$RED_TEAM_DUE" -eq 1 && "$HEARTBEAT_OUTCOME" != "FAILED" && -s "$RED_TEAM_ARTIFACT" ]]; then
+    HEARTBEAT_OUTCOME="RED_TEAM_COMPLETED"
+    HEARTBEAT_RED_TEAM_SLOT="$RED_TEAM_SLOT"
+    HEARTBEAT_ARTIFACTS="${HEARTBEAT_ARTIFACTS:+$HEARTBEAT_ARTIFACTS,}$RED_TEAM_ARTIFACT"
+elif [[ "$RED_TEAM_DUE" -eq 1 ]]; then
+    log "Red-team completion artifact is missing; slot $SLOT remains overdue."
+fi
+if ! emit_cycle_heartbeat "$CYCLE_ID" "$MASTER_SHA" "$HEARTBEAT_OUTCOME" "$HEARTBEAT_ARTIFACTS" "$LENS_NAME" "$HEARTBEAT_RED_TEAM_SLOT"; then
+    log "WARN: could not publish completion heartbeat for cycle $CYCLE_ID."
+else
+    log "Published $HEARTBEAT_OUTCOME completion heartbeat for cycle $CYCLE_ID."
+    if [[ "$HEARTBEAT_OUTCOME" == "RED_TEAM_COMPLETED" ]]; then
+        printf '%s\n' "$HEARTBEAT_RED_TEAM_SLOT" > "$RED_TEAM_STATE"
+    fi
+fi
 # Health row (gitignored logs/health.csv): one line per cycle for trends and
 # post-mortems — grep it for merged counts, repair frequency, idle stretches.
 HEALTH="$LOG_DIR/health.csv"

@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# Validation and retry-log privacy fixture for run-agent.sh.
+set -Eeuo pipefail
+
+TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RUN_AGENT="$TEST_DIR/../run-agent.sh"
+ROOT="$(mktemp -d)"
+trap 'rm -rf "$ROOT"' EXIT
+
+FAKEBIN="$ROOT/bin"
+mkdir -p "$FAKEBIN"
+cat >"$FAKEBIN/mktemp" <<'EOF'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+path="$(/usr/bin/mktemp "$@")"
+case "$path" in
+    *natiart-agent-attempt-*)
+        printf '%s %s\n' "$path" "$(stat -c '%a' "$path")" >>"$NATIART_LOG_TRACE"
+        ;;
+esac
+printf '%s\n' "$path"
+EOF
+chmod +x "$FAKEBIN/mktemp"
+cat >"$FAKEBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+if [[ "${1:-} ${2:-}" == 'api user' ]]; then printf 'loop-machine\n'; exit 0; fi
+[[ "${1:-} ${2:-}" == 'pr view' ]] || exit 2
+if [[ -f "$FAKE_STATE" && "$(cat "$FAKE_STATE")" == 2 ]]; then
+    printf '{"headRefOid":"1111111111111111111111111111111111111111","reviews":[{"id":"new","author":{"login":"loop-machine"},"commit":{"oid":"1111111111111111111111111111111111111111"},"body":"VERDICT: REQUEST_CHANGES (reviewed 1111111111111111111111111111111111111111)"}]}\n' 
+else
+    printf '{"headRefOid":"1111111111111111111111111111111111111111","reviews":[]}\n'
+fi
+EOF
+chmod +x "$FAKEBIN/gh"
+cat >"$FAKEBIN/opencode" <<'EOF'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+count=0
+[[ -f "$FAKE_STATE" ]] && count="$(cat "$FAKE_STATE")"
+count=$((count + 1))
+printf '%s\n' "$count" >"$FAKE_STATE"
+if [[ "$count" -eq 1 ]]; then
+    printf 'quota sk-retry-secret\n'
+    exit 1
+fi
+printf 'VERDICT: REQUEST_CHANGES (reviewed deadbeef)\n'
+EOF
+chmod +x "$FAKEBIN/opencode"
+cat >"$ROOT/models.conf" <<'EOF'
+PRIORITY=("opencode|fake|fake/model|xhigh|fake-family")
+EOF
+
+umask 022
+PATH="$FAKEBIN:$PATH" NATIART_MODELS_CONF="$ROOT/models.conf" NATIART_OUTCOME_DIR="$ROOT/outcomes" \
+    NATIART_LOG_TRACE="$ROOT/trace" FAKE_STATE="$ROOT/state" \
+    bash "$RUN_AGENT" --role review --review-pr 42 --budget 00030 --stall 00020 retry \
+    >"$ROOT/run.log" 2>&1
+
+grep -q 'NATIART_ACTIVE_MODEL=fake' "$ROOT/run.log"
+mapfile -t logs <"$ROOT/trace"
+[[ "${#logs[@]}" -eq 2 ]] || { echo "expected two distinct attempt logs" >&2; exit 1; }
+first_path="${logs[0]%% *}"
+second_path="${logs[1]%% *}"
+[[ "$first_path" != "$second_path" ]] || { echo "retry reused an attempt log pathname" >&2; exit 1; }
+while read -r path mode; do
+    [[ "$mode" == 600 ]] || { echo "attempt log $path was mode $mode" >&2; exit 1; }
+done <"$ROOT/trace"
+
+if PATH="$FAKEBIN:$PATH" NATIART_MODELS_CONF="$ROOT/models.conf" \
+    FAKE_STATE="$ROOT/invalid-state" bash "$RUN_AGENT" --budget 0 prompt >"$ROOT/invalid.log" 2>&1; then
+    echo "zero budget was accepted" >&2
+    exit 1
+fi
+if PATH="$FAKEBIN:$PATH" NATIART_MODELS_CONF="$ROOT/models.conf" \
+    FAKE_STATE="$ROOT/invalid-state" bash "$RUN_AGENT" --stall -1 prompt >"$ROOT/invalid.log" 2>&1; then
+    echo "negative stall was accepted" >&2
+    exit 1
+fi
+if PATH="$FAKEBIN:$PATH" NATIART_MODELS_CONF="$ROOT/models.conf" \
+    FAKE_STATE="$ROOT/invalid-state" bash "$RUN_AGENT" --simulate-quota-at 10001 prompt >"$ROOT/invalid.log" 2>&1; then
+    echo "oversized simulation count was accepted" >&2
+    exit 1
+fi
+[[ ! -e "$ROOT/invalid-state" ]] || { echo "invalid options launched a worker" >&2; exit 1; }
+
+PATH="$FAKEBIN:$PATH" NATIART_MODELS_CONF="$ROOT/models.conf" \
+    bash "$RUN_AGENT" --check-only --budget 00001 --stall 00001 --simulate-quota-at 00000 prompt \
+    >"$ROOT/leading-zero.log" 2>&1
+grep -q 'fake' "$ROOT/leading-zero.log"
+
+for invalid_entry in \
+    '|label|fake/model|xhigh' \
+    'opencode||fake/model|xhigh' \
+    'opencode|label||xhigh' \
+    'other|label|fake/model|xhigh' \
+    'opencode|label|fake/model|xhigh|family|extra' \
+    'opencode|bad label|fake/model|xhigh' \
+    'opencode|label|bad model|xhigh'; do
+    printf 'PRIORITY=("%s")\n' "$invalid_entry" > "$ROOT/invalid-models.conf"
+    rc=0
+    PATH="$FAKEBIN:$PATH" NATIART_MODELS_CONF="$ROOT/invalid-models.conf" \
+        FAKE_STATE="$ROOT/invalid-state" bash "$RUN_AGENT" --check-only prompt \
+        >"$ROOT/invalid.log" 2>&1 || rc=$?
+    [[ "$rc" -eq 2 ]] || { echo "invalid registry entry '$invalid_entry' returned $rc, expected 2" >&2; exit 1; }
+    grep -q 'agent-models.conf entry' "$ROOT/invalid.log"
+done
+[[ ! -e "$ROOT/invalid-state" ]] || { echo "invalid model registry launched a worker" >&2; exit 1; }
+echo "ok: private distinct retry logs and bounded decimal option validation"
