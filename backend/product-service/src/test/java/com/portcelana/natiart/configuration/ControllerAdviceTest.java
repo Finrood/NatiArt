@@ -2,6 +2,8 @@ package com.portcelana.natiart.configuration;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Map;
+
 import jakarta.persistence.OptimisticLockException;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +19,7 @@ import org.springframework.security.access.AccessDeniedException;
 
 import com.portcelana.natiart.service.AsaasApiException;
 import com.portcelana.natiart.service.UpstreamServiceException;
+import com.portcelana.natiart.service.support.InputValidationException;
 
 class ControllerAdviceTest {
 
@@ -89,6 +92,30 @@ class ControllerAdviceTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
         assertEquals("Invalid request", result.getBody());
+    }
+
+    @Test
+    void handleInputValidationException_returnsBoundedFieldFeedback() {
+        final InputValidationException failure =
+                new InputValidationException("originalPrice", "originalPrice must be between 0.01 and 99999999.99");
+
+        final ResponseEntity<Object> result = advice.handleInputValidationException(failure);
+
+        assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
+        assertEquals(Map.of("field", "originalPrice", "message", failure.getMessage()), result.getBody());
+    }
+
+    @Test
+    void handleNotReadableBody_unwrapsShippingFieldFeedback() {
+        final InputValidationException failure =
+                new InputValidationException("zipCode", "zipCode must contain exactly eight digits");
+        final HttpMessageNotReadableException unreadable =
+                new HttpMessageNotReadableException("JSON parse error", failure, new MockHttpInputMessage(new byte[0]));
+
+        final ResponseEntity<Object> result = advice.handleNotReadableBody(unreadable);
+
+        assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
+        assertEquals(Map.of("field", "zipCode", "message", failure.getMessage()), result.getBody());
     }
 
     @Test

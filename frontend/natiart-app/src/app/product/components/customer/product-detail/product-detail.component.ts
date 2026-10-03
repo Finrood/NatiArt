@@ -41,6 +41,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
   product$ = new BehaviorSubject<Product | null>(null);
   quantity: number = 1;
+  readonly maxPerOrder: number = 100;
   relatedProducts$ = new BehaviorSubject<Product[]>([]);
   selectedImageIndex: number = 0;
   imageUrls: { [index: number]: SafeUrl | null } = {};
@@ -175,9 +176,13 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   }
 
   incrementQuantity(product: Product) {
-    if (this.quantity < product.stockQuantity) {
+    if (this.quantity < this.maxSelectableQuantity(product)) {
       this.quantity++;
     }
+  }
+
+  maxSelectableQuantity(product: Product): number {
+    return Math.min(product.stockQuantity, this.maxPerOrder);
   }
 
   decrementQuantity() {
@@ -260,7 +265,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
     this._productService.getProduct(selectedProduct.id).subscribe({
       next: (currentProduct: Product): void => {
-        const quantity: number = Math.min(this.quantity, currentProduct.stockQuantity);
+        const quantity: number = Math.min(this.quantity, this.maxSelectableQuantity(currentProduct));
         if (currentProduct.active === false || quantity <= 0) {
           this.closePersonalizationModal();
           return;

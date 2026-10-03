@@ -30,6 +30,8 @@ import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.repository.CartItemRepository;
 import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.ProductRepository;
+import com.portcelana.natiart.service.support.DomainValidation;
+import com.portcelana.natiart.service.support.InputValidationException;
 import com.portcelana.natiart.storage.InputFile;
 import com.portcelana.natiart.storage.StorageService;
 
@@ -157,10 +159,10 @@ public class ProductManagerImpl implements ProductManager {
     @Override
     @Transactional
     public Product createProduct(ProductDto productDto, List<InputFile> imagesInput) {
-        final String label = requireNonBlankLabel(productDto.getLabel());
-        requireNonNullPrice(productDto.getOriginalPrice());
-        requireNonNegativePrice(productDto.getOriginalPrice(), "original");
-        requireNonNegativePrice(productDto.getMarkedPrice(), "marked");
+        final String label = DomainValidation.requiredText(productDto.getLabel(), "label", 255);
+        DomainValidation.money(productDto.getOriginalPrice(), "originalPrice", true);
+        DomainValidation.money(productDto.getMarkedPrice(), "markedPrice", false);
+        DomainValidation.optionalText(productDto.getDescription(), "description", 255);
         requireNonNegativeStock(productDto.getStockQuantity());
         requirePositiveWeight(productDto.getWeightKg());
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
@@ -188,10 +190,10 @@ public class ProductManagerImpl implements ProductManager {
     @Override
     @Transactional
     public Product updateProduct(ProductDto productDto, List<InputFile> imagesInput) {
-        final String label = requireNonBlankLabel(productDto.getLabel());
-        requireNonNullPrice(productDto.getOriginalPrice());
-        requireNonNegativePrice(productDto.getOriginalPrice(), "original");
-        requireNonNegativePrice(productDto.getMarkedPrice(), "marked");
+        final String label = DomainValidation.requiredText(productDto.getLabel(), "label", 255);
+        DomainValidation.money(productDto.getOriginalPrice(), "originalPrice", true);
+        DomainValidation.money(productDto.getMarkedPrice(), "markedPrice", false);
+        DomainValidation.optionalText(productDto.getDescription(), "description", 255);
         requireNonNegativeStock(productDto.getStockQuantity());
         requirePositiveWeight(productDto.getWeightKg());
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
@@ -282,28 +284,9 @@ public class ProductManagerImpl implements ProductManager {
         return imagesUris;
     }
 
-    private static String requireNonBlankLabel(String label) {
-        if (label == null || label.isBlank()) {
-            throw new IllegalArgumentException("Product label must not be blank");
-        }
-        return label.trim();
-    }
-
-    private static void requireNonNullPrice(BigDecimal price) {
-        if (price == null) {
-            throw new IllegalArgumentException("Product price must not be null");
-        }
-    }
-
-    private static void requireNonNegativePrice(BigDecimal price, String field) {
-        if (price != null && price.signum() < 0) {
-            throw new IllegalArgumentException("Product " + field + " price must not be negative");
-        }
-    }
-
     private static void requireNonNegativeStock(int stockQuantity) {
         if (stockQuantity < 0) {
-            throw new IllegalArgumentException("Product stock quantity must not be negative");
+            throw new InputValidationException("stockQuantity", "stockQuantity must not be negative");
         }
     }
 

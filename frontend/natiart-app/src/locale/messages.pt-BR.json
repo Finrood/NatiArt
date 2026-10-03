@@ -423,6 +423,11 @@
     "8935423432389584893": "em produção",
     "753153473833797966": "enviado",
     "335930395199885743": "entregue",
-    "3790237263254602448": "cancelado"
+    "3790237263254602448": "cancelado",
+    "3540895511617802760": "Digite um nome de 1 a 255 caracteres.",
+    "4590703876681367436": "A descrição deve ter no máximo 255 caracteres.",
+    "5220536994549903145": "Digite um preço de R$0,01 a R$99.999.999,99 com no máximo duas casas decimais.",
+    "8730320079737428337": "Deixe em branco ou digite um preço de R$0,01 a R$99.999.999,99 com no máximo duas casas decimais.",
+    "8016502192051293801": "Digite um número inteiro de itens, igual ou maior que zero."
   }
 }

@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +32,8 @@ import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.model.support.PersonalizationOption;
 import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.ProductRepository;
+import com.portcelana.natiart.service.support.DomainValidation;
+import com.portcelana.natiart.service.support.InputValidationException;
 
 /**
  * Owns the transaction that reserves stock and persists an order. Keeping
@@ -64,7 +67,7 @@ public class OrderCreationService {
         this.productRepository = productRepository;
         this.shippingQuoteService = shippingQuoteService;
         this.customerUploadService = customerUploadService;
-        requireNonNegativeAmount(personalizationSurcharge, "personalization surcharge");
+        requireRepresentableShippingAmount(personalizationSurcharge);
         this.personalizationSurcharge = personalizationSurcharge;
     }
 
@@ -80,7 +83,7 @@ public class OrderCreationService {
     @Transactional
     public CustomerOrder createOrder(
             OrderDto orderDto, String ownerExternalId, String idempotencyKey, String requestFingerprint) {
-        validateContactDetails(orderDto);
+        final String destinationCep = validateContactDetails(orderDto);
         final Map<String, Integer> quantitiesByProduct = aggregateQuantities(orderDto.getItems());
         final Map<String, Product> products = productManager.getProductsOrDie(orderDto.getItems().stream()
                 .map(OrderItemDto::getProductId)
@@ -89,7 +92,7 @@ public class OrderCreationService {
         final ShippingQuote shippingQuote = shippingQuoteService.requireQuoteForOrder(
                 orderDto.getShippingQuoteId(), ownerExternalId, orderDto.getZipCode(), orderDto.getItems(), products);
         final BigDecimal serverDeliveryAmount = shippingQuote.getShippingAmount();
-        requireNonNegativeAmount(serverDeliveryAmount, "shipping amount");
+        requireRepresentableShippingAmount(serverDeliveryAmount);
 
         final CustomerOrder customerOrder = new CustomerOrder();
         customerOrder
@@ -106,8 +109,9 @@ public class OrderCreationService {
                 .setState(orderDto.getState())
                 .setCity(orderDto.getCity())
                 .setNeighborhood(orderDto.getNeighborhood())
-                .setZipCode(orderDto.getZipCode())
+                .setZipCode(destinationCep)
                 .setStreet(orderDto.getStreet())
+                .setHouseNumber(orderDto.getHouseNumber())
                 .setComplement(orderDto.getComplement())
                 .setDeliveryAmount(serverDeliveryAmount)
                 .setShippingQuoteId(shippingQuote.getId())
@@ -128,6 +132,7 @@ public class OrderCreationService {
             if (!product.isActive()) {
                 throw new IllegalArgumentException("Product [" + product.getLabel() + "] is no longer available");
             }
+            DomainValidation.money(product.getMarkedPrice().orElseGet(product::getOriginalPrice), "unitPrice", true);
             final PersonalizationSelection personalization =
                     resolvePersonalization(item.getPersonalization(), product, ownerExternalId);
             final String personalizationKey = PersonalizationRules.canonical(personalization.options());
@@ -140,6 +145,7 @@ public class OrderCreationService {
                     new ResolvedOrderItem(item, product, personalization.personalization(), personalizationKey));
         }
 
+        DomainValidation.orderTotal(shippingQuote.getTotalAmount());
         // Stock is reserved by product, but resolvedItems below intentionally
         // remains one line per distinct fulfillment instruction.
         for (Map.Entry<String, Integer> entry : quantitiesByProduct.entrySet()) {
@@ -162,6 +168,7 @@ public class OrderCreationService {
                 throw new ShippingQuoteNotValidException("The shipping quote no longer matches the order");
             }
             final BigDecimal pricedUnit = quoted.getUnitPrice();
+            DomainValidation.money(pricedUnit, "unitPrice", true);
             totalItemsAmount = totalItemsAmount.add(pricedUnit.multiply(BigDecimal.valueOf(item.getQuantity())));
             customerOrder.addOrderItem(new CustomerOrderItem()
                     .setProduct(product)
@@ -187,27 +194,37 @@ public class OrderCreationService {
         return savedOrder;
     }
 
-    private void validateContactDetails(OrderDto orderDto) {
-        requireNonBlankContact(orderDto.getFirstname(), "firstname");
-        requireNonBlankContact(orderDto.getLastname(), "lastname");
-        requireNonBlankContact(orderDto.getEmail(), "email");
+    static String validateContactDetails(OrderDto orderDto) {
+        orderDto.setHouseNumber(DomainValidation.requiredText(orderDto.getHouseNumber(), "houseNumber", 255));
+        orderDto.setFirstname(DomainValidation.requiredText(orderDto.getFirstname(), "firstname", 255));
+        orderDto.setLastname(DomainValidation.requiredText(orderDto.getLastname(), "lastname", 255));
+        orderDto.setEmail(DomainValidation.requiredText(orderDto.getEmail(), "email", 255));
+        orderDto.setPhone(DomainValidation.normalizedOptionalText(orderDto.getPhone(), "phone", 255));
+        orderDto.setCountry(DomainValidation.requiredText(orderDto.getCountry(), "country", 255));
+        orderDto.setState(DomainValidation.requiredText(orderDto.getState(), "state", 255));
+        orderDto.setCity(DomainValidation.requiredText(orderDto.getCity(), "city", 255));
+        orderDto.setNeighborhood(DomainValidation.requiredText(orderDto.getNeighborhood(), "neighborhood", 255));
+        orderDto.setStreet(DomainValidation.requiredText(orderDto.getStreet(), "street", 255));
+        orderDto.setComplement(DomainValidation.normalizedOptionalText(orderDto.getComplement(), "complement", 255));
+        return DomainValidation.cep(orderDto.getZipCode());
     }
 
     private Map<String, Integer> aggregateQuantities(List<OrderItemDto> items) {
         if (items == null || items.isEmpty()) {
-            throw new IllegalArgumentException("An order must contain at least one item");
+            throw new InputValidationException("items", "An order must contain at least one item");
         }
         if (items.size() > MAX_ORDER_LINES) {
-            throw new IllegalArgumentException("An order must not contain more than " + MAX_ORDER_LINES + " items");
+            throw new InputValidationException(
+                    "items", "An order must not contain more than " + MAX_ORDER_LINES + " items");
         }
         final Map<String, Integer> quantitiesByProduct = new LinkedHashMap<>();
         final Set<String> lineIdentities = new HashSet<>();
         for (OrderItemDto item : items) {
             if (item == null) {
-                throw new IllegalArgumentException("Every order item must be present");
+                throw new InputValidationException("items", "Every order item must be present");
             }
             if (item.getProductId() == null || item.getProductId().isBlank()) {
-                throw new IllegalArgumentException("Every order item must reference a product");
+                throw new InputValidationException("productId", "Every order item must reference a product");
             }
             if (!lineIdentities.add(
                     item.getProductId() + "\u0000" + canonicalRequestedPersonalization(item.getPersonalization()))) {
@@ -215,10 +232,10 @@ public class OrderCreationService {
                         + item.getProductId() + "]");
             }
             if (item.getQuantity() == null || item.getQuantity() <= 0) {
-                throw new IllegalArgumentException("Item quantities must be positive");
+                throw new InputValidationException("quantity", "Item quantities must be positive");
             }
             if (item.getQuantity() > MAX_ITEM_QUANTITY) {
-                throw new IllegalArgumentException("Item quantities must not exceed " + MAX_ITEM_QUANTITY);
+                throw new InputValidationException("quantity", "Item quantities must not exceed " + MAX_ITEM_QUANTITY);
             }
             final int aggregate = quantitiesByProduct.getOrDefault(item.getProductId(), 0) + item.getQuantity();
             if (aggregate > MAX_ITEM_QUANTITY) {
@@ -265,16 +282,12 @@ public class OrderCreationService {
         return new PersonalizationSelection(accepted, personalization);
     }
 
-    private void requireNonNegativeAmount(BigDecimal amount, String field) {
-        if (amount == null || amount.signum() < 0 || amount.scale() > 2) {
-            throw new IllegalArgumentException(
-                    "The " + field + " must be a non-negative value with at most two fraction digits");
-        }
-    }
-
-    private void requireNonBlankContact(String value, String field) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("Order " + field + " must not be blank");
+    private void requireRepresentableShippingAmount(BigDecimal amount) {
+        if (amount == null
+                || amount.signum() < 0
+                || amount.scale() > 2
+                || amount.compareTo(new BigDecimal("99999999.99")) > 0) {
+            throw new UpstreamServiceException("Invalid shipping provider amount", HttpStatus.BAD_GATEWAY);
         }
     }
 

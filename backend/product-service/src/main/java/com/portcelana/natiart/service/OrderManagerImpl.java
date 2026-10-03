@@ -143,6 +143,7 @@ public class OrderManagerImpl implements OrderManager {
             throw new IllegalArgumentException("An order must have an owner");
         }
         final String normalizedKey = normalizeIdempotencyKey(idempotencyKey);
+        orderDto.setZipCode(OrderCreationService.validateContactDetails(orderDto));
         final String fingerprint = fingerprint(orderDto);
 
         if (normalizedKey != null) {
@@ -223,6 +224,7 @@ public class OrderManagerImpl implements OrderManager {
         append(canonical, order == null ? null : order.getNeighborhood());
         append(canonical, order == null ? null : order.getZipCode());
         append(canonical, order == null ? null : order.getStreet());
+        append(canonical, order == null ? null : order.getHouseNumber());
         append(canonical, order == null ? null : order.getComplement());
         append(canonical, order == null ? null : order.getShippingQuoteId());
 

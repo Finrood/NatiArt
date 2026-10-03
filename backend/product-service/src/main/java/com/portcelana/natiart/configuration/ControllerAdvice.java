@@ -1,5 +1,7 @@
 package com.portcelana.natiart.configuration;
 
+import java.util.Map;
+
 import jakarta.persistence.OptimisticLockException;
 
 import org.slf4j.Logger;
@@ -18,6 +20,7 @@ import com.portcelana.natiart.controller.helper.ShippingQuoteNotValidException;
 import com.portcelana.natiart.controller.helper.UserNotAllowedException;
 import com.portcelana.natiart.service.AsaasApiException;
 import com.portcelana.natiart.service.UpstreamServiceException;
+import com.portcelana.natiart.service.support.InputValidationException;
 
 @org.springframework.web.bind.annotation.ControllerAdvice
 public class ControllerAdvice {
@@ -77,6 +80,11 @@ public class ControllerAdvice {
         return new ResponseEntity<>("Invalid request", HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(InputValidationException.class)
+    public ResponseEntity<Object> handleInputValidationException(InputValidationException e) {
+        return new ResponseEntity<>(Map.of("field", e.getField(), "message", e.getMessage()), HttpStatus.BAD_REQUEST);
+    }
+
     /**
      * Jackson wraps {@code @JsonCreator} guard failures (e.g. our
      * {@code IllegalArgumentException}s) in {@code ValueInstantiationException},
@@ -86,6 +94,9 @@ public class ControllerAdvice {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Object> handleNotReadableBody(HttpMessageNotReadableException e) {
         final IllegalArgumentException guardFailure = findIllegalArgumentCause(e);
+        if (guardFailure instanceof InputValidationException validationFailure) {
+            return handleInputValidationException(validationFailure);
+        }
         if (guardFailure != null && guardFailure.getMessage() != null) {
             LOGGER.debug("Rejected malformed request body: ", e);
             return new ResponseEntity<>(guardFailure.getMessage(), HttpStatus.BAD_REQUEST);

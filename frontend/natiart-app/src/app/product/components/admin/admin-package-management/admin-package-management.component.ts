@@ -37,10 +37,10 @@ export class PackageManagementComponent implements OnInit {
   constructor() {
     this.packageForm = this._fb.group({
       id: [''],
-      label: ['', Validators.required],
-      height: ['', [Validators.required, Validators.min(0)]],
-      width: ['', [Validators.required, Validators.min(0)]],
-      depth: ['', [Validators.required, Validators.min(0)]],
+      label: ['', [Validators.required, Validators.maxLength(255), Validators.pattern(/\S/)]],
+      height: ['', [Validators.required, Validators.min(0.01), Validators.max(200)]],
+      width: ['', [Validators.required, Validators.min(0.01), Validators.max(200)]],
+      depth: ['', [Validators.required, Validators.min(0.01), Validators.max(200)]],
       active: [true]
     });
   }
