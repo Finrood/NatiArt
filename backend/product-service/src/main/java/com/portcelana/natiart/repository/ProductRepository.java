@@ -30,9 +30,9 @@ public interface ProductRepository extends JpaRepository<Product, String> {
             "SELECT p FROM Product p LEFT JOIN FETCH p.images LEFT JOIN FETCH p.category LEFT JOIN FETCH p.packaging WHERE p.id = :id AND p.active = true AND p.category.active = true")
     Optional<Product> findActiveByIdWithImages(String id);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(
-            "UPDATE Product p SET p.stockQuantity = p.stockQuantity - :quantity WHERE p.id = :id AND p.stockQuantity >= :quantity AND p.active = true AND p.category IN (SELECT c FROM Category c WHERE c.active = true)")
+            "UPDATE Product p SET p.stockQuantity = p.stockQuantity - :quantity, p.version = p.version + 1 WHERE p.id = :id AND p.stockQuantity >= :quantity AND p.active = true AND p.category IN (SELECT c FROM Category c WHERE c.active = true)")
     int decreaseStockIfAvailable(@Param("id") String id, @Param("quantity") int quantity);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
