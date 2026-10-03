@@ -6,6 +6,7 @@ import { Subject } from 'rxjs';
 
 import { OrderSummaryComponent } from './order-summary.component';
 import { ProductService } from '../../../../service/product.service';
+import {CartItem} from '../../../../models/CartItem.model';
 import { Product } from '../../../../models/product.model';
 import { ShippingQuote } from '../../../../service/shipping.service';
 
@@ -82,10 +83,10 @@ describe('OrderSummaryComponent', () => {
     const image$: Subject<Blob> = new Subject<Blob>();
     spyOn(productService, 'getImage').and.returnValue(image$.asObservable());
     const internals = component as unknown as {
-      fetchProductImage(cartItemId: string, imagePath: string): void;
+      prepareImageUrls(items: CartItem[]): void;
     };
 
-    internals.fetchProductImage('line-1', 'a.jpg');
+    internals.prepareImageUrls(component.cartItems ?? []);
     image$.next(new Blob(['x'], { type: 'image/png' }));
 
     expect(component.imageUrls['line-1']).toBeDefined();
@@ -100,10 +101,12 @@ describe('OrderSummaryComponent', () => {
     const image$: Subject<Blob> = new Subject<Blob>();
     spyOn(productService, 'getImage').and.returnValue(image$.asObservable());
     const internals = component as unknown as {
-      fetchProductImage(cartItemId: string, imagePath: string): void;
+      prepareImageUrls(items: CartItem[]): void;
     };
 
-    internals.fetchProductImage('gone-line', 'a.jpg');
+    const product: Product = {id: 'gone-product', label: 'Old', originalPrice: 1, markedPrice: 1, stockQuantity: 1, categoryId: 'c', images: ['a.jpg'], tags: new Set<string>(), availablePersonalizations: []};
+    internals.prepareImageUrls([{cartItemId: 'gone-line', product, quantity: 1}]);
+    internals.prepareImageUrls([]);
     image$.next(new Blob(['x'], { type: 'image/png' }));
     image$.complete();
 

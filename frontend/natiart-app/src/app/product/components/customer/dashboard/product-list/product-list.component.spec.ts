@@ -139,7 +139,7 @@ describe('ProductListComponent', () => {
     component.ngOnInit();
     const listReq = httpMock.expectOne((req: HttpRequest<unknown>): boolean => req.url.indexOf('/featured') !== -1);
     listReq.flush([product]);
-    expect(component.imageUrls['p-9']).toBe('assets/img/placeholder.png');
+    expect(component.imageUrls['p-9']).toBe(component.emptyImage);
   });
 
   it('preserves card DOM nodes across same-id re-emissions (AF1)', () => {

@@ -1,12 +1,13 @@
-import {Component, ElementRef, OnDestroy, OnInit, Renderer2, ViewChild, inject} from '@angular/core';
-import { AsyncPipe, CurrencyPipe, KeyValuePipe, NgStyle } from "@angular/common";
+import {ImageCollection, ImageLoaderService, EMPTY_PRODUCT_IMAGE} from '../../../service/image-loader.service';
+import {Component, inject, ElementRef, OnDestroy, OnInit, Renderer2, ViewChild} from '@angular/core';
+import { AsyncPipe, CurrencyPipe, NgStyle } from "@angular/common";
 import {FormsModule} from "@angular/forms";
 import {BehaviorSubject, Subscription, of} from "rxjs";
 import {catchError, switchMap, tap} from "rxjs/operators";
 import {Product} from "../../../models/product.model";
 import {ActivatedRoute, ParamMap, RouterLink} from "@angular/router";
 import {ProductService} from "../../../service/product.service";
-import {DomSanitizer, Meta, SafeUrl, Title} from "@angular/platform-browser";
+import {Meta, Title} from "@angular/platform-browser";
 import {TopMenuComponent} from "../top-menu/top-menu.component";
 import {LeftMenuComponent} from "../left-menu/left-menu.component";
 import {CartService} from "../../../service/cart.service";
@@ -24,7 +25,6 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
     CurrencyPipe,
     TopMenuComponent,
     LeftMenuComponent,
-    KeyValuePipe,
     NgStyle,
     PersonalizationModalComponent,
     RouterLink,
@@ -35,6 +35,9 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
   styleUrls: ['./product-detail.component.css']
 })
 export class ProductDetailComponent implements OnInit, OnDestroy {
+  readonly images: ImageCollection = inject(ImageLoaderService).create();
+  readonly emptyImage: string = EMPTY_PRODUCT_IMAGE;
+  get imageUrls(): Record<string, string> { return this.images.urls(); }
   imageLabel(index: number): string {
     return $localize`View product image ${index}:IMAGE_NUMBER:`;
   }
@@ -43,7 +46,6 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   quantity: number = 1;
   relatedProducts$ = new BehaviorSubject<Product[]>([]);
   selectedImageIndex: number = 0;
-  imageUrls: { [index: number]: SafeUrl | null } = {};
   isZoomed: boolean = false;
   zoomFactor: number = 5;
   lensSize: number = 100;
@@ -52,7 +54,6 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   @ViewChild('mainImage') mainImage!: ElementRef<HTMLImageElement>;
   private subscriptions: Subscription[] = [];
   private relatedSubscription: Subscription | null = null;
-  private imageRequestToken: number = 0;
   isLoading: boolean = true;
   loadError: string | null = null;
 
@@ -60,11 +61,11 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   selectedProductForModal: Product | null = null;
   triggerElementForModal: HTMLElement | null = null;
 
-  private readonly _route = inject(ActivatedRoute);
-  private readonly _productService = inject(ProductService);
-  private readonly _sanitizer = inject(DomSanitizer);
-  private readonly _renderer = inject(Renderer2);
-  private readonly _cartService = inject(CartService);
+  private readonly _route: ActivatedRoute = inject(ActivatedRoute);
+  private readonly _productService: ProductService = inject(ProductService);
+  private readonly _renderer: Renderer2 = inject(Renderer2);
+  private readonly _cartService: CartService = inject(CartService);
+
   private readonly _title = inject(Title);
   private readonly _meta = inject(Meta);
 
@@ -86,17 +87,8 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
         this.product$.next(null);
         this.quantity = 1;
         this.selectedImageIndex = 0;
-        // Revoke before dropping: resetting the maps without revoking leaks
-        // one blob URL per image for the rest of the session (AG1).
-        this.revokeImageMap(this.imageUrls);
-        this.imageUrls = {};
+        this.images.update([]);
         this.relatedProducts$.next([]);
-        this.revokeImageMap(this.relatedImageUrls);
-        this.relatedImageUrls = {};
-        // Invalidate in-flight main-image fetches for the previous product:
-        // image slots are index-keyed, so a stale resolution must not write
-        // into the newly reset map (see fetchImage).
-        this.imageRequestToken++;
       }),
       switchMap((params: ParamMap) => {
         const productId: string | null = params.get('id');
@@ -119,7 +111,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
         }
         this.product$.next(product);
         this.setProductMetadata(product);
-        this.updateProductImages(product);
+        this.updateImages();
         this.loadRelatedProducts(product.categoryId);
         this.isLoading = false;
       }
@@ -127,10 +119,9 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     this.subscriptions.push(subscription);
   }
 
-  ngOnDestroy() {
+  ngOnDestroy(): void {
     this.subscriptions.forEach(subscription => subscription.unsubscribe());
-    this.revokeImageMap(this.imageUrls);
-    this.revokeImageMap(this.relatedImageUrls);
+    this.images.destroy();
     this.setStorefrontMetadata();
   }
 
@@ -158,17 +149,6 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     this._meta.updateTag({property: 'og:type', content: 'product'});
   }
 
-  private revokeImageMap(map: { [key: string]: SafeUrl | string | null }): void {
-    Object.values(map).forEach((url: SafeUrl | string | null): void => {
-      if (!url) {
-        return;
-      }
-      const raw: string | null = typeof url === 'string' ? url : this._sanitizer.sanitize(4, url);
-      if (raw && raw.startsWith('blob:')) {
-        URL.revokeObjectURL(raw);
-      }
-    });
-  }
 
   selectImage(index: number) {
     this.selectedImageIndex = index;
@@ -330,46 +310,6 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     }, 700);
   }
 
-  private updateProductImages(product: Product): void {
-    this.imageUrls = {};
-    (product.images || []).forEach((imagePath, index) => {
-      this.fetchImage(index, imagePath);
-    });
-    this.selectedImageIndex = 0;
-  }
-
-
-  private fetchImage(index: number, imagePath: string): void {
-    // Prevent memory leaks by revoking old URLs if overwriting
-    if (this.imageUrls[index]) {
-      const oldUrl = this._sanitizer.sanitize(4, this.imageUrls[index]);
-      if (oldUrl) URL.revokeObjectURL(oldUrl);
-    }
-
-    // Drop resolutions that arrive after a route-param reset: they belong to
-    // the previously viewed product, and slots are index-keyed (not identity-keyed).
-    const token: number = this.imageRequestToken;
-    const subscription = this._productService.getImage(imagePath).subscribe({
-      next: blob => {
-        if (token !== this.imageRequestToken) {
-          return;
-        }
-        const objectUrl = URL.createObjectURL(blob);
-        this.imageUrls[index] = this._sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
-        // Trigger change detection if necessary, though BehaviorSubject should handle it
-        // this.product$.next(this.product$.value);
-      },
-      error: err => {
-        if (token !== this.imageRequestToken) {
-          return;
-        }
-        reportError('product-image', err);
-        this.imageUrls[index] = 'assets/img/placeholder.png'; // Fallback image URL
-      }
-    });
-    this.subscriptions.push(subscription);
-  }
-
   private loadRelatedProducts(categoryId: string | undefined): void {
     // Cancel any in-flight related-products fetch: without this, a slow first
     // response overwrites the related list of the product viewed second.
@@ -388,12 +328,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
           .filter(p => p.id !== currentProductId) // Exclude current product
           .slice(0, 4); // Limit to 4 related products
         this.relatedProducts$.next(related);
-        // Load images for related products (simplified: assuming first image)
-        related.forEach(p => {
-          if (p.images && p.images.length > 0) {
-            this.fetchRelatedProductImage(p.id!, p.images[0]); // Fetch only the first image for preview
-          }
-        });
+        this.updateImages();
       },
       error: (error) => reportError('related-products', error)
     });
@@ -401,37 +336,13 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     this.subscriptions.push(subscription);
   }
 
-  // You might need a separate map for related product image URLs
-  relatedImageUrls: { [productId: string]: SafeUrl | string } = {};
+  get relatedImageUrls(): Record<string, string> { return this.images.urls(); }
 
-  private fetchRelatedProductImage(productId: string, imagePath: string): void {
-    // Avoid re-fetching if URL already exists
-    if (this.relatedImageUrls[productId]) return;
-
-    // Drop resolutions that arrive after a route-param reset: they belong to
-    // the previously viewed product (same mechanism as fetchImage, AA5).
-    const token: number = this.imageRequestToken;
-    const subscription = this._productService.getImage(imagePath).subscribe({
-      next: (blob: Blob): void => {
-        if (token !== this.imageRequestToken) {
-          return;
-        }
-        const objectUrl: string = URL.createObjectURL(blob);
-        this.relatedImageUrls[productId] = this._sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
-        // The template binds images via the relatedImageUrls map; emit a new
-        // array identity so the async pipe picks up the resolved image.
-        this.relatedProducts$.next([...this.relatedProducts$.value]);
-      },
-      error: (err: unknown): void => {
-        if (token !== this.imageRequestToken) {
-          return;
-        }
-        reportError('product-image', err);
-        this.relatedImageUrls[productId] = 'assets/img/placeholder.png'; // Fallback
-        this.relatedProducts$.next([...this.relatedProducts$.value]); // Trigger update even on error
-      }
-    });
-    this.subscriptions.push(subscription);
+  private updateImages(): void {
+    this.images.update([
+      ...(this.product$.value?.images ?? []).map((source: string, index: number) => ({key: String(index), source})),
+      ...this.relatedProducts$.value.map((product: Product) => ({key: product.id!, source: product.images?.[0]}))
+    ]);
   }
 
   protected readonly PersonalizationOption = PersonalizationOption;

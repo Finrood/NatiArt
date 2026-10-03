@@ -1,6 +1,7 @@
 import {inject, Injectable} from '@angular/core';
 import {HttpClient} from "@angular/common/http";
-import {Observable, throwError} from "rxjs";
+import {Observable, Subject, throwError} from "rxjs";
+import {finalize, shareReplay, tap} from "rxjs/operators";
 import {PagedResponse} from '../../shared/models/paged-response.model';
 import {environment} from "../../../environments/environment";
 import {Product} from "../models/product.model";
@@ -18,6 +19,11 @@ export class ProductService {
 
 
   private readonly _http = inject(HttpClient);
+  private readonly imageRequests = new Map<string, Observable<Blob>>();
+  private readonly invalidations: Subject<void> = new Subject<void>();
+  readonly imageInvalidations: Observable<void> = this.invalidations.asObservable();
+
+  invalidateImages(): void { this.imageRequests.clear(); this.invalidations.next(); }
 
   getProductsPage(categoryId?: string, page = 0, size = 20, query = '', admin = false): Observable<PagedResponse<Product>> {
     const params: {[key: string]: string} = {page: String(Number.isSafeInteger(page) ? Math.max(0, page) : 0),
@@ -68,11 +74,11 @@ export class ProductService {
   }
 
   updateProduct(id: string, editProductData: FormData): Observable<Product> {
-    return this._http.put<Product>(`${this.apiUrl}/${id}`, editProductData);
+    return this._http.put<Product>(`${this.apiUrl}/${id}`, editProductData).pipe(tap((): void => this.invalidateImages()));
   }
 
   deleteProduct(id: string): Observable<void> {
-    return this._http.delete<void>(`${this.apiUrl}/${id}`);
+    return this._http.delete<void>(`${this.apiUrl}/${id}`).pipe(tap((): void => this.invalidateImages()));
   }
 
   inverseProductVisibility(id: string): Observable<Product> {
@@ -84,9 +90,18 @@ export class ProductService {
   }
 
   getImage(imagePath: string): Observable<Blob> {
-    return this._http.get(`${this.apiUrlImages}/images?path=${encodeURIComponent(imagePath)}`, {
-      responseType: 'blob',
-    });
+    const cached: Observable<Blob> | undefined = this.imageRequests.get(imagePath);
+    if (cached) return cached;
+    const request: Observable<Blob> = this._http.get(`${this.apiUrlImages}/images`, {
+      params: {path: imagePath}, responseType: 'blob'
+    }).pipe(
+      finalize((): void => { if (this.imageRequests.get(imagePath) === request) this.imageRequests.delete(imagePath); }),
+      shareReplay({bufferSize: 1, refCount: true})
+    );
+    // Only concurrent requests share bytes. Completed/cancelled entries are evicted;
+    // a bounded map never retains session-long image data or stale replacements.
+    if (this.imageRequests.size < 32) this.imageRequests.set(imagePath, request);
+    return request;
   }
 
   uploadCustomerImage(file: File): Observable<CustomerUploadResponse> {
