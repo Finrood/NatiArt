@@ -478,3 +478,4 @@ pr_checks_summary() { # $1 = PR number; prints FAIL|PASS|PENDING (never fails)
     elif checks_passed <<<"$checks"; then echo "PASS"
     else echo "PENDING"; fi
 }
+
