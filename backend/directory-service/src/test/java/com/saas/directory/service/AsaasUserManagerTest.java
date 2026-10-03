@@ -4,12 +4,15 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -19,6 +22,10 @@ import org.springframework.web.client.RestTemplate;
 import com.saas.directory.dto.ProfileDto;
 import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
+
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 @ExtendWith(MockitoExtension.class)
 class AsaasUserManagerTest {
@@ -38,15 +45,35 @@ class AsaasUserManagerTest {
 
     @Test
     void mapAsaasError_returnsStaticMessageWithoutUpstreamBody() {
+        final String sensitiveBody =
+                "cpf=12345678909 email=synthetic@example.invalid\nFORGED_LOG " + "x".repeat(20_000);
         final HttpClientErrorException upstream = HttpClientErrorException.create(
                 HttpStatus.UNPROCESSABLE_ENTITY,
                 "Unprocessable Entity",
                 null,
-                "{\"errors\":[\"LEAK_MARKER\"]}".getBytes(StandardCharsets.UTF_8),
+                sensitiveBody.getBytes(StandardCharsets.UTF_8),
                 StandardCharsets.UTF_8);
-        final AsaasApiException result = AsaasUserManager.mapAsaasError(upstream);
+        final Logger logger = (Logger) LoggerFactory.getLogger(AsaasUserManager.class);
+        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        final AsaasApiException result;
+        final List<ILoggingEvent> events;
+        try {
+            result = AsaasUserManager.mapAsaasError(upstream);
+            events = List.copyOf(appender.list);
+        } finally {
+            logger.detachAppender(appender);
+        }
         assertEquals("Customer registration failed at the payment provider", result.getMessage());
-        assertFalse(result.getMessage().contains("LEAK_MARKER"));
+        assertEquals(1, events.size());
+        final String logged = events.getFirst().getFormattedMessage();
+        assertTrue(logged.contains("providerStatusCode=422"));
+        assertTrue(logged.contains("responseBodyBytes=8192"));
+        assertFalse(logged.contains("12345678909"));
+        assertFalse(logged.contains("synthetic@example.invalid"));
+        assertFalse(logged.contains("FORGED_LOG"));
+        assertTrue(logged.length() < 200);
     }
 
     @Test
