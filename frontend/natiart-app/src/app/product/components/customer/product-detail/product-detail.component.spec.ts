@@ -66,6 +66,9 @@ describe('ProductDetailComponent', () => {
     expect(component.product$.value?.id).toBe('p1');
     expect(component.isLoading).toBe(false);
     expect(component.loadError).toBeNull();
+    expect(document.title).toBe('Product p1 | NatiArt');
+    expect(document.querySelector('meta[name="description"]')?.getAttribute('content'))
+      .toBe('Product p1 | NatiArt');
   });
 
   it('reloads when the route id changes and resets per-product state', () => {
@@ -77,6 +80,12 @@ describe('ProductDetailComponent', () => {
     expect(component.quantity).toBe(1);
     expect(component.selectedImageIndex).toBe(0);
     expect(component.isLoading).toBe(false);
+  });
+
+  it('clears product share metadata when the route is destroyed', () => {
+    fixture.destroy();
+    expect(document.title).toBe('NatiArt | Handmade Art');
+    expect(document.querySelector('meta[property="og:type"]')?.getAttribute('content')).toBe('website');
   });
 
   it('surfaces an error state instead of loading forever on fetch failure', () => {

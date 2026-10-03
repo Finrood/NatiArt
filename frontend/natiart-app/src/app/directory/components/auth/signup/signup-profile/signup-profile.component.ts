@@ -1,4 +1,4 @@
-import {ChangeDetectorRef, Component, EventEmitter, Input, OnDestroy, Output} from '@angular/core';
+import {ChangeDetectorRef, Component, EventEmitter, Input, OnDestroy, Output, inject} from '@angular/core';
 import {FormGroup, ReactiveFormsModule} from "@angular/forms";
 import {
   NatiartFormFieldComponent
@@ -18,7 +18,6 @@ import {SignupService} from "../../../../service/signup.service";
 
 @Component({
   selector: 'app-signup-profile',
-  standalone: true,
   imports: [
     NatiartFormFieldComponent,
     ReactiveFormsModule,
@@ -42,7 +41,10 @@ export class SignupProfileComponent implements OnDestroy {
   addressErrorMessage = '';
   private addressLookupSubscription: Subscription | undefined;
 
-  constructor(private signupService: SignupService, private changeDetectorRef: ChangeDetectorRef) {
+  private readonly _signupService: SignupService = inject(SignupService);
+  private readonly _changeDetectorRef: ChangeDetectorRef = inject(ChangeDetectorRef);
+
+  constructor() {
   }
 
   goBack() {
@@ -68,15 +70,15 @@ export class SignupProfileComponent implements OnDestroy {
     }
 
     this.isLoadingAddress = true;
-    this.addressLookupSubscription = this.signupService.getAddressFromZipCode(zipCode)
+    this.addressLookupSubscription = this._signupService.getAddressFromZipCode(zipCode)
       .pipe(finalize(() => {
         this.isLoadingAddress = false;
-        this.changeDetectorRef.markForCheck();
+        this._changeDetectorRef.markForCheck();
       }))
       .subscribe({
         next: (data: ViaCEPResponse) => {
           if (data.erro) {
-            this.setAddressErrorMessage('This ZIP code was not found. Please enter the address manually.');
+            this.setAddressErrorMessage($localize`This ZIP code was not found. Please enter the address manually.`);
             return;
           }
           this.profileForm.patchValue({
@@ -88,7 +90,7 @@ export class SignupProfileComponent implements OnDestroy {
           });
         },
         error: () => {
-          this.setAddressErrorMessage('Error fetching address. Please enter manually.');
+          this.setAddressErrorMessage($localize`Error fetching address. Please enter manually.`);
         }
       });
   }
@@ -99,6 +101,6 @@ export class SignupProfileComponent implements OnDestroy {
 
   private setAddressErrorMessage(message: string): void {
     this.addressErrorMessage = message;
-    this.changeDetectorRef.markForCheck();
+    this._changeDetectorRef.markForCheck();
   }
 }

@@ -41,6 +41,10 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   private readonly _cartService = inject(CartService);
   private readonly _authenticationService = inject(AuthenticationService);
 
+  get paymentErrorMessage(): string {
+    return this.paymentStatus === 'EXPIRED' ? $localize`This PIX code has expired.` : $localize`Could not load the payment details.`;
+  }
+
   ngOnInit(): void {
     // Subscribe to param changes (not a one-shot snapshot): Angular reuses
     // this component when navigating between payment ids, and the QR lookup

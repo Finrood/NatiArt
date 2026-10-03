@@ -81,6 +81,26 @@ public class AuthenticationManagerTest {
     }
 
     @Test
+    public void inactive_account_and_inactive_role_have_the_same_generic_login_denial() {
+        final User inactiveUser = new User("inactive@example.test", "password")
+                .setRole(new com.saas.directory.model.Role(com.saas.directory.model.RoleName.USER))
+                .setActive(false);
+        final com.saas.directory.model.Role inactiveRole = mock(com.saas.directory.model.Role.class);
+        final User inactiveRoleUser = new User("role@example.test", "password").setRole(inactiveRole);
+        when(userManager.getUser("inactive@example.test")).thenReturn(java.util.Optional.of(inactiveUser));
+        when(userManager.getUser("role@example.test")).thenReturn(java.util.Optional.of(inactiveRoleUser));
+
+        for (final String username : java.util.List.of("inactive@example.test", "role@example.test")) {
+            final ResourceNotFoundException error = assertThrows(
+                    ResourceNotFoundException.class,
+                    () -> authenticationManager.login(new CredentialsDto(username, "password")));
+            assertEquals(HttpStatus.UNAUTHORIZED, error.getHttpStatus());
+            assertEquals("Invalid credentials", error.getMessage());
+        }
+        verify(userAuthenticationProvider, never()).createAccessToken(any());
+    }
+
+    @Test
     public void logout_clears_every_token_of_the_user() {
         final String username = "testUser";
         final User user = new User(username, "testPassword");

@@ -5,6 +5,10 @@ import {finalize, shareReplay, tap} from "rxjs/operators";
 import {environment} from "../../../environments/environment";
 import {Product} from "../models/product.model";
 
+export interface CustomerUploadResponse {
+  uploadId: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -73,5 +77,11 @@ export class ProductService {
     // a bounded map never retains session-long image data or stale replacements.
     if (this.imageRequests.size < 32) this.imageRequests.set(imagePath, request);
     return request;
+  }
+
+  uploadCustomerImage(file: File): Observable<CustomerUploadResponse> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return this._http.post<CustomerUploadResponse>(`${this.apiUrlImages}/customer/uploads`, form);
   }
 }

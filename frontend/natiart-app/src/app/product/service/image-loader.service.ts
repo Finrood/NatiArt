@@ -2,7 +2,8 @@ import {Injectable, inject, signal, Signal, WritableSignal} from '@angular/core'
 import {Subscription} from 'rxjs';
 import {ProductService} from './product.service';
 
-export const EMPTY_PRODUCT_IMAGE: string = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><rect width="160" height="160" fill="#eee"/><text x="80" y="80" text-anchor="middle" fill="#555" font-size="14">No image</text></svg>');
+const NO_IMAGE: string = $localize`No image`;
+export const EMPTY_PRODUCT_IMAGE: string = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><rect width="160" height="160" fill="#eee"/><text x="80" y="80" text-anchor="middle" fill="#555" font-size="14">${NO_IMAGE}</text></svg>`);
 export type ImageState = 'loading' | 'loaded' | 'error' | 'empty';
 export interface ImageResource { key: string; source: string | Blob | undefined; }
 interface ImageSlot { source: string | Blob | undefined; subscription: Subscription | null; rawUrl: string | null; }

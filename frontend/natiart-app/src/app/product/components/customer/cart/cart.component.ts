@@ -84,7 +84,7 @@ export class CartComponent implements OnInit, OnDestroy {
     if (newQuantity !== item.quantity) {
       this.performAction(
         () => this._cartService.updateItemQuantity(item.cartItemId, newQuantity), // Use cartItemId
-        'Failed to update quantity. Please try again.'
+        $localize`Failed to update quantity. Please try again.`
       );
     }
   }
@@ -92,24 +92,24 @@ export class CartComponent implements OnInit, OnDestroy {
   askRemoveItem(item: CartItem): void {
     this.modalAction = () => this.performAction(
       () => this._cartService.removeFromCart(item.cartItemId), // Use cartItemId
-      'Failed to remove item. Please try again.'
+      $localize`Failed to remove item. Please try again.`
     );
-    this.confirmationModal.title = 'Remove Item';
-    this.confirmationModal.message = `Are you sure you want to remove this instance of "${item.product.label}"${item.image ? ' (with custom image)' : ''} from your cart?`;
+    this.confirmationModal.title = $localize`Remove Item`;
+    this.confirmationModal.message = `Are you sure you want to remove this instance of "${item.product.label}"${item.image || item.customImageUploadId ? ' (with custom image)' : ''} from your cart?`;
     this.confirmationModal.confirmText = 'Remove';
-    this.confirmationModal.cancelText = 'Cancel';
+    this.confirmationModal.cancelText = $localize`Cancel`;
     this.confirmationModal.isOpen = true;
   }
 
   askClearCart(): void {
     this.modalAction = () => this.performAction(
       () => this._cartService.clearCart(),
-      'Failed to clear cart. Please try again.'
+      $localize`Failed to clear cart. Please try again.`
     );
-    this.confirmationModal.title = 'Clear Cart';
-    this.confirmationModal.message = 'Are you sure you want to remove all items from your cart?';
-    this.confirmationModal.confirmText = 'Clear Cart';
-    this.confirmationModal.cancelText = 'Cancel';
+    this.confirmationModal.title = $localize`Clear Cart`;
+    this.confirmationModal.message = $localize`Are you sure you want to remove all items from your cart?`;
+    this.confirmationModal.confirmText = $localize`Clear Cart`;
+    this.confirmationModal.cancelText = $localize`Cancel`;
     this.confirmationModal.isOpen = true;
   }
 
@@ -128,9 +128,19 @@ export class CartComponent implements OnInit, OnDestroy {
   }
 
 
+  reselectArtwork(item: CartItem, event: Event): void {
+    const file: File | undefined = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/') || file.size === 0 || file.size > 5_000_000) {
+      this.setError($localize`Select an image smaller than 5 MB.`);
+      return;
+    }
+    this._cartService.reselectArtwork(item.cartItemId, file);
+  }
+
   proceedToCheckout(): void {
     this._router.navigate(['/checkout']).catch(error => {
-      this.setError('Failed to navigate to checkout. Please try again.');
+      this.setError($localize`Failed to navigate to checkout. Please try again.`);
       reportError('cart-navigation', error);
     });
   }
