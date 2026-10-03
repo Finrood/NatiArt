@@ -110,6 +110,6 @@ if grep -q 'committedDate' "$REPO_ROOT/scripts/loop-cycle.sh"; then
     exit 1
 fi
 grep -q 'dependabot-diff-bump.py' "$REPO_ROOT/scripts/loop-cycle.sh"
-grep -q -- '--match-head-commit "\$d_head_sha"' "$REPO_ROOT/scripts/loop-cycle.sh"
+grep -q 'merge_pr_at_head "\$dn" "\$d_head_sha"' "$REPO_ROOT/scripts/loop-cycle.sh"
 grep -q 'files_touch_loop_machinery "\$PR_FILES"' "$REPO_ROOT/scripts/loop-cycle.sh"
 echo "ok: Dependabot identity, scope, semver, soak, machinery, and head guards"
