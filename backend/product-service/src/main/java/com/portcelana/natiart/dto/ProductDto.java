@@ -29,6 +29,7 @@ public class ProductDto {
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private String packageLabel;
 
+    private BigDecimal weightKg;
     private String categoryId;
     private String packageId;
     private Boolean hasFixedGoldenBorder;
@@ -51,6 +52,7 @@ public class ProductDto {
                 .setDescription(product.getDescription().orElse(null))
                 .setMarkedPrice(product.getMarkedPrice().orElseGet(product::getOriginalPrice))
                 .setStockQuantity(product.getStockQuantity())
+                .setWeightKg(product.getWeightKg())
                 .setCategoryId(product.getCategory().map(Category::getId).orElse(null))
                 .setPackageId(product.getPackaging().map(Package::getId).orElse(null))
                 .setHasFixedGoldenBorder(product.getHasFixedGoldenBorder().orElse(null))
@@ -132,6 +134,15 @@ public class ProductDto {
 
     public String getPackageLabel() {
         return packageLabel;
+    }
+
+    public BigDecimal getWeightKg() {
+        return weightKg;
+    }
+
+    public ProductDto setWeightKg(BigDecimal weightKg) {
+        this.weightKg = weightKg;
+        return this;
     }
 
     public String getCategoryId() {

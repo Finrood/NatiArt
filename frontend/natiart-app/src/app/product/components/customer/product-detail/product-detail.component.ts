@@ -6,6 +6,7 @@ import {catchError, switchMap, tap} from "rxjs/operators";
 import {Product} from "../../../models/product.model";
 import {ActivatedRoute, ParamMap, RouterLink} from "@angular/router";
 import {ProductService} from "../../../service/product.service";
+import {Meta, Title} from '@angular/platform-browser';
 import {TopMenuComponent} from "../top-menu/top-menu.component";
 import {LeftMenuComponent} from "../left-menu/left-menu.component";
 import {CartService} from "../../../service/cart.service";
@@ -36,6 +37,10 @@ const EMPTY_IMAGE: string = 'data:image/svg+xml,' + encodeURIComponent('<svg xml
   styleUrls: ['./product-detail.component.css']
 })
 export class ProductDetailComponent implements OnInit, OnDestroy {
+  imageLabel(index: number): string {
+    return $localize`View product image ${index}:IMAGE_NUMBER:`;
+  }
+
   product$ = new BehaviorSubject<Product | null>(null);
   quantity: number = 1;
   relatedProducts$ = new BehaviorSubject<Product[]>([]);
@@ -67,6 +72,11 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   selectedProductForModal: Product | null = null;
   triggerElementForModal: HTMLElement | null = null;
 
+  private readonly _title: Title = inject(Title);
+  private readonly _meta: Meta = inject(Meta);
+  readonly categoryUnavailable: string = $localize`Category unavailable`;
+  readonly packageUnavailable: string = $localize`Package unavailable`;
+
   private readonly _route: ActivatedRoute = inject(ActivatedRoute);
   private readonly _productService: ProductService = inject(ProductService);
   private readonly _renderer: Renderer2 = inject(Renderer2);
@@ -84,6 +94,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     // overwrite the current view.
     const subscription = this._route.paramMap.pipe(
       tap((): void => {
+        this.setStorefrontMetadata();
         this.isLoading = true;
         this.loadError = null;
         this.product$.next(null);
@@ -99,7 +110,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       switchMap((params: ParamMap) => {
         const productId: string | null = params.get('id');
         if (!productId) {
-          this.loadError = 'Could not load this product. Please try again.';
+          this.loadError = $localize`Could not load this product. Please try again.`;
           this.isLoading = false;
           return of(null);
         }
@@ -107,7 +118,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
           catchError((error: unknown) => {
             reportError('product-loading', error);
             this.product$.next(null);
-            this.loadError = 'Could not load this product. Please try again.';
+            this.loadError = $localize`Could not load this product. Please try again.`;
             this.isLoading = false;
             return of(null);
           })
@@ -119,6 +130,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
           return;
         }
         this.product$.next(product);
+        this.setProductMetadata(product);
         this.updateProductImages(product);
         this.loadRelatedProducts(product.categoryId);
         this.isLoading = false;
@@ -131,6 +143,31 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     this.subscriptions.forEach((subscription: Subscription): void => subscription.unsubscribe());
     this.clearImages();
     this.closePersonalizationModal();
+    this.setStorefrontMetadata();
+  }
+
+  private setStorefrontMetadata(): void {
+    this._title.setTitle($localize`NatiArt | Handmade Art`);
+    this._meta.updateTag({
+      name: 'description',
+      content: $localize`Browse products from NatiArt.`
+    });
+    this._meta.updateTag({property: 'og:title', content: $localize`NatiArt | Handmade Art`});
+    this._meta.updateTag({property: 'og:description', content: $localize`Browse products from NatiArt.`});
+    this._meta.updateTag({property: 'og:type', content: 'website'});
+  }
+
+  private setProductMetadata(product: Product): void {
+    const title = `${product.label} | NatiArt`;
+    const description = (product.description || `${product.label} | NatiArt`)
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 160);
+    this._title.setTitle(title);
+    this._meta.updateTag({name: 'description', content: description});
+    this._meta.updateTag({property: 'og:title', content: title});
+    this._meta.updateTag({property: 'og:description', content: description});
+    this._meta.updateTag({property: 'og:type', content: 'product'});
   }
 
   private clearImages(): void {

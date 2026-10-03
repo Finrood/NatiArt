@@ -20,7 +20,7 @@
               (click)="toggleZoom($event)">
               <img (error)="imageFailed($productImages()[selectedImageIndex]?.key || '')" #mainImage
                 [src]="imageUrls[selectedImageIndex] || emptyImage"
-                alt="{{product.label}} - Main Image"
+                alt="{{product.label}} - Main Image" i18n-alt
                 class="w-full h-auto object-contain transition-transform duration-200 ease-in-out block"
                  [ngStyle]="{
                          'transform': isZoomed ? transformScale : 'scale(1)',
@@ -47,7 +47,7 @@
               @for (imgEntry of $productImages(); track imgEntry.key; let i = $index) {
                 <img (error)="imageFailed(imgEntry.key)" (click)="selectImage(imgEntry.key)"
                   [src]="imgEntry.url || emptyImage"
-                  [alt]="product.label + ' Thumbnail ' + (i + 1)"
+                  alt="{{product.label}} Thumbnail {{ i + 1 }}" i18n-alt
                   class="w-20 h-20 object-contain border-2 cursor-pointer transition-colors duration-200 rounded"
                   [class.border-primary]="selectedImageIndex === i"
                   [class.border-transparent]="selectedImageIndex !== i"
@@ -70,9 +70,9 @@
             </div>
             <!-- Quantity -->
             <div class="flex items-center mb-6">
-              <label for="quantityInput" class="block text-sm font-medium text-gray-700 mr-4">Quantity</label>
+              <label for="quantityInput" class="block text-sm font-medium text-gray-700 mr-4" i18n>Quantity</label>
               <div class="flex items-center border border-gray-300 rounded">
-                <app-button (click)="decrementQuantity()" [disabled]="quantity <= 1" aria-label="Decrease quantity" color="light" size="sm">
+                <app-button (click)="decrementQuantity()" [disabled]="quantity <= 1" aria-label="Decrease quantity" color="light" size="sm" i18n-aria-label>
                   －
                 </app-button> <!-- Changed from hyphen to minus sign -->
                 <input
@@ -83,12 +83,12 @@
                   type="number"
                   aria-label="Current quantity"
                   class="w-16 text-center border-l border-r border-gray-300 py-1 focus:outline-none focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  >
-                <app-button (click)="incrementQuantity(product)" [disabled]="quantity >= product.stockQuantity" aria-label="Increase quantity" color="light" size="sm">
+                   i18n-aria-label>
+                <app-button (click)="incrementQuantity(product)" [disabled]="quantity >= product.stockQuantity" aria-label="Increase quantity" color="light" size="sm" i18n-aria-label>
                   ＋
                 </app-button> <!-- Changed from plus sign -->
               </div>
-              <span class="ml-4 text-sm text-gray-500">({{ product.stockQuantity }} in stock)</span>
+              <span class="ml-4 text-sm text-gray-500" i18n>({{ product.stockQuantity }} in stock)</span>
             </div>
             <!-- Add to Cart -->
             <app-add-to-cart-button
@@ -98,15 +98,15 @@
             </app-add-to-cart-button>
             <!-- Additional Info -->
             <div class="mt-8 border-t pt-6">
-              <h2 class="text-xl font-semibold mb-4 text-[#333333]">Product Details</h2>
+              <h2 class="text-xl font-semibold mb-4 text-[#333333]" i18n>Product Details</h2>
               <ul class="space-y-2 text-gray-600">
                 <!-- Display Category Label if available -->
-                <li><strong class="font-medium">Category:</strong> {{ product.categoryLabel || 'Category unavailable' }}</li>
-                <li><strong class="font-medium">Stock:</strong> {{ product.stockQuantity }} available</li>
+                <li><strong class="font-medium" i18n>Category:</strong> {{ product.categoryLabel || categoryUnavailable }}</li>
+                <li><strong class="font-medium" i18n>Stock:</strong> <ng-container i18n>{{ product.stockQuantity }} available</ng-container></li>
                 <!-- Display Tags if available -->
                 @if (product.tags && product.tags.length > 0) {
                   <li>
-                    <strong class="font-medium">Tags:</strong>
+                    <strong class="font-medium" i18n>Tags:</strong>
                     @for (tag of product.tags; track tag; let isLast = $last) {
                       <span class="ml-1 inline-block bg-gray-200 rounded-full px-2 py-0.5 text-xs font-semibold text-gray-700">
                         {{ tag }}{{ !isLast ? ',' : '' }}
@@ -116,23 +116,23 @@
                 }
                 <!-- Display Package Label if available -->
                 @if (product.packageId) {
-                  <li><strong class="font-medium">Package:</strong> {{ product.packageLabel || 'Package unavailable' }}</li>
+                  <li><strong class="font-medium" i18n>Package:</strong> {{ product.packageLabel || packageUnavailable }}</li>
                   }
                   <!-- Display personalization info -->
                   @if (product.hasFixedGoldenBorder) {
                     <li>
-                      <strong class="font-medium text-yellow-600">Includes Golden Border</strong>
+                      <strong class="font-medium text-yellow-600" i18n>Includes Golden Border</strong>
                     </li>
                   }
                   @if (product.availablePersonalizations.length > 0) {
                     <li>
-                      <strong class="font-medium">Personalization Options:</strong>
+                      <strong class="font-medium" i18n>Personalization Options:</strong>
                       <ul class="list-disc list-inside ml-4">
                         @if (product.availablePersonalizations.includes(PersonalizationOption.GOLDEN_BORDER)) {
-                          <li>Add Golden Border</li>
+                          <li i18n>Add Golden Border</li>
                         }
                         @if (product.availablePersonalizations.includes(PersonalizationOption.CUSTOM_IMAGE)) {
-                          <li>Upload Custom Image</li>
+                          <li i18n>Upload Custom Image</li>
                         }
                       </ul>
                     </li>
@@ -144,7 +144,7 @@
           <!-- Related Products -->
           @if ((relatedProducts$ | async)?.length) {
             <div class="mt-16 border-t pt-8">
-              <h2 class="text-2xl font-semibold mb-6 text-[#333333]">You May Also Like</h2>
+              <h2 class="text-2xl font-semibold mb-6 text-[#333333]" i18n>You May Also Like</h2>
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                 <!-- Use relatedImageUrls map for src -->
                 @for (relatedProduct of relatedProducts$ | async; track (relatedProduct.id ?? relatedProduct)) {
@@ -175,7 +175,7 @@
         <!-- Show loading, error, or not-found states -->
         @if (isLoading) {
           <div class="text-center py-16" role="status" aria-live="polite">
-            <p>Loading product details...</p>
+            <p i18n>Loading product details...</p>
           </div>
         } @else if (loadError) {
           <div class="text-center py-16" role="alert">
@@ -183,7 +183,7 @@
           </div>
         } @else if (!(product$ | async)) {
           <div class="text-center py-16" role="alert">
-            <p>Product not found.</p>
+            <p i18n>Product not found.</p>
           </div>
         }
       </main>

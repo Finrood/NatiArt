@@ -36,6 +36,8 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.POST, "/client-errors")
                         .permitAll()
+                        .requestMatchers(HttpMethod.PATCH, "/admin/users/*/account-state")
+                        .hasRole("ADMIN")
                         .anyRequest()
                         .authenticated());
 
