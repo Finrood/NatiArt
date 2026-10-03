@@ -171,16 +171,44 @@ loop_forget_branch() { # $1=deleted branch $2=ledger; retire enrollment before a
     return 1
 }
 
-loop_record_new_branches() { # before local refs, before remote refs, ledger, explicit cycle
-    local before="$1" remote_before="$2" ledger="$3" cycle_id="$4" branch sha
-    while IFS= read -r branch; do
-        [[ -n "$branch" && "$branch" != master ]] || continue
-        if grep -qxF "$branch" <<<"$remote_before"; then continue; fi
-        if loop_owned_branch "$branch" "$ledger"; then continue; fi
-        sha="$(git rev-parse "refs/heads/$branch" 2>/dev/null)" || return 1
-        loop_record_owned_tip "$branch" "$cycle_id" "$sha" "$ledger" || return 1
-    done < <(comm -13 <(printf '%s\n' "$before" | LC_ALL=C sort) \
-        <(git for-each-ref --format='%(refname:short)' refs/heads/ | LC_ALL=C sort))
+loop_record_worker_result() { # candidate artifact, cycle, baseline refs, ledger, accepted artifact
+    local result="$1" cycle="$2" before="$3" ledger="$4" accepted="$5"
+    local origin_id branch sha pushed_sha baseline_sha local_sha remote_sha pr login state candidate
+    [[ -f "$result" && ! -L "$result" && -O "$result" ]] || return 1
+    [[ "$(stat -c %a "$result")" == 600 && "$(stat -c %s "$result")" -le 4096 ]] || return 1
+    candidate="$(head -c 4097 "$result")" || return 1
+    [[ "${#candidate}" -le 4096 ]] || return 1
+    origin_id="$(loop_origin_id)" || return 1
+    jq -e --arg cycle "$cycle" --arg origin "$origin_id" '
+        type == "object" and .cycle == $cycle and .origin == $origin and
+        (.branch | type == "string") and (.sha | type == "string" and test("^[0-9a-f]{40}$")) and
+        .pushedSha == .sha and (.pr | type == "number" and . > 0 and floor == .)
+    ' <<<"$candidate" >/dev/null || return 1
+    branch="$(jq -r .branch <<<"$candidate")"
+    sha="$(jq -r .sha <<<"$candidate")"
+    pushed_sha="$(jq -r .pushedSha <<<"$candidate")"
+    pr="$(jq -r .pr <<<"$candidate")"
+    case "$branch" in fix/*|perf/*|chore/*|docs/*|feature/*) ;; *) return 1 ;; esac
+    git check-ref-format --branch "$branch" >/dev/null 2>&1 || return 1
+    baseline_sha="$(awk -F '\t' -v branch="$branch" '$1 == branch {print $2; exit}' <<<"$before")"
+    local_sha="$(git rev-parse "refs/heads/$branch" 2>/dev/null)" || return 1
+    [[ "$local_sha" == "$sha" ]] || return 1
+    if awk -F '\t' -v branch="$branch" -v sha="$sha" \
+        '$1 == branch && $2 == sha {found=1} END {exit !found}' <<<"$before"; then return 1; fi
+    remote_sha="$(git ls-remote --heads origin "refs/heads/$branch" | awk 'NR == 1 {print $1}')" || return 1
+    [[ "$remote_sha" == "$pushed_sha" ]] || return 1
+    login="$(gh api user --jq .login)" || return 1
+    state="$(gh pr view "$pr" --json number,headRefName,headRefOid,author,state,isCrossRepository,body)" || return 1
+    jq -e --arg login "$login" --arg branch "$branch" --arg sha "$sha" --argjson pr "$pr" '
+        .number == $pr and .author.login == $login and .headRefName == $branch and
+        .headRefOid == $sha and .state == "OPEN" and .isCrossRepository == false and
+        (.body | split("\n") | index("Loop-Owner: natiart-improvement-loop") != null)
+    ' <<<"$state" >/dev/null || return 1
+    # A repaired human PR remains human-owned even when this worker advances it.
+    if [[ -n "$baseline_sha" ]] && ! loop_owned_branch "$branch" "$ledger"; then return 0; fi
+    jq -c '{cycle,origin,branch,sha,pushedSha,pr}' <<<"$candidate" > "$accepted" || return 1
+    chmod 600 "$accepted" || return 1
+    loop_record_owned_tip "$branch" "$cycle" "$sha" "$ledger"
 }
 
 loop_delete_merged_remote_branch() { # $1=branch $2=ledger; current remote tip and atomic lease on every caller

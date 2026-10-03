@@ -332,7 +332,7 @@ table above is agent discipline, enforced by the cycle prompt.
   dependabot branches. Logs keep the last 300 cycles.
 - Remote hygiene: every cycle retries deletion of merged branches recorded when
   this checkout's loop created them. The record lives in the common Git
-  directory and is tied to the origin URL and initial branch tip. A fresh
+  directory and is tied to the origin URL and exact produced tip. A fresh
   checkout preserves older unrecorded branches; operators must clean those up
   manually after verifying ownership. Deletion also checks the merged remote
   tip and uses a commit lease. Logs keep the last 300 cycles.
@@ -414,3 +414,5 @@ the same exact remote tip, and an open PR by the authenticated account on that
 branch and commit. Unrelated repository activity cannot complete the attempt.
 Review workers must submit a new verdict as the authenticated reviewer on the
 specified PR and unchanged captured head. Printed verdicts do not count.
+
+Cleanup ownership comes only from the runner's accepted implementation result, handed to the supervisor through a private 4096-byte-bounded JSON artifact. The supervisor rechecks cycle, origin, exact local/remote tip and authenticated same-repository PR before enrolling the five-field ledger row. The runner's validated audit-only completion writes no ownership result. Failed/no-op workers, unrelated concurrent refs and existing unowned repair PRs gain no cleanup authority. Dirty-worktree salvage is refused; future supervisor-created salvage must be explicitly attributed at its creation site. Artifacts are private and removed after enrollment.

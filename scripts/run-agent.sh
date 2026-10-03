@@ -317,6 +317,8 @@ role_deliverable_present() {
                 [[ "$AUDIT_BASELINE_PRESENT" -eq 0 ]] && loop_valid_audit_artifact "$AUDIT_ARTIFACT" "$NATIART_CYCLE_ID" "$NATIART_REVIEWED_COMMIT"
                 return $?
             fi
+            [[ -f "$DELIVERABLE_RESULT" && ! -L "$DELIVERABLE_RESULT" && -O "$DELIVERABLE_RESULT" ]] || return 1
+            [[ "$(stat -c %a "$DELIVERABLE_RESULT")" == 600 && "$(stat -c %s "$DELIVERABLE_RESULT")" -le 4096 ]] || return 1
             jq -e --arg cycle "$NATIART_CYCLE_ID" '
                 type == "object" and .cycle == $cycle and
                 (.branch | type == "string") and (.sha | test("^[0-9a-f]{40}$"))
@@ -336,7 +338,20 @@ role_deliverable_present() {
                 any(.[]; .author.login == $login and .headRefName == $branch and
                     .headRefOid == $sha and (. as $pr |
                     all($before[0][]; .number != $pr.number or .headRefOid != $sha)))
-            ' "$DELIVERABLE_AFTER" >/dev/null ;;
+            ' "$DELIVERABLE_AFTER" >/dev/null || return 1
+            # Hand the supervisor only the result accepted above, never new-ref discovery.
+            if [[ -n "${NATIART_ACCEPTED_RESULT_FILE:-}" ]]; then
+                [[ -f "$NATIART_ACCEPTED_RESULT_FILE" && ! -L "$NATIART_ACCEPTED_RESULT_FILE" && -O "$NATIART_ACCEPTED_RESULT_FILE" &&
+                   "$(stat -c %a "$NATIART_ACCEPTED_RESULT_FILE")" == 600 ]] || return 1
+                local origin_id pr_number
+                origin_id="$(git -C "$REPO" remote get-url origin | sha256sum | awk '{print $1}')" || return 1
+                pr_number="$(jq -r --arg login "$LOOP_LOGIN" --arg branch "$branch" --arg sha "$sha" \
+                    '.[] | select(.author.login == $login and .headRefName == $branch and .headRefOid == $sha) | .number' "$DELIVERABLE_AFTER")"
+                [[ "$pr_number" =~ ^[0-9]+$ ]] || return 1
+                jq -cn --arg cycle "$NATIART_CYCLE_ID" --arg origin "$origin_id" --arg branch "$branch" \
+                    --arg sha "$sha" --argjson pr "$pr_number" \
+                    '{cycle:$cycle,origin:$origin,branch:$branch,sha:$sha,pushedSha:$sha,pr:$pr}' > "$NATIART_ACCEPTED_RESULT_FILE" || return 1
+            fi ;;
     esac
 }
 
@@ -468,6 +483,8 @@ while true; do
 
         same_retry=0
         while :; do # retry-same-model loop: silence ≠ quota (see below)
+            # A failed attempt's manifest cannot authorize a later no-op attempt.
+            : > "$DELIVERABLE_RESULT"
             ATT_LOG="$(mktemp "$TMP_ROOT/natiart-agent-attempt-XXXXXX.log")"
             log "Attempt $attempt/${label}: $cli :: $model_id${think:+, thinking=$think} (${remaining}s left)"
             if ! launch_attempt "$cli" "$model_id" "$think"; then

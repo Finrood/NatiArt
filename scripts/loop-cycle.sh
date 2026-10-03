@@ -571,9 +571,14 @@ $(cat scripts/redteam-addendum.md)
 Red-team completion evidence: write logs/cycle-$CYCLE_ID.redteam with the sensitive flow, trust boundaries, attempted exploit inputs, result, and PR URL before finishing. Without that nonempty artifact, the red-team slot stays overdue."
 fi
 log "Invoking agent for one cycle item."
-BEFORE_BRANCH_REFS="$(git for-each-ref --format='%(refname:short)' refs/heads/ | LC_ALL=C sort)"
-BEFORE_REMOTE_BRANCH_REFS="$(git for-each-ref --format='%(refname:short)' refs/remotes/origin/ | sed 's#^origin/##' | LC_ALL=C sort)"
+BEFORE_BRANCH_REFS="$(git for-each-ref --format='%(refname:short)%09%(objectname)' refs/heads/ refs/remotes/origin/ | sed 's#^origin/##')"
 CYCLE_OWNERSHIP_ID="$CYCLE_ID"
+RESULT_DIR="$(mktemp -d "$LOOP_GIT_DIR/natiart-worker-result.XXXXXX")"
+chmod 700 "$RESULT_DIR"
+WORKER_RESULT="$RESULT_DIR/candidate.json"
+ACCEPTED_RESULT="$RESULT_DIR/accepted.json"
+: > "$WORKER_RESULT"
+chmod 600 "$WORKER_RESULT"
 # Model failover: run-agent.sh walks the priority list from
 # scripts/agent-models.conf (opencode Muse free -> cline Muse -> cline DeepSeek
 # -> cline GLM),
@@ -583,12 +588,16 @@ CYCLE_OWNERSHIP_ID="$CYCLE_ID"
 # STATUS is preset: a failing agent run must NOT trip `set -e` before the
 # reviewer-wait and health row below (a dead reviewer wait orphans the review).
 STATUS=0
-NATIART_CYCLE_ID="$CYCLE_ID" timeout 1560 scripts/run-agent.sh --role cycle --budget 1500 --title "improvement-loop $(date +%Y%m%d-%H%M)" "$CYCLE_MSG" || STATUS=$?
-if ! loop_record_new_branches "$BEFORE_BRANCH_REFS" "$BEFORE_REMOTE_BRANCH_REFS" \
-    "$OWNERSHIP_LEDGER" "$CYCLE_OWNERSHIP_ID"; then
-    log "Failed to record branch ownership; leaving all new branches untouched for manual recovery."
-    STATUS=1
+NATIART_CYCLE_ID="$CYCLE_ID" NATIART_ACCEPTED_RESULT_FILE="$WORKER_RESULT" timeout 1560 scripts/run-agent.sh --role cycle --budget 1500 --title "improvement-loop $(date +%Y%m%d-%H%M)" "$CYCLE_MSG" || STATUS=$?
+if [[ "$STATUS" -eq 0 && -s "$WORKER_RESULT" ]]; then
+    if ! loop_record_worker_result "$WORKER_RESULT" "$CYCLE_OWNERSHIP_ID" "$BEFORE_BRANCH_REFS" \
+        "$OWNERSHIP_LEDGER" "$ACCEPTED_RESULT"; then
+        log "Rejected worker attribution; leaving all new branches untouched."
+        STATUS=1
+    fi
 fi
+# Failed, audit-only and no-op workers never provide cleanup authority.
+rm -rf "$RESULT_DIR"
 if [[ "$STATUS" -eq 124 ]]; then
     log "Agent cycle hit the 25-minute timeout; leaving state for next cycle."
 fi

@@ -215,3 +215,5 @@ Hunt with that lens, never the previous cycle's lens.
   Follow it exactly.
 
 If anything is ambiguous or risky, open the PR and stop before merging.
+
+Branch cleanup attribution is handled by the supervisor from your validated deliverable result. Do not enroll branches or infer ownership from newly appearing refs. Audit-only completion grants no branch cleanup authority.
