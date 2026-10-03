@@ -19,6 +19,14 @@ public class CustomerOrderItem {
     @JoinColumn(name = "product_id", referencedColumnName = "id", nullable = false)
     private Product product;
 
+    // Immutable purchase snapshot. The product relation is retained for
+    // compatibility, but catalog edits or retirement must not rewrite history.
+    @Column(length = 255)
+    private String productLabel;
+
+    @Column(length = 255)
+    private String productSku;
+
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     private Personalization personalization;
 
@@ -51,6 +59,24 @@ public class CustomerOrderItem {
 
     public CustomerOrderItem setProduct(Product product) {
         this.product = product;
+        return this;
+    }
+
+    public String getProductLabel() {
+        return productLabel;
+    }
+
+    public CustomerOrderItem setProductLabel(String productLabel) {
+        this.productLabel = productLabel;
+        return this;
+    }
+
+    public String getProductSku() {
+        return productSku;
+    }
+
+    public CustomerOrderItem setProductSku(String productSku) {
+        this.productSku = productSku;
         return this;
     }
 

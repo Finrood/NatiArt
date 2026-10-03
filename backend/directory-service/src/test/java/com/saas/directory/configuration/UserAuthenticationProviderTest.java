@@ -138,6 +138,33 @@ class UserAuthenticationProviderTest {
     }
 
     @Test
+    void validationUsesCurrentRoleAndRejectsInactiveAccountForAnUnexpiredToken() throws Exception {
+        final String secret = "live-role-test-secret";
+        final UserAuthenticationProvider provider = providerWithMocks(secret);
+        final String jti = UUID.randomUUID().toString();
+        final String token = JWT.create()
+                .withJWTId(jti)
+                .withIssuer("alice")
+                .withExpiresAt(Instant.now().plus(10, ChronoUnit.MINUTES))
+                .withClaim("roles", "ADMIN")
+                .sign(Algorithm.HMAC256(Base64.getEncoder().encodeToString(secret.getBytes())));
+        final User user = new User("alice", "password").setRole(new Role(RoleName.USER));
+        final Token stored =
+                new Token(jti, user, TokenType.AUTH_ACCESS, Instant.now().plus(10, ChronoUnit.MINUTES));
+        when(tokenRepository.findByJtiAndTokenType(jti, TokenType.AUTH_ACCESS)).thenReturn(Optional.of(stored));
+
+        final org.springframework.security.core.Authentication auth =
+                provider.authenticateWithToken(token, TokenType.AUTH_ACCESS);
+        assertEquals(RoleName.USER, ((com.saas.directory.dto.UserDto) auth.getPrincipal()).getRole());
+        assertEquals("ROLE_USER", auth.getAuthorities().iterator().next().getAuthority());
+
+        user.setActive(false);
+        final IllegalAccessException error = assertThrows(
+                IllegalAccessException.class, () -> provider.authenticateWithToken(token, TokenType.AUTH_ACCESS));
+        assertEquals("Authentication token is not valid", error.getMessage());
+    }
+
+    @Test
     void invalidateToken_bogusToken_logsBelowError() {
         final UserAuthenticationProvider provider = providerWithSecret("bogus-token-test-secret");
         final Logger logger = (Logger) LoggerFactory.getLogger(UserAuthenticationProvider.class);
