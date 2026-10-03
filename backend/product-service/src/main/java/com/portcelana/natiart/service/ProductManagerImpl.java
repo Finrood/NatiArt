@@ -98,6 +98,14 @@ public class ProductManagerImpl implements ProductManager {
 
     @Override
     @Transactional(readOnly = true)
+    public Product getActiveProductWithImagesOrDie(String id) {
+        return productRepository
+                .findActiveByIdWithImages(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product with id [" + id + "] not found"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Map<String, Product> getProductsOrDie(Collection<String> ids) {
         final Map<String, Product> byId = productRepository.findAllById(ids).stream()
                 .collect(Collectors.toMap(Product::getId, Function.identity()));
@@ -117,8 +125,20 @@ public class ProductManagerImpl implements ProductManager {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Product> getActiveProducts(Pageable pageable) {
+        return fetchPageWithImages(productRepository.findAllActiveIds(pageable), true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Product> getNewProducts(Pageable pageable) {
         return fetchPageWithImages(productRepository.findAllIdsByNewProduct(true, pageable));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Product> getActiveNewProducts(Pageable pageable) {
+        return fetchPageWithImages(productRepository.findAllActiveIdsByNewProduct(true, pageable), true);
     }
 
     @Override
@@ -129,17 +149,36 @@ public class ProductManagerImpl implements ProductManager {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Product> getActiveFeaturedProducts(Pageable pageable) {
+        return fetchPageWithImages(productRepository.findAllActiveIdsByFeaturedProduct(true, pageable), true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Product> getProductsByCategory(Category category, Pageable pageable) {
         return fetchPageWithImages(productRepository.findAllIdsByCategory(category, pageable));
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<Product> getActiveProductsByCategory(Category category, Pageable pageable) {
+        return fetchPageWithImages(productRepository.findAllActiveIdsByCategory(category, pageable), true);
+    }
+
     private List<Product> fetchPageWithImages(Page<String> idPage) {
+        return fetchPageWithImages(idPage, false);
+    }
+
+    private List<Product> fetchPageWithImages(Page<String> idPage, boolean activeOnly) {
         final List<String> ids = idPage.getContent();
         if (ids.isEmpty()) {
             return List.of();
         }
-        final Map<String, Product> byId = productRepository.findAllWithImagesByIds(ids).stream()
-                .collect(Collectors.toMap(Product::getId, Function.identity()));
+        final List<Product> fetched = activeOnly
+                ? productRepository.findAllActiveWithImagesByIds(ids)
+                : productRepository.findAllWithImagesByIds(ids);
+        final Map<String, Product> byId =
+                fetched.stream().collect(Collectors.toMap(Product::getId, Function.identity()));
         return ids.stream()
                 .map(byId::get)
                 // A product deleted between the id-page query and the fetch query simply drops from the page
