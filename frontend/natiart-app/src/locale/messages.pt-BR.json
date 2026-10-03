@@ -440,6 +440,7 @@
     "5592690539959181253": "Não foi possível carregar as embalagens. Tente novamente.",
     "5450434156157818067": "Já existe uma embalagem com esse nome.",
     "7366802516970412749": "O serviço de embalagens está indisponível. Tente novamente.",
-    "6908837411625254968": "Não foi possível salvar a embalagem. Suas alterações continuam no formulário."
+    "6908837411625254968": "Não foi possível salvar a embalagem. Suas alterações continuam no formulário.",
+    "5806884108640249370": "Máximo de {$MAX_BYTES} bytes em UTF-8"
   }
 }
