@@ -6,55 +6,55 @@
   }
 
   <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-    <app-natiart-form-field label="First Name" controlName="firstname" [form]="profileForm">
+    <app-natiart-form-field label="First Name" controlName="firstname" [form]="profileForm" i18n-label>
       <input formControlName="firstname" autocomplete="given-name" class="form-input">
     </app-natiart-form-field>
 
-    <app-natiart-form-field label="Last Name" controlName="lastname" [form]="profileForm">
+    <app-natiart-form-field label="Last Name" controlName="lastname" [form]="profileForm" i18n-label>
       <input formControlName="lastname" autocomplete="last-name" class="form-input">
     </app-natiart-form-field>
 
-    <app-natiart-form-field label="CPF" controlName="cpf" [form]="profileForm">
+    <app-natiart-form-field label="CPF" controlName="cpf" [form]="profileForm" i18n-label>
       <input formControlName="cpf" autocomplete="off" placeholder="000.000.000-00" cpfFormat class="form-input">
     </app-natiart-form-field>
 
-    <app-natiart-form-field label="Phone" controlName="phone" [form]="profileForm">
-      <input formControlName="phone" autocomplete="tel" placeholder="(XX) XXXXX-XXXX" appPhoneFormatBrazil class="form-input">
+    <app-natiart-form-field label="Phone" controlName="phone" [form]="profileForm" i18n-label>
+      <input formControlName="phone" autocomplete="tel" placeholder="(XX) XXXXX-XXXX" appPhoneFormatBrazil class="form-input" i18n-placeholder>
     </app-natiart-form-field>
 
-    <app-natiart-form-field label="Zip Code" controlName="zipCode" [form]="profileForm">
-      <input formControlName="zipCode" cepFormat (change)="onZipCodeChange()" placeholder="XXXXX-XXX" class="form-input">
+    <app-natiart-form-field label="Zip Code" controlName="zipCode" [form]="profileForm" i18n-label>
+      <input formControlName="zipCode" cepFormat (change)="onZipCodeChange()" placeholder="XXXXX-XXX" class="form-input" i18n-placeholder>
     </app-natiart-form-field>
 
-    <app-natiart-form-field label="Country" controlName="country" [form]="profileForm">
+    <app-natiart-form-field label="Country" controlName="country" [form]="profileForm" i18n-label>
       <input formControlName="country" readonly class="form-input bg-surface-variant/30 cursor-not-allowed">
     </app-natiart-form-field>
 
-    <app-natiart-form-field label="State" controlName="state" [form]="profileForm">
+    <app-natiart-form-field label="State" controlName="state" [form]="profileForm" i18n-label>
       <input formControlName="state" class="form-input">
     </app-natiart-form-field>
 
-    <app-natiart-form-field label="City" controlName="city" [form]="profileForm">
+    <app-natiart-form-field label="City" controlName="city" [form]="profileForm" i18n-label>
       <input formControlName="city" class="form-input">
     </app-natiart-form-field>
 
-    <app-natiart-form-field label="Neighborhood" controlName="neighborhood" [form]="profileForm">
+    <app-natiart-form-field label="Neighborhood" controlName="neighborhood" [form]="profileForm" i18n-label>
       <input formControlName="neighborhood" class="form-input">
     </app-natiart-form-field>
 
-    <app-natiart-form-field label="Street" controlName="street" [form]="profileForm">
+    <app-natiart-form-field label="Street" controlName="street" [form]="profileForm" i18n-label>
       <input formControlName="street" class="form-input">
     </app-natiart-form-field>
   </div>
 
-  <app-natiart-form-field label="Address Complement" controlName="complement" [form]="profileForm">
-    <input formControlName="complement" placeholder="Apartment, suite, unit, building, floor, etc." class="form-input">
+  <app-natiart-form-field label="Address Complement" controlName="complement" [form]="profileForm" i18n-label>
+    <input formControlName="complement" placeholder="Apartment, suite, unit, building, floor, etc." class="form-input" i18n-placeholder>
   </app-natiart-form-field>
 
   @if (isLoadingAddress) {
     <div class="text-center">
       <app-loading-spinner></app-loading-spinner>
-      <p class="mt-2 text-sm text-surface-contrast/85">Loading address...</p>
+      <p class="mt-2 text-sm text-surface-contrast/85" i18n>Loading address...</p>
     </div>
   }
 
@@ -65,11 +65,9 @@
   }
 
   <div class="flex gap-4">
-    <app-button type="button" (click)="goBack()" color="secondary" size="md">
-      ← Back
+    <app-button type="button" (click)="goBack()" color="secondary" size="md" i18n>← Back
     </app-button>
-    <app-button type="submit" [disabled]="profileForm.invalid || isSubmitting" color="primary" size="md" [block]="true">
-      Complete Registration
+    <app-button type="submit" [disabled]="profileForm.invalid || isSubmitting" color="primary" size="md" [block]="true" i18n>Complete Registration
     </app-button>
   </div>
 </div>
