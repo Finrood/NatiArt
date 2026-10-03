@@ -6,6 +6,17 @@ set -Eeuo pipefail
 ROOT="$(mktemp -d)"
 trap 'rm -rf "$ROOT"' EXIT
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# shellcheck source=scripts/loop-lib.sh
+source "$REPO_ROOT/scripts/loop-lib.sh"
+
+caller_count="$(grep -Ec '^[[:space:]]*loop_delete_merged_remote_branch "\$branch"' \
+    "$REPO_ROOT/scripts/loop-lib.sh")"
+if [[ "$caller_count" -ne 3 ]]; then
+    echo "expected all three cleanup callers to use the lease helper" >&2
+    exit 1
+fi
+
 git init --bare -q "$ROOT/remote.git"
 git clone -q "$ROOT/remote.git" "$ROOT/a"
 git clone -q "$ROOT/remote.git" "$ROOT/b"
@@ -27,6 +38,10 @@ printf 'validated\n' >"$ROOT/a/WIP"
 git -C "$ROOT/a" add WIP
 git -C "$ROOT/a" commit -qm validated
 git -C "$ROOT/a" push -q -u origin "$branch"
+(
+    cd "$ROOT/a"
+    loop_record_owned_tip "$branch" fixture-cycle "$(git rev-parse HEAD)" "$(git rev-parse --git-common-dir)/natiart-loop-owned-branches.tsv"
+)
 
 # Simulate validation: the salvage commit is merged and its remote SHA saved.
 git -C "$ROOT/a" checkout -q master
@@ -34,21 +49,30 @@ git -C "$ROOT/a" merge -q --no-ff "$branch" -m merge-salvage
 git -C "$ROOT/a" push -q origin master
 captured="$(git -C "$ROOT/a" rev-parse "origin/$branch")"
 
-# Another host advances the remote branch after validation.
+# Another host is ready to advance the remote branch when deletion attempts the
+# lease-protected push, simulating a race between validation and deletion.
 git -C "$ROOT/b" fetch -q origin "$branch"
 git -C "$ROOT/b" checkout -qb "$branch" "origin/$branch"
-printf 'newer-wip\n' >>"$ROOT/b/WIP"
-git -C "$ROOT/b" add WIP
-git -C "$ROOT/b" commit -qm newer-wip
-git -C "$ROOT/b" push -q origin "$branch"
-advanced="$(git -C "$ROOT/b" rev-parse HEAD)"
 
-if git -C "$ROOT/a" push -q --force-with-lease="refs/heads/$branch:$captured" origin --delete "$branch"; then
-    echo "expected stale leased deletion to fail" >&2
-    exit 1
-fi
+(
+    cd "$ROOT/a"
+    git() {
+        if [[ "${1:-}" == "push" && "$*" == *"--force-with-lease=refs/heads/$branch:$captured"* ]]; then
+            printf 'newer-wip\n' >>"$ROOT/b/WIP"
+            command git -C "$ROOT/b" add WIP
+            command git -C "$ROOT/b" commit -qm newer-wip
+            command git -C "$ROOT/b" push -q origin "$branch"
+        fi
+        command git "$@"
+    }
+    if loop_delete_merged_remote_branch "$branch" "$(git rev-parse --git-common-dir)/natiart-loop-owned-branches.tsv"; then
+        echo "expected stale leased deletion to fail" >&2
+        exit 1
+    fi
+)
+advanced="$(git -C "$ROOT/b" rev-parse HEAD)"
 actual="$(git -C "$ROOT/a" ls-remote origin "refs/heads/$branch" | awk '{print $1}')"
-if [[ "$actual" != "$advanced" ]]; then
+if [[ "$actual" == "$captured" || "$actual" != "$advanced" ]]; then
     echo "remote salvage branch was not preserved at its advanced tip" >&2
     exit 1
 fi

@@ -48,7 +48,8 @@ class StorageImageHttpTest {
                 mock(PackageManager.class),
                 new StorageServiceImpl(List.of(storage)),
                 mock(ProductImageLifecycle.class));
-        mvc = MockMvcBuilders.standaloneSetup(new ProductController(manager, mock(ImageConversionService.class)))
+        mvc = MockMvcBuilders.standaloneSetup(
+                        new ProductController(manager, mock(CategoryManager.class), mock(ImageConversionService.class)))
                 .setControllerAdvice(new ControllerAdvice())
                 .build();
     }
