@@ -39,9 +39,9 @@ def main():
         sql('DROP SCHEMA public CASCADE; CREATE SCHEMA public;' + BASE)
 
     try:
-        # The container's own pg_isready loop avoids dependencies or external services.
+        # Initialization uses a temporary socket-only server; wait for final TCP readiness.
         run('docker', 'exec', name, 'sh', '-c',
-            'for i in $(seq 1 60); do pg_isready -U postgres >/dev/null 2>&1 && exit 0; sleep 1; done; exit 1')
+            'for i in $(seq 1 60); do pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1 && exit 0; sleep 1; done; exit 1')
         reset()
         sql(SQL); sql(SQL)
         assert sql("SELECT count(*) FROM customer_order WHERE id='legacy-order' AND total_amount=20") == '1'
