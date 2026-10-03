@@ -44,9 +44,6 @@ public class User {
     @JoinColumn(name = "role_id", referencedColumnName = "id", nullable = false)
     private Role role;
 
-    @Enumerated(EnumType.STRING)
-    private UserType userType;
-
     @CreatedDate
     @Column(updatable = false)
     private Instant createdAt;
@@ -69,7 +66,6 @@ public class User {
         this.passwordHash = encoder.encode(password);
         this.emailConfirmed = false;
         this.active = true;
-        this.userType = UserType.ACTIVE;
     }
 
     public String getId() {
@@ -118,15 +114,6 @@ public class User {
 
     public User setRole(Role role) {
         this.role = role;
-        return this;
-    }
-
-    public UserType getUserType() {
-        return userType;
-    }
-
-    public User setUserType(UserType userType) {
-        this.userType = userType;
         return this;
     }
 

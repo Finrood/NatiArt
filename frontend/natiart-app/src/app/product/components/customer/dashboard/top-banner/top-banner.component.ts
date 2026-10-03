@@ -15,6 +15,10 @@ import {RouterLink} from '@angular/router';
   styleUrl: './top-banner.component.css'
 })
 export class TopBannerComponent implements OnInit, OnDestroy {
+  bannerLabel(index: number): string {
+    return $localize`Go to banner ${index}:IMAGE_NUMBER:`;
+  }
+
   currentBannerIndex: number = 0;
   bannerImages: string[] = [
     "assets/img/a1.webp"

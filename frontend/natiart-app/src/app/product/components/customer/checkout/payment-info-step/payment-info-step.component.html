@@ -1,7 +1,7 @@
 <div [formGroup]="paymentInfoGroup" class="space-y-6">
-  <app-natiart-form-field label="Payment Method" controlName="paymentMethod" [form]="paymentInfoGroup">
+  <app-natiart-form-field label="Payment Method" controlName="paymentMethod" [form]="paymentInfoGroup" i18n-label>
     <select formControlName="paymentMethod" id="paymentMethod" class="form-input">
-      <option value="" disabled>Select payment method</option>
+      <option value="" disabled i18n>Select payment method</option>
       @for (method of paymentMethods; track method) {
         <option [value]="method.value">{{ method.label }}</option>
       }
@@ -10,8 +10,7 @@
 
   @if (isPixSelected()) {
     <div animate.enter="payment-fade-in" animate.leave="payment-fade-out" class="pt-2">
-      <p class="text-sm text-text-muted mb-3">
-        You will be redirected to a secure page to complete your PIX payment after clicking "Place Order".
+      <p class="text-sm text-text-muted mb-3" i18n>You will be redirected to a secure page to complete your PIX payment after clicking "Place Order".
       </p>
     </div>
   }

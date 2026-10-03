@@ -28,46 +28,43 @@ export const routes: Routes = [
   {
     path: 'about',
     data: {
-      title: 'About us',
-      message: 'We create small-batch porcelain pieces by hand, combining traditional craft with considered modern design.'
+      title: $localize`About us`,
+      message: $localize`Handmade pieces for your home.`
     },
     loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
   },
   {
     path: 'contact',
     data: {
-      title: 'Contact',
-      message: 'Online contact is currently unavailable. Return to the store to continue browsing.'
+      title: $localize`Contact`,
+      message: $localize`Online contact is currently unavailable. Return to the store to continue browsing.`
     },
     loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
   },
   {
     path: 'account',
     canActivate: [authGuard],
-    data: {
-      title: 'My account',
-      message: 'Order history and profile editing are currently unavailable on this page.'
-    },
-    loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
+    loadComponent: () => import('./product/components/customer/order-history/order-history.component')
+      .then(m => m.OrderHistoryComponent)
   },
   {
     path: 'faq',
-    data: {title: 'Frequently asked questions', message: 'Frequently asked questions are not published yet.'},
+    data: {title: $localize`Frequently asked questions`, message: $localize`Frequently asked questions are not published yet.`},
     loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
   },
   {
     path: 'shipping-returns',
-    data: {title: 'Shipping and returns', message: 'Shipping and return information is not published on this page yet.'},
+    data: {title: $localize`Shipping and returns`, message: $localize`Shipping and return information is not published on this page yet.`},
     loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
   },
   {
     path: 'care-instructions',
-    data: {title: 'Care instructions', message: 'Handle porcelain with clean, dry hands and avoid sudden temperature changes.'},
+    data: {title: $localize`Care instructions`, message: $localize`Handle porcelain with clean, dry hands and avoid sudden temperature changes.`},
     loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
   },
   {
     path: 'not-found',
-    data: {title: 'Page not found', message: 'The page you requested does not exist.'},
+    data: {title: $localize`Page not found`, message: $localize`The page you requested does not exist.`},
     loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
   },
   {
@@ -118,6 +115,11 @@ export const routes: Routes = [
         path: 'packages',
         loadComponent: () => import('./product/components/admin/admin-package-management/admin-package-management.component')
           .then(m => m.PackageManagementComponent)
+      },
+      {
+        path: 'orders',
+        loadComponent: () => import('./product/components/admin/admin-order-management/admin-order-management.component')
+          .then(m => m.AdminOrderManagementComponent)
       },
       {path: '', redirectTo: 'categories', pathMatch: 'full'}
     ]
