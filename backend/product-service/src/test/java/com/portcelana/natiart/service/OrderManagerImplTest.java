@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -18,15 +19,21 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.OrderDto;
 import com.portcelana.natiart.dto.OrderItemDto;
+import com.portcelana.natiart.dto.PersonalizationDto;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.CustomerOrderItem;
 import com.portcelana.natiart.model.Product;
+import com.portcelana.natiart.model.ShippingQuote;
+import com.portcelana.natiart.model.ShippingQuoteItem;
 import com.portcelana.natiart.model.support.OrderStatus;
+import com.portcelana.natiart.model.support.PersonalizationOption;
 import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.ProductRepository;
 
@@ -43,14 +50,49 @@ class OrderManagerImplTest {
     private ProductRepository productRepository;
 
     @Mock
-    private ShippingService shippingService;
+    private ShippingQuoteService shippingQuoteService;
 
     private OrderManagerImpl orderManager;
+    private BigDecimal shippingAmount;
 
     @BeforeEach
     void setUp() {
-        orderManager = new OrderManagerImpl(orderRepository, productManager, productRepository, shippingService);
-        lenient().when(shippingService.getOrderShippingAmount(any())).thenReturn(BigDecimal.ZERO);
+        shippingAmount = BigDecimal.ZERO;
+        orderManager = new OrderManagerImpl(orderRepository, productManager, productRepository, shippingQuoteService);
+        lenient()
+                .when(shippingQuoteService.requireQuoteForOrder(any(), any(), any(), any(), any()))
+                .thenAnswer(
+                        invocation -> quoteFor(invocation.getArgument(3), invocation.getArgument(4), shippingAmount));
+    }
+
+    private ShippingQuote quoteFor(List<OrderItemDto> items, Map<String, Product> products, BigDecimal amount) {
+        final List<ShippingQuoteItem> quoteItems = items.stream()
+                .map(item -> {
+                    final Product product = products.get(item.getProductId());
+                    final BigDecimal unitPrice = product.getMarkedPrice().orElseGet(product::getOriginalPrice);
+                    return new ShippingQuoteItem(
+                            item.getProductId(),
+                            PersonalizationRules.canonical(
+                                    item.getPersonalization() == null
+                                            ? Map.of()
+                                            : item.getPersonalization().getPersonalizationOptions()),
+                            item.getQuantity(),
+                            unitPrice,
+                            product.getVersion());
+                })
+                .toList();
+        final BigDecimal itemAmount = quoteItems.stream()
+                .map(item -> item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return new ShippingQuote()
+                .setDestinationPostalCode("01001000")
+                .setServiceId("test-service")
+                .setServiceName("Test service")
+                .setItemAmount(itemAmount)
+                .setShippingAmount(amount)
+                .setTotalAmount(itemAmount.add(amount))
+                .setExpiresAt(Instant.parse("2099-01-01T00:00:00Z"))
+                .setItems(quoteItems);
     }
 
     private Product product(String id, String label, BigDecimal original, BigDecimal marked, int stock) {
@@ -70,12 +112,17 @@ class OrderManagerImplTest {
     @Test
     void createOrderComputesTotalsAndPersistsItems() {
         Product plate = product("p1", "Plate", new BigDecimal("15.00"), new BigDecimal("13.00"), 100);
+        plate.setAvailablePersonalizations(java.util.Set.of(PersonalizationOption.GOLDEN_BORDER));
         when(productManager.getProductsOrDie(List.of("p1"))).thenReturn(Map.of("p1", plate));
         when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1);
-        when(shippingService.getOrderShippingAmount(any())).thenReturn(new BigDecimal("5.00"));
+        shippingAmount = new BigDecimal("5.00");
         when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        OrderDto dto = validOrder().setDeliveryAmount(new BigDecimal("5.00")).setItems(List.of(item("p1", 2)));
+        OrderDto dto = validOrder()
+                .setDeliveryAmount(new BigDecimal("5.00"))
+                .setItems(List.of(item("p1", 2)
+                        .setPersonalization(new PersonalizationDto()
+                                .setPersonalizationOptions(Map.of(PersonalizationOption.GOLDEN_BORDER, "true")))));
 
         CustomerOrder saved = orderManager.createOrder(dto, "user-1");
 
@@ -85,7 +132,27 @@ class OrderManagerImplTest {
         assertEquals(plate.getId(), line.getProduct().getId());
         assertEquals(2, line.getQuantity());
         assertEquals(new BigDecimal("13.00"), line.getPrice());
+        assertEquals("Plate", line.getProductLabel());
+        assertEquals(plate.getId(), line.getProductSku());
+        assertEquals(
+                "true", line.getPersonalization().getPersonalizationOptions().get(PersonalizationOption.GOLDEN_BORDER));
         verify(orderRepository).save(any(CustomerOrder.class));
+    }
+
+    @Test
+    void ownerOrderReadsUseTheBoundedPageAndRestoreDatabaseOrder() {
+        CustomerOrder newest = new CustomerOrder().setOrderDate(java.time.Instant.now());
+        CustomerOrder older =
+                new CustomerOrder().setOrderDate(java.time.Instant.now().minusSeconds(60));
+        when(orderRepository.findIdsByOwnerExternalId(eq("user-1"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(newest.getId(), older.getId())));
+        when(orderRepository.findAllWithItemsByIds(List.of(newest.getId(), older.getId())))
+                .thenReturn(List.of(older, newest));
+
+        List<CustomerOrder> result = orderManager.getOrdersForOwner("user-1", 0, 20);
+
+        assertEquals(List.of(newest, older), result);
+        verify(orderRepository).findIdsByOwnerExternalId(eq("user-1"), any(Pageable.class));
     }
 
     @Test
@@ -101,7 +168,7 @@ class OrderManagerImplTest {
     void createOrderIgnoresNegativeClientDeliveryAmount() {
         OrderDto dto = validOrder().setDeliveryAmount(new BigDecimal("-1")).setItems(List.of(item("p1", 1)));
         final Product product = product("p1", "Plate", new BigDecimal("15.00"), null, 10);
-        when(shippingService.getOrderShippingAmount(any())).thenReturn(new BigDecimal("7.50"));
+        shippingAmount = new BigDecimal("7.50");
         when(productManager.getProductsOrDie(List.of("p1"))).thenReturn(Map.of("p1", product));
         when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1);
         when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -116,7 +183,7 @@ class OrderManagerImplTest {
     void createOrderIgnoresClientDeliveryAmountPrecision() {
         OrderDto dto = validOrder().setDeliveryAmount(new BigDecimal("10.001")).setItems(List.of(item("p1", 1)));
         final Product product = product("p1", "Plate", new BigDecimal("15.00"), null, 10);
-        when(shippingService.getOrderShippingAmount(any())).thenReturn(new BigDecimal("3.25"));
+        shippingAmount = new BigDecimal("3.25");
         when(productManager.getProductsOrDie(List.of("p1"))).thenReturn(Map.of("p1", product));
         when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1);
         when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -278,7 +345,9 @@ class OrderManagerImplTest {
 
         OrderDto dto = validOrder().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("missing", 1)));
 
-        assertThrows(ResourceNotFoundException.class, () -> orderManager.createOrder(dto, "user-1"));
+        assertThrows(
+                com.portcelana.natiart.controller.helper.OrderCreationRejectedException.class,
+                () -> orderManager.createOrder(dto, "user-1"));
         verify(productRepository, never()).decreaseStockIfAvailable(anyString(), anyInt());
         verify(orderRepository, never()).save(any());
     }
@@ -421,25 +490,31 @@ class OrderManagerImplTest {
 
     @Test
     void createOrderRejectsUnavailableShippingBeforeReservingStock() {
-        when(shippingService.getOrderShippingAmount(any()))
-                .thenThrow(new IllegalArgumentException("No shipping options are available for this address"));
+        final Product product = product("p1", "Plate", new BigDecimal("15.00"), null, 10);
+        when(productManager.getProductsOrDie(List.of("p1"))).thenReturn(Map.of("p1", product));
+        doThrow(new IllegalArgumentException("No shipping options are available for this address"))
+                .when(shippingQuoteService)
+                .requireQuoteForOrder(any(), any(), any(), any(), any());
         OrderDto dto = validOrder().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p1", 1)));
 
         assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
-        verifyNoInteractions(productManager, productRepository, orderRepository);
+        verify(productManager).getProductsOrDie(List.of("p1"));
+        verifyNoInteractions(productRepository, orderRepository);
     }
 
     @Test
-    void updateOrderStatus_allowedTransition_updatesWithoutEntitySave() {
+    void updateOrderStatus_allowedTransition_savesVersionedEntity() {
         final CustomerOrder order = new CustomerOrder().setStatus(OrderStatus.PENDING);
         final String orderId = order.getId();
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderRepository.saveAndFlush(order)).thenReturn(order);
+
         final CustomerOrder updated = orderManager.updateOrderStatus(orderId, OrderStatus.PAID);
 
         assertEquals(orderId, updated.getId());
         assertEquals(OrderStatus.PAID, updated.getStatus());
         verify(orderRepository).findById(orderId);
-        verify(orderRepository, never()).save(any(CustomerOrder.class));
+        verify(orderRepository).saveAndFlush(order);
     }
 
     @Test
@@ -450,17 +525,19 @@ class OrderManagerImplTest {
         assertThrows(
                 IllegalArgumentException.class, () -> orderManager.updateOrderStatus(order.getId(), OrderStatus.PAID));
 
-        verify(orderRepository, never()).save(any(CustomerOrder.class));
+        verify(orderRepository, never()).saveAndFlush(any(CustomerOrder.class));
     }
 
     @Test
     void markOrderPaid_transitionsPendingOrderThroughLifecycleGuard() {
         final CustomerOrder order = new CustomerOrder().setStatus(OrderStatus.PENDING);
         when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(orderRepository.saveAndFlush(order)).thenReturn(order);
+
         final CustomerOrder updated = orderManager.markOrderPaid(order.getId());
 
         assertEquals(OrderStatus.PAID, updated.getStatus());
-        verify(orderRepository).findById(order.getId());
+        verify(orderRepository).saveAndFlush(order);
     }
 
     @Test
@@ -469,6 +546,8 @@ class OrderManagerImplTest {
         when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
 
         assertSame(order, orderManager.markOrderPaid(order.getId()));
+
+        verify(orderRepository, never()).saveAndFlush(any(CustomerOrder.class));
     }
 
     @ParameterizedTest
@@ -480,6 +559,8 @@ class OrderManagerImplTest {
         when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
 
         assertSame(order, orderManager.markOrderPaid(order.getId()));
+
+        verify(orderRepository, never()).saveAndFlush(any(CustomerOrder.class));
     }
 
     @Test
@@ -488,6 +569,8 @@ class OrderManagerImplTest {
         when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
 
         assertThrows(IllegalArgumentException.class, () -> orderManager.markOrderPaid(order.getId()));
+
+        verify(orderRepository, never()).saveAndFlush(any(CustomerOrder.class));
     }
 
     @Test
@@ -499,7 +582,7 @@ class OrderManagerImplTest {
                 IllegalArgumentException.class,
                 () -> orderManager.updateOrderStatus(order.getId(), OrderStatus.SHIPPED));
 
-        verify(orderRepository, never()).save(any(CustomerOrder.class));
+        verify(orderRepository, never()).saveAndFlush(any(CustomerOrder.class));
     }
 
     @Test
@@ -509,6 +592,29 @@ class OrderManagerImplTest {
         assertThrows(
                 ResourceNotFoundException.class, () -> orderManager.updateOrderStatus("missing", OrderStatus.PAID));
 
-        verify(orderRepository, never()).save(any(CustomerOrder.class));
+        verify(orderRepository, never()).saveAndFlush(any(CustomerOrder.class));
+    }
+
+    @Test
+    void adminCannotMarkPendingOrderPaid() {
+        final CustomerOrder order = new CustomerOrder().setStatus(OrderStatus.PENDING);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> orderManager.advanceFulfillmentStatus(order.getId(), OrderStatus.PAID));
+
+        verifyNoInteractions(orderRepository);
+    }
+
+    @Test
+    void adminCanAdvancePaidOrderThroughFulfillment() {
+        final CustomerOrder order = new CustomerOrder().setStatus(OrderStatus.PAID);
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(orderRepository.saveAndFlush(order)).thenReturn(order);
+
+        assertSame(order, orderManager.advanceFulfillmentStatus(order.getId(), OrderStatus.PROCESSING));
+
+        assertEquals(OrderStatus.PROCESSING, order.getStatus());
+        verify(orderRepository).saveAndFlush(order);
     }
 }

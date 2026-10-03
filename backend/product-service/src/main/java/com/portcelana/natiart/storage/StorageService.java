@@ -51,6 +51,9 @@ public interface StorageService extends Serializable {
 
     URI uploadFile(String location, InputFile file, String key);
 
+    /** Delete a stored file after its ownership record expires or cannot be committed. */
+    void deleteFile(URI uri);
+
     /**
      * Store a given file in the storage
      *

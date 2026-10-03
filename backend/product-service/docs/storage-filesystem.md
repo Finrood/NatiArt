@@ -7,6 +7,14 @@ container is replaced with the same mounted volume, or when its contents are
 copied to a different configured root. Absolute `file:/...` references already
 inside an allowed root continue to work.
 
+Customer artwork uses `file:customer-uploads/<upload-id>.webp` in the same
+durable root. The database first commits a pending ownership record, then
+writes the image and marks the record ready. Pending images cannot be used in
+orders. Unclaimed records and files expire after 24 hours by default; set
+`NATIART_CUSTOMER_UPLOAD_TTL_HOURS` to change that window. Cleanup runs hourly
+by default (`NATIART_CUSTOMER_UPLOAD_CLEANUP_DELAY_MILLIS`) and retries failed
+file deletions. Claimed images remain available for order fulfillment.
+
 Production uses `NATIART_STORAGE_ROOT` (default
 `/var/lib/natiart/product-images`). Mount a durable volume at that exact path
 and make it writable by the image's `appuser` before starting the service.
@@ -27,7 +35,8 @@ Older uploads may have written below the process working directory (for
 example `/app/product-images`) and stored an absolute URI such as
 `file:/app/product-images/<product-id>/<image-id>/<file-id>`. Before deploying
 the new image, stop writes, back up the database and files, and inspect the
-distinct `file:` prefixes in `product_images.images`. Copy each legacy root's
+distinct `file:` prefixes in `product_images.images` and
+`customer_upload.storage_uri`. Copy each legacy root's
 contents into `NATIART_STORAGE_ROOT`, preserving the path relative to that
 legacy root. Check that every referenced file exists at its new path.
 
@@ -47,8 +56,13 @@ BEGIN;
 UPDATE product_images
 SET images = 'file:' || substr(images, length('file:/app/product-images/') + 1)
 WHERE images LIKE 'file:/app/product-images/%';
+UPDATE customer_upload
+SET storage_uri = 'file:' || substr(storage_uri, length('file:/app/product-images/') + 1)
+WHERE storage_uri LIKE 'file:/app/product-images/%';
 SELECT count(*) FROM product_images
 WHERE images LIKE 'file:/app/product-images/%';
+SELECT count(*) FROM customer_upload
+WHERE storage_uri LIKE 'file:/app/product-images/%';
 -- Confirm the count is zero and spot-check the new references before committing.
 COMMIT;
 ```
