@@ -1,6 +1,7 @@
 import {ChangeDetectorRef, DestroyRef, inject, Component, EventEmitter, Input, OnInit, Output} from '@angular/core';
 import {merge} from 'rxjs';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import {DEFAULT_REQUIREMENTS} from '../../../directory/utils/password-utils';
 import {AbstractControl, FormGroup} from "@angular/forms";
 
 import {ButtonComponent} from "../button.component";
@@ -21,6 +22,7 @@ export class NatiartFormFieldComponent implements OnInit {
   @Input() form!: FormGroup;
   @Input() isPassword: boolean = false;
 
+  readonly passwordRequirements = DEFAULT_REQUIREMENTS;
   private readonly _changeDetector = inject(ChangeDetectorRef);
   private readonly _destroyed = inject(DestroyRef);
   showPassword = false;
@@ -38,7 +40,11 @@ export class NatiartFormFieldComponent implements OnInit {
     this.showPasswordEmitter.emit();
   }
 
+  hasPasswordMismatch(): boolean {
+    return this.controlName === 'confirmPassword' && this.form.hasError('passwordMismatch');
+  }
+
   showErrors(): boolean {
-    return !!this.control && this.control.invalid && (this.control.dirty || this.control.touched);
+    return !!this.control && (this.control.invalid || this.hasPasswordMismatch()) && (this.control.dirty || this.control.touched);
   }
 }
