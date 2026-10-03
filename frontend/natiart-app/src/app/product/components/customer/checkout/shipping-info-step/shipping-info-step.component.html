@@ -1,8 +1,25 @@
 <div [formGroup]="checkoutForm" class="space-y-6">
   <app-address-form
     [addressFormGroup]="shippingInfoFormGroup"
-    title="Shipping Address">
+    title="Shipping Address" i18n-title>
   </app-address-form>
 
-  <p class="text-sm text-secondary-light">Billing uses the shipping address captured above.</p>
+  <div class="flex items-center space-x-3 p-3 bg-surface-variant/50 rounded-md">
+    <input id="sameAsShipping" type="checkbox"
+      [checked]="_sameShippingAsBilling"
+      (change)="toggleSameShippingAsBilling($event)"
+      class="h-5 w-5 text-primary rounded border-primary-light/70 focus:ring-primary focus:ring-offset-surface-variant">
+      <label for="sameAsShipping" class="text-sm font-medium text-secondary" i18n>My billing address is the same as my shipping address.
+      </label>
+    </div>
+
+    @if (!_sameShippingAsBilling) {
+      <div animate.enter="shipping-slide-in" animate.leave="shipping-slide-out">
+        <app-address-form
+          [addressFormGroup]="billingInfoFormGroup"
+          title="Billing Address"
+          [isBillingAddress]="true" i18n-title>
+      </app-address-form>
+    </div>
+  }
 </div>

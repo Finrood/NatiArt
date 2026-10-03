@@ -1,7 +1,8 @@
 package com.portcelana.natiart.service.support;
 
-import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import com.portcelana.natiart.dto.shipping.ShippingEstimateRequest;
 
@@ -12,6 +13,11 @@ public class MelhorenvioShippingCalculationRequest {
 
     public static MelhorenvioShippingCalculationRequest from(
             ShippingEstimateRequest shippingEstimateRequest, String fromPostalCode) {
+        return from(List.of(shippingEstimateRequest), fromPostalCode);
+    }
+
+    public static MelhorenvioShippingCalculationRequest from(
+            List<ShippingEstimateRequest> shippingEstimateRequests, String fromPostalCode) {
         final MelhorenvioShippingCalculationRequest request = new MelhorenvioShippingCalculationRequest();
 
         final Address fromAddress = new Address();
@@ -19,19 +25,25 @@ public class MelhorenvioShippingCalculationRequest {
         request.setFrom(fromAddress);
 
         final Address toAddress = new Address();
-        toAddress.setPostal_code(shippingEstimateRequest.getTo());
+        toAddress.setPostal_code(shippingEstimateRequests.get(0).getTo());
         request.setTo(toAddress);
 
-        final Volume volume = new Volume();
-        volume.setHeight(String.valueOf(shippingEstimateRequest.getHeight()));
-        volume.setWidth(String.valueOf(shippingEstimateRequest.getWidth()));
-        volume.setLength(String.valueOf(shippingEstimateRequest.getLength()));
-        volume.setWeight(String.valueOf(shippingEstimateRequest.getWeight()));
-        volume.setQntd(shippingEstimateRequest.getQuantity());
-
-        request.setVolumes(Collections.singletonList(volume));
+        request.setVolumes(shippingEstimateRequests.stream()
+                .filter(Objects::nonNull)
+                .flatMap(item ->
+                        java.util.stream.IntStream.range(0, item.getQuantity()).mapToObj(index -> toVolume(item)))
+                .collect(Collectors.toList()));
 
         return request;
+    }
+
+    private static Volume toVolume(ShippingEstimateRequest shippingEstimateRequest) {
+        final Volume volume = new Volume();
+        volume.setHeight(shippingEstimateRequest.getHeight());
+        volume.setWidth(shippingEstimateRequest.getWidth());
+        volume.setLength(shippingEstimateRequest.getLength());
+        volume.setWeight(shippingEstimateRequest.getWeight());
+        return volume;
     }
 
     public Address getFrom() {
@@ -72,49 +84,40 @@ class Address {
 }
 
 class Volume {
-    private String height;
-    private String width;
-    private String length;
-    private String weight;
-    private int qntd;
+    private float height;
+    private float width;
+    private float length;
+    private float weight;
 
-    public String getHeight() {
+    public float getHeight() {
         return height;
     }
 
-    public void setHeight(String height) {
+    public void setHeight(float height) {
         this.height = height;
     }
 
-    public String getWidth() {
+    public float getWidth() {
         return width;
     }
 
-    public void setWidth(String width) {
+    public void setWidth(float width) {
         this.width = width;
     }
 
-    public String getLength() {
+    public float getLength() {
         return length;
     }
 
-    public void setLength(String length) {
+    public void setLength(float length) {
         this.length = length;
     }
 
-    public String getWeight() {
+    public float getWeight() {
         return weight;
     }
 
-    public void setWeight(String weight) {
+    public void setWeight(float weight) {
         this.weight = weight;
-    }
-
-    public int getQntd() {
-        return qntd;
-    }
-
-    public void setQntd(int qntd) {
-        this.qntd = qntd;
     }
 }

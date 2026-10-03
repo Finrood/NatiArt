@@ -15,6 +15,8 @@ import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,7 @@ import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.OrderDto;
 import com.portcelana.natiart.dto.OrderItemDto;
+import com.portcelana.natiart.dto.PersonalizationDto;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
@@ -53,10 +56,10 @@ public class OrderManagerImpl implements OrderManager {
             OrderRepository orderRepository,
             ProductManager productManager,
             com.portcelana.natiart.repository.ProductRepository productRepository,
-            ShippingService shippingService) {
+            ShippingQuoteService shippingQuoteService) {
         this(
                 orderRepository,
-                new OrderCreationService(orderRepository, productManager, productRepository, shippingService));
+                new OrderCreationService(orderRepository, productManager, productRepository, shippingQuoteService));
     }
 
     @Override
@@ -73,7 +76,7 @@ public class OrderManagerImpl implements OrderManager {
         final CustomerOrder current = getOrderById(orderId);
         if (current.getStatus() == OrderStatus.PENDING) {
             current.setStatus(OrderStatus.PAID);
-            return current;
+            return orderRepository.saveAndFlush(current);
         }
         if (current.getStatus() == OrderStatus.PAID
                 || current.getStatus() == OrderStatus.PROCESSING
@@ -87,8 +90,52 @@ public class OrderManagerImpl implements OrderManager {
 
     @Override
     @Transactional(readOnly = true)
-    public List<CustomerOrder> getAllOrders() {
-        return orderRepository.findAll();
+    public List<CustomerOrder> getAllOrders(int page, int size) {
+        final List<String> orderIds =
+                orderRepository.findIds(pageRequest(page, size)).getContent();
+        return loadOrders(orderIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CustomerOrder> getOrdersForOwner(String ownerExternalId, int page, int size) {
+        requireOwner(ownerExternalId);
+        final List<String> orderIds = orderRepository
+                .findIdsByOwnerExternalId(ownerExternalId, pageRequest(page, size))
+                .getContent();
+        return loadOrders(orderIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CustomerOrder getOrderForOwner(String orderId, String ownerExternalId) {
+        requireOwner(ownerExternalId);
+        return orderRepository
+                .findByIdAndOwnerExternalIdWithItems(orderId, ownerExternalId)
+                .orElseThrow(() -> new ResourceNotFoundException("CustomerOrder with id " + orderId + " not found"));
+    }
+
+    private void requireOwner(String ownerExternalId) {
+        if (ownerExternalId == null || ownerExternalId.isBlank()) {
+            throw new IllegalArgumentException("An authenticated owner is required");
+        }
+    }
+
+    private PageRequest pageRequest(int page, int size) {
+        final int safePage = Math.max(0, page);
+        final int safeSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
+        return PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "orderDate", "id"));
+    }
+
+    private List<CustomerOrder> loadOrders(List<String> orderIds) {
+        if (orderIds.isEmpty()) {
+            return List.of();
+        }
+        final Map<String, CustomerOrder> byId = orderRepository.findAllWithItemsByIds(orderIds).stream()
+                .collect(java.util.stream.Collectors.toMap(CustomerOrder::getId, order -> order));
+        // The IN query does not guarantee order; restore the bounded page order
+        // from the indexed id query before DTO mapping.
+        return orderIds.stream().map(byId::get).filter(Objects::nonNull).toList();
     }
 
     @Override
@@ -109,6 +156,20 @@ public class OrderManagerImpl implements OrderManager {
 
         try {
             return orderCreationService.createOrder(orderDto, ownerExternalId, normalizedKey, fingerprint);
+        } catch (UnusableCustomerUploadException exception) {
+            // A concurrent same-key creator may have claimed the artwork and committed first.
+            // Reload its order before declaring the claim definitively rejected.
+            if (normalizedKey != null) {
+                final Optional<CustomerOrder> winner = findOrder(ownerExternalId, normalizedKey);
+                if (winner.isPresent()) return returnReplayOrReject(winner.get(), fingerprint);
+            }
+            throw exception;
+        } catch (IllegalArgumentException | ResourceNotFoundException e) {
+            if (normalizedKey != null) {
+                final Optional<CustomerOrder> winner = findOrder(ownerExternalId, normalizedKey);
+                if (winner.isPresent()) return returnReplayOrReject(winner.get(), fingerprint);
+            }
+            throw new com.portcelana.natiart.controller.helper.OrderCreationRejectedException(e);
         } catch (DataIntegrityViolationException e) {
             // The unique index is the serialization point. This code runs
             // after the losing transaction has rolled back, so reloading here
@@ -166,6 +227,7 @@ public class OrderManagerImpl implements OrderManager {
         append(canonical, order == null ? null : order.getStreet());
         append(canonical, order == null ? null : order.getHouseNumber());
         append(canonical, order == null ? null : order.getComplement());
+        append(canonical, order == null ? null : order.getShippingQuoteId());
 
         final List<String> items = new ArrayList<>();
         if (order != null && order.getItems() != null) {
@@ -173,6 +235,7 @@ public class OrderManagerImpl implements OrderManager {
                 final StringBuilder itemValue = new StringBuilder();
                 append(itemValue, item == null ? null : item.getProductId());
                 append(itemValue, item == null ? null : item.getQuantity());
+                append(itemValue, canonicalPersonalization(item == null ? null : item.getPersonalization()));
                 items.add(itemValue.toString());
             }
         }
@@ -205,6 +268,17 @@ public class OrderManagerImpl implements OrderManager {
         target.append(text.length()).append(':').append(text);
     }
 
+    private String canonicalPersonalization(PersonalizationDto personalization) {
+        if (personalization == null || personalization.getPersonalizationOptions() == null) {
+            return personalization == null ? "" : "invalid";
+        }
+        return personalization.getPersonalizationOptions().entrySet().stream()
+                .sorted((left, right) -> String.valueOf(left.getKey()).compareTo(String.valueOf(right.getKey())))
+                .map(entry -> String.valueOf(entry.getKey()) + "=" + String.valueOf(entry.getValue()))
+                .reduce((left, right) -> left + "|" + right)
+                .orElse("");
+    }
+
     @Override
     @Transactional
     public CustomerOrder updateOrderStatus(String orderId, OrderStatus status) {
@@ -216,11 +290,18 @@ public class OrderManagerImpl implements OrderManager {
             throw new IllegalArgumentException("Order [" + orderId + "] must not transition from ["
                     + current.getStatus() + "] to [" + status + "]");
         }
-        // The entity is managed by this transaction, so changing it lets JPA
-        // include its @Version predicate in the UPDATE. A concurrent transition
-        // therefore fails with an optimistic-lock conflict instead of silently
-        // overwriting the other status.
         current.setStatus(status);
-        return current;
+        // Flush before returning so a concurrent transition fails at this boundary.
+        // The entity version is checked and advanced by JPA.
+        return orderRepository.saveAndFlush(current);
+    }
+
+    @Override
+    @Transactional
+    public CustomerOrder advanceFulfillmentStatus(String orderId, OrderStatus status) {
+        if (status != OrderStatus.PROCESSING && status != OrderStatus.SHIPPED && status != OrderStatus.DELIVERED) {
+            throw new IllegalArgumentException("Administrators may only advance fulfillment status");
+        }
+        return updateOrderStatus(orderId, status);
     }
 }
