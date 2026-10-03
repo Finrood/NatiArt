@@ -14,11 +14,14 @@ public interface CategoryManager {
 
     Category getCategoryOrDie(String categoryId);
 
+    Category getActiveCategoryOrDie(String categoryId);
+
     List<Category> getCategories(Pageable pageable);
 
-    /** Returns bounded items and page metadata; public discovery filters inactive entries before paging. */
     /** Returns a filtered page; inactive records are available only to authorized admin callers. */
     PagedResponseDto<CategoryDto> getCategoriesPage(Pageable pageable, boolean includeInactive);
+
+    List<Category> getActiveCategories(Pageable pageable);
 
     Category createCategory(CategoryDto categoryDto);
 

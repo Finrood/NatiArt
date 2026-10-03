@@ -16,6 +16,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -51,7 +53,10 @@ public class ProductController {
     public ProductDto getProduct(@PathVariable String productId) {
         LOGGER.debug("Getting product with id [{}]", productId);
 
-        return ProductDto.from(productManager.getProductWithImagesOrDie(productId));
+        final Product product = isAdmin()
+                ? productManager.getProductWithImagesOrDie(productId)
+                : productManager.getActiveProductWithImagesOrDie(productId);
+        return ProductDto.from(product);
     }
 
     @GetMapping("/products")
@@ -59,11 +64,14 @@ public class ProductController {
             @RequestParam(required = false, defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "20") int size,
             @RequestParam(required = false) String categoryId) {
-        LOGGER.debug("Getting products page [{}] size [{}] category [{}]", page, size, categoryId);
+        LOGGER.debug("Getting all products page [{}] size [{}]", page, size);
         Pageable pageable = toPageable(page, size);
         final List<Product> products = categoryId == null || categoryId.isBlank()
-                ? productManager.getProducts(pageable)
-                : productManager.getProductsByCategory(categoryManager.getCategoryOrDie(categoryId), pageable);
+                ? (isAdmin() ? productManager.getProducts(pageable) : productManager.getActiveProducts(pageable))
+                : (isAdmin()
+                        ? productManager.getProductsByCategory(categoryManager.getCategoryOrDie(categoryId), pageable)
+                        : productManager.getActiveProductsByCategory(
+                                categoryManager.getActiveCategoryOrDie(categoryId), pageable));
         return products.stream().map(ProductDto::from).toList();
     }
 
@@ -73,9 +81,9 @@ public class ProductController {
             @RequestParam(required = false, defaultValue = "20") int size) {
         LOGGER.debug("Getting new products page [{}] size [{}]", page, size);
         Pageable pageable = toPageable(page, size);
-        return productManager.getNewProducts(pageable).stream()
-                .map(ProductDto::from)
-                .toList();
+        final List<Product> products =
+                isAdmin() ? productManager.getNewProducts(pageable) : productManager.getActiveNewProducts(pageable);
+        return products.stream().map(ProductDto::from).toList();
     }
 
     @GetMapping("/products/featured")
@@ -84,9 +92,10 @@ public class ProductController {
             @RequestParam(required = false, defaultValue = "20") int size) {
         LOGGER.debug("Getting featured products page [{}] size [{}]", page, size);
         Pageable pageable = toPageable(page, size);
-        return productManager.getFeaturedProducts(pageable).stream()
-                .map(ProductDto::from)
-                .toList();
+        final List<Product> products = isAdmin()
+                ? productManager.getFeaturedProducts(pageable)
+                : productManager.getActiveFeaturedProducts(pageable);
+        return products.stream().map(ProductDto::from).toList();
     }
 
     @PostMapping(value = "/products/create")
@@ -163,6 +172,13 @@ public class ProductController {
         final int safePage = Math.max(0, page);
         final int safeSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
         return PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "label", "id"));
+    }
+
+    private static boolean isAdmin() {
+        final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null
+                && authentication.getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
     }
 
     private List<InputFile> processImages(List<MultipartFile> images) throws IOException {
