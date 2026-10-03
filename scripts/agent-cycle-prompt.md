@@ -157,10 +157,12 @@ branch in REPAIR MODE) and is pushed
 to master. Exiting 0 without a pushed branch is a FAILED cycle, not a
 finished one.
 
-After creating and pushing a **new** loop branch, record it in this checkout:
-`source scripts/loop-lib.sh && record_loop_branch "$(git branch --show-current)"`.
-Do not register an existing repair PR branch. The cleanup job preserves branches
-without a matching local ownership record.
+Every PR created by this loop must contain the exact own-line marker
+`Loop-Owner: natiart-improvement-loop` in its body. The merge guard verifies
+that marker together with the authenticated PR author allowlist; branch names
+and self-described verdict text are not ownership proof.
+
+The supervisor enrolls only the explicitly validated worker result; branch discovery and manual worker enrollment grant no cleanup authority.
 
 SELF-MODIFICATION BAN: PRs touching `scripts/**`, `agents/**`, any `AGENTS.md`
 (root or module), `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.github/**`,

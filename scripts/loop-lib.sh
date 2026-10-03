@@ -105,16 +105,44 @@ loop_forget_branch() { # $1=deleted branch $2=ledger; retire enrollment before a
     return 1
 }
 
-loop_record_new_branches() { # before local refs, before remote refs, ledger, explicit cycle
-    local before="$1" remote_before="$2" ledger="$3" cycle_id="$4" branch sha
-    while IFS= read -r branch; do
-        [[ -n "$branch" && "$branch" != master ]] || continue
-        if grep -qxF "$branch" <<<"$remote_before"; then continue; fi
-        if loop_owned_branch "$branch" "$ledger"; then continue; fi
-        sha="$(git rev-parse "refs/heads/$branch" 2>/dev/null)" || return 1
-        loop_record_owned_tip "$branch" "$cycle_id" "$sha" "$ledger" || return 1
-    done < <(comm -13 <(printf '%s\n' "$before" | LC_ALL=C sort) \
-        <(git for-each-ref --format='%(refname:short)' refs/heads/ | LC_ALL=C sort))
+loop_record_worker_result() { # candidate artifact, cycle, baseline refs, ledger, accepted artifact
+    local result="$1" cycle="$2" before="$3" ledger="$4" accepted="$5"
+    local origin_id branch sha pushed_sha baseline_sha local_sha remote_sha pr login state candidate
+    [[ -f "$result" && ! -L "$result" && -O "$result" ]] || return 1
+    [[ "$(stat -c %a "$result")" == 600 && "$(stat -c %s "$result")" -le 4096 ]] || return 1
+    candidate="$(head -c 4097 "$result")" || return 1
+    [[ "${#candidate}" -le 4096 ]] || return 1
+    origin_id="$(loop_origin_id)" || return 1
+    jq -e --arg cycle "$cycle" --arg origin "$origin_id" '
+        type == "object" and .cycle == $cycle and .origin == $origin and
+        (.branch | type == "string") and (.sha | type == "string" and test("^[0-9a-f]{40}$")) and
+        .pushedSha == .sha and (.pr | type == "number" and . > 0 and floor == .)
+    ' <<<"$candidate" >/dev/null || return 1
+    branch="$(jq -r .branch <<<"$candidate")"
+    sha="$(jq -r .sha <<<"$candidate")"
+    pushed_sha="$(jq -r .pushedSha <<<"$candidate")"
+    pr="$(jq -r .pr <<<"$candidate")"
+    case "$branch" in fix/*|perf/*|chore/*|docs/*|feature/*) ;; *) return 1 ;; esac
+    git check-ref-format --branch "$branch" >/dev/null 2>&1 || return 1
+    baseline_sha="$(awk -F '\t' -v branch="$branch" '$1 == branch {print $2; exit}' <<<"$before")"
+    local_sha="$(git rev-parse "refs/heads/$branch" 2>/dev/null)" || return 1
+    [[ "$local_sha" == "$sha" ]] || return 1
+    if awk -F '\t' -v branch="$branch" -v sha="$sha" \
+        '$1 == branch && $2 == sha {found=1} END {exit !found}' <<<"$before"; then return 1; fi
+    remote_sha="$(git ls-remote --heads origin "refs/heads/$branch" | awk 'NR == 1 {print $1}')" || return 1
+    [[ "$remote_sha" == "$pushed_sha" ]] || return 1
+    login="$(gh api user --jq .login)" || return 1
+    state="$(gh pr view "$pr" --json number,headRefName,headRefOid,author,state,isCrossRepository,body)" || return 1
+    jq -e --arg login "$login" --arg branch "$branch" --arg sha "$sha" --argjson pr "$pr" '
+        .number == $pr and .author.login == $login and .headRefName == $branch and
+        .headRefOid == $sha and .state == "OPEN" and .isCrossRepository == false and
+        (.body | split("\n") | index("Loop-Owner: natiart-improvement-loop") != null)
+    ' <<<"$state" >/dev/null || return 1
+    # A repaired human PR remains human-owned even when this worker advances it.
+    if [[ -n "$baseline_sha" ]] && ! loop_owned_branch "$branch" "$ledger"; then return 0; fi
+    jq -c '{cycle,origin,branch,sha,pushedSha,pr}' <<<"$candidate" > "$accepted" || return 1
+    chmod 600 "$accepted" || return 1
+    loop_record_owned_tip "$branch" "$cycle" "$sha" "$ledger"
 }
 
 loop_delete_merged_remote_branch() { # $1=branch $2=ledger; current remote tip and atomic lease on every caller
@@ -258,6 +286,94 @@ latest_verdict() { # $1 = PR number; prints the FIRST LINE of the newest VERDICT
     # so a newer REQUEST_CHANGES always vetoes an older APPROVE. Leading
     # whitespace is tolerated (trimmed); case must match the review prompt.
     latest_verdict_body "$1" | grep -m1 '^VERDICT:' || true
+}
+
+latest_review_record() { # $1=PR; each trusted reviewer's latest formal state, including ordinary prose vetoes
+    local reviews
+    reviews="$(gh pr view "$1" --json reviews 2>/dev/null)" || return 1
+    jq -r --arg trusted "${NATIART_TRUSTED_REVIEWERS:-}" '
+        ($trusted | split(",")) as $allowed
+        | [.reviews[]? | select(.author.login as $login | $allowed | index($login))
+            | select(.state == "APPROVED" or .state == "CHANGES_REQUESTED" or .state == "DISMISSED")]
+        | group_by(.author.login) | map(sort_by(.submittedAt) | last)
+        | if any(.state == "CHANGES_REQUESTED") then
+            map(select(.state == "CHANGES_REQUESTED")) | sort_by(.submittedAt) | last
+          else map(select(.state == "APPROVED")) | sort_by(.submittedAt) | last end
+        | if . == null then empty else
+            [.author.login, .state, (.commit.oid // ""), ((.body // "") | ltrimstr(" ") | split("\n")[0])] | @tsv end' <<<"$reviews"
+}
+
+login_in_list() { # $1 = authenticated login; $2 = comma-separated allowlist
+    local login="$1" configured="$2" allowed_login
+    local -a allowed
+    [[ -n "$login" && -n "$configured" ]] || return 1
+    IFS=',' read -r -a allowed <<<"$configured"
+    for allowed_login in "${allowed[@]}"; do
+        [[ "$login" == "$allowed_login" ]] && return 0
+    done
+    return 1
+}
+
+trusted_latest_verdict() { # $1 = PR, $2 = exact head SHA; formal review only
+    local record reviewer state review_sha body pr_author
+    record="$(latest_review_record "$1")"
+    [[ "$record" == *$'\t'* ]] || return 1
+    IFS=$'\t' read -r reviewer state review_sha body <<<"$record"
+    [[ "$state" == APPROVED && "$review_sha" == "$2" && "$2" =~ ^[0-9a-f]{40}$ ]] || return 1
+    login_in_list "$reviewer" "${NATIART_TRUSTED_REVIEWERS:-}" || return 1
+    pr_author="$(gh pr view "$1" --json author --jq '.author.login // empty' 2>/dev/null)" || return 1
+    [[ -n "$pr_author" && "$reviewer" != "$pr_author" ]] || return 1
+    printf '%s\n' "$body" | sed -n '1p'
+}
+
+is_head_bound_approval() { # $1 = first verdict line; only full 40-character SHAs qualify
+    [[ "${1:-}" =~ ^VERDICT:\ APPROVE\ \(reviewed\ [0-9a-f]{40}\)$ ]]
+}
+
+pr_is_loop_owned() { # $1 = PR number; authenticated author + exact ownership marker
+    local author body
+    author="$(gh pr view "$1" --json author --jq '.author.login // empty' 2>/dev/null)" || return 1
+    body="$(gh pr view "$1" --json body --jq '.body // empty' 2>/dev/null)" || return 1
+    login_in_list "$author" "${NATIART_LOOP_AUTHORS:-Finrood}" || return 1
+    grep -qxF 'Loop-Owner: natiart-improvement-loop' <<<"$body"
+}
+
+pr_base_at_head() { # $1=PR $2=captured SHA; immutable compare base, fail closed on incomplete metadata
+    local base
+    [[ "${2:-}" =~ ^[0-9a-f]{40}$ ]] || return 1
+    base="$(gh pr view "$1" --json baseRefOid --jq .baseRefOid 2>/dev/null)" || return 1
+    [[ "$base" =~ ^[0-9a-f]{40}$ ]] || return 1
+    printf '%s' "$base"
+}
+
+pr_files_at_head() { # $1=PR $2=captured SHA; files never come from a later mutable PR head
+    local base
+    base="$(pr_base_at_head "$1" "$2")" || return 1
+    gh api --paginate "repos/{owner}/{repo}/compare/$base...$2" --jq 'if (.files | length) >= 300 then error("comparison file limit reached") else .files[].filename end' 2>/dev/null
+}
+
+pr_patch_at_head() { # $1=PR $2=captured SHA; exact dependency patch
+    local base
+    base="$(pr_base_at_head "$1" "$2")" || return 1
+    gh api "repos/{owner}/{repo}/compare/$base...$2" -H 'Accept: application/vnd.github.diff' 2>/dev/null
+}
+
+pr_checks_at_head() { # $1=full captured SHA; includes checks and legacy status contexts
+    [[ "${1:-}" =~ ^[0-9a-f]{40}$ ]] || return 1
+    local runs statuses
+    runs="$(gh api --paginate "repos/{owner}/{repo}/commits/$1/check-runs?per_page=100" --jq \
+        '.check_runs[] | [.name, (if .status != "completed" then "pending" elif .conclusion == "success" then "pass" else "fail" end), "", .html_url] | @tsv' 2>/dev/null)" || return 1
+    statuses="$(gh api "repos/{owner}/{repo}/commits/$1/status" --jq \
+        '.statuses[] | [.context, (if .state == "success" then "pass" elif .state == "pending" then "pending" else "fail" end), "", .target_url] | @tsv' 2>/dev/null)" || return 1
+    printf '%s\n%s\n' "$runs" "$statuses"
+}
+
+merge_pr_at_head() { # $1 = PR number; $2 = reviewed full head SHA
+    local current_head
+    [[ "${2:-}" =~ ^[0-9a-f]{40}$ ]] || return 1
+    current_head="$(gh pr view "$1" --json headRefOid --jq .headRefOid 2>/dev/null)" || return 1
+    [[ "$current_head" == "$2" ]] || return 1
+    gh pr merge "$1" --merge --delete-branch --match-head-commit "$2"
 }
 
 verdict_model() { # $1 = PR number; prints the Model: value of the newest

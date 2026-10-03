@@ -1,4 +1,4 @@
-import {ChangeDetectionStrategy, Component, OnDestroy, OnInit} from '@angular/core';
+import {ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject} from '@angular/core';
 import { AsyncPipe } from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
 import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
@@ -42,11 +42,11 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
   shippingState$: Observable<ShippingState> = this.shippingStateSubject.asObservable();
   private destroy$ = new Subject<void>();
 
-  constructor(
-    private fb: FormBuilder,
-    private shippingService: ShippingService
-  ) {
-    this.shippingForm = this.fb.group({
+  private readonly _fb: FormBuilder = inject(FormBuilder);
+  private readonly _shippingService: ShippingService = inject(ShippingService);
+
+  constructor() {
+    this.shippingForm = this._fb.group({
       cep: ['', [Validators.required, Validators.pattern(/^\d{5}-\d{3}$/)]],
     });
   }
@@ -70,7 +70,7 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
       },
       error => {
         reportError('shipping-estimation', error);
-        this.shippingStateSubject.next({status: 'error', cheapestOption: null, error: 'An unexpected error occurred.'});
+        this.shippingStateSubject.next({status: 'error', cheapestOption: null, error: $localize`An unexpected error occurred.`});
         this.shippingForm.get('cep')?.enable();
       }
     );
@@ -103,7 +103,7 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
       weight: 2,
       quantity: 1
     };
-    return this.shippingService.calculateShipping(request);
+    return this._shippingService.calculateShipping(request);
   }
 
   private processShippingOptions(options: ShippingEstimate[]): ShippingState {
@@ -120,7 +120,7 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
       observer.next({
         status: 'error',
         cheapestOption: null,
-        error: 'Error fetching shipping estimates. Please try again.'
+        error: $localize`Error fetching shipping estimates. Please try again.`
       });
       observer.complete();
     });

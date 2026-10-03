@@ -16,16 +16,12 @@ as `Idempotency-Key` to Asaas when the provider honors that contract.
 
 `spring.jpa.hibernate.ddl-auto=update` must not be used as the migration for
 this backstop. Apply the following during a maintenance window, before
-deploying the application version that writes reservations:
+deploying the application version that writes reservations. Create the table
+before querying it so this also works on a pre-feature installation:
 
 ```sql
--- Preflight: stop and reconcile duplicates before adding the constraint.
-SELECT owner_external_id, idempotency_key, COUNT(*)
-FROM payment_idempotency
-GROUP BY owner_external_id, idempotency_key
-HAVING COUNT(*) > 1;
-
-CREATE TABLE payment_idempotency (
+BEGIN;
+CREATE TABLE IF NOT EXISTS payment_idempotency (
     id varchar(36) PRIMARY KEY,
     owner_external_id varchar(128) NOT NULL,
     idempotency_key varchar(64) NOT NULL,
@@ -38,12 +34,18 @@ CREATE TABLE payment_idempotency (
         CHECK (status IN ('IN_PROGRESS', 'SUCCEEDED', 'FAILED_RECOVERABLE'))
 );
 
-CREATE UNIQUE INDEX uk_payment_idempotency_owner_key
+SELECT owner_external_id, idempotency_key, COUNT(*)
+FROM payment_idempotency
+GROUP BY owner_external_id, idempotency_key
+HAVING COUNT(*) > 1;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_payment_idempotency_owner_key
     ON payment_idempotency (owner_external_id, idempotency_key);
+COMMIT;
 ```
 
-For a brand-new database Hibernate creates the equivalent table and unique
-constraint. For an existing database, run the duplicate preflight, create the
-table/index, deploy, and then verify that all payment creation traffic carries
+For a brand-new database the same migration creates the table and unique
+constraint. For an existing database, run the transaction above, deploy, and
+then verify that all payment creation traffic carries
 the same key for a checkout retry. Reconciliation must resolve any
 `FAILED_RECOVERABLE` row against Asaas before allowing it to be retried.

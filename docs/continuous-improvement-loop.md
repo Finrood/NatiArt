@@ -297,9 +297,19 @@ table above is agent discipline, enforced by the cycle prompt.
   verdict marked with the current head means the round is spent and final. The self-heal merge skips PRs touching loop machinery (scripts/,
   agents/, AGENTS.md, mirrors, loop docs) regardless of verdicts, enforcing
   the self-modification ban mechanically.
+- Merge ownership: cycle-created PR bodies carry the exact
+  `Loop-Owner: natiart-improvement-loop` marker. The merge guard verifies it
+  and the authenticated PR author against `NATIART_LOOP_AUTHORS` (default
+  `Finrood`); a branch
+  prefix, comment text, or self-described model is not ownership proof.
+- Automatic merge requires a GitHub `APPROVED` review from a different login
+  explicitly listed in `NATIART_TRUSTED_REVIEWERS` (empty by default). The
+  provider review commit and the verdict's full SHA must both match the PR
+  head. `COMMENTED`, dismissed, self, and stale reviews cannot authorize it.
+
 - Remote hygiene: every cycle retries deletion of merged branches recorded when
-  this checkout's loop created them. The record lives in the common Git
-  directory and is tied to the origin URL and initial branch tip. A fresh
+  an explicit accepted implementation result attributed to this cycle. The record lives in the common Git
+  directory and is tied to the origin URL and exact produced branch tip. A fresh
   checkout preserves older unrecorded branches; operators must clean those up
   manually after verifying ownership. Deletion also checks the merged remote
   tip and uses a commit lease. Logs keep the last 300 cycles.
@@ -311,6 +321,20 @@ table above is agent discipline, enforced by the cycle prompt.
 `docs/audit-findings-archive.md`, keeping per-cycle read context lean as
 history grows). PRs reference their item; the merging cycle moves the section.
 Severity labels are exactly `High`/`Medium`/`Low`.
+
+### Captured candidate validation
+
+The implementation and Dependabot merge loops capture the full candidate SHA
+before validating scope or CI. Changed files and dependency patches come from
+immutable base/head comparisons; checks and legacy statuses are queried by that
+SHA. A comparison at the provider file-list limit is rejected. Later head or
+approval changes restart validation on a future cycle rather than adopting a
+new head with previously collected evidence. Merge retains the exact SHA lease.
+
+Each trusted independent reviewer's latest formal GitHub state is evaluated
+before custom verdict syntax. An active changes request vetoes approval even
+without a VERDICT body. Dismissal cannot resurrect an older approval; a later
+current-head formal approval can supersede that reviewer's earlier request.
 
 ### Branch ownership record and cleanup
 
@@ -325,3 +349,5 @@ on that exact recorded, merged commit. Failed deletion keeps the record;
 successful deletion retires it before the branch name can be reused. Local
 cleanup uses an expected-SHA ref deletion and preserves branches checked out in
 any attached worktree. Unknown and advanced branches remain for manual review.
+
+Worker ownership requires a private, size-bounded JSON result naming cycle, origin hash, exact branch, produced SHA, pushed SHA and authenticated open same-repository PR. The supervisor checks baseline refs, local and fresh remote tips, PR ownership marker and authenticated author before writing its normalized accepted artifact and enrolling that exact tip. Audit-only, failed, no-op and unrelated concurrent branches grant no authority; existing unowned repair PRs stay unowned. Candidate/accepted artifacts live in a private cycle directory and are removed after validation. There is no blanket before/after branch enrollment. Current dirty-worktree handling refuses salvage entirely; any future supervisor-created salvage must be registered explicitly at its own creation site.
