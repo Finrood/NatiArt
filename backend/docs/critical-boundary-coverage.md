@@ -17,7 +17,7 @@ of a disposable bare repository. No fixture contacts a real payment account.
 | Product DTO after database session closes | `ProductDetachedHttpContractTest`, committed JPA data followed by actual controller JSON serialization |
 | Purchase through native controls and routing | `checkout-http-journey.spec.ts`: real order/payment HTTP services, server total, pending/QR/confirmed screen; order conflict sends no payment request |
 | Packaged backend containers | `backend/scripts/smoke_images.sh`: clean/dirty contexts, host artifact exclusion, identical executable JARs, full runtime startup for both services |
-| Cleanup lease | `test_salvage_delete_lease.sh`: actual shared production helper rejects an advanced remote tip, deletes a stable tip, rejects invalid branch/SHA input |
+| Cleanup lease | `test_salvage_delete_lease.sh`: actual shared production helper rejects an advanced remote tip, deletes a stable tip, preserves unowned branches |
 
 Each committed JPA fixture has its own test context/database. It deliberately
 cannot roll back the transaction under test on behalf of production code or
@@ -42,8 +42,8 @@ Keep their HTTP/rendered regressions alongside this journey. Preserve their rece
 with the rendered assertions proving that asynchronous updates reach the screen.
 CA36's labels and CA26's image ordering extend the detached DTO fixture.
 
-CA41/CA42/CA46/CA62 extend the cleanup/review loop. Preserve the `delete_remote_with_lease` helper
-and its explicit validated SHA when reconciling the hygiene block. Do not invoke
+CA41/CA42/CA46/CA62 extend the cleanup/review loop. Preserve the ownership-aware `loop_delete_merged_remote_branch` helper,
+its ancestry checks and atomic lease when reconciling the hygiene block. Do not invoke
 the whole operational loop as a test: it can send messages, merge and delete
 branches. This fixture invokes only the exact production deletion boundary with
 an isolated local remote.
@@ -74,3 +74,8 @@ merged release:
 Whole integration patches and logs are kept outside the repository in the
 repair ledger. Historical production migrations, live provider reconciliation,
 heartbeat identity provisioning and real email delivery remain external gates.
+
+The integrated rollback fixture sorts its seeded IDs, empties the later product,
+and verifies both actual repository reservations in order before checking that
+the earlier database decrement was rolled back. This preserves the deterministic
+lock order introduced by CA13.

@@ -32,6 +32,7 @@ import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.repository.CategoryRepository;
 import com.portcelana.natiart.repository.PackageRepository;
 import com.portcelana.natiart.repository.ProductRepository;
+import com.portcelana.natiart.service.CategoryManager;
 import com.portcelana.natiart.service.ImageConversionService;
 import com.portcelana.natiart.service.ProductManager;
 
@@ -81,9 +82,9 @@ class ProductDetachedHttpContractTest {
         org.junit.jupiter.api.Assertions.assertEquals(0, sql.getEntityFetchCount());
         org.junit.jupiter.api.Assertions.assertEquals(0, sql.getCollectionFetchCount());
         final ProductManager manager = mock(ProductManager.class);
-        when(manager.getProductWithImagesOrDie(seeded.getId())).thenReturn(detached);
+        when(manager.getActiveProductWithImagesOrDie(seeded.getId())).thenReturn(detached);
         final MockMvc http = MockMvcBuilders.standaloneSetup(
-                        new ProductController(manager, mock(ImageConversionService.class)))
+                        new ProductController(manager, mock(CategoryManager.class), mock(ImageConversionService.class)))
                 .build();
         http.perform(get("/products/" + seeded.getId()))
                 .andExpect(status().isOk())

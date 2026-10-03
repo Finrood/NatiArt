@@ -26,7 +26,7 @@ describe('Rendered checkout HTTP journey', (): void => {
   };
   const items: CartItem[] = [{cartItemId: 'line-1', quantity: 1, product: {
     id: 'product-1', label: 'Bowl', originalPrice: 99.9, markedPrice: 99.9, stockQuantity: 2,
-    categoryId: 'category-1', availablePersonalizations: [], tags: new Set<string>(), images: [],
+    categoryId: 'category-1', availablePersonalizations: [], tags: [], images: [],
   }}];
 
   beforeEach(async (): Promise<void> => {
@@ -64,7 +64,10 @@ describe('Rendered checkout HTTP journey', (): void => {
   function submit(): TestRequest {
     void TestBed.inject(Router).navigateByUrl('/checkout');
     flushMicrotasks(); fixture.detectChanges();
-    click('Next: Shipping'); click('Next: Payment');
+    click('Next: Shipping');
+    const houseNumber: HTMLInputElement = (fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>('input[formControlName="houseNumber"]')!;
+    houseNumber.value = 'N/A'; houseNumber.dispatchEvent(new Event('input', {bubbles: true})); fixture.detectChanges();
+    click('Next: Payment');
     flushMicrotasks();
     const quote: TestRequest = http.expectOne((request): boolean => request.url.endsWith('/shipping/quote'));
     expect(quote.request.body.items).toEqual([{productId: 'product-1', quantity: 1}]);

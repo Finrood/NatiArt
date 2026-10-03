@@ -16,7 +16,7 @@ describe('Artwork draft recovery across reload', (): void => {
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])]}).compileComponents();
     const cart: CartService = TestBed.inject(CartService);
     const product: Product = {id: 'p1', label: 'Plate', originalPrice: 10, markedPrice: 10,
-      stockQuantity: 5, categoryId: 'c1', tags: new Set<string>(), images: [],
+      stockQuantity: 5, categoryId: 'c1', tags: [], images: [],
       availablePersonalizations: [PersonalizationOption.CUSTOM_IMAGE]};
     cart.addToCart({...product, id: 'ordinary'}, 1).subscribe();
     const modal = TestBed.createComponent(PersonalizationModalComponent);

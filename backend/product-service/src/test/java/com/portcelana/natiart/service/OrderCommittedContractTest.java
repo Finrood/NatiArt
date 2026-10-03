@@ -3,6 +3,7 @@ package com.portcelana.natiart.service;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -13,15 +14,18 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import com.portcelana.natiart.controller.helper.OrderCreationRejectedException;
 import com.portcelana.natiart.dto.OrderDto;
 import com.portcelana.natiart.dto.OrderItemDto;
 import com.portcelana.natiart.model.Category;
@@ -41,7 +45,7 @@ class OrderCommittedContractTest {
     @Autowired
     private OrderRepository orders;
 
-    @Autowired
+    @MockitoSpyBean
     private ProductRepository products;
 
     @Autowired
@@ -111,6 +115,7 @@ class OrderCommittedContractTest {
                 .setLastname("Customer")
                 .setEmail("contract@example.test")
                 .setZipCode("01001000")
+                .setHouseNumber("N/A")
                 .setItems(items);
     }
 
@@ -143,17 +148,26 @@ class OrderCommittedContractTest {
     @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void failureOnLaterLineRollsBackEarlierDatabaseStockReservationAndOrderInsert() {
-        final String first = seed(5);
-        final String second = seed(0);
+        final List<String> ids =
+                java.util.stream.Stream.of(seed(5), seed(5)).sorted().toList();
+        final String first = ids.getFirst();
+        final String second = ids.getLast();
+        transaction.executeWithoutResult(
+                status -> products.findById(second).orElseThrow().setStockQuantity(0));
         final String owner = "rollback-owner-" + UUID.randomUUID();
-        assertThrows(
-                IllegalArgumentException.class,
+        final OrderCreationRejectedException failure = assertThrows(
+                OrderCreationRejectedException.class,
                 () -> manager.createOrder(
                         request(List.of(
                                 new OrderItemDto().setProductId(first).setQuantity(2),
                                 new OrderItemDto().setProductId(second).setQuantity(1))),
                         owner,
                         "rollback-key"));
+        assertNotNull(failure.getCause());
+        assertTrue(failure.getCause().getMessage().contains("Insufficient stock"), failure.getCause()::getMessage);
+        final InOrder reservationOrder = inOrder(products);
+        reservationOrder.verify(products).decreaseStockIfAvailable(first, 2);
+        reservationOrder.verify(products).decreaseStockIfAvailable(second, 1);
         assertEquals(
                 5,
                 transaction

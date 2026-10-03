@@ -411,32 +411,12 @@ fi
 # 5. Stale-branch hygiene: prune local branches whose remote is gone.
 git fetch -q --prune origin
 git branch -vv | awk '/: gone]/{print $1}' | grep -v '^\*' | while read -r gone_branch; do
-    gone_sha="$(git rev-parse "refs/heads/$gone_branch" 2>/dev/null || true)"
-    if loop_owned_tip "$gone_branch" "$gone_sha" "$OWNERSHIP_LEDGER"; then
-        git branch -d "$gone_branch" 2>/dev/null || true
-    fi
+    loop_delete_merged_local_branch "$gone_branch" "$OWNERSHIP_LEDGER" || true
 done || true
 # Salvage retention: keep the newest 5 salvage branches, and only delete older
 # branches after proving their commits are already merged into origin/master.
 # Old unmerged salvage is still recoverable WIP and must never be force-deleted.
-git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads/salvage/ 2>/dev/null | tail -n +6 | while read -r sb; do
-    sb_sha="$(git rev-parse "refs/heads/$sb" 2>/dev/null || true)"
-    if ! loop_owned_tip "$sb" "$sb_sha" "$OWNERSHIP_LEDGER"; then
-        log "Preserving unowned salvage branch $sb."
-        continue
-    fi
-    REMOTE_SB_SHA="$(git rev-parse "origin/$sb" 2>/dev/null || true)"
-    if git merge-base --is-ancestor "$sb" origin/master 2>/dev/null && \
-       { [[ -z "$REMOTE_SB_SHA" ]] || git merge-base --is-ancestor "$REMOTE_SB_SHA" origin/master 2>/dev/null; }; then
-        log "Deleting old merged salvage branch $sb."
-        git branch -D "$sb" 2>/dev/null || true
-        if [[ -n "$REMOTE_SB_SHA" ]] && ! delete_remote_with_lease "$sb" "$REMOTE_SB_SHA" 2>/dev/null; then
-            log "Remote salvage $sb changed during validation; preserving it."
-        fi
-    else
-        log "Preserving old salvage branch $sb (local or remote tip is unmerged)."
-    fi
-done
+loop_cleanup_old_local_salvage "$OWNERSHIP_LEDGER"
 
 # 5a. Mechanical verdict production. Runs every cycle, including REPAIR MODE —
 # and reviews RED PRs too: the reviewer is the one who reports machine-readable
@@ -540,13 +520,8 @@ done || true
 # branches fully merged into master, only loop prefixes — never master,
 # dependabot/*, or unmerged work. Salvage retention uses fetched commit age and
 # verifies the remote tip is merged before deleting anything.
-git branch -r --merged origin/master 2>/dev/null | sed 's#^ *origin/##' | grep -E '^(fix|perf|chore|docs|feature)/' | sort -u | while read -r b; do
-    loop_delete_merged_remote_branch "$b" "$OWNERSHIP_LEDGER"
-done || true
-git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/remotes/origin/salvage/ 2>/dev/null | sed 's#^origin/##' | tail -n +6 | while read -r sb; do
-    [[ -z "$sb" ]] && continue
-    loop_delete_merged_remote_branch "$sb" "$OWNERSHIP_LEDGER"
-done || true
+loop_cleanup_merged_remote_branches "$OWNERSHIP_LEDGER"
+loop_cleanup_old_remote_salvage "$OWNERSHIP_LEDGER"
 
 # 6. Hand one item to the agent (non-interactive, repo permission policy applies;
 #    never --auto). Timeout keeps the 30-minute cadence honest. The lens rotates
@@ -583,9 +558,19 @@ if (( SLOT % 480 == 0 )); then
 $(cat scripts/redteam-addendum.md)"
 fi
 log "Invoking agent for one cycle item."
-BEFORE_BRANCH_REFS="$(git for-each-ref --format='%(refname:short)' refs/heads/ | LC_ALL=C sort)"
-BEFORE_REMOTE_BRANCH_REFS="$(git for-each-ref --format='%(refname:short)' refs/remotes/origin/ | sed 's#^origin/##' | LC_ALL=C sort)"
+BEFORE_BRANCH_REFS="$(git for-each-ref --format='%(refname:short)%09%(objectname)' refs/heads/ refs/remotes/origin/ | sed 's#^origin/##')"
 CYCLE_OWNERSHIP_ID="$(cat /proc/sys/kernel/random/uuid)"
+CYCLE_ORIGIN_ID="$(loop_origin_id)"
+RESULT_DIR="$(mktemp -d "$LOOP_GIT_DIR/natiart-worker-result.XXXXXX")"
+chmod 700 "$RESULT_DIR"
+WORKER_RESULT="$RESULT_DIR/candidate.json"
+ACCEPTED_RESULT="$RESULT_DIR/accepted.json"
+: > "$WORKER_RESULT"
+chmod 600 "$WORKER_RESULT"
+CYCLE_MSG="$CYCLE_MSG
+Explicit worker result: after producing and pushing a commit, write JSON to $WORKER_RESULT:
+{\"cycle\":\"$CYCLE_OWNERSHIP_ID\",\"origin\":\"$CYCLE_ORIGIN_ID\",\"branch\":\"exact branch\",\"sha\":\"full produced SHA\",\"pushedSha\":\"same full pushed SHA\",\"pr\":123}.
+Name only your intended implementation branch and authenticated PR. Audit-only or failed/no-op work must leave this file empty. Do not enroll branches yourself."
 # Model failover: run-agent.sh walks the priority list from
 # scripts/agent-models.conf (opencode Muse free -> cline Muse -> cline DeepSeek
 # -> cline GLM),
@@ -595,12 +580,16 @@ CYCLE_OWNERSHIP_ID="$(cat /proc/sys/kernel/random/uuid)"
 # STATUS is preset: a failing agent run must NOT trip `set -e` before the
 # reviewer-wait and health row below (a dead reviewer wait orphans the review).
 STATUS=0
-timeout 1500 scripts/run-agent.sh --role cycle --budget 1500 --title "improvement-loop $(date +%Y%m%d-%H%M)" "$CYCLE_MSG" || STATUS=$?
-if ! loop_record_new_branches "$BEFORE_BRANCH_REFS" "$BEFORE_REMOTE_BRANCH_REFS" \
-    "$OWNERSHIP_LEDGER" "$CYCLE_OWNERSHIP_ID"; then
-    log "Failed to record branch ownership; leaving all new branches untouched for manual recovery."
-    STATUS=1
+NATIART_CYCLE_ID="$CYCLE_OWNERSHIP_ID" NATIART_DELIVERABLE_FILE="$WORKER_RESULT" timeout 1500 scripts/run-agent.sh --role cycle --budget 1500 --title "improvement-loop $(date +%Y%m%d-%H%M)" "$CYCLE_MSG" || STATUS=$?
+if [[ "$STATUS" -eq 0 && -s "$WORKER_RESULT" ]]; then
+    if ! loop_record_worker_result "$WORKER_RESULT" "$CYCLE_OWNERSHIP_ID" "$BEFORE_BRANCH_REFS" \
+        "$OWNERSHIP_LEDGER" "$ACCEPTED_RESULT"; then
+        log "Rejected worker attribution; leaving all new branches untouched."
+        STATUS=1
+    fi
 fi
+# No discovery fallback: failed, audit-only and no-op workers own no new refs.
+rm -rf "$RESULT_DIR"
 if [[ "$STATUS" -eq 124 ]]; then
     log "Agent cycle hit the 25-minute timeout; leaving state for next cycle."
 fi

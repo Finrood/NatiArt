@@ -18,6 +18,12 @@ public interface Storage {
 
     URI uploadFile(String location, String key, InputFile file);
 
+    /** Resolve the confined target before writing so durable ownership can be recorded. */
+    URI uploadTarget(String location, String key);
+
+    /** Idempotently remove an owned file. */
+    void delete(URI uri);
+
     void deleteFile(URI uri);
 
     InputStream downloadFiles(Set<URI> uriSet);
