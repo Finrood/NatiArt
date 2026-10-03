@@ -29,7 +29,6 @@ interface ImagePreview {
 
 @Component({
   selector: 'app-admin-product-management',
-  standalone: true,
   imports: [CommonModule, ReactiveFormsModule, DragDropModule, AlertMessageComponent, ButtonComponent, PageControlsComponent],
   templateUrl: './admin-product-management.component.html',
   styleUrls: ['./admin-product-management.component.css']
@@ -81,6 +80,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
       originalPrice: [0, [Validators.required, Validators.min(0)]],
       markedPrice: [0, Validators.min(0)],
       stockQuantity: [0, [Validators.required, Validators.min(0)]],
+      weightKg: [0, [Validators.required, Validators.min(0.001)]],
       categoryId: ['', Validators.required],
       packageId: [''],
       hasFixedGoldenBorder: [''],
@@ -100,7 +100,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   }
 
   readonly pages = new PagedList<Product>((page: number) => this.productService.getProductsPage(undefined, page, 20, '', true),
-    (items: Product[]): void => {this._products$.next(items); this.updateAllProductImages(items);}, inject(DestroyRef), (): void => this.showAlert('Error loading products', 'error'));
+    (items: Product[]): void => {this._products$.next(items); this.updateAllProductImages(items);}, inject(DestroyRef), (): void => this.showAlert($localize`Error loading products`, 'error'));
 
   readonly categoryOptions = new PagedList<Category>((page: number) => this.categoryService.getCategoriesPage(page, 20, true),
     (items: Category[]): void => this.categories.next([...new Map([...this.categories.value, ...items]
@@ -177,6 +177,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
       this.loadExistingImages(this.imagePreviews.map((preview: ImagePreview) => preview.originalUrl!), sessionGeneration);
     } else {
       this.productForm.reset({
+        weightKg: 0,
         originalPrice: 0,
         markedPrice: 0,
         stockQuantity: 0,
@@ -245,11 +246,11 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
       next: () => {
         this.pages.load(this.pages.$page());
         this._products$.next(this._products$.value.filter(prod => prod.id !== id));
-        this.showAlert('Product deleted successfully', 'success');
+        this.showAlert($localize`Product deleted successfully`, 'success');
       },
       error: (error) => {
         reportError('product-management', error);
-        this.showAlert('Error deleting product', 'error');
+        this.showAlert($localize`Error deleting product`, 'error');
       }
     });
   }
@@ -262,7 +263,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
       },
       error: (error) => {
         reportError('product-management', error);
-        this.showAlert('Error changing product visibility', 'error');
+        this.showAlert($localize`Error changing product visibility`, 'error');
       }
     });
   }
@@ -274,12 +275,12 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         this._products$.next([...this._products$.value, response]);
         this.updateProductImage(response);
         this.closeModal();
-        this.showAlert('Product added successfully', 'success');
+        this.showAlert($localize`Product added successfully`, 'success');
         this.isSubmitting = false;
       },
       error: (error) => {
         reportError('product-management', error);
-        this.showAlert('Error adding product', 'error');
+        this.showAlert($localize`Error adding product`, 'error');
         this.isSubmitting = false;
       }
     });
@@ -292,12 +293,12 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         this._products$.next(this._products$.value.map(prod => prod.id === response.id ? response : prod));
         this.updateProductImage(response);
         this.closeModal();
-        this.showAlert('Product updated successfully', 'success');
+        this.showAlert($localize`Product updated successfully`, 'success');
         this.isSubmitting = false;
       },
       error: (error) => {
         reportError('product-management', error);
-        this.showAlert('Error updating product', 'error');
+        this.showAlert($localize`Error updating product`, 'error');
         this.isSubmitting = false;
       }
     });
@@ -391,7 +392,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         if (sessionGeneration !== this.imageSessionGeneration
           || !this.imagePreviews.some((preview: ImagePreview) => preview.id === previewId)) return;
         reportError('product-image', error);
-        this.showAlert('Error loading product image', 'error');
+        this.showAlert($localize`Error loading product image`, 'error');
       }
     });
     this.previewSubscriptions.set(previewId, subscription);
@@ -490,9 +491,9 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
 
   getPersonalizationOptionLabel(option: string): string {
     switch (option) {
-      case 'None': return 'No personalization available';
-      case 'CUSTOM_IMAGE': return 'Customer can personalize the image';
-      case 'GOLDEN_BORDER': return 'Customer can choose if borders are golden';
+      case 'None': return $localize`No personalization available`;
+      case 'CUSTOM_IMAGE': return $localize`Customer can personalize the image`;
+      case 'GOLDEN_BORDER': return $localize`Customer can choose if borders are golden`;
       default: return option;
     }
   }

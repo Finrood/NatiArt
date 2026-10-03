@@ -78,6 +78,7 @@ class ProductImageOrderPersistenceTest {
                 new InputFile(new ByteArrayInputStream(new byte[] {1}), "image/webp", uploadId + ".webp", 1);
         when(storage.uploadFile(any(String.class), any(InputFile.class))).thenReturn(URI.create("file:///owned/new"));
         final ProductDto dto = new ProductDto("Art", BigDecimal.TEN)
+                .setWeightKg(BigDecimal.ONE)
                 .setId(id)
                 .setCategoryId(category.getId())
                 .setImageManifest(List.of(
@@ -106,6 +107,7 @@ class ProductImageOrderPersistenceTest {
                         .setImages(List.of("owned")))
                 .getId());
         final ProductDto dto = new ProductDto("Changed", BigDecimal.ONE)
+                .setWeightKg(BigDecimal.ONE)
                 .setId(id)
                 .setCategoryId(category.getId())
                 .setImageManifest(List.of(new ProductImageReferenceDto("foreign", null)));

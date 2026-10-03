@@ -33,7 +33,7 @@ export class PagedList<T> {
         this.$loading.set(false);
       },
       error: (): void => {
-        this.$error.set('Could not load this page. Please retry.');
+        this.$error.set($localize`Could not load this page. Please retry.`);
         this.onError();
         this.$loading.set(false);
       },

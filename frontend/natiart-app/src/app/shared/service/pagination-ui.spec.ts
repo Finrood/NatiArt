@@ -101,6 +101,9 @@ describe('Product management paged reference selectors', () => {
     const input: HTMLInputElement = fixture.nativeElement.querySelector('input[formControlName="label"]');
     input.value = 'Art';
     input.dispatchEvent(new Event('input'));
+    const weight: HTMLInputElement = fixture.nativeElement.querySelector('input[formControlName="weightKg"]');
+    weight.value = '0.5';
+    weight.dispatchEvent(new Event('input'));
     fixture.detectChanges();
     fixture.nativeElement.querySelector('form').dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}));
     const request = http.expectOne((r) => r.method === 'POST');

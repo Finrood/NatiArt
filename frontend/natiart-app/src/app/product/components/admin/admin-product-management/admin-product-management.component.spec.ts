@@ -128,7 +128,7 @@ describe('ProductManagementComponent ordered image sessions', () => {
   let imageRequests: Map<string, Subject<Blob>>;
   let productService: {getProductsPage: jasmine.Spy; getImage: jasmine.Spy; updateProduct: jasmine.Spy};
   const product = (id: string, images: string[]): Product => ({id, images, label: 'Art', originalPrice: 10,
-    markedPrice: 10, stockQuantity: 10, categoryId: 'cat', tags: new Set<string>(), availablePersonalizations: []});
+    markedPrice: 10, stockQuantity: 10, weightKg: 0.5, categoryId: 'cat', tags: new Set<string>(), availablePersonalizations: []});
 
   beforeEach(async () => {
     imageRequests = new Map<string, Subject<Blob>>();
