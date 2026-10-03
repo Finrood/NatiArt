@@ -1,4 +1,4 @@
-import {AfterViewInit, Component, HostListener, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
+import {AfterViewInit, ChangeDetectorRef, Component, DestroyRef, HostListener, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {ProductService} from '../../../service/product.service';
@@ -13,10 +13,14 @@ import {CdkDragDrop, DragDropModule, moveItemInArray} from '@angular/cdk/drag-dr
 import {PersonalizationOption} from '../../../models/support/personalization-option';
 import {ImageService} from '../../../service/image.service';
 import {AlertMessageComponent} from "../../../../shared/components/alert-message/alert-message.component";
+import {PagedList} from '../../../../shared/service/paged-list';
+import {PageControlsComponent} from '../../../../shared/components/page-controls.component';
 import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportError, reportWarning} from '../../../../shared/service/error-reporting.service';
 
 interface ImagePreview {
+  id: string;
+  objectUrl?: string;
   url: string | SafeUrl;
   isExisting: boolean;
   file?: File;
@@ -25,7 +29,7 @@ interface ImagePreview {
 
 @Component({
   selector: 'app-admin-product-management',
-  imports: [CommonModule, ReactiveFormsModule, DragDropModule, AlertMessageComponent, ButtonComponent],
+  imports: [CommonModule, ReactiveFormsModule, DragDropModule, AlertMessageComponent, ButtonComponent, PageControlsComponent],
   templateUrl: './admin-product-management.component.html',
   styleUrls: ['./admin-product-management.component.css']
 })
@@ -60,6 +64,11 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   private objectUrlsCreated: string[] = [];
   private pendingAlerts: Array<{ message: string; type: 'success' | 'error' }> = [];
   private pendingAlertsTimer: ReturnType<typeof setTimeout> | undefined = undefined;
+  private imageSessionGeneration = 0;
+  private readonly _cdr = inject(ChangeDetectorRef);
+  private readonly previewSubscriptions = new Map<string, Subscription>();
+  private readonly coverSubscriptions = new Map<string, Subscription>();
+  private readonly coverObjectUrls = new Map<string, string>();
 
   availablePersonalizationOptions = Object.values(PersonalizationOption);
 
@@ -90,6 +99,16 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
     this.isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   }
 
+  readonly pages = new PagedList<Product>((page: number) => this.productService.getProductsPage(undefined, page, 20, '', true),
+    (items: Product[]): void => {this._products$.next(items); this.updateAllProductImages(items);}, inject(DestroyRef), (): void => this.showAlert($localize`Error loading products`, 'error'));
+
+  readonly categoryOptions = new PagedList<Category>((page: number) => this.categoryService.getCategoriesPage(page, 20, true),
+    (items: Category[]): void => this.categories.next([...new Map([...this.categories.value, ...items]
+      .map((item: Category) => [item.id, item] as const)).values()]), inject(DestroyRef));
+  readonly packageOptions = new PagedList<Package>((page: number) => this.packageService.getPackagesPage(page, 20, true),
+    (items: Package[]): void => this.packages.next([...new Map([...this.packages.value, ...items]
+      .map((item: Package) => [item.id, item] as const)).values()]), inject(DestroyRef));
+
   ngOnInit(): void {
     this.getProducts();
     this.getCategories();
@@ -111,6 +130,9 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngOnDestroy(): void {
+    this.releasePreviews();
+    this.coverSubscriptions.forEach((subscription: Subscription): void => subscription.unsubscribe());
+    this.imageSessionGeneration++;
     this.subscriptions.forEach(subscription => subscription.unsubscribe());
     this.objectUrlsCreated.forEach((url: string) => URL.revokeObjectURL(url));
     this.objectUrlsCreated = [];
@@ -132,6 +154,8 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   }
 
   openModal(product?: Product): void {
+    this.releasePreviews();
+    const sessionGeneration = ++this.imageSessionGeneration;
     this.isEditingProduct = !!product;
     if (product) {
       this.productForm.patchValue(product);
@@ -144,12 +168,13 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         this.productForm.get('CUSTOM_IMAGE')?.setValue(true);
       }
 
-      this.imagePreviews = (product.images || []).map(imagePath => ({
+      this.imagePreviews = Array.from(new Set(product.images || [])).map(imagePath => ({
+        id: imagePath,
         url: imagePath,
         isExisting: true,
         originalUrl: imagePath
       }));
-      this.loadExistingImages(product.images || []);
+      this.loadExistingImages(this.imagePreviews.map((preview: ImagePreview) => preview.originalUrl!), sessionGeneration);
     } else {
       this.productForm.reset({
         weightKg: 0,
@@ -167,17 +192,20 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   }
 
   closeModal(): void {
+    this.releasePreviews();
+    this.imageSessionGeneration++;
     this.modalVisible = false;
     this.productForm.reset();
     this.imageFiles = [];
     this.imagePreviews = [];
+    this.isLoadingImages = false;
   }
 
   submitForm(): void {
-    if (this.productForm.valid && !this.isSubmitting) {
+    if (this.productForm.valid && !this.isSubmitting && !this.isLoadingImages) {
       this.isSubmitting = true;
       const formData = new FormData();
-      const product: Product = this.productForm.getRawValue();
+      const product: Product & {imageManifest?: Array<{existingImage?: string; uploadId?: string}>} = this.productForm.getRawValue();
 
       product.availablePersonalizations = []
       if (this.productForm.get('GOLDEN_BORDER')?.getRawValue() === true) {
@@ -192,12 +220,14 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         .filter(preview => preview.isExisting)
         .map(preview => preview.originalUrl || preview.url as string);
 
+      product.imageManifest = this.imagePreviews.map((preview: ImagePreview) => preview.isExisting
+        ? {existingImage: preview.originalUrl!} : {uploadId: preview.id});
       formData.append('productDto', new Blob([JSON.stringify(product)], { type: 'application/json' }));
       this.imagePreviews
         .filter(preview => !preview.isExisting)
         .forEach(preview => {
           if (preview.file) {
-            formData.append('newImages', preview.file, preview.file.name);
+            formData.append('newImages', preview.file, `${preview.id}.webp`);
           }
         });
 
@@ -214,6 +244,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   deleteProduct(id: string): void {
     this.productService.deleteProduct(id).subscribe({
       next: () => {
+        this.pages.load(this.pages.$page());
         this._products$.next(this._products$.value.filter(prod => prod.id !== id));
         this.showAlert($localize`Product deleted successfully`, 'success');
       },
@@ -227,6 +258,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   toggleProductVisibility(product: Product): void {
     this.productService.inverseProductVisibility(product.id!).subscribe({
       next: (response: Product) => {
+        this.pages.load(this.pages.$page());
         this._products$.next(this._products$.value.map(prod => prod.id === response.id ? response : prod));
       },
       error: (error) => {
@@ -239,6 +271,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   private addProduct(formData: FormData): void {
     this.productService.addProduct(formData).subscribe({
       next: (response) => {
+        this.pages.load(this.pages.$page());
         this._products$.next([...this._products$.value, response]);
         this.updateProductImage(response);
         this.closeModal();
@@ -256,6 +289,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   private updateProduct(productId: string, formData: FormData): void {
     this.productService.updateProduct(productId, formData).subscribe({
       next: (response: Product) => {
+        this.pages.load(this.pages.$page());
         this._products$.next(this._products$.value.map(prod => prod.id === response.id ? response : prod));
         this.updateProductImage(response);
         this.closeModal();
@@ -270,38 +304,11 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
     });
   }
 
-  private getProducts(): void {
-    this.productService.getProducts().subscribe({
-      next: (response: Product[]) => {
-        this._products$.next(response);
-        this.updateAllProductImages(response);
-      },
-      error: (error) => {
-        reportError('product-management', error);
-        this.showAlert($localize`Error loading products`, 'error');
-      }
-    });
-  }
+  private getProducts(): void { this.pages.load(0); }
 
-  private getCategories(): void {
-    this.categoryService.getCategories().subscribe({
-      next: (response) => this.categories.next(response),
-      error: (error) => {
-        reportError('category', error);
-        this.showAlert($localize`Error loading categories`, 'error');
-      }
-    });
-  }
+  private getCategories(): void { this.categoryOptions.load(0); }
 
-  private getPackages(): void {
-    this.packageService.getPackages().subscribe({
-      next: (response) => this.packages.next(response),
-      error: (error) => {
-        reportError('package', error);
-        this.showAlert($localize`Error loading packages`, 'error');
-      }
-    });
-  }
+  private getPackages(): void { this.packageOptions.load(0); }
 
   private validateAllFormFields(formGroup: FormGroup): void {
     Object.keys(formGroup.controls).forEach(field => {
@@ -327,6 +334,12 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   private updateProductImage(product: Product): void {
     if (product.images && product.images.length > 0) {
       this.fetchImage(product.id!, product.images[0]);
+    } else if (product.id) {
+      this.coverSubscriptions.get(product.id)?.unsubscribe();
+      const previous: string | undefined = this.coverObjectUrls.get(product.id);
+      if (previous) this.revokeObjectUrl(previous);
+      this.coverObjectUrls.delete(product.id);
+      this.imageUrls[product.id] = null;
     }
   }
 
@@ -339,9 +352,13 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   }
 
   private fetchImage(productId: string, imagePath: string): void {
+    this.coverSubscriptions.get(productId)?.unsubscribe();
     const subscription = this.productService.getImage(imagePath).subscribe({
       next: blob => {
+        const previous: string | undefined = this.coverObjectUrls.get(productId);
+        if (previous) this.revokeObjectUrl(previous);
         const objectUrl = URL.createObjectURL(blob);
+        this.coverObjectUrls.set(productId, objectUrl);
         this.objectUrlsCreated.push(objectUrl);
         this.imageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
         this._products$.next([...this._products$.value]);
@@ -351,52 +368,76 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         this.imageUrls[productId] = null;
       }
     });
-    this.subscriptions.push(subscription);
+    this.coverSubscriptions.set(productId, subscription);
   }
 
-  private loadExistingImages(imagePaths: string[]): void {
-    imagePaths.forEach((path, index) => {
-      this.fetchImagePreview(path, index);
-    });
+  private loadExistingImages(imagePaths: string[], sessionGeneration: number): void {
+    imagePaths.forEach((path: string): void => this.fetchImagePreview(path, path, sessionGeneration));
   }
 
-  private fetchImagePreview(imagePath: string, index: number): void {
-    const subscription = this.productService.getImage(imagePath).subscribe({
-      next: blob => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          this.imagePreviews[index] = {
-            url: this.sanitizer.bypassSecurityTrustResourceUrl(reader.result as string),
-            isExisting: true,
-            originalUrl: imagePath
-          };
-        };
-        reader.readAsDataURL(blob);
+  private fetchImagePreview(imagePath: string, previewId: string, sessionGeneration: number): void {
+    const subscription: Subscription = this.productService.getImage(imagePath).subscribe({
+      next: (blob: Blob): void => {
+        const index: number = this.imagePreviews.findIndex((preview: ImagePreview) => preview.id === previewId);
+        if (sessionGeneration !== this.imageSessionGeneration || index < 0) return;
+        const objectUrl: string = URL.createObjectURL(blob);
+        this.objectUrlsCreated.push(objectUrl);
+        const previous: string | undefined = this.imagePreviews[index].objectUrl;
+        if (previous) this.revokeObjectUrl(previous);
+        this.imagePreviews[index] = {...this.imagePreviews[index], objectUrl,
+          url: this.sanitizer.bypassSecurityTrustUrl(objectUrl)};
+        this._cdr.markForCheck();
       },
-      error: error => {
+      error: (error: unknown): void => {
+        if (sessionGeneration !== this.imageSessionGeneration
+          || !this.imagePreviews.some((preview: ImagePreview) => preview.id === previewId)) return;
         reportError('product-image', error);
         this.showAlert($localize`Error loading product image`, 'error');
       }
     });
-    this.subscriptions.push(subscription);
+    this.previewSubscriptions.set(previewId, subscription);
+  }
+
+  private revokeObjectUrl(url: string): void {
+    URL.revokeObjectURL(url);
+    this.objectUrlsCreated = this.objectUrlsCreated.filter((entry: string) => entry !== url);
+  }
+
+  private releasePreviews(): void {
+    this.previewSubscriptions.forEach((subscription: Subscription): void => subscription.unsubscribe());
+    this.previewSubscriptions.clear();
+    this.imagePreviews.forEach((preview: ImagePreview): void => {
+      if (preview.objectUrl) this.revokeObjectUrl(preview.objectUrl);
+    });
   }
 
   async onFileSelected(event: Event): Promise<void> {
+    const sessionGeneration = this.imageSessionGeneration;
     this.isLoadingImages = true;
     const element = event.target as HTMLInputElement;
     const fileList: FileList | null = element.files;
     if (fileList) {
       const newFiles = Array.from(fileList);
       for (const file of newFiles) {
+        if (sessionGeneration !== this.imageSessionGeneration) {
+          return;
+        }
         if (this.imageService.isValidImageFile(file)) {
           try {
-            const preview = await this.imageService.generateImagePreview(file);
+            const converted: File = await this.imageService.convertFile(file);
+            if (sessionGeneration !== this.imageSessionGeneration) {
+              return;
+            }
+            const objectUrl: string = URL.createObjectURL(converted);
+            this.objectUrlsCreated.push(objectUrl);
             this.imagePreviews.push({
-              url: preview.url,
+              id: crypto.randomUUID(),
+              objectUrl,
+              url: this.sanitizer.bypassSecurityTrustUrl(objectUrl),
               isExisting: false,
-              file: preview.file
+              file: converted
             });
-            this.imageFiles.push(preview.file);
+            this.imageFiles.push(converted);
           } catch (error) {
             reportError('image-conversion', error);
           }
@@ -405,7 +446,10 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         }
       }
     }
-    this.isLoadingImages = false;
+    if (sessionGeneration === this.imageSessionGeneration) {
+      this.isLoadingImages = false;
+      this._cdr.markForCheck();
+    }
   }
 
   onImageDrop(event: CdkDragDrop<ImagePreview[]>): void {
@@ -413,8 +457,13 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
     this.updateProductImages();
   }
 
-  removeImage(index: number): void {
+  removeImage(previewId: string): void {
+    const index: number = this.imagePreviews.findIndex((preview: ImagePreview) => preview.id === previewId);
     if (!this.isDragging && index >= 0 && index < this.imagePreviews.length) {
+      this.previewSubscriptions.get(previewId)?.unsubscribe();
+      this.previewSubscriptions.delete(previewId);
+      const objectUrl: string | undefined = this.imagePreviews[index].objectUrl;
+      if (objectUrl) this.revokeObjectUrl(objectUrl);
       this.imagePreviews.splice(index, 1);
       this.updateProductImages();
     }

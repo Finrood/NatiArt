@@ -6,10 +6,13 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -23,7 +26,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
+import com.portcelana.natiart.dto.PagedResponseDto;
 import com.portcelana.natiart.dto.ProductDto;
+import com.portcelana.natiart.dto.product.ProductImageReferenceDto;
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.model.Product;
@@ -98,6 +103,14 @@ public class ProductManagerImpl implements ProductManager {
 
     @Override
     @Transactional(readOnly = true)
+    public Product getActiveProductWithImagesOrDie(String id) {
+        return productRepository
+                .findActiveByIdWithImages(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product with id [" + id + "] not found"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Map<String, Product> getProductsOrDie(Collection<String> ids) {
         final Map<String, Product> byId = productRepository.findAllById(ids).stream()
                 .collect(Collectors.toMap(Product::getId, Function.identity()));
@@ -117,8 +130,20 @@ public class ProductManagerImpl implements ProductManager {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Product> getActiveProducts(Pageable pageable) {
+        return fetchPageWithImages(productRepository.findAllActiveIds(pageable), true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Product> getNewProducts(Pageable pageable) {
         return fetchPageWithImages(productRepository.findAllIdsByNewProduct(true, pageable));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Product> getActiveNewProducts(Pageable pageable) {
+        return fetchPageWithImages(productRepository.findAllActiveIdsByNewProduct(true, pageable), true);
     }
 
     @Override
@@ -129,17 +154,36 @@ public class ProductManagerImpl implements ProductManager {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Product> getActiveFeaturedProducts(Pageable pageable) {
+        return fetchPageWithImages(productRepository.findAllActiveIdsByFeaturedProduct(true, pageable), true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Product> getProductsByCategory(Category category, Pageable pageable) {
         return fetchPageWithImages(productRepository.findAllIdsByCategory(category, pageable));
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<Product> getActiveProductsByCategory(Category category, Pageable pageable) {
+        return fetchPageWithImages(productRepository.findAllActiveIdsByCategory(category, pageable), true);
+    }
+
     private List<Product> fetchPageWithImages(Page<String> idPage) {
+        return fetchPageWithImages(idPage, false);
+    }
+
+    private List<Product> fetchPageWithImages(Page<String> idPage, boolean activeOnly) {
         final List<String> ids = idPage.getContent();
         if (ids.isEmpty()) {
             return List.of();
         }
-        final Map<String, Product> byId = productRepository.findAllWithImagesByIds(ids).stream()
-                .collect(Collectors.toMap(Product::getId, Function.identity()));
+        final List<Product> fetched = activeOnly
+                ? productRepository.findAllActiveWithImagesByIds(ids)
+                : productRepository.findAllWithImagesByIds(ids);
+        final Map<String, Product> byId =
+                fetched.stream().collect(Collectors.toMap(Product::getId, Function.identity()));
         return ids.stream()
                 .map(byId::get)
                 // A product deleted between the id-page query and the fetch query simply drops from the page
@@ -152,6 +196,29 @@ public class ProductManagerImpl implements ProductManager {
     @Transactional(readOnly = true)
     public boolean existsByCategory(Category category) {
         return productRepository.existsByCategory(category);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PagedResponseDto<ProductDto> getProductsPage(
+            String categoryId, String query, Pageable pageable, boolean includeInactive) {
+        final String normalizedCategory = categoryId == null || categoryId.isBlank() ? null : categoryId.trim();
+        final String normalizedQuery = query == null ? "" : query.trim().toLowerCase(java.util.Locale.ROOT);
+        if (normalizedQuery.length() > 200) throw new IllegalArgumentException("Search is limited to 200 characters");
+        final Page<String> ids =
+                productRepository.findCatalogIds(normalizedCategory, normalizedQuery, includeInactive, pageable);
+        final Map<String, Product> products = fetchPageWithImages(ids, !includeInactive).stream()
+                .collect(Collectors.toMap(Product::getId, Function.identity()));
+        return new PagedResponseDto<>(
+                ids.getContent().stream()
+                        .map(products::get)
+                        .filter(Objects::nonNull)
+                        .map(ProductDto::from)
+                        .toList(),
+                ids.getTotalElements(),
+                ids.getNumber(),
+                ids.getSize(),
+                ids.hasNext());
     }
 
     @Override
@@ -179,7 +246,7 @@ public class ProductManagerImpl implements ProductManager {
                 .setNewProduct(productDto.isNewProduct())
                 .setFeaturedProduct(productDto.isFeaturedProduct());
 
-        final List<String> imagesUris = processImages(product, productDto.getImages(), imagesInput);
+        final List<String> imagesUris = processImages(product, productDto, imagesInput);
         product.setImages(imagesUris);
 
         return productRepository.save(product);
@@ -211,7 +278,7 @@ public class ProductManagerImpl implements ProductManager {
                 .setNewProduct(productDto.isNewProduct())
                 .setFeaturedProduct(productDto.isFeaturedProduct());
 
-        final List<String> imagesUris = processImages(product, productDto.getImages(), imagesInput);
+        final List<String> imagesUris = processImages(product, productDto, imagesInput);
         product.setImages(imagesUris);
 
         return productRepository.save(product);
@@ -260,26 +327,68 @@ public class ProductManagerImpl implements ProductManager {
                 .orElseThrow(() -> new ResourceNotFoundException("Product with id [" + productId + "] not found"));
     }
 
-    private List<String> processImages(Product product, List<String> existingImages, List<InputFile> newImages) {
+    private List<String> processImages(Product product, ProductDto dto, List<InputFile> newImages) {
         final List<InputFile> uploads = newImages != null ? newImages : List.of();
-        LOGGER.info(
-                "Processing [{}] images for product labelled [{}] with id [{}]",
-                uploads.size(),
-                product.getLabel(),
-                product.getId());
+        final List<ProductImageReferenceDto> manifest = dto.getImageManifest();
+        final Set<String> owned = new HashSet<>(product.getImages());
+        final List<String> retained = dto.getImages() != null ? dto.getImages() : List.of();
+        if (manifest == null) {
+            requireOwnedImages(retained, owned);
+            final List<String> result = new ArrayList<>(retained);
+            for (final InputFile upload : uploads) result.add(uploadImage(product, upload));
+            return result;
+        }
 
-        final List<String> imagesUris = existingImages != null ? new ArrayList<>(existingImages) : new ArrayList<>();
+        final Map<String, InputFile> uploadsById = new LinkedHashMap<>();
+        for (final InputFile upload : uploads) {
+            final String filename = upload.filename();
+            if (filename == null || !filename.matches("[0-9a-fA-F-]{36}\\.webp")) {
+                throw new IllegalArgumentException("Manifest uploads must be named by their UUID plus .webp");
+            }
+            final String uploadId = filename.substring(0, 36);
+            if (uploadsById.putIfAbsent(uploadId, upload) != null) {
+                throw new IllegalArgumentException("Duplicate image upload ID");
+            }
+        }
+        final Set<String> selectedUploads = new HashSet<>();
+        final Set<String> selectedExisting = new HashSet<>();
+        for (final ProductImageReferenceDto reference : manifest) {
+            if (reference == null || (reference.existingImage() == null) == (reference.uploadId() == null)) {
+                throw new IllegalArgumentException("Each image reference must select exactly one image");
+            }
+            if (reference.existingImage() != null) {
+                if (!owned.contains(reference.existingImage()) || !selectedExisting.add(reference.existingImage())) {
+                    throw new IllegalArgumentException("Retained image is not owned by this product or is duplicated");
+                }
+            } else if (!uploadsById.containsKey(reference.uploadId()) || !selectedUploads.add(reference.uploadId())) {
+                throw new IllegalArgumentException("Unknown or duplicated image upload reference");
+            }
+        }
+        if (selectedUploads.size() != uploads.size()) {
+            throw new IllegalArgumentException("Every uploaded image must appear exactly once in the manifest");
+        }
+        final List<String> result = new ArrayList<>();
+        for (final ProductImageReferenceDto reference : manifest) {
+            result.add(
+                    reference.existingImage() != null
+                            ? reference.existingImage()
+                            : uploadImage(product, uploadsById.get(reference.uploadId())));
+        }
+        return result;
+    }
 
-        List<String> newUris = uploads.parallelStream()
-                .map(inputFile -> {
-                    final String imageKey = IMAGE_KEY_PREFIX + product.getId() + "/" + UUID.randomUUID();
-                    final URI imageUri = storageService.uploadFile(imageKey, inputFile);
-                    return imageUri.toString();
-                })
-                .toList();
+    private static void requireOwnedImages(List<String> retained, Set<String> owned) {
+        final Set<String> selected = new HashSet<>();
+        for (final String image : retained) {
+            if (!owned.contains(image) || !selected.add(image)) {
+                throw new IllegalArgumentException("Retained image is not owned by this product or is duplicated");
+            }
+        }
+    }
 
-        imagesUris.addAll(newUris);
-        return imagesUris;
+    private String uploadImage(Product product, InputFile inputFile) {
+        final String imagePath = IMAGE_KEY_PREFIX + product.getId() + "/" + UUID.randomUUID();
+        return storageService.uploadFile(imagePath, inputFile).toString();
     }
 
     private static String requireNonBlankLabel(String label) {

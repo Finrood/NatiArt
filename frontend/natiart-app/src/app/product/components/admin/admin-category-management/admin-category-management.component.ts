@@ -1,4 +1,4 @@
-import {Component, inject, OnInit, ViewChild} from '@angular/core';
+import {DestroyRef, Component, inject, OnInit, ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
@@ -7,12 +7,14 @@ import {Category} from '../../../models/category.model';
 import {BehaviorSubject} from 'rxjs';
 import {NatiartFormFieldComponent} from "../../../../shared/components/natiart-form-field/natiart-form-field.component";
 import {AlertMessageComponent} from "../../../../shared/components/alert-message/alert-message.component";
+import {PagedList} from '../../../../shared/service/paged-list';
+import {PageControlsComponent} from '../../../../shared/components/page-controls.component';
 import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportError} from '../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-admin-category-management',
-  imports: [CommonModule, ReactiveFormsModule, NatiartFormFieldComponent, AlertMessageComponent, ButtonComponent],
+  imports: [CommonModule, ReactiveFormsModule, NatiartFormFieldComponent, AlertMessageComponent, ButtonComponent, PageControlsComponent],
   templateUrl: './admin-category-management.component.html',
   styleUrls: ['./admin-category-management.component.css']
 })
@@ -37,6 +39,9 @@ export class CategoryManagementComponent implements OnInit {
       active: [true]
     });
   }
+
+  readonly pages = new PagedList<Category>((page: number) => this.categoryService.getCategoriesPage(page, 20, true),
+    (items: Category[]): void => {this._categories$.next(items);}, inject(DestroyRef));
 
   ngOnInit(): void {
     this.getCategories();
@@ -74,6 +79,7 @@ export class CategoryManagementComponent implements OnInit {
     const category: Category = this.categoryForm.value;
     this.categoryService.addCategory(category).subscribe({
       next: (response) => {
+        this.pages.load(this.pages.$page());
         this._categories$.next([...this._categories$.value, response]);
         this.closeModal();
       },
@@ -85,6 +91,7 @@ export class CategoryManagementComponent implements OnInit {
     const category: Category = this.categoryForm.value;
     this.categoryService.updateCategory(category.id!, category).subscribe({
       next: (response: Category) => {
+        this.pages.load(this.pages.$page());
         this._categories$.next(
           this._categories$.value.map(cat => cat.id === response.id ? response : cat)
         );
@@ -97,6 +104,7 @@ export class CategoryManagementComponent implements OnInit {
   deleteCategory(id: string): void {
     this.categoryService.deleteCategory(id).subscribe({
       next: () => {
+        this.pages.load(this.pages.$page());
         this._categories$.next(this._categories$.value.filter(cat => cat.id !== id));
         this.showAlert($localize`Category deleted successfully`, 'success');
       },
@@ -118,6 +126,7 @@ export class CategoryManagementComponent implements OnInit {
   toggleCategoryVisibility(category: Category): void {
     this.categoryService.inverseCategoryVisibility(category.id!).subscribe({
       next: (response: Category) => {
+        this.pages.load(this.pages.$page());
         this._categories$.next(
           this._categories$.value.map(cat => cat.id === response.id ? response : cat)
         );
@@ -126,12 +135,7 @@ export class CategoryManagementComponent implements OnInit {
     });
   }
 
-  private getCategories(): void {
-    this.categoryService.getCategories().subscribe({
-      next: (response) => this._categories$.next(response),
-      error: (error) => reportError('category', error)
-    });
-  }
+  private getCategories(): void { this.pages.load(0); }
 
   private validateAllFormFields(formGroup: FormGroup): void {
     Object.keys(formGroup.controls).forEach(field => {
