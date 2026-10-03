@@ -199,6 +199,7 @@ class ShippingQuoteServiceTest {
                 .createOrder(
                         new OrderDto()
                                 .setFirstname("Ada")
+                                .setHouseNumber("N/A")
                                 .setLastname("Lovelace")
                                 .setEmail("ada@example.test")
                                 .setZipCode("01001000")

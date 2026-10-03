@@ -54,6 +54,9 @@ jobs:
           CHROME_BIN: /usr/bin/google-chrome
         run: npm test -- --watch=false --browsers=ChromeHeadless
 
+      - name: Build the production frontend container
+        run: docker build -t natiart-frontend-ci frontend
+
       - name: Set up Java 25 for the real metadata HTTP boundary
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v5
         with:

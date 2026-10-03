@@ -10,3 +10,5 @@
 
 .alert-enter { animation: alert-enter 300ms ease-out; }
 .alert-leave { animation: alert-leave 300ms ease-in; }
+
+@media (prefers-reduced-motion: reduce) { .alert-enter, .alert-leave { animation: none; } }

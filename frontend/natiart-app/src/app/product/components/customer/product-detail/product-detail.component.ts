@@ -184,6 +184,13 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     }
   }
 
+  zoomKey(event: Event): void {
+    event.preventDefault();
+    const element = event.currentTarget as HTMLElement;
+    const rect = element.getBoundingClientRect();
+    element.dispatchEvent(new MouseEvent('click', {bubbles: true, clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2}));
+  }
+
   toggleZoom(event: MouseEvent) {
     this.isZoomed = !this.isZoomed;
     if (this.isZoomed) {

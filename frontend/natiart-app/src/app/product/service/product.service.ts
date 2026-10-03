@@ -1,7 +1,8 @@
-import {Injectable, inject} from '@angular/core';
+import {inject, Injectable} from '@angular/core';
 import {HttpClient} from "@angular/common/http";
 import {Observable, Subject, throwError} from "rxjs";
 import {finalize, shareReplay, tap} from "rxjs/operators";
+import {PagedResponse} from '../../shared/models/paged-response.model';
 import {environment} from "../../../environments/environment";
 import {Product} from "../models/product.model";
 
@@ -15,21 +16,41 @@ export interface CustomerUploadResponse {
 export class ProductService {
   private readonly apiUrl: string = `${environment.api.product.url}${environment.api.product.endpoints.product}`;
   private readonly apiUrlImages: string = `${environment.api.product.url}`;
+
+
+  private readonly _http = inject(HttpClient);
   private readonly imageRequests = new Map<string, Observable<Blob>>();
-
-
-  private readonly _http: HttpClient = inject(HttpClient);
   private readonly invalidations: Subject<void> = new Subject<void>();
   readonly imageInvalidations: Observable<void> = this.invalidations.asObservable();
 
   invalidateImages(): void { this.imageRequests.clear(); this.invalidations.next(); }
 
-  getProducts(): Observable<Product[]> {
-    return this._http.get<Product[]>(this.apiUrl);
+  getProductsPage(categoryId?: string, page = 0, size = 20, query = '', admin = false): Observable<PagedResponse<Product>> {
+    const params: {[key: string]: string} = {page: String(Number.isSafeInteger(page) ? Math.max(0, page) : 0),
+      size: String(Number.isSafeInteger(size) ? Math.max(1, Math.min(100, size)) : 20)};
+    if (categoryId?.trim()) params['categoryId'] = categoryId.trim();
+    if (query.trim()) params['query'] = query.trim();
+    const url: string = `${environment.api.product.url}${admin ? '/admin' : ''}/products/page`;
+    return this._http.get<PagedResponse<Product>>(url, {params});
   }
 
-  getProductsByCategory(categoryId: string): Observable<Product[]> {
-    const params = {categoryId};
+  getProducts(categoryId?: string, page = 0, size = 20): Observable<Product[]> {
+    const params: { [key: string]: string } = {
+      page: String(Math.max(0, page)),
+      size: String(Math.max(1, Math.min(100, size))),
+    };
+    if (categoryId?.trim()) {
+      params['categoryId'] = categoryId.trim();
+    }
+    return this._http.get<Product[]>(this.apiUrl, {params});
+  }
+
+  getProductsByCategory(categoryId: string, page = 0, size = 20): Observable<Product[]> {
+    const params = {
+      categoryId,
+      page: String(Math.max(0, page)),
+      size: String(Math.max(1, Math.min(100, size))),
+    };
     return this._http.get<Product[]>(this.apiUrl, {params});
   }
 
@@ -62,6 +83,10 @@ export class ProductService {
 
   inverseProductVisibility(id: string): Observable<Product> {
     return this._http.patch<Product>(`${this.apiUrl}/${id}/visibility/inverse`, null);
+  }
+
+  imageUrl(imagePath: string): string {
+    return `${this.apiUrlImages}/images?path=${encodeURIComponent(imagePath)}`;
   }
 
   getImage(imagePath: string): Observable<Blob> {

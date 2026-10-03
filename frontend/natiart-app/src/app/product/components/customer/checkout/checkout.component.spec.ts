@@ -38,6 +38,20 @@ describe('CheckoutComponent', () => {
   let uploadCustomerImageSpy: jasmine.Spy;
   let setCustomImageUploadIdSpy: jasmine.Spy;
 
+  it('requires a house number or N/A and bounds it to the persisted size', () => {
+    const houseNumber = component.checkoutForm.get('shippingInfo.houseNumber')!;
+    houseNumber.setValue('');
+    expect(houseNumber.hasError('required')).toBeTrue();
+    houseNumber.setValue('   ');
+    expect(houseNumber.hasError('pattern')).toBeTrue();
+    houseNumber.setValue('N/A');
+    expect(houseNumber.valid).toBeTrue();
+    houseNumber.setValue('a'.repeat(255));
+    expect(houseNumber.valid).toBeTrue();
+    houseNumber.setValue('a'.repeat(256));
+    expect(houseNumber.hasError('maxlength')).toBeTrue();
+  });
+
   const loggedInUser: User = {
     id: 'u1',
     username: 'user@example.test',
@@ -147,6 +161,7 @@ describe('CheckoutComponent', () => {
     routerNavigateSpy = spyOn(router, 'navigate').and.resolveTo(true);
     fixture = TestBed.createComponent(CheckoutComponent);
     component = fixture.componentInstance;
+    component.checkoutForm.get('shippingInfo.houseNumber')?.setValue('10');
     const quote: ShippingQuote = {
       quoteId: 'quote-1',
       destinationPostalCode: '01001000',
@@ -174,6 +189,7 @@ describe('CheckoutComponent', () => {
       neighborhood: 'Centro',
       zipCode: '01001000',
       street: 'Praca da Se',
+      houseNumber: '10',
       items: [],
       deliveryAmount: 7.5,
       totalAmount: 107.4,
@@ -181,11 +197,46 @@ describe('CheckoutComponent', () => {
     createOrderSpy.and.returnValue(of(createdOrder));
     createPixPaymentSpy.and.returnValue(of(paymentResponseWith('pay_123')));
     fixture.detectChanges();
+    component.checkoutForm.get('billingInfo.zipCode')?.setValue('01001-000');
   });
 
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('preserves a buyer-edited address and house number across user refreshes', () => {
+    const shipping = component.checkoutForm.get('shippingInfo')!;
+    shipping.get('street')!.setValue('Rua Escolhida');
+    shipping.get('houseNumber')!.setValue('42');
+    shipping.markAsDirty();
+
+    currentUserSubject.next({
+      ...loggedInUser,
+      profile: {...loggedInUser.profile!, street: 'Rua do Perfil', city: 'Outra Cidade'}
+    });
+
+    expect(shipping.get('street')!.value).toBe('Rua Escolhida');
+    expect(shipping.get('houseNumber')!.value).toBe('42');
+    expect(shipping.get('city')!.value).toBe('Sao Paulo');
+  });
+
+  it('does not overwrite an address typed before a delayed profile arrives', () => {
+    fixture.destroy();
+    currentUserSubject.next(null);
+    const delayedFixture = TestBed.createComponent(CheckoutComponent);
+    delayedFixture.detectChanges();
+    const shipping = delayedFixture.componentInstance.checkoutForm.get('shippingInfo')!;
+    shipping.get('street')!.setValue('Rua Manual');
+    shipping.get('houseNumber')!.setValue('15');
+    shipping.markAsDirty();
+
+    currentUserSubject.next(loggedInUser);
+
+    expect(shipping.get('street')!.value).toBe('Rua Manual');
+    expect(shipping.get('houseNumber')!.value).toBe('15');
+    expect(shipping.get('country')!.value).toBe('Brazil');
+    delayedFixture.destroy();
+    });
 
   it('fetches an authoritative quote before entering payment', async () => {
     const quoteService = TestBed.inject(ShippingService);
@@ -373,6 +424,7 @@ describe('CheckoutComponent', () => {
       neighborhood: 'Centro',
       zipCode: '01001-000',
       street: 'Praca da Se',
+      houseNumber: '10',
       complement: '',
     });
     component.checkoutForm.get('paymentInfo.paymentMethod')?.setValue('PIX');
@@ -392,6 +444,7 @@ describe('CheckoutComponent', () => {
       zipCode: '01001000',
       items: [{productId: 'prod-1', quantity: 1}],
     });
+    component.checkoutForm.get('billingInfo.zipCode')?.setValue('01001-000');
     expect(component.checkoutForm.invalid).toBeFalse();
 
     const first: Promise<void> = component.onSubmit();
@@ -462,10 +515,11 @@ describe('CheckoutComponent', () => {
       neighborhood: 'Centro',
       zipCode: '01001-000',
       street: 'Praca da Se',
+      houseNumber: '10',
       complement: '',
     });
     component.checkoutForm.get('paymentInfo.paymentMethod')?.setValue('PIX');
-    component.checkoutForm.get('billingInfo')?.patchValue({ zipCode: '01001-000' });
+    component.checkoutForm.get('billingInfo.zipCode')?.setValue('01001-000');
     expect(component.checkoutForm.invalid).toBeFalse();
 
     await component.onSubmit();

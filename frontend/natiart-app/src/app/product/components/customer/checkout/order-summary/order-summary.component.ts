@@ -14,7 +14,7 @@ import {PersonalizationOption} from '../../../../models/support/personalization-
     RouterLink
 ],
   templateUrl: './order-summary.component.html',
-  // styleUrls: ['./order-summary.component.css'] // Keep if you have specific styles
+
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class OrderSummaryComponent implements OnInit, OnDestroy {
