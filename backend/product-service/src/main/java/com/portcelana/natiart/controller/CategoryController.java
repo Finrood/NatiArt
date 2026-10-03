@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 
 import com.portcelana.natiart.dto.CategoryDto;
 import com.portcelana.natiart.dto.PagedResponseDto;
-
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.service.CategoryManager;
 

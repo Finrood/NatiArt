@@ -203,8 +203,8 @@ public class ProductManagerImpl implements ProductManager {
         if (normalizedQuery.length() > 200) throw new IllegalArgumentException("Search is limited to 200 characters");
         final Page<String> ids =
                 productRepository.findCatalogIds(normalizedCategory, normalizedQuery, includeInactive, pageable);
-        final Map<String, Product> products =
-                fetchPageWithImages(ids, !includeInactive).stream().collect(Collectors.toMap(Product::getId, Function.identity()));
+        final Map<String, Product> products = fetchPageWithImages(ids, !includeInactive).stream()
+                .collect(Collectors.toMap(Product::getId, Function.identity()));
         return new PagedResponseDto<>(
                 ids.getContent().stream()
                         .map(products::get)
