@@ -49,3 +49,15 @@ constraint. For an existing database, run the transaction above, deploy, and
 then verify that all payment creation traffic carries
 the same key for a checkout retry. Reconciliation must resolve any
 `FAILED_RECOVERABLE` row against Asaas before allowing it to be retried.
+
+## Completed replay and fair reservation expiry
+
+The owned order is locked before looking up an attempt. A completed attempt
+with the same fingerprint remains replayable as fulfillment progresses. Only
+a new charge requires a pending order; a changed request still fails closed.
+Stock restoration increments the product version and clears stale persistence
+state, so a detached administrator edit cannot replace restored stock.
+Abandoned-order sweeps commit a next-attempt time before each cancellation,
+selecting due records by that time, original order time and ID. Uncertain
+charges remain reserved, while older failures yield to newer expired orders
+across process restarts. These fields are managed through JPA schema update.

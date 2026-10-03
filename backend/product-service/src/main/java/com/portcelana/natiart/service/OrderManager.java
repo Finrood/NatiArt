@@ -47,4 +47,10 @@ public interface OrderManager {
 
     /** Marks a payment-backed order as paid; repeated confirmations are safe. */
     CustomerOrder markOrderPaid(String orderId);
+
+    /** Cancels an unpaid order and releases its stock reservation exactly once. */
+    CustomerOrder cancelPendingOrder(String orderId, String requesterExternalId);
+
+    /** Returns the cancelled order while its purchase details are still attached. */
+    OrderDto cancelPendingOrderResponse(String orderId, String requesterExternalId);
 }

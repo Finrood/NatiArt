@@ -140,7 +140,7 @@ public class AsaasPaymentService implements PaymentService {
 
         final String requestFingerprint = fingerprint(paymentCreationRequest);
         final PaymentIdempotencyReservation reservationResult =
-                reserveOrReload(requesterExternalId, normalizedIdempotencyKey, requestFingerprint);
+                reserveOrReload(requesterExternalId, orderId, normalizedIdempotencyKey, requestFingerprint);
         final PaymentIdempotency reservation = reservationResult.record();
         if (!Objects.equals(reservation.getRequestFingerprint(), requestFingerprint)) {
             throw new ResourceAlreadyExistsException("Idempotency-Key was already used for a different payment");
@@ -149,6 +149,9 @@ public class AsaasPaymentService implements PaymentService {
             return replay(reservation, requesterExternalId, orderId, value);
         }
         if (reservation.getStatus() == PaymentIdempotencyStatus.FAILED_RECOVERABLE) {
+            // The verified-terminal replacement path is cancellation of this
+            // order followed by a new order/attempt; never POST another charge
+            // while this attempt's provider outcome is uncertain.
             throw new UpstreamServiceException(
                     "Payment request requires reconciliation before retry", HttpStatus.SERVICE_UNAVAILABLE);
         }
@@ -169,7 +172,11 @@ public class AsaasPaymentService implements PaymentService {
             return replay(reservation, requesterExternalId, orderId, value);
         }
 
-        final HttpHeaders headers = getRequestHeaders(normalizedIdempotencyKey);
+        // Asaas receives the server-owned attempt id for order-linked charges.
+        // Browser keys are only request aliases and must not allow two keys to
+        // create two provider attempts for one order.
+        final String providerIdempotencyKey = hasOrder(orderId) ? reservation.getId() : normalizedIdempotencyKey;
+        final HttpHeaders headers = getRequestHeaders(providerIdempotencyKey);
 
         final HttpEntity<AsaasPaymentCreationRequest> asaasPaymentCreationRequestHttpEntity = new HttpEntity<>(
                 AsaasPaymentCreationRequest.from(paymentCreationRequest, requesterExternalId), headers);
@@ -244,15 +251,24 @@ public class AsaasPaymentService implements PaymentService {
     }
 
     private PaymentIdempotencyReservation reserveOrReload(
-            String requesterExternalId, String idempotencyKey, String requestFingerprint) {
+            String requesterExternalId, String orderId, String idempotencyKey, String requestFingerprint) {
         try {
+            if (hasOrder(orderId)) {
+                return paymentIdempotencyService.reserveForOrder(
+                        requesterExternalId, orderId, idempotencyKey, requestFingerprint);
+            }
             return paymentIdempotencyService.reserve(requesterExternalId, idempotencyKey, requestFingerprint);
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
-            final PaymentIdempotency record = paymentIdempotencyService
-                    .find(requesterExternalId, idempotencyKey)
+            final Optional<PaymentIdempotency> record = hasOrder(orderId)
+                    ? paymentIdempotencyService.findForOrder(requesterExternalId, orderId)
+                    : paymentIdempotencyService.find(requesterExternalId, idempotencyKey);
+            return record.map(found -> new PaymentIdempotencyReservation(found, false))
                     .orElseThrow(() -> e);
-            return new PaymentIdempotencyReservation(record, false);
         }
+    }
+
+    private boolean hasOrder(String orderId) {
+        return orderId != null && !orderId.isBlank();
     }
 
     private PaymentCreationResponse replay(
@@ -399,12 +415,8 @@ public class AsaasPaymentService implements PaymentService {
         final AsaasPaymentCreationResponse payment = fetchPaymentOrDie(paymentId);
         requireOwnedPayment(payment.getCustomer(), requesterExternalId);
 
-        final PaymentStatus status = parsePaymentStatus(payment.getStatus());
-        if (status == PaymentStatus.COMPLETED
-                && localPayment.getOrderId() != null
-                && !localPayment.getOrderId().isBlank()) {
-            orderManager.markOrderPaid(localPayment.getOrderId());
-        }
+        final PaymentStatus status =
+                convertAsaasPaymentStatusToGeneralPaymentStatus(parseAsaasStatus(payment.getStatus()));
         return new PaymentStatusResponse(paymentId, status, localPayment.getOrderId());
     }
 
@@ -428,6 +440,10 @@ public class AsaasPaymentService implements PaymentService {
             throw new IllegalArgumentException("Received an invalid response from " + asaasPaymentUrl);
         }
         return response.getBody();
+    }
+
+    AsaasPaymentCreationResponse fetchPaymentForReconciliation(String paymentId) {
+        return fetchPaymentOrDie(paymentId);
     }
 
     /**

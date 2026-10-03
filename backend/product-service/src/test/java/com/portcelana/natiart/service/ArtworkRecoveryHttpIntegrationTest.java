@@ -63,6 +63,9 @@ class ArtworkRecoveryHttpIntegrationTest {
     private OrderViewService views;
 
     @MockitoBean
+    private AsaasChargeSafetyService chargeSafetyService;
+
+    @MockitoBean
     private ProductManager productManager;
 
     @MockitoBean

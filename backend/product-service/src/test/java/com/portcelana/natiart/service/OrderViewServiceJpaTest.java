@@ -60,6 +60,9 @@ class OrderViewServiceJpaTest {
     private PlatformTransactionManager transactionManager;
 
     @MockitoBean
+    private AsaasChargeSafetyService chargeSafetyService;
+
+    @MockitoBean
     private OrderCreationService orderCreationService;
 
     @Test
