@@ -3,10 +3,14 @@ package com.portcelana.natiart.storage;
 import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.NotDirectoryException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -14,7 +18,6 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.poi.util.IOUtils;
 import org.apache.poi.util.TempFile;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -80,12 +83,18 @@ public class StorageFileSystem implements Storage {
 
     @Override
     public InputStream openFile(URI path) {
-        final File file = resolveAllowedFile(path);
+        final Path file = resolveAllowedFile(path).toPath();
         try {
-            return FileUtils.openInputStream(file);
+            final BasicFileAttributes attributes = Files.readAttributes(file, BasicFileAttributes.class);
+            if (!attributes.isRegularFile()) {
+                throw new ResourceNotFoundException("Requested image is not available");
+            }
+            return Files.newInputStream(file, StandardOpenOption.READ);
+        } catch (NoSuchFileException | NotDirectoryException | AccessDeniedException e) {
+            // The file may also disappear between reading its attributes and opening it.
+            throw new ResourceNotFoundException("Requested image is not available");
         } catch (IOException e) {
-            throw new IllegalStateException(
-                    String.format("Error while reading file [%s] on local storage.", file.getName()), e);
+            throw new IllegalStateException("Error while reading the requested image from local storage.", e);
         }
     }
 
@@ -98,7 +107,7 @@ public class StorageFileSystem implements Storage {
                 return resolvePrimaryFile(validRelativeKey(path.getSchemeSpecificPart()))
                         .toFile();
             } catch (IllegalArgumentException e) {
-                throw new ResourceNotFoundException("Invalid storage key");
+                throw new ResourceNotFoundException("Requested image is not available");
             }
         }
         final File candidate = new File(path);
@@ -106,7 +115,7 @@ public class StorageFileSystem implements Storage {
         try {
             normalizedCandidate = candidate.getCanonicalFile().toPath();
         } catch (IOException e) {
-            throw new ResourceNotFoundException("Unable to resolve requested path: " + path);
+            throw new IllegalStateException("Error while resolving the requested image in local storage.", e);
         }
         for (Path root : allowedRoots) {
             if (normalizedCandidate.startsWith(root)) {
@@ -119,7 +128,7 @@ public class StorageFileSystem implements Storage {
                 return resolvePrimaryFile(relative).toFile();
             }
         }
-        throw new ResourceNotFoundException("Requested path is outside of the allowed storage roots: " + path);
+        throw new ResourceNotFoundException("Requested image is not available");
     }
 
     private Path resolvePrimaryFile(Path relative) {
@@ -131,11 +140,11 @@ public class StorageFileSystem implements Storage {
                     .getCanonicalFile()
                     .toPath();
             if (!file.startsWith(allowedRoots.getFirst())) {
-                throw new IllegalArgumentException("Storage key escapes the configured root");
+                throw new ResourceNotFoundException("Requested image is not available");
             }
             return file;
         } catch (IOException e) {
-            throw new IllegalArgumentException("Unable to resolve storage key", e);
+            throw new IllegalStateException("Unable to resolve stored image", e);
         }
     }
 
@@ -178,6 +187,18 @@ public class StorageFileSystem implements Storage {
         } catch (IOException e) {
             throw new IllegalStateException(
                     String.format("An error has occurred while storing file [%s] in [%s]", file.getName(), key));
+        }
+    }
+
+    @Override
+    public void deleteFile(URI uri) {
+        if (!uri.isOpaque()) {
+            throw new IllegalArgumentException("Deletion requires a logical storage key");
+        }
+        try {
+            Files.deleteIfExists(resolveAllowedFile(uri).toPath());
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to delete stored file", e);
         }
     }
 

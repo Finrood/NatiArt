@@ -8,6 +8,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -56,7 +58,9 @@ class StorageFileSystemTest {
         writeInside(root, "p1/img.webp", "image-bytes");
         StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
 
-        assertThrows(ResourceNotFoundException.class, () -> storage.openFile(URI.create("file:///etc/passwd")));
+        ResourceNotFoundException thrown =
+                assertThrows(ResourceNotFoundException.class, () -> storage.openFile(URI.create("file:///etc/passwd")));
+        assertEquals("Requested image is not available", thrown.getMessage());
     }
 
     @Test
@@ -67,6 +71,54 @@ class StorageFileSystemTest {
 
         URI escape = URI.create(root.toUri().toString() + "../secret.txt");
         assertThrows(ResourceNotFoundException.class, () -> storage.openFile(escape));
+    }
+
+    @Test
+    void openFileReturnsNotFoundForMissingFileWithoutDisclosingPath() throws IOException {
+        Path root = tempDir.resolve("product-images");
+        Files.createDirectories(root);
+        Path missing = root.resolve("retired-product/missing.webp");
+        StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+
+        ResourceNotFoundException thrown =
+                assertThrows(ResourceNotFoundException.class, () -> storage.openFile(missing.toUri()));
+
+        assertEquals("Requested image is not available", thrown.getMessage());
+        assertFalse(thrown.getMessage().contains(root.toString()));
+    }
+
+    @Test
+    void openFileReturnsNotFoundForAccessDenied() throws IOException {
+        Path root = tempDir.resolve("product-images");
+        Path denied = Path.of(writeInside(root, "p1/denied.webp", "image-bytes"));
+        Assumptions.assumeTrue(Files.getFileStore(denied).supportsFileAttributeView("posix"));
+        Set<PosixFilePermission> originalPermissions = Files.getPosixFilePermissions(denied);
+        try {
+            Files.setPosixFilePermissions(denied, Set.of());
+            Assumptions.assumeFalse(Files.isReadable(denied));
+            StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+
+            ResourceNotFoundException thrown =
+                    assertThrows(ResourceNotFoundException.class, () -> storage.openFile(denied.toUri()));
+
+            assertEquals("Requested image is not available", thrown.getMessage());
+            assertFalse(thrown.getMessage().contains(root.toString()));
+        } finally {
+            Files.setPosixFilePermissions(denied, originalPermissions);
+        }
+    }
+
+    @Test
+    void openFileReturnsNotFoundForDirectory() throws IOException {
+        Path root = tempDir.resolve("product-images");
+        Path directory = root.resolve("retired-product");
+        Files.createDirectories(directory);
+        StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+
+        ResourceNotFoundException thrown =
+                assertThrows(ResourceNotFoundException.class, () -> storage.openFile(directory.toUri()));
+
+        assertEquals("Requested image is not available", thrown.getMessage());
     }
 
     @Test
@@ -288,6 +340,23 @@ class StorageFileSystemTest {
         try (var in = storageWithRoots(List.of(relocatedRoot.toString())).openFile(uri)) {
             assertEquals("saved-bytes", new String(in.readAllBytes(), StandardCharsets.UTF_8));
         }
+    }
+
+    @Test
+    void deleteFileRemovesOnlyLogicalKeyInsideConfiguredRoot() throws IOException {
+        final Path root = tempDir.resolve("volume");
+        final StorageFileSystem storage = storageWithRoots(List.of(root.toString()));
+        final URI artwork = storage.uploadFile("customer-uploads/artwork.webp", testInput("artwork"));
+        final Path outside = tempDir.resolve("outside.webp");
+        Files.writeString(outside, "keep");
+
+        storage.deleteFile(artwork);
+        storage.deleteFile(artwork);
+
+        assertFalse(Files.exists(root.resolve("customer-uploads/artwork.webp")));
+        assertThrows(ResourceNotFoundException.class, () -> storage.deleteFile(URI.create("file:../outside.webp")));
+        assertThrows(IllegalArgumentException.class, () -> storage.deleteFile(outside.toUri()));
+        assertEquals("keep", Files.readString(outside));
     }
 
     @Test
