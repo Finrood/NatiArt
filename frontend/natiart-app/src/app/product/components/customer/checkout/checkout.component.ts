@@ -121,6 +121,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         neighborhood: ['', Validators.required],
         zipCode: ['', [Validators.required, CustomCepValidators.validCep()]],
         street: ['', Validators.required],
+        houseNumber: ['', [Validators.required, Validators.maxLength(255), Validators.pattern(/\S/)]],
         complement: [''],
       }),
       billingInfo: this._fb.group({
@@ -200,34 +201,21 @@ export class CheckoutComponent implements OnInit, OnDestroy {
           }
           if (user && user.profile && !this.hasPrefilledCurrentUser && !this.hasSavedAttempt) {
             this.hasPrefilledCurrentUser = true;
-            this.checkoutForm.patchValue({
-              userInfo: {
-                firstname: user.profile.firstname,
-                lastname: user.profile.lastname,
-                email: user.username,
-                cpf: this.formatCpf(user.profile.cpf),
-                phone: user.profile.phone,
-              },
-              shippingInfo: {
-                country: user.profile.country || 'Brazil',
-                state: user.profile.state,
-                city: user.profile.city,
-                neighborhood: user.profile.neighborhood,
-                zipCode: user.profile.zipCode,
-                street: user.profile.street,
-                complement: user.profile.complement,
-              },
-            });
+            const userInfo = this.checkoutForm.get('userInfo');
+            const shippingInfo = this.checkoutForm.get('shippingInfo');
+            if (userInfo?.pristine) {
+              userInfo.patchValue({firstname: user.profile.firstname, lastname: user.profile.lastname,
+                email: user.username, cpf: this.formatCpf(user.profile.cpf), phone: user.profile.phone});
+              if (userInfo.invalid) userInfo.markAllAsTouched();
+            }
+            if (shippingInfo?.pristine) {
+              shippingInfo.patchValue({country: user.profile.country || 'Brazil', state: user.profile.state,
+                city: user.profile.city, neighborhood: user.profile.neighborhood, zipCode: user.profile.zipCode,
+                street: user.profile.street, complement: user.profile.complement});
+              if (shippingInfo.invalid) shippingInfo.markAllAsTouched();
+            }
             if (this.sameShippingAsBilling) {
-              this.checkoutForm.get('billingInfo')?.patchValue(this.checkoutForm.get('shippingInfo')?.value);
-            }
-
-            // Mark controls as touched if they are invalid after pre-filling
-            if (this.checkoutForm.get('userInfo')?.invalid) {
-              this.checkoutForm.get('userInfo')?.markAllAsTouched();
-            }
-            if (this.checkoutForm.get('shippingInfo')?.invalid) {
-              this.checkoutForm.get('shippingInfo')?.markAllAsTouched();
+              this.checkoutForm.get('billingInfo')?.patchValue(shippingInfo?.value);
             }
           }
         })
@@ -468,6 +456,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       neighborhood: shippingInfo.neighborhood,
       zipCode: shippingInfo.zipCode.replace(/\D/g, ''),
       street: shippingInfo.street,
+      houseNumber: shippingInfo.houseNumber.trim(),
       complement: shippingInfo.complement,
       items,
       shippingQuoteId: this.shippingQuote?.quoteId,
@@ -721,7 +710,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
           city: request.city,
           neighborhood: request.neighborhood,
           zipCode: request.zipCode,
-          street: request.street,
+          street: request.street, houseNumber: request.houseNumber,
           complement: request.complement,
         },
         paymentInfo: {paymentMethod: PaymentMethod.PIX},
@@ -752,6 +741,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       neighborhood: order.neighborhood,
       zipCode: order.zipCode,
       street: order.street,
+      houseNumber: order.houseNumber,
       complement: order.complement,
       items: order.items.map(item => ({productId: item.productId, quantity: item.quantity, personalization: item.personalization})),
       shippingQuoteId: order.shippingQuoteId,

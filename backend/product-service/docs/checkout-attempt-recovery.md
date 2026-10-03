@@ -17,3 +17,5 @@ on that typed rejection, invalidate only the rejected artwork, and let the buyer
 correct the cart and review a new shipping quote. Storage removal failure stops
 recovery and retains the original identity. The next confirmed request gets a new
 key. Once an order has been returned, no payment error clears its recovery state.
+
+House number is normalized and bounded before fingerprinting, provider calls or database writes. The committed shipping snapshot and detached response retain the normalized value. A retry with equivalent whitespace replays the same order; a different house number conflicts with an existing idempotency key.
