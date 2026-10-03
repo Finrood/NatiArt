@@ -1,3 +1,4 @@
+import {AccessibleDialogComponent} from '../../../../shared/components/accessible-dialog.component';
 import {Component, inject, signal, HostListener, OnDestroy, OnInit} from '@angular/core';
 import { AsyncPipe } from "@angular/common";
 import {CartService} from "../../../service/cart.service";
@@ -11,7 +12,8 @@ import {RouterLink} from "@angular/router";
     imports: [
     CartModalComponent,
     AsyncPipe,
-    RouterLink
+    RouterLink,
+    AccessibleDialogComponent
 ],
     templateUrl: './top-menu.component.html',
     styleUrl: './top-menu.component.css'

@@ -26,8 +26,8 @@ describe('Catalog URL-backed pagination', () => {
     TestBed.inject(Router).setUpLocationChangeListener();
   });
   function flushCategories(): void {
-    http.expectOne((r) => r.url === `${api}/categories`).flush([
-      {id: 'A', label: 'Category A'}, {id: 'B', label: 'Category B'}]);
+    http.expectOne((r) => r.url === `${api}/categories/page`).flush({items: [
+      {id: 'A', label: 'Category A'}, {id: 'B', label: 'Category B'}], page: 0, size: 20, total: 2, hasNext: false});
   }
 
   it('loads the requested filtered page from the URL and restores it on Back after a rendered category click', async () => {

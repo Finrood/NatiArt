@@ -66,49 +66,135 @@ is_docs_only() { # $1 = PR number; true iff every changed file is under docs/
     [[ -n "$files" ]] && ! grep -qvE '^docs/' <<<"$files"
 }
 
-loop_owned_branch() { # $1=exact branch name $2=private ownership ledger
-    local branch="${1:-}" ledger="${2:-}"
+loop_origin_id() {
+    git remote get-url origin | sha256sum | awk '{print $1}'
+}
+
+loop_record_owned_tip() { # $1=branch $2=explicit cycle $3=exact produced tip $4=private ledger
+    local branch="$1" cycle="$2" sha="$3" ledger="$4" origin_id
+    [[ -n "$cycle" && "$cycle" != *$'\t'* && "$cycle" != *$'\n'* && "$sha" =~ ^[0-9a-f]{40}$ ]] || return 1
+    git check-ref-format --branch "$branch" >/dev/null 2>&1 || return 1
+    origin_id="$(loop_origin_id)" || return 1
+    printf 'natiart-owned-v1\t%s\t%s\t%s\t%s\n' "$origin_id" "$branch" "$cycle" "$sha" >> "$ledger"
+}
+
+loop_owned_branch() { # $1=branch $2=private ledger; version + origin prevent ambiguous legacy enrollment
+    local branch="${1:-}" ledger="${2:-}" origin_id
     [[ -n "$branch" && -f "$ledger" ]] || return 1
-    awk -F '\t' -v branch="$branch" '$1 == branch && NF == 3 { found=1 } END { exit !found }' "$ledger"
+    origin_id="$(loop_origin_id)" || return 1
+    awk -F '\t' -v branch="$branch" -v origin="$origin_id" \
+        '$1 == "natiart-owned-v1" && $2 == origin && $3 == branch && NF == 5 { found=1 } END { exit !found }' "$ledger"
 }
 
-loop_owned_tip() { # $1=exact branch name $2=exact recorded tip $3=private ledger
-    local branch="${1:-}" sha="${2:-}" ledger="${3:-}"
-    [[ -n "$branch" && -n "$sha" && -f "$ledger" ]] || return 1
-    awk -F '\t' -v branch="$branch" -v sha="$sha" \
-        '$1 == branch && $3 == sha && NF == 3 { found=1 } END { exit !found }' "$ledger"
+loop_owned_tip() { # $1=branch $2=exact tip $3=ledger; never infer advancement from ancestry
+    local branch="${1:-}" sha="${2:-}" ledger="${3:-}" origin_id
+    [[ "$sha" =~ ^[0-9a-f]{40}$ && -f "$ledger" ]] || return 1
+    origin_id="$(loop_origin_id)" || return 1
+    awk -F '\t' -v branch="$branch" -v sha="$sha" -v origin="$origin_id" \
+        '$1 == "natiart-owned-v1" && $2 == origin && $3 == branch && $5 == sha && NF == 5 { found=1 } END { exit !found }' "$ledger"
 }
 
-loop_record_new_branches() { # $1=before local refs $2=before remote refs $3=ledger $4=cycle id
-    local before="$1" remote_before="$2" ledger="$3" cycle_id="$4" branch sha
-    while IFS= read -r branch; do
-        [[ -n "$branch" && "$branch" != master ]] || continue
-        if grep -qxF "$branch" <<<"$remote_before"; then continue; fi
-        if loop_owned_branch "$branch" "$ledger"; then continue; fi
-        sha="$(git rev-parse "refs/heads/$branch" 2>/dev/null)" || return 1
-        printf '%s\t%s\t%s\n' "$branch" "$cycle_id" "$sha" >> "$ledger" || return 1
-    done < <(comm -13 <(printf '%s\n' "$before" | LC_ALL=C sort) \
-        <(git for-each-ref --format='%(refname:short)' refs/heads/ | LC_ALL=C sort))
+loop_forget_branch() { # $1=deleted branch $2=ledger; retire enrollment before a name can be reused
+    local branch="$1" ledger="$2" origin_id tmp
+    [[ -f "$ledger" ]] || return 0
+    origin_id="$(loop_origin_id)" || return 1
+    tmp="$(mktemp "${ledger}.tmp.XXXXXX")" || return 1
+    if awk -F '\t' -v branch="$branch" -v origin="$origin_id" \
+        '!($1 == "natiart-owned-v1" && $2 == origin && $3 == branch)' "$ledger" > "$tmp" && mv "$tmp" "$ledger"; then return 0; fi
+    rm -f "$tmp"
+    return 1
 }
 
-loop_delete_merged_remote_branch() { # $1=branch $2=private ledger
+loop_record_worker_result() { # candidate artifact, cycle, baseline refs, ledger, accepted artifact
+    local result="$1" cycle="$2" before="$3" ledger="$4" accepted="$5"
+    local origin_id branch sha pushed_sha baseline_sha local_sha remote_sha pr login state candidate
+    [[ -f "$result" && ! -L "$result" && -O "$result" ]] || return 1
+    [[ "$(stat -c %a "$result")" == 600 && "$(stat -c %s "$result")" -le 4096 ]] || return 1
+    candidate="$(head -c 4097 "$result")" || return 1
+    [[ "${#candidate}" -le 4096 ]] || return 1
+    origin_id="$(loop_origin_id)" || return 1
+    jq -e --arg cycle "$cycle" --arg origin "$origin_id" '
+        type == "object" and .cycle == $cycle and .origin == $origin and
+        (.branch | type == "string") and (.sha | type == "string" and test("^[0-9a-f]{40}$")) and
+        .pushedSha == .sha and (.pr | type == "number" and . > 0 and floor == .)
+    ' <<<"$candidate" >/dev/null || return 1
+    branch="$(jq -r .branch <<<"$candidate")"
+    sha="$(jq -r .sha <<<"$candidate")"
+    pushed_sha="$(jq -r .pushedSha <<<"$candidate")"
+    pr="$(jq -r .pr <<<"$candidate")"
+    case "$branch" in fix/*|perf/*|chore/*|docs/*|feature/*) ;; *) return 1 ;; esac
+    git check-ref-format --branch "$branch" >/dev/null 2>&1 || return 1
+    baseline_sha="$(awk -F '\t' -v branch="$branch" '$1 == branch {print $2; exit}' <<<"$before")"
+    local_sha="$(git rev-parse "refs/heads/$branch" 2>/dev/null)" || return 1
+    [[ "$local_sha" == "$sha" ]] || return 1
+    if awk -F '\t' -v branch="$branch" -v sha="$sha" \
+        '$1 == branch && $2 == sha {found=1} END {exit !found}' <<<"$before"; then return 1; fi
+    remote_sha="$(git ls-remote --heads origin "refs/heads/$branch" | awk 'NR == 1 {print $1}')" || return 1
+    [[ "$remote_sha" == "$pushed_sha" ]] || return 1
+    login="$(gh api user --jq .login)" || return 1
+    state="$(gh pr view "$pr" --json number,headRefName,headRefOid,author,state,isCrossRepository,body)" || return 1
+    jq -e --arg login "$login" --arg branch "$branch" --arg sha "$sha" --argjson pr "$pr" '
+        .number == $pr and .author.login == $login and .headRefName == $branch and
+        .headRefOid == $sha and .state == "OPEN" and .isCrossRepository == false and
+        (.body | split("\n") | index("Loop-Owner: natiart-improvement-loop") != null)
+    ' <<<"$state" >/dev/null || return 1
+    # A repaired human PR remains human-owned even when this worker advances it.
+    if [[ -n "$baseline_sha" ]] && ! loop_owned_branch "$branch" "$ledger"; then return 0; fi
+    jq -c '{cycle,origin,branch,sha,pushedSha,pr}' <<<"$candidate" > "$accepted" || return 1
+    chmod 600 "$accepted" || return 1
+    loop_record_owned_tip "$branch" "$cycle" "$sha" "$ledger"
+}
+
+loop_delete_merged_remote_branch() { # $1=branch $2=ledger; current remote tip and atomic lease on every caller
     local branch="$1" ledger="$2" remote_sha
-    if ! loop_owned_branch "$branch" "$ledger"; then
-        log "Preserving unowned remote branch $branch."
+    loop_owned_branch "$branch" "$ledger" || { log "Preserving unowned remote branch $branch."; return 0; }
+    remote_sha="$(git ls-remote --heads origin "refs/heads/$branch" 2>/dev/null | awk 'NR == 1 {print $1}')" || return 1
+    [[ -n "$remote_sha" ]] || return 0
+    loop_owned_tip "$branch" "$remote_sha" "$ledger" || { log "Preserving changed remote branch $branch."; return 0; }
+    git merge-base --is-ancestor "$remote_sha" origin/master 2>/dev/null || { log "Preserving unmerged remote branch $branch."; return 0; }
+    if git push -q --force-with-lease="refs/heads/$branch:$remote_sha" origin --delete "$branch"; then
+        loop_forget_branch "$branch" "$ledger" || return 1
         return 0
     fi
-    remote_sha="$(git rev-parse "refs/remotes/origin/$branch" 2>/dev/null)" || return 0
-    if ! loop_owned_tip "$branch" "$remote_sha" "$ledger"; then
-        log "Preserving changed remote branch $branch; its tip differs from the ownership record."
-        return 0
-    fi
-    if ! git merge-base --is-ancestor "$remote_sha" origin/master 2>/dev/null; then
-        log "Preserving unmerged remote branch $branch."
-        return 0
-    fi
-    if ! git push -q --force-with-lease="refs/heads/$branch:$remote_sha" origin --delete "$branch"; then
-        log "Remote branch $branch changed after validation or push failed; preserving it."
-    fi
+    log "Remote branch $branch changed after validation or push failed; preserving it."
+    return 1
+}
+
+loop_delete_merged_local_branch() { # $1=branch $2=ledger; expected-tip deletion protects advanced local refs
+    local branch="$1" ledger="$2" sha remote_sha
+    sha="$(git rev-parse "refs/heads/$branch" 2>/dev/null)" || return 0
+    loop_owned_tip "$branch" "$sha" "$ledger" || return 0
+    git merge-base --is-ancestor "$sha" origin/master 2>/dev/null || return 0
+    # Ref deletion must never invalidate a checked-out branch in any attached worktree.
+    if git worktree list --porcelain | grep -qxF "branch refs/heads/$branch"; then return 0; fi
+    git update-ref -d "refs/heads/$branch" "$sha" || return 1
+    remote_sha="$(git ls-remote --heads origin "refs/heads/$branch" 2>/dev/null | awk 'NR == 1 {print $1}')" || return 1
+    if [[ -z "$remote_sha" ]]; then loop_forget_branch "$branch" "$ledger"; fi
+}
+
+loop_cleanup_old_local_salvage() { # $1=ledger
+    local ledger="$1" branch
+    while read -r branch; do
+        [[ -n "$branch" ]] || continue
+        loop_delete_merged_local_branch "$branch" "$ledger" || true
+        loop_delete_merged_remote_branch "$branch" "$ledger" || true
+    done < <(git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads/salvage/ | tail -n +6)
+}
+
+loop_cleanup_merged_remote_branches() { # $1=ledger
+    local ledger="$1" branch
+    while read -r branch; do
+        [[ -n "$branch" ]] || continue
+        loop_delete_merged_remote_branch "$branch" "$ledger" || true
+    done < <(git branch -r --merged origin/master | sed 's#^ *origin/##' | grep -E '^(fix|perf|chore|docs|feature)/' | sort -u)
+}
+
+loop_cleanup_old_remote_salvage() { # $1=ledger
+    local ledger="$1" branch
+    while read -r branch; do
+        [[ -n "$branch" ]] || continue
+        loop_delete_merged_remote_branch "$branch" "$ledger" || true
+    done < <(git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/remotes/origin/salvage/ | sed 's#^origin/##' | tail -n +6)
 }
 
 is_loop_machinery_file() { # $1 = path that always requires human review

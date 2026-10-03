@@ -24,7 +24,7 @@
 
         <!-- Cart -->
         <div (mouseenter)="showCartModal()" (mouseleave)="hideCartModal()" class="relative cart-container">
-          <a routerLink="/cart" class="relative block text-secondary hover:text-primary transition-colors">
+          <a aria-label="Shopping cart" routerLink="/cart" class="relative block text-secondary hover:text-primary transition-colors">
             <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
             @if ((cartItemCount$ | async); as count) {
               @if (count > 0) {
@@ -59,8 +59,8 @@
 
   <!-- Mobile Menu Overlay -->
   @if (isMobileMenuOpen) {
-    <div class="lg:hidden fixed inset-0 bg-black/40 z-40" (click)="toggleMobileMenu()"></div>
-    <div class="lg:hidden fixed inset-y-0 right-0 bg-background w-72 shadow-xl z-50 p-6 transform transition-transform duration-300 ease-in-out" [class.translate-x-0]="isMobileMenuOpen" [class.translate-x-full]="!isMobileMenuOpen">
+    <app-accessible-dialog label="Navigation menu" i18n-label (dismiss)="closeMobileMenu()">
+      <div class="bg-background w-72 max-w-full p-6">
       <nav class="flex flex-col space-y-6 text-lg" (click)="closeMobileMenu()">
         <a routerLink="/dashboard" class="text-secondary hover:text-primary transition-colors duration-200" i18n>Home</a>
         <a routerLink="/products" class="text-secondary hover:text-primary transition-colors duration-200" i18n>Collections</a>
@@ -74,6 +74,7 @@
           <a routerLink="/login" class="text-secondary hover:text-primary transition-colors" i18n>Login</a>
         }
       </nav>
-    </div>
+      </div>
+    </app-accessible-dialog>
   }
 </header>

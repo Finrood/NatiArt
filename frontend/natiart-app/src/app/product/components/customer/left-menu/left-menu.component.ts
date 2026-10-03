@@ -1,15 +1,15 @@
 
 import {Component, DestroyRef, inject, OnInit, signal} from '@angular/core';
-import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {Category} from '../../../models/category.model';
 import {CategoryService} from '../../../service/category.service';
-import {NgClass} from "@angular/common";
 import {RouterLink} from '@angular/router';
-import {reportError} from '../../../../shared/service/error-reporting.service';
+import {PagedList} from '../../../../shared/service/paged-list';
+import {PageControlsComponent} from '../../../../shared/components/page-controls.component';
+import {NgClass} from "@angular/common";
 
 @Component({
     selector: 'app-left-menu',
-    imports: [NgClass, RouterLink],
+    imports: [NgClass, RouterLink, PageControlsComponent],
     templateUrl: './left-menu.component.html',
     styles: [] // Empty styles array as we're using only Tailwind classes
 })
@@ -23,7 +23,8 @@ export class LeftMenuComponent implements OnInit {
   isOpen = true;
 
   private readonly _categoryService = inject(CategoryService);
-  private readonly _destroyed = inject(DestroyRef);
+  readonly pages = new PagedList<Category>((page: number) => this._categoryService.getCategoriesPage(page),
+    (items: Category[]): void => {this.categories = items; this.categoryLoadFailed = false;}, inject(DestroyRef));
 
   ngOnInit(): void {
     this.loadCategories();
@@ -33,16 +34,5 @@ export class LeftMenuComponent implements OnInit {
     this.isOpen = !this.isOpen;
   }
 
-  private loadCategories(): void {
-    this._categoryService.getCategories().pipe(takeUntilDestroyed(this._destroyed)).subscribe({
-      next: (response) => {
-        this.categories = response;
-        this.categoryLoadFailed = false;
-      },
-      error: (error) => {
-        reportError('category', error);
-        this.categoryLoadFailed = true;
-      }
-    });
-  }
+  private loadCategories(): void { this.pages.load(0); }
 }

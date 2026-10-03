@@ -59,14 +59,14 @@ describe('ProductManagementComponent', () => {
 
 describe('ProductManagementComponent error UX (O2)', () => {
   let productOps: {
-    getProducts: jasmine.Spy;
+    getProductsPage: jasmine.Spy;
     getImage: jasmine.Spy;
     inverseProductVisibility: jasmine.Spy;
   };
 
   beforeEach(async () => {
     productOps = {
-      getProducts: jasmine.createSpy('getProducts').and.returnValue(of([])),
+      getProductsPage: jasmine.createSpy('getProductsPage').and.returnValue(of({items: [], page: 0, size: 20, total: 0, hasNext: false})),
       getImage: jasmine.createSpy('getImage').and.returnValue(of(new Blob(['x']))),
       inverseProductVisibility: jasmine.createSpy('inverseProductVisibility')
         .and.returnValue(of({ id: 'p1' })),
@@ -78,14 +78,14 @@ describe('ProductManagementComponent error UX (O2)', () => {
         provideHttpClientTesting(),
         provideRouter([]),
                 { provide: ProductService, useValue: productOps },
-        { provide: CategoryService, useValue: { getCategories: (): Subject<never[]> => new Subject<never[]>() } },
-        { provide: PackageService, useValue: { getPackages: (): Subject<never[]> => new Subject<never[]>() } },
+        { provide: CategoryService, useValue: { getCategoriesPage: (): Subject<never[]> => new Subject<never[]>() } },
+        { provide: PackageService, useValue: { getPackagesPage: (): Subject<never[]> => new Subject<never[]>() } },
       ],
     }).compileComponents();
   });
 
   it('routes a failed product list load to an error alert (O2)', async () => {
-    productOps.getProducts.and.returnValue(throwError(() => new Error('down')));
+    productOps.getProductsPage.and.returnValue(throwError(() => new Error('down')));
 
     const fixture = TestBed.createComponent(ProductManagementComponent);
     fixture.detectChanges();

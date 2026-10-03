@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -105,7 +106,11 @@ class OrderManagerImplTest {
     }
 
     private OrderDto validOrder() {
-        return new OrderDto().setFirstname("Test").setLastname("Customer").setEmail("customer@example.com");
+        return new OrderDto()
+                .setHouseNumber("N/A")
+                .setFirstname("Test")
+                .setLastname("Customer")
+                .setEmail("customer@example.com");
     }
 
     @Test
@@ -246,8 +251,10 @@ class OrderManagerImplTest {
 
     @Test
     void createOrderRejectsDuplicateProductLinesBeforeReservingStock() {
-        OrderDto dto =
-                new OrderDto().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p1", 1), item("p1", 1)));
+        OrderDto dto = new OrderDto()
+                .setHouseNumber("N/A")
+                .setDeliveryAmount(BigDecimal.ZERO)
+                .setItems(List.of(item("p1", 1), item("p1", 1)));
 
         assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
         verify(productManager, never()).getProductsOrDie(any());
@@ -317,6 +324,24 @@ class OrderManagerImplTest {
         verify(productManager, times(1)).getProductsOrDie(List.of("p1", "p2", "p3"));
         verify(productRepository, times(3)).decreaseStockIfAvailable(anyString(), anyInt());
         verify(orderRepository).save(any(CustomerOrder.class));
+    }
+
+    @Test
+    void createOrderReservesMultipleProductsInProductIdOrder() {
+        Product first = product("p1", "First", new BigDecimal("10.00"), null, 100);
+        Product second = product("p2", "Second", new BigDecimal("20.00"), null, 100);
+        when(productManager.getProductsOrDie(List.of("p2", "p1"))).thenReturn(Map.of("p1", first, "p2", second));
+        when(productRepository.decreaseStockIfAvailable(anyString(), anyInt())).thenReturn(1);
+        when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        final OrderDto dto =
+                validOrder().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p2", 1), item("p1", 1)));
+
+        orderManager.createOrder(dto, "user-1");
+
+        final InOrder inOrder = inOrder(productRepository);
+        inOrder.verify(productRepository).decreaseStockIfAvailable(first.getId(), 1);
+        inOrder.verify(productRepository).decreaseStockIfAvailable(second.getId(), 1);
     }
 
     @Test
@@ -458,6 +483,7 @@ class OrderManagerImplTest {
     @Test
     void createOrderRejectsMissingContactDetailsBeforeReservingStock() {
         OrderDto dto = new OrderDto()
+                .setHouseNumber("N/A")
                 .setFirstname(null)
                 .setLastname("Customer")
                 .setEmail("customer@example.com")
