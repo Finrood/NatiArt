@@ -12,11 +12,18 @@ public class ShippingEstimateRequest {
         if (to == null || to.isBlank()) {
             throw new IllegalArgumentException("Destination postal code cannot be empty");
         }
-        if (weight <= 0 || length <= 0 || width <= 0 || height <= 0) {
+        if (!Float.isFinite(weight)
+                || !Float.isFinite(length)
+                || !Float.isFinite(width)
+                || !Float.isFinite(height)
+                || weight <= 0
+                || length <= 0
+                || width <= 0
+                || height <= 0) {
             throw new IllegalArgumentException("Shipping weight and dimensions must be greater than zero");
         }
-        if (quantity < 1) {
-            throw new IllegalArgumentException("Shipping quantity must be at least one");
+        if (quantity < 1 || quantity > 100) {
+            throw new IllegalArgumentException("Shipping quantity must be between one and 100");
         }
         this.to = to;
         this.weight = weight;
