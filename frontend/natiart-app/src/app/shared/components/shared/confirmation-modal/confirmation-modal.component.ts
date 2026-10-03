@@ -5,7 +5,6 @@ import {ButtonComponent} from "../../button.component";
 
 @Component({
   selector: 'app-confirmation-modal',
-  standalone: true, // Make sure it's standalone
   imports: [ButtonComponent],   // Import NgIf
   template: `
     @if (isOpen) {
@@ -44,10 +43,10 @@ import {ButtonComponent} from "../../button.component";
 })
 export class ConfirmationModalComponent {
   @Input() isOpen = false;
-  @Input() title = 'Confirm Action';
-  @Input() message = 'Are you sure you want to perform this action?';
-  @Input() confirmText = 'Confirm';
-  @Input() cancelText = 'Cancel';
+  @Input() title = $localize`Confirm Action`;
+  @Input() message = $localize`Are you sure you want to perform this action?`;
+  @Input() confirmText = $localize`Confirm`;
+  @Input() cancelText = $localize`Cancel`;
   @Output() confirm = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();
 

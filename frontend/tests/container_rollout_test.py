@@ -79,6 +79,10 @@ HTTPServer(('0.0.0.0',8080),Handler).serve_forever()
                 (context / 'html/index.html').write_text(f'''<!doctype html><html><body><h1>Release {release}</h1><button id="lazy">Load older tab module</button><output id="result"></output><script src="/runtime-config.js"></script><script type="module">document.querySelector('#lazy').onclick=async()=>{{try{{const value=await import('/chunk-{hash_value}.js');document.querySelector('#result').textContent=value.release+' / '+window.__NATIART_CONFIG__.release;}}catch(error){{document.querySelector('#result').textContent='FAILED';}}}};</script></body></html>''')
                 (context / f'html/chunk-{hash_value}.js').write_text(f'export const release = "{release}";')
                 (context / 'html/runtime-config.js').write_text('window.__NATIART_CONFIG__ = {release:"image-default"};')
+                for language in ['en', 'pt-BR']:
+                    (context / 'html' / language).mkdir()
+                    shutil.copy(context / 'html/index.html', context / 'html' / language / 'index.html')
+                    shutil.copy(context / f'html/chunk-{hash_value}.js', context / 'html' / language / f'chunk-{hash_value}.js')
                 (context / 'Dockerfile').write_text('''FROM nginx:1.27-alpine
 ENV NATIART_PUBLIC_SCHEME=http
 COPY nginx.conf /etc/nginx/templates/default.conf.template
@@ -107,7 +111,7 @@ COPY html /usr/share/nginx/html
                 input(f'Release A ready at http://127.0.0.1:{port}/products/deep/link . Open the old tab, then press Enter to replace A: ')
             docker('rm', '-f', prefix + '-a')
             launch('B', port)
-            for path in ['/', '/index.html', '/products/deep/link', '/checkout']:
+            for path in ['/', '/index.html', '/products/deep/link', '/checkout', '/en/checkout', '/pt-BR/checkout']:
                 status, headers, body = request(port, path)
                 assert status == 200 and 'Release B' in body, path
                 assert headers['Cache-Control'] == 'no-store', path
@@ -116,6 +120,10 @@ COPY html /usr/share/nginx/html
             # A had never requested its lazy chunk before the switch. B still serves it.
             assert '"A"' in request(port, '/chunk-AAAAAAAA.js')[2]
             assert '"B"' in request(port, '/chunk-BBBBBBBB.js')[2]
+            for language in ['en', 'pt-BR']:
+                assert '"A"' in request(port, f'/{language}/chunk-AAAAAAAA.js')[2]
+                assert 'immutable' in request(port, f'/{language}/chunk-AAAAAAAA.js')[1]['Cache-Control']
+                assert '"B"' in request(port, f'/{language}/chunk-BBBBBBBB.js')[2]
             assert request(port, '/chunk-MISSING0.js')[0] == 404
             assert request(port, '/missing.js')[0] == 404
             assert request(port, '/server/unknown')[0] == 404
