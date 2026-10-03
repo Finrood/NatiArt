@@ -84,13 +84,13 @@
 <app-page-controls [page]="pages.$page()" [total]="pages.$total()" [hasNext]="pages.$hasNext()"
     [loading]="pages.$loading()" [error]="pages.$error()" (pageChange)="pages.load($event)"></app-page-controls>
   @if (modalVisible) {
-    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div
         class="relative bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto transform transition-transform duration-300 ease-in-out">
         <!-- Loading overlay -->
         @if (isSubmitting) {
           <div
-            class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+            class="absolute inset-0 bg-white/75 flex items-center justify-center z-10">
             <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div>
           </div>
         }
@@ -217,7 +217,7 @@
           <!-- Loading Overlay for Images -->
           @if (isLoadingImages) {
             <div
-              class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+              class="absolute inset-0 bg-white/75 flex items-center justify-center z-10">
               <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div>
             </div>
           }
@@ -235,7 +235,7 @@
                   <app-button type="button" (click)="removeImage(i)" color="danger" size="sm" [disabled]="isDragging" i18n>Remove
                   </app-button>
                   <div
-                    class="absolute inset-0 bg-blue-500 bg-opacity-50 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" i18n>{isTouch, select, true {Long press to reorder} other {Drag to reorder}}</div>
+                    class="absolute inset-0 bg-blue-500/50 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" i18n>{isTouch, select, true {Long press to reorder} other {Drag to reorder}}</div>
                 </div>
               }
             </div>

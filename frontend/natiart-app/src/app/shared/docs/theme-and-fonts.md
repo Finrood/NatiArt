@@ -1,0 +1,37 @@
+# Theme and font delivery (CA37)
+
+Global Tailwind 4 theme uses `--font-*` and `--text-*`. Only used Poppins
+weights 400/500/600/700 and the Playfair Display upright variable face ship under
+`public/fonts`; unused mono/display family declarations are removed. One global
+font-face declaration per asset uses font-display:swap with Arial/Georgia and
+system fallbacks. Assets, SHA-256 hashes, upstream Google Fonts commit and OFL
+licenses are versioned together in `public/fonts/manifest.json`. No runtime font
+CDN is required and fonts are outside component CSS budgets.
+
+`.form-input` styling is global because projected input nodes belong to their
+caller under Angular emulated encapsulation. Error styling is scoped to the
+shared field's `.has-error` container. Form events mark that field for rendering;
+retain the identical CA33 subscription and password/group error handling when
+merging its changes. Border, focus ring, error color, padding and select arrows
+now share one stylesheet instead of unused step-level copies.
+
+Legacy overlay opacity classes use Tailwind alpha syntax. Shipping/payment and
+alert animation styles are attached to their components; payment animation uses
+a real element. They honor reduced motion. Unreferenced empty/comment-only CSS
+and the unused input-only user step CSS were removed. Duplicate field imports
+and misleading commented stylesheet scaffolding were removed.
+
+Verification uses Node 22, Chromium and repository npm scripts:
+
+- `npm test -- --watch=false --browsers=ChromeHeadless`: actual projected input
+  border/focus/error and local font loads; iframe viewports 360/1280 pixels verify
+  computed fonts, form spacing and translucent overlays.
+- `unshare -rn env PATH=<Node22/bin>:$PATH npm --prefix frontend/natiart-app run build -- --configuration production`:
+  production build in a new network namespace with no interfaces/routes; no
+  font-network access or dependency install is needed because dependencies are
+  already installed. Budgets remain unchanged.
+
+CA34 accessibility should preserve these global styles. CA28 shared alert state
+should retain the attached animation CSS; CA32 PIX-only controls remain the
+payment contract when combining its UI change. No production deployment is
+claimed by the local build/computed-style checks.

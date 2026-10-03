@@ -13,6 +13,7 @@ import {AddressFormComponent} from "../address-form/address-form.component";
     AddressFormComponent
 ],
   templateUrl: './shipping-info-step.component.html',
+  styleUrl: './shipping-info-step.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ShippingInfoStepComponent implements OnInit, OnDestroy {
