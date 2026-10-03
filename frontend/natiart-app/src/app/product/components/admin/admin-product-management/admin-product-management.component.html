@@ -4,9 +4,8 @@
 
   <!-- Header -->
   <div class="flex justify-between items-center mb-4">
-    <h2 class="text-2xl sm:text-3xl font-light">Products</h2>
-    <app-button (click)="openModal()" color="primary" size="md">
-      Add New Product
+    <h2 class="text-2xl sm:text-3xl font-light" i18n>Products</h2>
+    <app-button (click)="openModal()" color="primary" size="md" i18n>Add New Product
     </app-button>
   </div>
 
@@ -24,19 +23,19 @@
           <div class="absolute top-2 right-2 flex space-x-2">
             <!-- Fixed Golden Border Icon (Badge Check) -->
             @if (product.hasFixedGoldenBorder) {
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-500" viewBox="0 0 20 20" fill="currentColor" title="Fixed Golden Border">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-500" viewBox="0 0 20 20" fill="currentColor" title="Fixed Golden Border" i18n-title>
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-10.293a1 1 0 00-1.414-1.414L9 9.586 7.707 8.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
               </svg>
             }
             <!-- Custom Golden Border Icon (Dashed Rectangle) -->
             @if (product.availablePersonalizations.includes(PersonalizationOption.GOLDEN_BORDER)) {
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" title="Custom Golden Border">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" title="Custom Golden Border" i18n-title>
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke-width="2" stroke-dasharray="4 2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             }
             <!-- Custom Images Icon (Photograph) -->
             @if (product.availablePersonalizations.includes(PersonalizationOption.CUSTOM_IMAGE)) {
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" title="Custom Images">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" title="Custom Images" i18n-title>
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 15l3-3 2 2 3-3" />
               </svg>
@@ -50,14 +49,12 @@
           <span class="text-sm text-gray-500 line-through">{{ product.originalPrice | currency:'BRL' }}</span>
         </div>
         <div class="flex flex-wrap justify-between gap-2">
-          <app-button (click)="openModal(product)" color="primary" size="sm">
-            Edit
+          <app-button (click)="openModal(product)" color="primary" size="sm" i18n>Edit
           </app-button>
-          <app-button (click)="deleteProduct(product.id!)" color="danger" size="sm">
-            Delete
+          <app-button (click)="deleteProduct(product.id!)" color="danger" size="sm" i18n>Delete
           </app-button>
           <app-button (click)="toggleProductVisibility(product)" color="primary" size="sm">
-            <span>{{ product.active ? 'Hide' : 'Show' }}</span>
+            <span i18n>{product.active, select, true {Hide} other {Show}}</span>
             <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
               @if (product.active) {
                 <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
@@ -97,49 +94,52 @@
             <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div>
           </div>
         }
-        <h3 class="text-2xl mb-4 font-light">
-          {{ isEditingProduct ? 'Edit Product' : 'Add Product' }}
-        </h3>
+        <h3 class="text-2xl mb-4 font-light" i18n>{isEditingProduct, select, true {Edit Product} other {Add Product}}</h3>
         <form (ngSubmit)="submitForm()" [formGroup]="productForm">
           <!-- Label -->
           <div class="mb-4">
-            <label for="productLabel" class="block text-sm font-medium text-gray-700 mb-1">Label</label>
+            <label for="productLabel" class="block text-sm font-medium text-gray-700 mb-1" i18n>Label</label>
             <input id="productLabel" name="productLabel" type="text" formControlName="label"
               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
             @if (productForm.get('label')?.invalid && productForm.get('label')?.touched) {
               <div
-                class="text-red-600 text-sm mt-1">
-                Label is required.
+                class="text-red-600 text-sm mt-1" i18n>Label is required.
               </div>
             }
           </div>
           <!-- Description -->
           <div class="mb-4">
-            <label for="productDescription" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label for="productDescription" class="block text-sm font-medium text-gray-700 mb-1" i18n>Description</label>
             <textarea id="productDescription" name="productDescription" formControlName="description" rows="3"
             class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm"></textarea>
           </div>
           <!-- Original Price -->
           <div class="mb-4">
-            <label for="productOriginalPrice" class="block text-sm font-medium text-gray-700 mb-1">Original Price</label>
+            <label for="productOriginalPrice" class="block text-sm font-medium text-gray-700 mb-1" i18n>Original Price</label>
             <input id="productOriginalPrice" name="productOriginalPrice" type="number" formControlName="originalPrice"
               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
           </div>
           <!-- Marked Price -->
           <div class="mb-4">
-            <label for="productMarkedPrice" class="block text-sm font-medium text-gray-700 mb-1">Marked Price</label>
+            <label for="productMarkedPrice" class="block text-sm font-medium text-gray-700 mb-1" i18n>Marked Price</label>
             <input id="productMarkedPrice" name="productMarkedPrice" type="number" formControlName="markedPrice"
               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
           </div>
           <!-- Stock Quantity -->
           <div class="mb-4">
-            <label for="productStockQuantity" class="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
+            <label for="productStockQuantity" class="block text-sm font-medium text-gray-700 mb-1" i18n>Stock Quantity</label>
             <input id="productStockQuantity" name="productStockQuantity" type="number" formControlName="stockQuantity"
+              class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
+          </div>
+          <!-- Shipping Weight -->
+          <div class="mb-4">
+            <label for="productWeightKg" class="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
+            <input id="productWeightKg" name="productWeightKg" type="number" step="0.001" min="0.001" formControlName="weightKg"
               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
           </div>
           <!-- Category Select -->
           <div class="mb-4">
-            <label for="productCategory" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <label for="productCategory" class="block text-sm font-medium text-gray-700 mb-1" i18n>Category</label>
             <select id="productCategory" name="productCategory" formControlName="categoryId"
               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
               @for (category of categories | async; track category) {
@@ -151,13 +151,13 @@
               @if (categoryOptions.$hasNext() || categoryOptions.$error()) {
                 <button type="button" class="underline mt-2" [disabled]="categoryOptions.$loading()"
                   (click)="categoryOptions.load(categoryOptions.$error() ? categoryOptions.$page() : categoryOptions.$page() + 1)">
-                  {{ categoryOptions.$error() ? 'Retry categories' : 'Load more categories' }}</button>
+                  @if (categoryOptions.$error()) { <span i18n>Retry categories</span> } @else { <span i18n>Load more categories</span> }</button>
                 @if (categoryOptions.$error()) { <p role="alert">{{ categoryOptions.$error() }}</p> }
               }
           </div>
           <!-- Package Select -->
           <div class="mb-4">
-            <label for="productPackage" class="block text-sm font-medium text-gray-700 mb-1">Package</label>
+            <label for="productPackage" class="block text-sm font-medium text-gray-700 mb-1" i18n>Package</label>
             <select id="productPackage" name="productPackage" formControlName="packageId"
               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
               @for (pack of packages | async; track pack) {
@@ -169,7 +169,7 @@
               @if (packageOptions.$hasNext() || packageOptions.$error()) {
                 <button type="button" class="underline mt-2" [disabled]="packageOptions.$loading()"
                   (click)="packageOptions.load(packageOptions.$error() ? packageOptions.$page() : packageOptions.$page() + 1)">
-                  {{ packageOptions.$error() ? 'Retry packages' : 'Load more packages' }}</button>
+                  @if (packageOptions.$error()) { <span i18n>Retry packages</span> } @else { <span i18n>Load more packages</span> }</button>
                 @if (packageOptions.$error()) { <p role="alert">{{ packageOptions.$error() }}</p> }
               }
           </div>
@@ -179,7 +179,7 @@
               <input type="checkbox" formControlName="hasFixedGoldenBorder" id="hasFixedGoldenBorder"
                 name="hasFixedGoldenBorder"
                 class="form-checkbox h-5 w-5 text-primary focus:ring-primary focus:ring-opacity-50">
-              <span class="text-sm font-medium text-gray-700">Has fixed golden borders</span>
+              <span class="text-sm font-medium text-gray-700" i18n>Has fixed golden borders</span>
             </label>
           </div>
           <!-- Merchandising flags -->
@@ -210,7 +210,7 @@
           }
           <!-- Images File Input -->
           <div class="mb-4">
-            <label for="productImages" class="block text-sm font-medium text-gray-700 mb-1">Images</label>
+            <label for="productImages" class="block text-sm font-medium text-gray-700 mb-1" i18n>Images</label>
             <input id="productImages" type="file" multiple accept="image/*" (change)="onFileSelected($event)"
               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
           </div>
@@ -223,34 +223,28 @@
           }
           <!-- Image Previews with Drag-and-Drop -->
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Image Previews (Drag to reorder)</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1" i18n>Image Previews (Drag to reorder)</label>
             <div cdkDropList (cdkDropListDropped)="onImageDrop($event)" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
               @for (preview of imagePreviews; track preview; let i = $index) {
                 <div cdkDrag [cdkDragStartDelay]="100"
                   (cdkDragStarted)="dragStarted()" (cdkDragEnded)="dragEnded()"
                   class="relative group">
                   <div class="aspect-w-1 aspect-h-1">
-                    <img [src]="preview.url" alt="Image preview" class="object-cover w-full h-full rounded-md">
+                    <img [src]="preview.url" alt="Image preview" class="object-cover w-full h-full rounded-md" i18n-alt>
                   </div>
-                  <app-button type="button" (click)="removeImage(i)" color="danger" size="sm" [disabled]="isDragging">
-                    Remove
+                  <app-button type="button" (click)="removeImage(i)" color="danger" size="sm" [disabled]="isDragging" i18n>Remove
                   </app-button>
                   <div
-                    class="absolute inset-0 bg-blue-500 bg-opacity-50 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    {{ isTouch ? 'Long press to reorder' : 'Drag to reorder' }}
-                  </div>
+                    class="absolute inset-0 bg-blue-500 bg-opacity-50 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" i18n>{isTouch, select, true {Long press to reorder} other {Drag to reorder}}</div>
                 </div>
               }
             </div>
           </div>
           <!-- Form Actions -->
           <div class="flex justify-end space-x-2">
-            <app-button type="button" (click)="closeModal()" color="secondary" size="md">
-              Cancel
+            <app-button type="button" (click)="closeModal()" color="secondary" size="md" i18n>Cancel
             </app-button>
-            <app-button type="submit" [disabled]="isSubmitting || isLoadingImages || productForm.invalid" color="primary" size="md">
-              {{ isEditingProduct ? 'Update' : 'Add' }}
-            </app-button>
+            <app-button type="submit" [disabled]="isSubmitting || isLoadingImages || productForm.invalid" color="primary" size="md" i18n>{isEditingProduct, select, true {Update} other {Add}}</app-button>
           </div>
         </form>
       </div>

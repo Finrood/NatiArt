@@ -5,6 +5,10 @@ import {PagedResponse} from '../../shared/models/paged-response.model';
 import {environment} from "../../../environments/environment";
 import {Product} from "../models/product.model";
 
+export interface CustomerUploadResponse {
+  uploadId: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -83,5 +87,11 @@ export class ProductService {
     return this._http.get(`${this.apiUrlImages}/images?path=${encodeURIComponent(imagePath)}`, {
       responseType: 'blob',
     });
+  }
+
+  uploadCustomerImage(file: File): Observable<CustomerUploadResponse> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return this._http.post<CustomerUploadResponse>(`${this.apiUrlImages}/customer/uploads`, form);
   }
 }

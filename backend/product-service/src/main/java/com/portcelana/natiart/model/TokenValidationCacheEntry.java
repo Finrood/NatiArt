@@ -13,6 +13,9 @@ public class TokenValidationCacheEntry {
     @Column(length = 64)
     private String tokenDigest;
 
+    @Column(length = 128)
+    private String userId;
+
     @Lob
     @Column(nullable = false)
     private String responseJson;
@@ -23,13 +26,22 @@ public class TokenValidationCacheEntry {
     protected TokenValidationCacheEntry() {}
 
     public TokenValidationCacheEntry(String tokenDigest, String responseJson, long expiresAt) {
+        this(tokenDigest, null, responseJson, expiresAt);
+    }
+
+    public TokenValidationCacheEntry(String tokenDigest, String userId, String responseJson, long expiresAt) {
         this.tokenDigest = tokenDigest;
+        this.userId = userId;
         this.responseJson = responseJson;
         this.expiresAt = expiresAt;
     }
 
     public String getTokenDigest() {
         return tokenDigest;
+    }
+
+    public String getUserId() {
+        return userId;
     }
 
     public String getResponseJson() {

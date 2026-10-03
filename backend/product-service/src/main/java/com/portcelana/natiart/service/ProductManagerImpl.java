@@ -37,6 +37,7 @@ import com.portcelana.natiart.storage.StorageService;
 @Service
 public class ProductManagerImpl implements ProductManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductManagerImpl.class);
+    private static final BigDecimal MAX_PRODUCT_WEIGHT_KG = BigDecimal.valueOf(1000);
     private static final String IMAGE_KEY_PREFIX = "products/";
 
     private final ProductRepository productRepository;
@@ -185,6 +186,7 @@ public class ProductManagerImpl implements ProductManager {
         requireNonNegativePrice(productDto.getOriginalPrice(), "original");
         requireNonNegativePrice(productDto.getMarkedPrice(), "marked");
         requireNonNegativeStock(productDto.getStockQuantity());
+        requirePositiveWeight(productDto.getWeightKg());
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
         final Optional<Package> pack = packageManager.getPackage(productDto.getPackageId());
         final Product product = productRepository
@@ -196,6 +198,7 @@ public class ProductManagerImpl implements ProductManager {
                         .setAvailablePersonalizations(productDto.getAvailablePersonalizations())
                         .setMarkedPrice(productDto.getMarkedPrice())
                         .setStockQuantity(productDto.getStockQuantity())
+                        .setWeightKg(productDto.getWeightKg())
                         .setTags(productDto.getTags()))
                 .setNewProduct(productDto.isNewProduct())
                 .setFeaturedProduct(productDto.isFeaturedProduct());
@@ -214,6 +217,7 @@ public class ProductManagerImpl implements ProductManager {
         requireNonNegativePrice(productDto.getOriginalPrice(), "original");
         requireNonNegativePrice(productDto.getMarkedPrice(), "marked");
         requireNonNegativeStock(productDto.getStockQuantity());
+        requirePositiveWeight(productDto.getWeightKg());
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
         final Optional<Package> pack = packageManager.getPackage(productDto.getPackageId());
         final Product product = getProductOrDie(productDto.getId())
@@ -226,6 +230,7 @@ public class ProductManagerImpl implements ProductManager {
                 .setOriginalPrice(productDto.getOriginalPrice())
                 .setMarkedPrice(productDto.getMarkedPrice())
                 .setStockQuantity(productDto.getStockQuantity())
+                .setWeightKg(productDto.getWeightKg())
                 .setTags(productDto.getTags())
                 .setNewProduct(productDto.isNewProduct())
                 .setFeaturedProduct(productDto.isFeaturedProduct());
@@ -323,6 +328,18 @@ public class ProductManagerImpl implements ProductManager {
     private static void requireNonNegativeStock(int stockQuantity) {
         if (stockQuantity < 0) {
             throw new IllegalArgumentException("Product stock quantity must not be negative");
+        }
+    }
+
+    private static void requirePositiveWeight(BigDecimal weightKg) {
+        if (weightKg == null || weightKg.signum() <= 0) {
+            throw new IllegalArgumentException("Product weight must be greater than zero kilograms");
+        }
+        if (weightKg.scale() > 3) {
+            throw new IllegalArgumentException("Product weight must have at most three decimal places");
+        }
+        if (weightKg.compareTo(MAX_PRODUCT_WEIGHT_KG) > 0) {
+            throw new IllegalArgumentException("Product weight must not exceed 1000 kilograms");
         }
     }
 }
