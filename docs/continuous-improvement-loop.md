@@ -126,6 +126,13 @@ empty level loudly (exit 2) and warns on any non-`xhigh` level.
   simply re-probed each round/cycle. Stateless, like lens rotation.
 - **Which model won** is printed (`opencode-muse` / `cline-muse` / `cline-deepseek` / `cline-glm`)
   (also echoed as `NATIART_ACTIVE_MODEL`) for the agent's cycle summary.
+- **Lifecycle and delivery contract**: every attempt runs in its own process
+  group; TERM/INT/EXIT cleanup terminates and waits for that group before the
+  wrapper returns or retries. A clean CLI exit is accepted only when a cycle
+  reports a PR number/URL or a reviewer reports `VERDICT: APPROVE`/
+  `VERDICT: REQUEST_CHANGES`. Each attempt leaves a bounded, redacted recovery
+  artifact under `logs/agent-outcomes/` before its private temporary log is
+  removed, so failover can reconcile the prior attempt without overlapping it.
 - **Reviewer independence.** Review invocations pass `--skip <author's Model:
   footer value>` (`run-agent.sh`, substring match, ignored if it would empty
   the pool), so the reviewer is a different model than the author whenever the
@@ -318,6 +325,17 @@ table above is agent discipline, enforced by the cycle prompt.
 `docs/audit-findings-archive.md`, keeping per-cycle read context lean as
 history grows). PRs reference their item; the merging cycle moves the section.
 Severity labels are exactly `High`/`Medium`/`Low`.
+
+### Worker deliverable attribution
+
+A successful CLI exit must be accompanied by a verified result. The runner
+provides an explicit cycle ID and private `NATIART_DELIVERABLE_FILE` path.
+Implementation workers write a JSON object with `cycle`, `branch` and full
+`sha` after committing and pushing. The runner verifies a changed local branch,
+the same exact remote tip, and an open PR by the authenticated account on that
+branch and commit. Unrelated repository activity cannot complete the attempt.
+Review workers must submit a new verdict as the authenticated reviewer on the
+specified PR and unchanged captured head. Printed verdicts do not count.
 
 ### Captured candidate validation
 

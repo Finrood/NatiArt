@@ -85,7 +85,7 @@ assert_contains "$out" "ignoring skips" "empty-pool fallback warned"
 
 # --- no runnable CLI anywhere: loud abort (exit 2), not a silent spin ---
 emptyd=$(mktemp -d)
-for _t in bash dirname date cut grep tail mktemp jq sed; do ln -s "$(command -v "$_t")" "$emptyd/$_t" 2>/dev/null || true; done
+for _t in bash dirname date cut grep tail mktemp jq sed mkdir; do ln -s "$(command -v "$_t")" "$emptyd/$_t" 2>/dev/null || true; done
 nb_out=$(mktemp)
 if PATH="$emptyd" "$emptyd/bash" "$RUN_AGENT" --check-only dummy >"$nb_out" 2>&1; then nb_rc=0; else nb_rc=$?; fi
 assert_eq "2" "$nb_rc" "all CLIs missing -> exit 2"
