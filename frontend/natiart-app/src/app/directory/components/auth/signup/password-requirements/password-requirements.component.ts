@@ -8,7 +8,7 @@ import {checkPasswordRequirements, DEFAULT_REQUIREMENTS, PasswordRequirements} f
   imports: [],
   template: `
     <div class="mt-4 space-y-2" aria-live="polite">
-      @for (req of requirementsList; track req) {
+      @for (req of requirementsList; track req.text) {
         <div class="flex items-center gap-2">
           <svg class="w-4 h-4 shrink-0" [class.text-green-500]="req.valid" [class.text-gray-400]="!req.valid" fill="none"
             viewBox="0 0 24 24" stroke="currentColor">
@@ -31,7 +31,7 @@ export class PasswordRequirementsComponent {
   @Input() password = '';
   @Input() requirements: PasswordRequirements = DEFAULT_REQUIREMENTS;
 
-  get requirementsList() {
+  get requirementsList(): {text: string; valid: boolean}[] {
     const results = checkPasswordRequirements(this.password, this.requirements);
     return [
       {
@@ -49,7 +49,8 @@ export class PasswordRequirementsComponent {
       {
         text: $localize`Contains number`,
         valid: results.hasNumber
-      }
+      },
+      {text: $localize`Within the supported password length`, valid: results.hasMaxBytes}
     ];
   }
 }

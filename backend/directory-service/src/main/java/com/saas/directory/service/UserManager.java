@@ -1,6 +1,5 @@
 package com.saas.directory.service;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import javax.management.relation.RoleNotFoundException;
 
@@ -69,10 +68,7 @@ public class UserManager {
         if (!StringUtils.hasText(userRegistrationDto.password())) {
             throw new IllegalArgumentException("Password cannot be empty");
         }
-        if (userRegistrationDto.password().length() < 8
-                || userRegistrationDto.password().getBytes(StandardCharsets.UTF_8).length > 72) {
-            throw new IllegalArgumentException("Password must be between 8 characters and 72 UTF-8 bytes");
-        }
+        PasswordPolicy.validate(userRegistrationDto.password());
         profileManager.validateProfile(userRegistrationDto.profile());
         final Role role = roleRepository
                 .findRoleByLabel(RoleName.USER)

@@ -40,7 +40,14 @@
               </app-natiart-form-field>
             </div>
 
-            <app-button type="submit" [disabled]="loginForm.invalid || isSubmitting" [block]="true" color="primary" size="lg" i18n>Sign In
+            <div class="text-right -mt-3">
+              <a routerLink="/forgot-password" class="text-sm text-primary hover:text-primary-dark underline underline-offset-2" i18n>
+                Forgot your password?
+              </a>
+            </div>
+
+            <app-button type="submit" [disabled]="loginForm.invalid || isSubmitting" [block]="true" color="primary" size="lg" i18n>
+              Sign In
             </app-button>
           </form>
 
