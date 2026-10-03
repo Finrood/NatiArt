@@ -10,6 +10,7 @@ export interface AlertMessage {
   selector: 'app-alert-messages',
   templateUrl: './alert-message.component.html',
   imports: [NgClass],
+  styleUrl: './alert-message.component.css',
 })
 export class AlertMessageComponent implements OnDestroy {
   alertMessages: AlertMessage[] = [];
