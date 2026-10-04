@@ -1,4 +1,4 @@
-import {Directive, HostListener, Renderer2} from '@angular/core';
+import {Directive, inject, HostListener, Renderer2} from '@angular/core';
 import {NgControl} from '@angular/forms';
 
 @Directive({
@@ -10,10 +10,8 @@ export class CpfFormatDirective {
     'Home', 'End', 'ArrowLeft', 'ArrowRight'
   ]);
 
-  constructor(
-    private renderer: Renderer2,
-    private control: NgControl
-  ) {}
+  private readonly _renderer = inject(Renderer2);
+  private readonly _control = inject(NgControl);
 
   @HostListener('input', ['$event'])
   onInput(event: InputEvent) {
@@ -22,11 +20,11 @@ export class CpfFormatDirective {
 
   @HostListener('keydown', ['$event'])
   onKeyDown(event: KeyboardEvent) {
-    if (this.navigationKeys.has(event.key) || (event.ctrlKey && ['a', 'c', 'v', 'x'].includes(event.key.toLowerCase()))) {
+    if (this.navigationKeys.has(event.key) || ((event.ctrlKey || event.metaKey) && ['a', 'c', 'v', 'x', 'z', 'y'].includes(event.key.toLowerCase()))) {
       return;
     }
 
-    if (isNaN(Number(event.key))) {
+    if (!/^\d$/.test(event.key)) {
       event.preventDefault();
     }
   }
@@ -53,12 +51,11 @@ export class CpfFormatDirective {
 
   private updateValue(input: HTMLInputElement, formattedValue: string, cleanValue: string) {
     const previousValue = input.value;
+    if (this._control.control?.value !== cleanValue) {
+      this._control.control?.setValue(cleanValue, {emitEvent: true, emitModelToViewChange: false});
+    }
     if (previousValue !== formattedValue) {
-      this.renderer.setProperty(input, 'value', formattedValue);
-      this.control.control?.setValue(cleanValue, {
-        emitEvent: true,
-        emitModelToViewChange: false
-      });
+      this._renderer.setProperty(input, 'value', formattedValue);
 
       this.adjustCursorPosition(input, previousValue, formattedValue);
     }

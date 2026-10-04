@@ -11,8 +11,8 @@ describe('LeftMenuComponent', () => {
   let categoryService: jasmine.SpyObj<CategoryService>;
 
   beforeEach(async () => {
-    categoryService = jasmine.createSpyObj<CategoryService>('CategoryService', ['getCategories']);
-    categoryService.getCategories.and.returnValue(of([]));
+    categoryService = jasmine.createSpyObj<CategoryService>('CategoryService', ['getCategoriesPage']);
+    categoryService.getCategoriesPage.and.returnValue(of({items: [], page: 0, size: 20, total: 0, hasNext: false}));
     await TestBed.configureTestingModule({
       imports: [LeftMenuComponent],
       providers: [
@@ -30,7 +30,7 @@ describe('LeftMenuComponent', () => {
   });
 
   it('shows a fallback message when categories cannot be loaded', () => {
-    categoryService.getCategories.and.returnValue(throwError(() => new Error('backend down')));
+    categoryService.getCategoriesPage.and.returnValue(throwError(() => new Error('backend down')));
     const fixture = TestBed.createComponent(LeftMenuComponent);
 
     fixture.detectChanges();

@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.PackageDto;
+import com.portcelana.natiart.dto.PagedResponseDto;
 import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.repository.PackageRepository;
 import com.portcelana.natiart.repository.ProductRepository;
@@ -43,6 +44,14 @@ public class PackageManagerImpl implements PackageManager {
     @Transactional(readOnly = true)
     public List<Package> getPackages(Pageable pageable) {
         return packageRepository.findAll(pageable).stream().toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PagedResponseDto<PackageDto> getPackagesPage(Pageable pageable, boolean includeInactive) {
+        return PagedResponseDto.from(
+                (includeInactive ? packageRepository.findAll(pageable) : packageRepository.findByActiveTrue(pageable))
+                        .map(PackageDto::from));
     }
 
     @Override

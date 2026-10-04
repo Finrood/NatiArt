@@ -1,7 +1,7 @@
 <div class="relative space-y-1 w-full mb-4">
   <!-- Label -->
   <label
-    [for]="controlName"
+    [for]="resolvedInputId"
     class="block text-sm font-medium text-surface-contrast/85 transition-colors"
     >
     {{ label }}
@@ -16,7 +16,7 @@
       <app-button (click)="togglePasswordVisibility()" type="button"
         color="primary"
         class="absolute inset-y-0 right-8 pr-3 flex items-center text-sm leading-5 focus:outline-none z-30 transition-colors duration-200"
-        aria-label="Toggle password visibility" i18n-aria-label>
+        [aria-label]="passwordVisibilityLabel" [aria-pressed]="showPassword">
         <span class="w-5 h-5 flex items-center justify-center">
           @if (!showPassword) {
             <svg class="w-5 h-5" fill="none" stroke="currentColor"
@@ -54,7 +54,7 @@
 
   <!-- Error messages -->
   @if (showErrors()) {
-    <div class="text-error text-sm space-y-1">
+    <div class="text-error text-sm space-y-1" [id]="resolvedInputId + '-error'" role="alert">
       @if (control?.errors?.['required']) {
         <p i18n>{{ label }} is required</p>
       }
@@ -83,7 +83,13 @@
       @if (control?.errors?.['fetchError']) {
         <p i18n>Error fetching address</p>
       }
-      @if (control?.errors?.['passwordMismatch']) {
+      @if (control?.errors?.['passwordTooLong']) {
+        <p i18n>Password is too long (maximum {{ passwordRequirements.maxUtf8Bytes }} UTF-8 bytes). Use fewer characters.</p>
+      }
+      @if (control?.errors?.['passwordComplexity']) {
+        <p i18n>Password must have at least {{ passwordRequirements.minLength }} characters, an uppercase letter, a lowercase letter and a number.</p>
+      }
+      @if (hasPasswordMismatch() || control?.errors?.['passwordMismatch']) {
         <p i18n>Passwords do not match</p>
       }
     </div>
