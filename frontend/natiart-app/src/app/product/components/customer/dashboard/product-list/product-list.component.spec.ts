@@ -46,7 +46,7 @@ describe('ProductListComponent', () => {
       stockQuantity: 3,
       categoryId: 'cat-1',
       availablePersonalizations: undefined as unknown as PersonalizationOption[],
-      tags: new Set<string>(),
+      tags: [],
       images: ['img/a.png'],
     };
 
@@ -75,7 +75,7 @@ describe('ProductListComponent', () => {
       stockQuantity: 5,
       categoryId: 'cat-1',
       availablePersonalizations: [PersonalizationOption.GOLDEN_BORDER],
-      tags: new Set<string>(),
+      tags: [],
       images: [],
     };
 
@@ -101,7 +101,7 @@ describe('ProductListComponent', () => {
       stockQuantity: 3,
       categoryId: 'cat-1',
       availablePersonalizations: [],
-      tags: new Set<string>(),
+      tags: [],
       images: ['img/a.png'],
     };
 
@@ -132,14 +132,14 @@ describe('ProductListComponent', () => {
       stockQuantity: 3,
       categoryId: 'cat-1',
       availablePersonalizations: [],
-      tags: new Set<string>(),
+      tags: [],
       images: ['img/missing.png'],
     };
 
     component.ngOnInit();
     const listReq = httpMock.expectOne((req: HttpRequest<unknown>): boolean => req.url.indexOf('/featured') !== -1);
     listReq.flush([product]);
-    expect(component.imageUrls['p-9']).toBe('assets/img/placeholder.png');
+    expect(component.imageUrls['p-9']).toBe(component.emptyImage);
   });
 
   it('preserves card DOM nodes across same-id re-emissions (AF1)', () => {
@@ -154,7 +154,7 @@ describe('ProductListComponent', () => {
       stockQuantity: 3,
       categoryId: 'cat-1',
       availablePersonalizations: [],
-      tags: new Set<string>(),
+      tags: [],
       images: [],
     });
 
@@ -192,7 +192,7 @@ describe('ProductListComponent', () => {
       stockQuantity: 3,
       categoryId: 'cat-1',
       availablePersonalizations: [],
-      tags: new Set<string>(),
+      tags: [],
       images: ['img/' + suffix + '.png'],
     });
 

@@ -33,6 +33,7 @@ import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.PaymentIdempotencyRepository;
 import com.portcelana.natiart.repository.PaymentRepository;
+import com.portcelana.natiart.service.support.DomainValidation;
 
 @Service
 public class OrderManagerImpl implements OrderManager {
@@ -169,6 +170,7 @@ public class OrderManagerImpl implements OrderManager {
             throw new IllegalArgumentException("An order must have an owner");
         }
         final String normalizedKey = normalizeIdempotencyKey(idempotencyKey);
+        orderDto.setHouseNumber(DomainValidation.requiredText(orderDto.getHouseNumber(), "houseNumber", 255));
         final String fingerprint = fingerprint(orderDto);
 
         if (normalizedKey != null) {
@@ -249,6 +251,7 @@ public class OrderManagerImpl implements OrderManager {
         append(canonical, order == null ? null : order.getNeighborhood());
         append(canonical, order == null ? null : order.getZipCode());
         append(canonical, order == null ? null : order.getStreet());
+        append(canonical, order == null ? null : order.getHouseNumber());
         append(canonical, order == null ? null : order.getComplement());
         append(canonical, order == null ? null : order.getShippingQuoteId());
 

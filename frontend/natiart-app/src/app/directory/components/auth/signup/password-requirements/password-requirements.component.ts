@@ -1,4 +1,3 @@
-// password-requirements.component.ts
 import {Component, Input} from '@angular/core';
 import {checkPasswordRequirements, DEFAULT_REQUIREMENTS, PasswordRequirements} from "../../../../utils/password-utils";
 
@@ -8,7 +7,7 @@ import {checkPasswordRequirements, DEFAULT_REQUIREMENTS, PasswordRequirements} f
   imports: [],
   template: `
     <div class="mt-4 space-y-2" aria-live="polite">
-      @for (req of requirementsList; track req) {
+      @for (req of requirementsList; track req.text) {
         <div class="flex items-center gap-2">
           <svg class="w-4 h-4 shrink-0" [class.text-green-500]="req.valid" [class.text-gray-400]="!req.valid" fill="none"
             viewBox="0 0 24 24" stroke="currentColor">
@@ -31,9 +30,10 @@ export class PasswordRequirementsComponent {
   @Input() password = '';
   @Input() requirements: PasswordRequirements = DEFAULT_REQUIREMENTS;
 
-  get requirementsList() {
+  get requirementsList(): Array<{text: string; valid: boolean}> {
     const results = checkPasswordRequirements(this.password, this.requirements);
     return [
+      {text: $localize`Maximum ${this.requirements.maxUtf8Bytes}:MAX_BYTES: UTF-8 bytes`, valid: results.hasMaxBytes},
       {
         text: $localize`Minimum ${this.requirements.minLength}:MIN_LENGTH: characters`,
         valid: results.hasMinLength
