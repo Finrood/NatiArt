@@ -16,3 +16,9 @@ Only the configured API origins and base-path segments receive managed
 credentials. Caller-provided credentials remain under caller control. Refresh
 uses the authentication service shared operation and an internal HttpContext
 retry guard; no network retry marker is sent. Logout does not renew tokens.
+
+Refresh rejection handling belongs to the refresh observable before replaying the
+original request. After successful refresh, business errors (including 403) reach
+the original caller without navigating to login or clearing the valid session.
+API bases may be absolute development/production URLs or relative same-origin
+production paths; URL resolution uses the browser origin in either case.

@@ -291,25 +291,58 @@ describe('jwtInterceptor', () => {
     httpTesting.verify();
   }));
 
-  it('does not redirect when the retried request returns a business error', fakeAsync(() => {
-    const {http, httpTesting, tokenService} = setup();
-    const router: Router = TestBed.inject(Router);
-    tokenService.accessToken = OLD_ACCESS;
-    tokenService.refreshToken = OLD_REFRESH;
+  for (const status of [401, 403, 503]) {
+    it(`handles actual refresh rejection ${status} independently of replay`, fakeAsync(() => {
+      const {http, httpTesting, tokenService} = setup();
+      const router: Router = TestBed.inject(Router);
+      tokenService.accessToken = OLD_ACCESS;
+      tokenService.refreshToken = OLD_REFRESH;
+      let error: unknown;
+      const url: string = `${environment.api.product.url}/protected`;
+      http.get(url).subscribe({error: (response: unknown) => (error = response)});
+      httpTesting.expectOne(url).flush('', {status: 401, statusText: 'Unauthorized'});
+      tick();
+      httpTesting.expectOne(REFRESH_URL).flush('', {status, statusText: 'Refresh rejected'});
+      tick();
+      expect((error as {status: number}).status).toBe(status);
+      httpTesting.expectNone(url);
+      if (status === 503) {
+        expect(router.navigate).not.toHaveBeenCalled();
+        expect(tokenService.accessToken).toBe(OLD_ACCESS);
+        expect(tokenService.refreshToken).toBe(OLD_REFRESH);
+      } else {
+        expect(router.navigate).toHaveBeenCalledWith(['/login']);
+        expect(tokenService.accessToken).toBeNull();
+        expect(tokenService.refreshToken).toBeNull();
+      }
+      httpTesting.verify();
+    }));
+  }
 
-    let error: unknown;
-    http.get(`${environment.api.product.url}/api/secure`).subscribe({error: (e: unknown) => (error = e)});
-    httpTesting.expectOne(`${environment.api.product.url}/api/secure`).flush('', {status: 401, statusText: 'Unauthorized'});
-    tick();
-    httpTesting.expectOne(REFRESH_URL).flush({accessToken: NEW_ACCESS, refreshToken: NEW_REFRESH});
-    tick();
-    httpTesting.expectOne(`${environment.api.product.url}/api/secure`).flush('', {status: 400, statusText: 'Bad Request'});
-    tick();
+  for (const status of [400, 403, 409]) {
+    it(`does not redirect after successful refresh and business ${status}`, fakeAsync(() => {
+      const {http, httpTesting, tokenService} = setup();
+      const router: Router = TestBed.inject(Router);
+      tokenService.accessToken = OLD_ACCESS;
+      tokenService.refreshToken = OLD_REFRESH;
 
-    expect(error).toBeTruthy();
-    expect(router.navigate).not.toHaveBeenCalled();
-    httpTesting.verify();
-  }));
+      let error: unknown;
+      http.get(`${environment.api.product.url}/api/secure`).subscribe({error: (e: unknown) => (error = e)});
+      httpTesting.expectOne(`${environment.api.product.url}/api/secure`).flush('', {status: 401, statusText: 'Unauthorized'});
+      tick();
+      httpTesting.expectOne(REFRESH_URL).flush({accessToken: NEW_ACCESS, refreshToken: NEW_REFRESH});
+      tick();
+      httpTesting.expectOne(`${environment.api.product.url}/api/secure`).flush('', {status, statusText: 'Business rejection'});
+      tick();
+
+      expect((error as {status: number}).status).toBe(status);
+      expect(tokenService.accessToken).toBe(NEW_ACCESS);
+      expect(tokenService.refreshToken).toBe(NEW_REFRESH);
+      expect(router.navigate).not.toHaveBeenCalled();
+      httpTesting.verify();
+    }));
+
+  }
 
   it('still sends the bearer on logout so the server can end the session', fakeAsync(() => {
     const {http, httpTesting, tokenService} = setup();

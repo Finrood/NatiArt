@@ -91,14 +91,14 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
           return throwError(() => error);
         }
         return injector.get(AuthenticationService).refreshAccessToken().pipe(
-          switchMap(token => next(req.clone({
-            setHeaders: {Authorization: `Bearer ${token}`},
-            context: req.context.set(AUTH_RETRY_CONTEXT, true)
-          }))),
           catchError(refreshError => {
             if (refreshError.status === 401 || refreshError.status === 403) router.navigate(['/login']);
             return throwError(() => refreshError);
-          })
+          }),
+          switchMap(token => next(req.clone({
+            setHeaders: {Authorization: `Bearer ${token}`},
+            context: req.context.set(AUTH_RETRY_CONTEXT, true)
+          })))
         );
       }
       return throwError(() => error);

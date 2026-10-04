@@ -57,33 +57,46 @@ describe('API credential confinement with shared authentication', () => {
     httpTesting.verify();
   }));
 
-  it('scopes production credentials to the configured API base paths', fakeAsync(() => {
-    environment.api.directory.url = productionEnvironment.api.directory.url;
-    environment.api.product.url = productionEnvironment.api.product.url;
-    const {http, httpTesting, tokenService} = setup();
-    tokenService.accessToken = 'production-access';
-    const origin: string = new URL(productionEnvironment.api.directory.url).origin;
-    const requests: Array<{url: string; authenticated: boolean}> = [
-      {url: `${productionEnvironment.api.directory.url}/current`, authenticated: true},
-      {url: `${productionEnvironment.api.product.url}/products`, authenticated: true},
-      {url: `${origin}/account`, authenticated: false},
-      {url: `${origin}/server/productivity/orders`, authenticated: false},
-      {url: `${origin}/server/directory-other/current`, authenticated: false},
-      {url: `${origin}:444/server/product/orders`, authenticated: false},
-      {url: `http://${new URL(origin).host}/server/product/orders`, authenticated: false},
-      {url: `https://other.test/server/product/orders`, authenticated: false},
-      {url: `https://evil${new URL(origin).hostname}/server/product/orders`, authenticated: false},
-    ];
+  for (const configuration of [
+    {name: 'relative production', directory: productionEnvironment.api.directory.url, product: productionEnvironment.api.product.url},
+    {name: 'absolute production', directory: 'https://shop.example.test/server/directory', product: 'https://shop.example.test/server/product'},
+    {name: 'absolute development', directory: originalDirectoryUrl, product: originalProductUrl},
+  ]) {
+    it(`scopes credentials to ${configuration.name} API bases`, fakeAsync(() => {
+      environment.api.directory.url = configuration.directory;
+      environment.api.product.url = configuration.product;
+      const {http, httpTesting, tokenService} = setup();
+      tokenService.accessToken = 'production-access';
+      const origin: string = new URL(configuration.directory, window.location.origin).origin;
+      const foreignPort: URL = new URL(origin);
+      foreignPort.port = foreignPort.port === '444' ? '445' : '444';
+      const otherScheme: URL = new URL(origin);
+      otherScheme.protocol = otherScheme.protocol === 'https:' ? 'http:' : 'https:';
+      const productPath: string = new URL(configuration.product, window.location.origin).pathname;
+      const directoryPath: string = new URL(configuration.directory, window.location.origin).pathname;
+      const requests: Array<{url: string; authenticated: boolean}> = [
+        {url: `${configuration.directory}/current`, authenticated: true},
+        {url: `${configuration.product}/products`, authenticated: true},
+        {url: `${origin}/account`, authenticated: directoryPath === "/"},
+        {url: `${origin}${productPath}ivity/orders`, authenticated: directoryPath === "/"},
+        {url: `${origin}${directoryPath}-other/current`, authenticated: directoryPath === "/"},
+        {url: `${foreignPort.origin}${productPath}/orders`, authenticated: false},
+        {url: `${otherScheme.origin}${productPath}/orders`, authenticated: false},
+        {url: `https://other.test/server/product/orders`, authenticated: false},
+        {url: `https://evil${new URL(origin).hostname}/server/product/orders`, authenticated: false},
+      ];
 
-    for (const {url, authenticated} of requests) {
-      http.get(url).subscribe(() => {});
-      const req: TestRequest = httpTesting.expectOne(url);
-      expect(req.request.headers.get('Authorization')).withContext(url)
-        .toBe(authenticated ? 'Bearer production-access' : null);
-      req.flush({});
-    }
-    httpTesting.verify();
-  }));
+      for (const {url, authenticated} of requests) {
+        http.get(url).subscribe(() => {});
+        const req: TestRequest = httpTesting.expectOne(url);
+        expect(req.request.headers.get('Authorization')).withContext(url)
+          .toBe(authenticated ? 'Bearer production-access' : null);
+        req.flush({});
+      }
+      httpTesting.verify();
+    }));
+
+  }
 
   it('exempts production directory auth and refresh endpoints within the API base path', fakeAsync(() => {
     environment.api.directory.url = productionEnvironment.api.directory.url;
@@ -155,7 +168,7 @@ describe('API credential confinement with shared authentication', () => {
     const router: Router = TestBed.inject(Router);
     tokenService.accessToken = 'old-access';
     tokenService.refreshToken = 'old-refresh';
-    const url: string = `${new URL(productionEnvironment.api.product.url).origin}/account`;
+    const url: string = `${new URL(productionEnvironment.api.product.url, window.location.origin).origin}/account`;
     let receivedError: unknown;
     http.get(url).subscribe({error: (error: unknown) => (receivedError = error)});
     const req: TestRequest = httpTesting.expectOne(url);
