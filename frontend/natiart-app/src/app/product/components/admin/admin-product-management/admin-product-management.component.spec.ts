@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
-import { of, Subject, throwError } from 'rxjs';
+import { of, Subject, Subscription, throwError } from 'rxjs';
 
 import { ProductManagementComponent } from './admin-product-management.component';
 import { ProductService } from '../../../service/product.service';
@@ -46,10 +46,10 @@ describe('ProductManagementComponent', () => {
     spyOn(productService, 'getImage').and.returnValue(of(new Blob(['x'])));
     const revokeSpy = spyOn(URL, 'revokeObjectURL');
 
-    const fetcher = component as unknown as {
-      fetchImage(productId: string, imagePath: string): void;
-    };
-    fetcher.fetchImage('prod-1', 'img-1');
+    spyOn(productService, 'getProductsPage').and.returnValue(of({
+      items: [{id: 'prod-1', images: ['img-1']} as Product], page: 0, size: 20, total: 1, hasNext: false
+    }));
+    component.pages.load(0);
     expect(component.imageUrls['prod-1']).toBeTruthy();
 
     fixture.destroy();
@@ -128,7 +128,7 @@ describe('ProductManagementComponent ordered image sessions', () => {
   let imageRequests: Map<string, Subject<Blob>>;
   let productService: {getProductsPage: jasmine.Spy; getImage: jasmine.Spy; updateProduct: jasmine.Spy};
   const product = (id: string, images: string[]): Product => ({id, images, label: 'Art', originalPrice: 10,
-    markedPrice: 10, stockQuantity: 10, weightKg: 0.5, categoryId: 'cat', tags: new Set<string>(), availablePersonalizations: []});
+    markedPrice: 10, stockQuantity: 10, weightKg: 0.5, categoryId: 'cat', tags: [], availablePersonalizations: []});
 
   beforeEach(async () => {
     imageRequests = new Map<string, Subject<Blob>>();
@@ -144,6 +144,105 @@ describe('ProductManagementComponent ordered image sessions', () => {
       {provide: CategoryService, useValue: {getCategoriesPage: (): unknown => of({items: [], page: 0, size: 20, total: 0, hasNext: false})}},
       {provide: PackageService, useValue: {getPackagesPage: (): unknown => of({items: [], page: 0, size: 20, total: 0, hasNext: false})}},
     ]}).compileComponents();
+  });
+
+  function loadCoverPage(component: ProductManagementComponent, items: Product[], page: number = 0): void {
+    productService.getProductsPage.and.returnValue(of({items, page, size: 20, total: 100, hasNext: true}));
+    component.pages.load(page);
+  }
+
+  it('releases cover URLs and subscriptions on A to B to A page changes', () => {
+    const fixture = TestBed.createComponent(ProductManagementComponent);
+    fixture.detectChanges();
+    const component: ProductManagementComponent = fixture.componentInstance;
+    spyOn(URL, 'createObjectURL').and.returnValues('blob:A1', 'blob:B', 'blob:A2');
+    const revoke: jasmine.Spy = spyOn(URL, 'revokeObjectURL');
+    loadCoverPage(component, [product('A', ['a'])]);
+    const oldA: Subject<Blob> = imageRequests.get('a')!;
+    oldA.next(new Blob(['A']));
+    loadCoverPage(component, [product('B', ['b'])], 1);
+    expect(oldA.observed).toBeFalse();
+    expect(component.imageUrls['A']).toBeUndefined();
+    expect(revoke).toHaveBeenCalledWith('blob:A1');
+    const oldB: Subject<Blob> = imageRequests.get('b')!;
+    oldB.next(new Blob(['B']));
+    loadCoverPage(component, [product('A', ['a'])]);
+    expect(oldB.observed).toBeFalse();
+    expect(component.imageUrls['B']).toBeUndefined();
+    expect(revoke).toHaveBeenCalledWith('blob:B');
+    imageRequests.get('a')!.next(new Blob(['A again']));
+    expect(Object.keys(component.imageUrls)).toEqual(['A']);
+    fixture.destroy();
+    expect(revoke).toHaveBeenCalledWith('blob:A2');
+  });
+
+  it('cancels a pending cover when its page leaves and ignores later bytes', () => {
+    const fixture = TestBed.createComponent(ProductManagementComponent);
+    fixture.detectChanges();
+    const component: ProductManagementComponent = fixture.componentInstance;
+    const create: jasmine.Spy = spyOn(URL, 'createObjectURL').and.returnValue('blob:B');
+    loadCoverPage(component, [product('A', ['a'])]);
+    const pending: Subject<Blob> = imageRequests.get('a')!;
+    loadCoverPage(component, [product('B', ['b'])], 1);
+    expect(pending.observed).toBeFalse();
+    pending.next(new Blob(['late A']));
+    expect(create).not.toHaveBeenCalled();
+    expect(component.imageUrls['A']).toBeUndefined();
+    fixture.destroy();
+  });
+
+  it('retains repeated-page covers but releases a retained product refreshed without images', () => {
+    const fixture = TestBed.createComponent(ProductManagementComponent);
+    fixture.detectChanges();
+    const component: ProductManagementComponent = fixture.componentInstance;
+    spyOn(URL, 'createObjectURL').and.returnValue('blob:A');
+    const revoke: jasmine.Spy = spyOn(URL, 'revokeObjectURL');
+    loadCoverPage(component, [product('A', ['a'])]);
+    const request: Subject<Blob> = imageRequests.get('a')!;
+    request.next(new Blob(['A']));
+    loadCoverPage(component, [product('A', ['a'])]);
+    expect(productService.getImage).toHaveBeenCalledTimes(1);
+    expect(revoke).not.toHaveBeenCalled();
+    loadCoverPage(component, [product('A', [])]);
+    expect(request.observed).toBeFalse();
+    expect(revoke).toHaveBeenCalledWith('blob:A');
+    expect(component.imageUrls['A']).toBeUndefined();
+    fixture.destroy();
+  });
+
+  it('removes completed and failed cover subscriptions and stale error display entries', () => {
+    const fixture = TestBed.createComponent(ProductManagementComponent);
+    fixture.detectChanges();
+    const component: ProductManagementComponent = fixture.componentInstance;
+    const owner = component as unknown as {coverSubscriptions: Map<string, Subscription>};
+    loadCoverPage(component, [product('A', ['a'])]);
+    imageRequests.get('a')!.complete();
+    expect(owner.coverSubscriptions.size).toBe(0);
+    loadCoverPage(component, [product('B', ['b'])], 1);
+    imageRequests.get('b')!.error(new Error('fixture image failure'));
+    expect(owner.coverSubscriptions.size).toBe(0);
+    loadCoverPage(component, [], 2);
+    expect(Object.keys(component.imageUrls)).toEqual([]);
+    fixture.destroy();
+  });
+
+  it('bounds live cover URLs and subscriptions to the current page across browsing', () => {
+    const fixture = TestBed.createComponent(ProductManagementComponent);
+    fixture.detectChanges();
+    const component: ProductManagementComponent = fixture.componentInstance;
+    const owner = component as unknown as {coverSubscriptions: Map<string, Subscription>};
+    let created: number = 0;
+    spyOn(URL, 'createObjectURL').and.callFake((): string => `blob:cover-${++created}`);
+    const revoke: jasmine.Spy = spyOn(URL, 'revokeObjectURL');
+    for (let page: number = 0; page < 100; page++) {
+      loadCoverPage(component, [product(`p${page}`, [`image${page}`])], page);
+      imageRequests.get(`image${page}`)!.next(new Blob(['cover']));
+      expect(owner.coverSubscriptions.size).toBe(1);
+      expect(Object.keys(component.imageUrls).length).toBe(1);
+      expect(created - revoke.calls.count()).toBe(1);
+    }
+    fixture.destroy();
+    expect(revoke.calls.count()).toBe(created);
   });
 
   it('uses stable IDs after reorder and cancels removed or old-session previews', () => {

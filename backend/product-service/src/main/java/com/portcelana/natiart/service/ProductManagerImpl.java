@@ -336,61 +336,75 @@ public class ProductManagerImpl implements ProductManager {
     private List<String> processImages(Product product, ProductDto dto, List<InputFile> newImages) {
         final List<InputFile> uploads = newImages != null ? newImages : List.of();
         try {
-        final List<ProductImageReferenceDto> manifest = dto.getImageManifest();
-        final int count = manifest == null ? (dto.getImages() == null ? 0 : dto.getImages().size()) + uploads.size() : manifest.size();
-        if (count > MAX_IMAGES_PER_PRODUCT) throw new IllegalArgumentException("A product may contain at most " + MAX_IMAGES_PER_PRODUCT + " images");
-        final Set<String> owned = new HashSet<>(product.getImages());
-        final List<String> retained = dto.getImages() != null ? dto.getImages() : List.of();
-        if (manifest == null) {
-            requireOwnedImages(retained, owned);
-            imageLifecycle.prepareReferences(product.getImages(), retained);
-            final List<String> result = new ArrayList<>(retained);
-            for (final InputFile upload : uploads) result.add(uploadImage(product, upload));
-            return result;
-        }
+            final List<ProductImageReferenceDto> manifest = dto.getImageManifest();
+            final int count = manifest == null
+                    ? (dto.getImages() == null ? 0 : dto.getImages().size()) + uploads.size()
+                    : manifest.size();
+            if (count > MAX_IMAGES_PER_PRODUCT)
+                throw new IllegalArgumentException(
+                        "A product may contain at most " + MAX_IMAGES_PER_PRODUCT + " images");
+            final Set<String> owned = new HashSet<>(product.getImages());
+            final List<String> retained = dto.getImages() != null ? dto.getImages() : List.of();
+            if (manifest == null) {
+                requireOwnedImages(retained, owned);
+                imageLifecycle.prepareReferences(product.getImages(), retained);
+                final List<String> result = new ArrayList<>(retained);
+                for (final InputFile upload : uploads) result.add(uploadImage(product, upload));
+                return result;
+            }
 
-        final Map<String, InputFile> uploadsById = new LinkedHashMap<>();
-        for (final InputFile upload : uploads) {
-            final String filename = upload.filename();
-            if (filename == null || !filename.matches("[0-9a-fA-F-]{36}\\.webp")) {
-                throw new IllegalArgumentException("Manifest uploads must be named by their UUID plus .webp");
-            }
-            final String uploadId = filename.substring(0, 36);
-            if (uploadsById.putIfAbsent(uploadId, upload) != null) {
-                throw new IllegalArgumentException("Duplicate image upload ID");
-            }
-        }
-        final Set<String> selectedUploads = new HashSet<>();
-        final Set<String> selectedExisting = new HashSet<>();
-        for (final ProductImageReferenceDto reference : manifest) {
-            if (reference == null || (reference.existingImage() == null) == (reference.uploadId() == null)) {
-                throw new IllegalArgumentException("Each image reference must select exactly one image");
-            }
-            if (reference.existingImage() != null) {
-                if (!owned.contains(reference.existingImage()) || !selectedExisting.add(reference.existingImage())) {
-                    throw new IllegalArgumentException("Retained image is not owned by this product or is duplicated");
+            final Map<String, InputFile> uploadsById = new LinkedHashMap<>();
+            for (final InputFile upload : uploads) {
+                final String filename = upload.filename();
+                if (filename == null || !filename.matches("[0-9a-fA-F-]{36}\\.webp")) {
+                    throw new IllegalArgumentException("Manifest uploads must be named by their UUID plus .webp");
                 }
-            } else if (!uploadsById.containsKey(reference.uploadId()) || !selectedUploads.add(reference.uploadId())) {
-                throw new IllegalArgumentException("Unknown or duplicated image upload reference");
+                final String uploadId = filename.substring(0, 36);
+                if (uploadsById.putIfAbsent(uploadId, upload) != null) {
+                    throw new IllegalArgumentException("Duplicate image upload ID");
+                }
             }
-        }
-        if (selectedUploads.size() != uploads.size()) {
-            throw new IllegalArgumentException("Every uploaded image must appear exactly once in the manifest");
-        }
-        imageLifecycle.prepareReferences(product.getImages(), manifest.stream()
-                .map(ProductImageReferenceDto::existingImage).filter(Objects::nonNull).toList());
-        final List<String> result = new ArrayList<>();
-        for (final ProductImageReferenceDto reference : manifest) {
-            result.add(
-                    reference.existingImage() != null
-                            ? reference.existingImage()
-                            : uploadImage(product, uploadsById.get(reference.uploadId())));
-        }
-        return result;
+            final Set<String> selectedUploads = new HashSet<>();
+            final Set<String> selectedExisting = new HashSet<>();
+            for (final ProductImageReferenceDto reference : manifest) {
+                if (reference == null || (reference.existingImage() == null) == (reference.uploadId() == null)) {
+                    throw new IllegalArgumentException("Each image reference must select exactly one image");
+                }
+                if (reference.existingImage() != null) {
+                    if (!owned.contains(reference.existingImage())
+                            || !selectedExisting.add(reference.existingImage())) {
+                        throw new IllegalArgumentException(
+                                "Retained image is not owned by this product or is duplicated");
+                    }
+                } else if (!uploadsById.containsKey(reference.uploadId())
+                        || !selectedUploads.add(reference.uploadId())) {
+                    throw new IllegalArgumentException("Unknown or duplicated image upload reference");
+                }
+            }
+            if (selectedUploads.size() != uploads.size()) {
+                throw new IllegalArgumentException("Every uploaded image must appear exactly once in the manifest");
+            }
+            imageLifecycle.prepareReferences(
+                    product.getImages(),
+                    manifest.stream()
+                            .map(ProductImageReferenceDto::existingImage)
+                            .filter(Objects::nonNull)
+                            .toList());
+            final List<String> result = new ArrayList<>();
+            for (final ProductImageReferenceDto reference : manifest) {
+                result.add(
+                        reference.existingImage() != null
+                                ? reference.existingImage()
+                                : uploadImage(product, uploadsById.get(reference.uploadId())));
+            }
+            return result;
         } finally {
             for (final InputFile input : uploads) {
-                try { input.inputStream().close(); }
-                catch (java.io.IOException error) { LOGGER.warn("Unable to close product upload input"); }
+                try {
+                    input.inputStream().close();
+                } catch (java.io.IOException error) {
+                    LOGGER.warn("Unable to close product upload input");
+                }
             }
         }
     }
@@ -406,7 +420,9 @@ public class ProductManagerImpl implements ProductManager {
 
     private String uploadImage(Product product, InputFile inputFile) {
         final String imagePath = IMAGE_KEY_PREFIX + product.getId() + "/" + UUID.randomUUID();
-        return imageLifecycle.upload(product.getId(), imagePath, UUID.randomUUID().toString(), inputFile).toString();
+        return imageLifecycle
+                .upload(product.getId(), imagePath, UUID.randomUUID().toString(), inputFile)
+                .toString();
     }
 
     private static String requireNonBlankLabel(String label) {

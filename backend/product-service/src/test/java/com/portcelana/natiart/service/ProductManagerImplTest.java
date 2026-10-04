@@ -154,6 +154,8 @@ class ProductManagerImplTest {
         assertEquals("Mug", created.getLabel());
         assertTrue(created.getImages().isEmpty());
         verify(storageService, never()).uploadFile(any(String.class), any(InputFile.class), any(String.class));
+        verify(imageLifecycle, never())
+                .upload(any(String.class), any(String.class), any(String.class), any(InputFile.class));
     }
 
     @Test
@@ -327,6 +329,8 @@ class ProductManagerImplTest {
                 assertThrows(IllegalArgumentException.class, () -> productManager.updateProduct(dto, List.of()))
                         .getMessage());
         verify(storageService, never()).uploadFile(any(String.class), any(InputFile.class), any(String.class));
+        verify(imageLifecycle, never())
+                .upload(any(String.class), any(String.class), any(String.class), any(InputFile.class));
         verify(productRepository, never()).save(any(Product.class));
     }
 
@@ -346,5 +350,7 @@ class ProductManagerImplTest {
                 assertThrows(IllegalArgumentException.class, () -> productManager.updateProduct(dto, List.of()))
                         .getMessage());
         verify(storageService, never()).uploadFile(any(String.class), any(InputFile.class), any(String.class));
+        verify(imageLifecycle, never())
+                .upload(any(String.class), any(String.class), any(String.class), any(InputFile.class));
     }
 }

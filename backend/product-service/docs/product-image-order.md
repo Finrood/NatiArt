@@ -29,3 +29,11 @@ CA13 changes storage keys/API and personalized order snapshots; preserve its
 `products/<productId>/...` key contract while integrating this ordered manifest.
 CA14 shipping snapshots do not alter this manifest. CA48 changes storage providers;
 retain its upload cleanup and public/private key rules on every new upload.
+
+Validated manifests use `ProductImageLifecycle` for every new upload and for
+locking retained references. Removed tracked files become deletion-pending in the
+product transaction; a failed edit leaves staged uploads for durable cleanup.
+All submitted streams close, including unattempted files after a batch failure.
+Admin covers belong only to the displayed page. Page changes, empty refreshed
+image lists and replaced covers cancel requests and revoke URLs immediately;
+completed/error subscriptions are removed and unchanged pages retain their cover.

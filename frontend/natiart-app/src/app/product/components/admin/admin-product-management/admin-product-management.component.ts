@@ -8,7 +8,7 @@ import {PackageService} from '../../../service/package.service';
 import {Category} from '../../../models/category.model';
 import {Package} from '../../../models/package.model';
 import {Product} from '../../../models/product.model';
-import {BehaviorSubject, Subscription} from 'rxjs';
+import {BehaviorSubject, finalize, Subscription} from 'rxjs';
 import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 import {CdkDragDrop, DragDropModule, moveItemInArray} from '@angular/cdk/drag-drop';
 import {PersonalizationOption} from '../../../models/support/personalization-option';
@@ -132,7 +132,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
 
   ngOnDestroy(): void {
     this.releasePreviews();
-    this.coverSubscriptions.forEach((subscription: Subscription): void => subscription.unsubscribe());
+    for (const id of this.coverPaths.keys()) this.releaseCover(id);
     this.imageSessionGeneration++;
     this.subscriptions.forEach(subscription => subscription.unsubscribe());
     this.objectUrlsCreated.forEach((url: string) => URL.revokeObjectURL(url));
@@ -344,32 +344,54 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
     }
   }
 
+  private readonly coverPaths: Map<string, string> = new Map<string, string>();
+
   private updateAllProductImages(products: Product[]): void {
-    products.forEach(product => {
-      if (product.images && product.images.length > 0) {
-        this.fetchImage(product.id!, product.images[0]);
-      }
-    });
+    const desired: Map<string, string> = new Map<string, string>();
+    for (const product of products) {
+      if (product.id && product.images?.length) desired.set(product.id, product.images[0]);
+    }
+    for (const id of new Set<string>([...this.coverPaths.keys(), ...Object.keys(this.imageUrls)])) {
+      if (!desired.has(id) || desired.get(id) !== this.coverPaths.get(id)) this.releaseCover(id);
+    }
+    for (const [id, path] of desired) {
+      if (this.coverPaths.get(id) === path) continue;
+      this.coverPaths.set(id, path);
+      this.fetchImage(id, path);
+    }
+  }
+
+  private releaseCover(productId: string): void {
+    this.coverSubscriptions.get(productId)?.unsubscribe();
+    this.coverSubscriptions.delete(productId);
+    const previous: string | undefined = this.coverObjectUrls.get(productId);
+    if (previous) this.revokeObjectUrl(previous);
+    this.coverObjectUrls.delete(productId);
+    this.coverPaths.delete(productId);
+    delete this.imageUrls[productId];
   }
 
   private fetchImage(productId: string, imagePath: string): void {
-    this.coverSubscriptions.get(productId)?.unsubscribe();
-    const subscription = this.productService.getImage(imagePath).subscribe({
-      next: blob => {
+    const subscription: Subscription = this.productService.getImage(imagePath).pipe(
+      finalize((): void => {this.coverSubscriptions.delete(productId);})
+    ).subscribe({
+      next: (blob: Blob): void => {
+        if (this.coverPaths.get(productId) !== imagePath) return;
         const previous: string | undefined = this.coverObjectUrls.get(productId);
         if (previous) this.revokeObjectUrl(previous);
-        const objectUrl = URL.createObjectURL(blob);
+        const objectUrl: string = URL.createObjectURL(blob);
         this.coverObjectUrls.set(productId, objectUrl);
         this.objectUrlsCreated.push(objectUrl);
         this.imageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
         this._products$.next([...this._products$.value]);
       },
-      error: error => {
+      error: (error: unknown): void => {
         reportError('product-image', error);
+        this.releaseCover(productId);
         this.imageUrls[productId] = null;
       }
     });
-    this.coverSubscriptions.set(productId, subscription);
+    if (!subscription.closed) this.coverSubscriptions.set(productId, subscription);
   }
 
   private loadExistingImages(imagePaths: string[], sessionGeneration: number): void {

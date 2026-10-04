@@ -6,11 +6,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import com.portcelana.natiart.dto.product.ProductImageReferenceDto;
 import org.hibernate.Hibernate;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import com.portcelana.natiart.dto.product.ProductImageReferenceDto;
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.model.Product;

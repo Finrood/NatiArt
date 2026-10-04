@@ -32,7 +32,7 @@ import com.portcelana.natiart.storage.InputFile;
 import com.portcelana.natiart.storage.StorageService;
 
 @DataJpaTest(properties = "spring.sql.init.mode=never")
-@Import(ProductManagerImpl.class)
+@Import({ProductManagerImpl.class, ProductImageLifecycle.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class ProductImageOrderPersistenceTest {
     @Autowired
@@ -43,6 +43,12 @@ class ProductImageOrderPersistenceTest {
 
     @Autowired
     private CategoryRepository categories;
+
+    @Autowired
+    private ProductImageLifecycle lifecycle;
+
+    @Autowired
+    private com.portcelana.natiart.repository.ProductImageOwnershipRepository ownership;
 
     @Autowired
     private PlatformTransactionManager transactions;
@@ -76,7 +82,9 @@ class ProductImageOrderPersistenceTest {
         final String uploadId = UUID.randomUUID().toString();
         final InputFile upload =
                 new InputFile(new ByteArrayInputStream(new byte[] {1}), "image/webp", uploadId + ".webp", 1);
-        when(storage.uploadFile(any(String.class), any(InputFile.class))).thenReturn(URI.create("file:///owned/new"));
+        when(storage.uploadTarget(any(String.class), any(String.class))).thenReturn(URI.create("file:///owned/new"));
+        when(storage.uploadFile(any(String.class), any(InputFile.class), any(String.class)))
+                .thenReturn(URI.create("file:///owned/new"));
         final ProductDto dto = new ProductDto("Art", BigDecimal.TEN)
                 .setWeightKg(BigDecimal.ONE)
                 .setId(id)
@@ -119,5 +127,50 @@ class ProductImageOrderPersistenceTest {
             assertEquals("Original", reloaded.getLabel());
             assertEquals(List.of("owned"), reloaded.getImages());
         });
+    }
+
+    @Test
+    void failedProductTransactionLeavesManifestUploadDurablyRecoverable() {
+        final String id = transaction.execute(status -> products.save(new Product("Original", BigDecimal.TEN)
+                        .setCategory(category)
+                        .setImages(List.of("legacy")))
+                .getId());
+        final String uploadId = UUID.randomUUID().toString();
+        final URI target = URI.create("file:///owned/" + UUID.randomUUID());
+        when(storage.uploadTarget(any(String.class), any(String.class))).thenReturn(target);
+        when(storage.uploadFile(any(String.class), any(InputFile.class), any(String.class)))
+                .thenReturn(target);
+        final ProductDto dto = new ProductDto("Changed", BigDecimal.TEN)
+                .setWeightKg(BigDecimal.ONE)
+                .setId(id)
+                .setCategoryId(category.getId())
+                .setImageManifest(List.of(
+                        new ProductImageReferenceDto(null, uploadId), new ProductImageReferenceDto("legacy", null)));
+        final InputFile upload =
+                new InputFile(new ByteArrayInputStream(new byte[] {1}), "image/webp", uploadId + ".webp", 1);
+        assertThrows(
+                IllegalStateException.class,
+                () -> transaction.executeWithoutResult(status -> {
+                    manager.updateProduct(dto, List.of(upload));
+                    throw new IllegalStateException("failure after upload before product commit");
+                }));
+        assertEquals(
+                List.of("legacy"),
+                transaction.execute(status -> List.copyOf(
+                        products.findByIdWithImages(id).orElseThrow().getImages())));
+        assertEquals(
+                com.portcelana.natiart.model.ProductImageOwnership.State.STAGED,
+                transaction.execute(status -> ownership
+                        .findByUriForUpdate(target.toString())
+                        .orElseThrow()
+                        .getState()));
+        lifecycle.reconcile(java.time.Instant.now().plusSeconds(3600));
+        org.mockito.Mockito.verify(storage).delete(target);
+        assertEquals(
+                com.portcelana.natiart.model.ProductImageOwnership.State.DELETED,
+                transaction.execute(status -> ownership
+                        .findByUriForUpdate(target.toString())
+                        .orElseThrow()
+                        .getState()));
     }
 }
