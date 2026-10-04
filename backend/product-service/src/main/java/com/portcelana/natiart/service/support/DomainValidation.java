@@ -56,6 +56,26 @@ public final class DomainValidation {
         return trimmed.replace("-", "");
     }
 
+    /** One unit-weight policy shared by catalog persistence and carrier quote inputs. */
+    public static void weightKg(BigDecimal value) {
+        requireWeight(value, "weightKg");
+    }
+
+    public static void shippingWeight(float value) {
+        if (!Float.isFinite(value)) throw new InputValidationException("weight", "weight must be finite");
+        requireWeight(new BigDecimal(Float.toString(value)), "weight");
+    }
+
+    private static void requireWeight(BigDecimal value, String field) {
+        if (value == null
+                || value.compareTo(new BigDecimal("0.01")) < 0
+                || value.compareTo(new BigDecimal("100")) > 0
+                || value.scale() > 3) {
+            throw new InputValidationException(
+                    field, field + " must be between 0.01 and 100 kg with at most three decimal places");
+        }
+    }
+
     public static void finitePositive(float value, String field, float maximum) {
         if (!Float.isFinite(value) || value < 0.01f || value > maximum) {
             throw new InputValidationException(field, field + " must be finite and between 0.01 and " + maximum);

@@ -39,7 +39,6 @@ import com.portcelana.natiart.storage.StorageService;
 @Service
 public class ProductManagerImpl implements ProductManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductManagerImpl.class);
-    private static final BigDecimal MAX_PRODUCT_WEIGHT_KG = BigDecimal.valueOf(1000);
     private static final String IMAGE_KEY_PREFIX = "products/";
     private static final int MAX_IMAGES_PER_PRODUCT = 10;
 
@@ -373,14 +372,6 @@ public class ProductManagerImpl implements ProductManager {
     }
 
     private static void requirePositiveWeight(BigDecimal weightKg) {
-        if (weightKg == null || weightKg.signum() <= 0) {
-            throw new IllegalArgumentException("Product weight must be greater than zero kilograms");
-        }
-        if (weightKg.scale() > 3) {
-            throw new IllegalArgumentException("Product weight must have at most three decimal places");
-        }
-        if (weightKg.compareTo(MAX_PRODUCT_WEIGHT_KG) > 0) {
-            throw new IllegalArgumentException("Product weight must not exceed 1000 kilograms");
-        }
+        DomainValidation.weightKg(weightKg);
     }
 }

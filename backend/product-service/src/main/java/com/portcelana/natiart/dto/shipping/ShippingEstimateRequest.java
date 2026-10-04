@@ -13,7 +13,7 @@ public class ShippingEstimateRequest {
 
     public ShippingEstimateRequest(String to, float weight, float length, float width, float height, int quantity) {
         this.to = DomainValidation.cep(to);
-        DomainValidation.finitePositive(weight, "weight", 100);
+        DomainValidation.shippingWeight(weight);
         DomainValidation.finitePositive(length, "length", 200);
         DomainValidation.finitePositive(width, "width", 200);
         DomainValidation.finitePositive(height, "height", 200);

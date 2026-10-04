@@ -82,6 +82,25 @@ describe('ProductManagementComponent', () => {
 
     expect(revokeSpy).toHaveBeenCalled();
   });
+  it('enforces the shared 0.01 to 100 kg range in controls and rendered input', () => {
+    const fixture = TestBed.createComponent(ProductManagementComponent);
+    const component: ProductManagementComponent = fixture.componentInstance;
+    component.openModal();
+    fixture.detectChanges();
+    const control = component.productForm.get('weightKg')!;
+    for (const value of [0.01, 0.011, 99.999, 100]) {
+      control.setValue(value);
+      expect(control.valid).withContext(String(value)).toBeTrue();
+    }
+    for (const value of [0.005, 0.009, 0.0101, 100.001, 1000]) {
+      control.setValue(value);
+      expect(control.invalid).withContext(String(value)).toBeTrue();
+    }
+    const input: HTMLInputElement = fixture.nativeElement.querySelector('#productWeightKg');
+    expect(input.min).toBe('0.01');
+    expect(input.max).toBe('100');
+    fixture.destroy();
+  });
 });
 
 describe('ProductManagementComponent error UX (O2)', () => {

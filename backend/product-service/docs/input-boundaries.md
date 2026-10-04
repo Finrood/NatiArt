@@ -31,3 +31,25 @@ storefront form applies the same price and text limits before submission.
 The cart limits the combined quantity of all variants of one product to 100
 and rechecks restored carts. The server remains authoritative for order lines
 and stock.
+
+## Unit weight policy and existing catalog rollout
+
+Catalog create/update, mandatory quote validation and provider volumes share a
+unit weight range of **0.01–100 kg inclusive**, at most three decimal places.
+Weights are sent unchanged as numeric kilograms for each purchased unit; no
+rounding invents a different physical weight. Admin controls expose the same
+minimum/maximum. These are application bounds; an eligible carrier option still
+depends on the package, destination and carrier's service limits.
+
+Before rollout, inventory existing weights (no automatic data rewrite):
+
+```sql
+SELECT id, label, active, weight_kg FROM product
+WHERE weight_kg IS NULL OR weight_kg < 0.01 OR weight_kg > 100;
+```
+
+For each result, verify the unit and actual packed weight. Correct an erroneous
+unit/value through the admin editor; deactivate genuinely unsupported products
+until a reviewed shipping policy supports them. Do not round lightweight items
+up or split heavy ones automatically. Quotes reject unsupported legacy weights
+before provider egress. Existing orders keep their committed quote snapshot.

@@ -74,7 +74,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
       originalPrice: [null, [Validators.required, Validators.min(0.01), Validators.max(99999999.99), Validators.pattern(/^\d{1,8}(\.\d{1,2})?$/)]],
       markedPrice: [null, [Validators.min(0.01), Validators.max(99999999.99), Validators.pattern(/^\d{1,8}(\.\d{1,2})?$/)]],
       stockQuantity: [0, [Validators.required, Validators.min(0), Validators.pattern(/^\d+$/)]],
-      weightKg: [0, [Validators.required, Validators.min(0.001)]],
+      weightKg: [0, [Validators.required, Validators.min(0.01), Validators.max(100), Validators.pattern(/^\d+(\.\d{1,3})?$/)]],
       categoryId: ['', Validators.required],
       packageId: [''],
       hasFixedGoldenBorder: [''],
