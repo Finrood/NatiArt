@@ -34,7 +34,7 @@ import com.portcelana.natiart.repository.PaymentWebhookEventRepository;
 /** Applies authenticated provider state without depending on a buyer polling the UI. */
 @Service
 public class PaymentReconciliationService {
-    public static final String WEBHOOK_TOKEN_HEADER = "X-Asaas-Webhook-Token";
+    public static final String WEBHOOK_TOKEN_HEADER = "asaas-access-token";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PaymentReconciliationService.class);
     private static final Set<String> KNOWN_PROVIDER_STATUSES = Set.of(

@@ -34,7 +34,7 @@ import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.PaymentRepository;
 
-@DataJpaTest(properties = "spring.sql.init.mode=never")
+@DataJpaTest(properties = {"spring.sql.init.mode=never", "natiart.payment.asaas.webhook-token=fixture-secret"})
 @Import({PaymentReconciliationService.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class PaymentReconciliationRecoveryTest {
@@ -200,6 +200,43 @@ class PaymentReconciliationRecoveryTest {
             releasePaid.countDown();
             workers.shutdownNow();
         }
+    }
+
+    @Test
+    void authenticatedProviderHttpEventsCommitPaidAndRefundStates() throws Exception {
+        final CustomerOrder pending = order(OrderStatus.PENDING, Instant.now());
+        ledger("pay-http", pending, "PENDING", Instant.now());
+        doAnswer(invocation -> {
+                    final CustomerOrder locked =
+                            orders.findByIdForUpdate(pending.getId()).orElseThrow();
+                    locked.setStatus(OrderStatus.PAID);
+                    orders.saveAndFlush(locked);
+                    return null;
+                })
+                .when(orderManager)
+                .markOrderPaid(pending.getId());
+        final org.springframework.test.web.servlet.MockMvc http =
+                org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(
+                                new com.portcelana.natiart.controller.PaymentWebhookController(reconciliation))
+                        .build();
+        for (final String state : new String[] {"RECEIVED", "REFUNDED"}) {
+            final String json = """
+                    {"id":"http-%s","event":"PAYMENT_%s","payment":{
+                     "id":"pay-http","customer":"cus-review","value":10.00,
+                     "status":"%s","billingType":"PIX","currency":"BRL"}}
+                    """.formatted(state, state, state);
+            http.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/webhooks/asaas")
+                            .header("asaas-access-token", "fixture-secret")
+                            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                            .content(json))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                            .isAccepted());
+            assertEquals(state, payments.findById("pay-http").orElseThrow().getProviderStatus());
+            assertEquals(
+                    OrderStatus.PAID,
+                    orders.findById(pending.getId()).orElseThrow().getStatus());
+        }
+        verify(orderManager, times(1)).markOrderPaid(pending.getId());
     }
 
     void resetDueDates() {

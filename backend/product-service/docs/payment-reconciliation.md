@@ -6,7 +6,7 @@ through either the authenticated `POST /webhooks/asaas` endpoint or the schedule
 reconciler.
 
 Configure `NATIART_PAYMENT_ASAAS_WEBHOOK_TOKEN` with the token configured in
-Asaas. The endpoint expects it in `X-Asaas-Webhook-Token` and returns `401` for
+Asaas. The endpoint expects it in `asaas-access-token` and returns `401` for
 missing or invalid tokens. Each accepted provider event is stored by its event
 ID, so duplicate deliveries are safe. Before applying a paid state, the service
 checks the local payment ID, customer, BRL currency (when supplied), order
