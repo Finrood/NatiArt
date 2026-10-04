@@ -200,6 +200,24 @@ describe('CheckoutComponent', () => {
     component.checkoutForm.get('billingInfo.zipCode')?.setValue('01001-000');
   });
 
+  it('shows provisioning retry feedback before creating an order', async () => {
+    const pendingUser: User = {...loggedInUser, externalId: '', provisioningStatus: 'PENDING'};
+    currentUserSubject.next(pendingUser);
+    await component.onProcessPixPayment(pendingUser);
+    expect(component.errorMessage).toContain('payment account is being prepared');
+    expect(createOrderSpy).not.toHaveBeenCalled();
+    expect(createPixPaymentSpy).not.toHaveBeenCalled();
+  });
+
+  it('shows terminal provisioning support feedback without creating an order', async () => {
+    const failedUser: User = {...loggedInUser, externalId: '', provisioningStatus: 'FAILED'};
+    currentUserSubject.next(failedUser);
+    await component.onProcessPixPayment(failedUser);
+    expect(component.errorMessage).toContain('payment account needs assistance');
+    expect(createOrderSpy).not.toHaveBeenCalled();
+    expect(createPixPaymentSpy).not.toHaveBeenCalled();
+  });
+
   it('should create', () => {
     expect(component).toBeTruthy();
   });

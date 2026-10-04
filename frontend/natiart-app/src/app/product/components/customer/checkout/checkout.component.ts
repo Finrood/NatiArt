@@ -271,8 +271,19 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       if (this.destroyed || this.attemptStorageFailed) {
         return;
       }
-      if (!user || !user.externalId) {
-        this.setErrorMessage($localize`Could not retrieve customer ID for payment. Please try again.`);
+      // Provisioning can complete after login; retrieve the latest caller state.
+      const paymentUser: User = user?.externalId
+        ? user
+        : await firstValueFrom(this._authenticationService.fetchCurrentUser().pipe(takeUntil(this.destroy$)));
+      if (this.destroyed) return;
+      if (!paymentUser.externalId) {
+        if (paymentUser.provisioningStatus === 'PENDING' || paymentUser.provisioningStatus === 'IN_PROGRESS') {
+          this.setErrorMessage($localize`Your payment account is being prepared. Please try again shortly.`);
+        } else if (paymentUser.provisioningStatus === 'FAILED') {
+          this.setErrorMessage($localize`Your payment account needs assistance. Please contact support.`);
+        } else {
+          this.setErrorMessage($localize`Could not retrieve customer ID for payment. Please try again.`);
+        }
         return;
       }
 
@@ -322,7 +333,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         this.setErrorMessage($localize`Could not confirm your order. Please try again.`);
         return;
       }
-      this._cartService.rememberPurchase(order.id, user.externalId, this.purchasedCartLines);
+      this._cartService.rememberPurchase(order.id, paymentUser.externalId, this.purchasedCartLines);
       this.currentOrder = order;
       this.persistAttempt(user.username);
 
@@ -356,7 +367,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
       const pixPaymentData: PaymentCreationRequest = {
         paymentProcessor: 'ASAAS',
-        customerId: user.externalId,
+        customerId: paymentUser.externalId,
         billingType: PaymentMethod.PIX,
         orderId: order.id,
         value: order.totalAmount,

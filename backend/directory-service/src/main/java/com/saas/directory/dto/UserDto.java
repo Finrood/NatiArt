@@ -1,5 +1,8 @@
 package com.saas.directory.dto;
 
+import java.time.Instant;
+
+import com.saas.directory.model.AsaasProvisioningStatus;
 import com.saas.directory.model.ExternalUser;
 import com.saas.directory.model.RoleName;
 import com.saas.directory.model.User;
@@ -10,6 +13,8 @@ public class UserDto {
     private ProfileDto profile;
     private RoleName role;
     private String externalId;
+    private AsaasProvisioningStatus provisioningStatus;
+    private Instant provisioningNextAttemptAt;
 
     public static UserDto from(User user, ExternalUser externalUser) {
         if (user == null) return null;
@@ -64,6 +69,24 @@ public class UserDto {
 
     public UserDto setExternalId(String externalId) {
         this.externalId = externalId;
+        return this;
+    }
+
+    public AsaasProvisioningStatus getProvisioningStatus() {
+        return provisioningStatus;
+    }
+
+    public UserDto setProvisioningStatus(AsaasProvisioningStatus provisioningStatus) {
+        this.provisioningStatus = provisioningStatus;
+        return this;
+    }
+
+    public Instant getProvisioningNextAttemptAt() {
+        return provisioningNextAttemptAt;
+    }
+
+    public UserDto setProvisioningNextAttemptAt(Instant provisioningNextAttemptAt) {
+        this.provisioningNextAttemptAt = provisioningNextAttemptAt;
         return this;
     }
 }

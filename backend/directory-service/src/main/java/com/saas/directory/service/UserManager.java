@@ -15,6 +15,7 @@ import com.saas.directory.dto.UserRegistrationDto;
 import com.saas.directory.event.UserRegisteredEvent;
 import com.saas.directory.model.*;
 import com.saas.directory.model.helper.PaymentProcessor;
+import com.saas.directory.repository.AsaasProvisioningJobRepository;
 import com.saas.directory.repository.ExternalUserRepository;
 import com.saas.directory.repository.RoleRepository;
 import com.saas.directory.repository.UserRepository;
@@ -24,6 +25,7 @@ public class UserManager {
     private final UserRepository userRepository;
     private final ExternalUserRepository externalUserRepository;
     private final RoleRepository roleRepository;
+    private final AsaasProvisioningJobRepository provisioningJobRepository;
     private final ProfileManager profileManager;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -31,11 +33,13 @@ public class UserManager {
             UserRepository userRepository,
             ExternalUserRepository externalUserRepository,
             RoleRepository roleRepository,
+            AsaasProvisioningJobRepository provisioningJobRepository,
             ProfileManager profileManager,
             ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.externalUserRepository = externalUserRepository;
         this.roleRepository = roleRepository;
+        this.provisioningJobRepository = provisioningJobRepository;
         this.profileManager = profileManager;
         this.eventPublisher = eventPublisher;
     }
@@ -84,6 +88,9 @@ public class UserManager {
         newUser.setProfile(profile);
         final User savedUser = userRepository.save(newUser);
 
+        provisioningJobRepository.save(
+                new AsaasProvisioningJob(savedUser, PaymentProcessor.ASAAS, java.time.Instant.now()));
+
         eventPublisher.publishEvent(new UserRegisteredEvent(savedUser.getUsername()));
 
         return savedUser;
@@ -104,6 +111,10 @@ public class UserManager {
     @Transactional
     public ExternalUser addAsaasCustomerIdToUser(String username, String asaasCustomerId) {
         final User user = getUserOrDie(username);
-        return externalUserRepository.save(new ExternalUser(user, PaymentProcessor.ASAAS, asaasCustomerId));
+        final ExternalUser externalUser = externalUserRepository
+                .findByUserAndPaymentProcessor(user, PaymentProcessor.ASAAS)
+                .orElseGet(() -> new ExternalUser(user, PaymentProcessor.ASAAS, asaasCustomerId));
+        externalUser.setExternalId(asaasCustomerId);
+        return externalUserRepository.save(externalUser);
     }
 }
