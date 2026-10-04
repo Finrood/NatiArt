@@ -211,8 +211,14 @@ class OrderCreationServicePersonalizationTest {
 
     private OrderDto validOrder() {
         return new OrderDto()
-                .setFirstname("Ada")
                 .setHouseNumber("N/A")
+                .setZipCode("01001000")
+                .setCountry("Brazil")
+                .setState("SP")
+                .setCity("City")
+                .setNeighborhood("Area")
+                .setStreet("Street")
+                .setFirstname("Ada")
                 .setLastname("Lovelace")
                 .setEmail("ada@example.test");
     }
