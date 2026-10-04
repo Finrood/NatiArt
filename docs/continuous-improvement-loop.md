@@ -424,3 +424,13 @@ Failed attempt evidence remains available there, but cannot authorize another
 attempt. Rewriting a failed attempt's old result without new work is rejected.
 Only evidence produced during the successful attempt can authorize completion
 or a heartbeat; failed and audit-only attempts grant no branch ownership.
+
+### Recovery output redaction
+
+Retained outcomes and forwarded retry tails share one credential redactor. It
+consumes complete `sk-` token alphabets (including hyphens/underscores), bearer
+tokens and quoted or unquoted credential assignments before byte truncation,
+so a key crossing the retained-tail boundary cannot expose its suffix.
+Recovery logs stay private (mode 600) and bounded; raw attempt logs are removed
+after cleanup. This covers supported credential shapes, not arbitrary sensitive
+text in worker output.

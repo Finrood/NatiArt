@@ -62,6 +62,7 @@ public class Product {
 
     @ElementCollection
     @CollectionTable(name = "product_images", joinColumns = @JoinColumn(name = "product_id"))
+    @OrderColumn(name = "image_position")
     private List<String> images = new ArrayList<>();
 
     @Column(nullable = false)

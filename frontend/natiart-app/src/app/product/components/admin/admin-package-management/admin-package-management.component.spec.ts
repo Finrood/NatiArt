@@ -17,4 +17,21 @@ describe('PackageManagementComponent', () => {
     const fixture = TestBed.createComponent(PackageManagementComponent);
     expect(fixture.componentInstance).toBeTruthy();
   });
+
+  it('rejects package dimensions outside the shipping boundary', () => {
+    const fixture = TestBed.createComponent(PackageManagementComponent);
+    const form = fixture.componentInstance.packageForm;
+    const height = form.get('height')!;
+
+    height.setValue(0);
+    expect(height.invalid).toBeTrue();
+    height.setValue(0.01);
+    expect(height.valid).toBeTrue();
+    height.setValue(200);
+    expect(height.valid).toBeTrue();
+    height.setValue(201);
+    expect(height.invalid).toBeTrue();
+    form.get('label')!.setValue('x'.repeat(256));
+    expect(form.get('label')!.invalid).toBeTrue();
+  });
 });

@@ -6,10 +6,13 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -25,19 +28,21 @@ import org.springframework.transaction.annotation.Transactional;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.PagedResponseDto;
 import com.portcelana.natiart.dto.ProductDto;
+import com.portcelana.natiart.dto.product.ProductImageReferenceDto;
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.repository.CartItemRepository;
 import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.ProductRepository;
+import com.portcelana.natiart.service.support.DomainValidation;
+import com.portcelana.natiart.service.support.InputValidationException;
 import com.portcelana.natiart.storage.InputFile;
 import com.portcelana.natiart.storage.StorageService;
 
 @Service
 public class ProductManagerImpl implements ProductManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductManagerImpl.class);
-    private static final BigDecimal MAX_PRODUCT_WEIGHT_KG = BigDecimal.valueOf(1000);
     private static final String IMAGE_KEY_PREFIX = "products/";
     private static final int MAX_IMAGES_PER_PRODUCT = 10;
 
@@ -224,10 +229,10 @@ public class ProductManagerImpl implements ProductManager {
     @Override
     @Transactional
     public Product createProduct(ProductDto productDto, List<InputFile> imagesInput) {
-        final String label = requireNonBlankLabel(productDto.getLabel());
-        requireNonNullPrice(productDto.getOriginalPrice());
-        requireNonNegativePrice(productDto.getOriginalPrice(), "original");
-        requireNonNegativePrice(productDto.getMarkedPrice(), "marked");
+        final String label = DomainValidation.requiredText(productDto.getLabel(), "label", 255);
+        DomainValidation.money(productDto.getOriginalPrice(), "originalPrice", true);
+        DomainValidation.money(productDto.getMarkedPrice(), "markedPrice", false);
+        DomainValidation.optionalText(productDto.getDescription(), "description", 255);
         requireNonNegativeStock(productDto.getStockQuantity());
         requirePositiveWeight(productDto.getWeightKg());
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
@@ -246,7 +251,7 @@ public class ProductManagerImpl implements ProductManager {
                 .setNewProduct(productDto.isNewProduct())
                 .setFeaturedProduct(productDto.isFeaturedProduct());
 
-        final List<String> imagesUris = processImages(product, productDto.getImages(), imagesInput);
+        final List<String> imagesUris = processImages(product, productDto, imagesInput);
         product.setImages(imagesUris);
 
         return productRepository.save(product);
@@ -255,10 +260,10 @@ public class ProductManagerImpl implements ProductManager {
     @Override
     @Transactional
     public Product updateProduct(ProductDto productDto, List<InputFile> imagesInput) {
-        final String label = requireNonBlankLabel(productDto.getLabel());
-        requireNonNullPrice(productDto.getOriginalPrice());
-        requireNonNegativePrice(productDto.getOriginalPrice(), "original");
-        requireNonNegativePrice(productDto.getMarkedPrice(), "marked");
+        final String label = DomainValidation.requiredText(productDto.getLabel(), "label", 255);
+        DomainValidation.money(productDto.getOriginalPrice(), "originalPrice", true);
+        DomainValidation.money(productDto.getMarkedPrice(), "markedPrice", false);
+        DomainValidation.optionalText(productDto.getDescription(), "description", 255);
         requireNonNegativeStock(productDto.getStockQuantity());
         requirePositiveWeight(productDto.getWeightKg());
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
@@ -278,7 +283,7 @@ public class ProductManagerImpl implements ProductManager {
                 .setNewProduct(productDto.isNewProduct())
                 .setFeaturedProduct(productDto.isFeaturedProduct());
 
-        final List<String> imagesUris = processImages(product, productDto.getImages(), imagesInput);
+        final List<String> imagesUris = processImages(product, productDto, imagesInput);
         product.setImages(imagesUris);
         final Product saved = productRepository.save(product);
 
@@ -329,32 +334,73 @@ public class ProductManagerImpl implements ProductManager {
                 .orElseThrow(() -> new ResourceNotFoundException("Product with id [" + productId + "] not found"));
     }
 
-    private List<String> processImages(Product product, List<String> existingImages, List<InputFile> newImages) {
+    private List<String> processImages(Product product, ProductDto dto, List<InputFile> newImages) {
         final List<InputFile> uploads = newImages != null ? newImages : List.of();
         try {
-            final List<String> retainedImages = existingImages != null ? existingImages : List.of();
-            if (retainedImages.size() + uploads.size() > MAX_IMAGES_PER_PRODUCT) {
+            final List<ProductImageReferenceDto> manifest = dto.getImageManifest();
+            final int count = manifest == null
+                    ? (dto.getImages() == null ? 0 : dto.getImages().size()) + uploads.size()
+                    : manifest.size();
+            if (count > MAX_IMAGES_PER_PRODUCT)
                 throw new IllegalArgumentException(
                         "A product may contain at most " + MAX_IMAGES_PER_PRODUCT + " images");
+            final Set<String> owned = new HashSet<>(product.getImages());
+            final List<String> retained = dto.getImages() != null ? dto.getImages() : List.of();
+            if (manifest == null) {
+                requireOwnedImages(retained, owned);
+                imageLifecycle.prepareReferences(product.getImages(), retained);
+                final List<String> result = new ArrayList<>(retained);
+                for (final InputFile upload : uploads) result.add(uploadImage(product, upload));
+                return result;
             }
-            LOGGER.info(
-                    "Processing [{}] images for product labelled [{}] with id [{}]",
-                    uploads.size(),
-                    product.getLabel(),
-                    product.getId());
 
-            imageLifecycle.prepareReferences(product.getImages(), retainedImages);
-            final List<String> imagesUris = new ArrayList<>(retainedImages);
-
-            for (InputFile inputFile : uploads) {
-                final String imagePath = IMAGE_KEY_PREFIX + product.getId() + "/" + UUID.randomUUID();
-                imagesUris.add(imageLifecycle
-                        .upload(product.getId(), imagePath, UUID.randomUUID().toString(), inputFile)
-                        .toString());
+            final Map<String, InputFile> uploadsById = new LinkedHashMap<>();
+            for (final InputFile upload : uploads) {
+                final String filename = upload.filename();
+                if (filename == null || !filename.matches("[0-9a-fA-F-]{36}\\.webp")) {
+                    throw new IllegalArgumentException("Manifest uploads must be named by their UUID plus .webp");
+                }
+                final String uploadId = filename.substring(0, 36);
+                if (uploadsById.putIfAbsent(uploadId, upload) != null) {
+                    throw new IllegalArgumentException("Duplicate image upload ID");
+                }
             }
-            return imagesUris;
+            final Set<String> selectedUploads = new HashSet<>();
+            final Set<String> selectedExisting = new HashSet<>();
+            for (final ProductImageReferenceDto reference : manifest) {
+                if (reference == null || (reference.existingImage() == null) == (reference.uploadId() == null)) {
+                    throw new IllegalArgumentException("Each image reference must select exactly one image");
+                }
+                if (reference.existingImage() != null) {
+                    if (!owned.contains(reference.existingImage())
+                            || !selectedExisting.add(reference.existingImage())) {
+                        throw new IllegalArgumentException(
+                                "Retained image is not owned by this product or is duplicated");
+                    }
+                } else if (!uploadsById.containsKey(reference.uploadId())
+                        || !selectedUploads.add(reference.uploadId())) {
+                    throw new IllegalArgumentException("Unknown or duplicated image upload reference");
+                }
+            }
+            if (selectedUploads.size() != uploads.size()) {
+                throw new IllegalArgumentException("Every uploaded image must appear exactly once in the manifest");
+            }
+            imageLifecycle.prepareReferences(
+                    product.getImages(),
+                    manifest.stream()
+                            .map(ProductImageReferenceDto::existingImage)
+                            .filter(Objects::nonNull)
+                            .toList());
+            final List<String> result = new ArrayList<>();
+            for (final ProductImageReferenceDto reference : manifest) {
+                result.add(
+                        reference.existingImage() != null
+                                ? reference.existingImage()
+                                : uploadImage(product, uploadsById.get(reference.uploadId())));
+            }
+            return result;
         } finally {
-            for (InputFile input : uploads) {
+            for (final InputFile input : uploads) {
                 try {
                     input.inputStream().close();
                 } catch (java.io.IOException error) {
@@ -364,40 +410,29 @@ public class ProductManagerImpl implements ProductManager {
         }
     }
 
-    private static String requireNonBlankLabel(String label) {
-        if (label == null || label.isBlank()) {
-            throw new IllegalArgumentException("Product label must not be blank");
-        }
-        return label.trim();
-    }
-
-    private static void requireNonNullPrice(BigDecimal price) {
-        if (price == null) {
-            throw new IllegalArgumentException("Product price must not be null");
+    private static void requireOwnedImages(List<String> retained, Set<String> owned) {
+        final Set<String> selected = new HashSet<>();
+        for (final String image : retained) {
+            if (!owned.contains(image) || !selected.add(image)) {
+                throw new IllegalArgumentException("Retained image is not owned by this product or is duplicated");
+            }
         }
     }
 
-    private static void requireNonNegativePrice(BigDecimal price, String field) {
-        if (price != null && price.signum() < 0) {
-            throw new IllegalArgumentException("Product " + field + " price must not be negative");
-        }
+    private String uploadImage(Product product, InputFile inputFile) {
+        final String imagePath = IMAGE_KEY_PREFIX + product.getId() + "/" + UUID.randomUUID();
+        return imageLifecycle
+                .upload(product.getId(), imagePath, UUID.randomUUID().toString(), inputFile)
+                .toString();
     }
 
     private static void requireNonNegativeStock(int stockQuantity) {
         if (stockQuantity < 0) {
-            throw new IllegalArgumentException("Product stock quantity must not be negative");
+            throw new InputValidationException("stockQuantity", "stockQuantity must not be negative");
         }
     }
 
     private static void requirePositiveWeight(BigDecimal weightKg) {
-        if (weightKg == null || weightKg.signum() <= 0) {
-            throw new IllegalArgumentException("Product weight must be greater than zero kilograms");
-        }
-        if (weightKg.scale() > 3) {
-            throw new IllegalArgumentException("Product weight must have at most three decimal places");
-        }
-        if (weightKg.compareTo(MAX_PRODUCT_WEIGHT_KG) > 0) {
-            throw new IllegalArgumentException("Product weight must not exceed 1000 kilograms");
-        }
+        DomainValidation.weightKg(weightKg);
     }
 }

@@ -70,7 +70,15 @@ case "$mode" in
         if [[ "$count" -eq 1 ]]; then
             (while :; do sleep 1; done) &
             printf '%s\n' "$!" >"$FAKE_CHILD_FILE"
-            printf 'quota sk-retry-secret\n'
+            printf '%s\n' \
+                'quota sk-proj-abc123_DEF456ghi-JKL789' \
+                'sk-svcacct-SERVICE_suffix-9347' \
+                'api_key=UNQUOTED_suffix_8923' \
+                'API_KEY = "DOUBLE_suffix-7654 with spaces"' \
+                "password : 'SINGLE_suffix_6789 with spaces'" \
+                '"api_key": "JSON_suffix-3456"' \
+                'Authorization: Bearer BEARER_suffix.123_456-789~/+='
+
             exit 1
         fi
         if kill -0 "$(cat "$FAKE_CHILD_FILE")" 2>/dev/null; then
@@ -118,6 +126,12 @@ case "$mode" in
         jq -n --arg cycle "$NATIART_CYCLE_ID" --arg commit "$NATIART_REVIEWED_COMMIT" \
             '{cycle:$cycle,reviewed_commit:$commit,lens:"storage",checked:"confined filesystem paths",outcome:"no new defect"}' \
             > "logs/cycle-$NATIART_CYCLE_ID.audit"
+        ;;
+    long-secret)
+        printf 'sk-proj-'
+        printf '%020000d' 0
+        printf 'LONG_suffix-5678\n'
+        exit 9
         ;;
     foreign)
         # Concurrent foreign activity has no locally produced result manifest.
@@ -271,6 +285,17 @@ if grep -q 'OVERLAP' "$ROOT/retry.log"; then
     exit 1
 fi
 
+if FAKE_MODE=long-secret "${common[@]}" bash "$RUN_AGENT" --role review --review-pr 42 --budget 30 long-secret \
+    > "$ROOT/long-secret.log" 2>&1; then
+    echo 'failed secret-output worker was accepted' >&2; exit 1
+fi
+for suffix in abc123_DEF456ghi-JKL789 SERVICE_suffix-9347 UNQUOTED_suffix_8923 DOUBLE_suffix-7654 \
+    SINGLE_suffix_6789 JSON_suffix-3456 BEARER_suffix LONG_suffix-5678; do
+    if grep -R -F -q "$suffix" "$ROOT/outcomes" || grep -F -q "$suffix" "$ROOT/retry.log" "$ROOT/long-secret.log"; then
+        echo "complete credential leaked to retained or forwarded output: $suffix" >&2; exit 1
+    fi
+done
+grep -q '\[REDACTED\]' "$ROOT/retry.log"
 artifacts=("$ROOT/outcomes"/*.log)
 [[ -e "${artifacts[0]}" ]] || { echo "no bounded outcome artifact retained" >&2; exit 1; }
 if grep -R -qE 'sk-(test-secret|retry-secret)' "$ROOT/outcomes"; then
@@ -278,6 +303,7 @@ if grep -R -qE 'sk-(test-secret|retry-secret)' "$ROOT/outcomes"; then
     exit 1
 fi
 for artifact in "${artifacts[@]}"; do
+    [[ "$(stat -c %a "$artifact")" == 600 ]] || { echo "outcome is not private" >&2; exit 1; }
     [[ "$(wc -c <"$artifact")" -le 20000 ]] || {
         echo "outcome artifact exceeded its bound: $artifact" >&2
         exit 1
