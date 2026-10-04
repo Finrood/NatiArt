@@ -18,6 +18,7 @@ cleanup() {
         rm -f "$item"
         rmdir "$(dirname "$item")" 2>/dev/null || true
     done
+    [[ -z "${recursive_fixture:-}" ]] || rm -rf "$recursive_fixture"
     rm -rf "$work"
 }
 trap cleanup EXIT
@@ -72,9 +73,16 @@ frontend_env="natiart-app/src/.env.ca50-$$.local"
 frontend_secret="natiart-app/src/assets/private-ca50-$$.secrets.json"
 frontend_node="natiart-app/node_modules/host-ca50-$$.txt"
 frontend_dist="natiart-app/dist/host-ca50-$$.txt"
+recursive_fixture="frontend/fixture-ca50-$$"
+recursive_node="fixture-ca50-$$/nested/node_modules/host.txt"
+recursive_dist="fixture-ca50-$$/nested/dist/host.txt"
+recursive_cache="fixture-ca50-$$/nested/.angular/host.txt"
+recursive_coverage="fixture-ca50-$$/nested/coverage/host.txt"
+recursive_secret="fixture-ca50-$$/nested/.env.local"
 backend_jar="backend/product-service/build/libs/host-ca50-$$-plain.jar"
 backend_env="backend/directory-service/src/main/resources/.env.ca50-$$.local"
-for path in "$frontend_env" "$frontend_secret" "$frontend_node" "$frontend_dist"; do
+for path in "$frontend_env" "$frontend_secret" "$frontend_node" "$frontend_dist" \
+    "$recursive_node" "$recursive_dist" "$recursive_cache" "$recursive_coverage" "$recursive_secret"; do
     add_sentinel "frontend/$path"
 done
 add_sentinel "$backend_jar"
@@ -82,7 +90,8 @@ add_sentinel "$backend_env"
 
 printf 'FROM scratch\nCOPY . /context\n' > "$work/context.Dockerfile"
 probe_context frontend "natiart-ca50-frontend-context-$$" \
-    "$frontend_env" "$frontend_secret" "$frontend_node" "$frontend_dist"
+    "$frontend_env" "$frontend_secret" "$frontend_node" "$frontend_dist" \
+    "$recursive_node" "$recursive_dist" "$recursive_cache" "$recursive_coverage" "$recursive_secret"
 probe_context . "natiart-ca50-backend-context-$$" "$backend_jar" "$backend_env"
 
 build_frontend "$dirty_tag"
