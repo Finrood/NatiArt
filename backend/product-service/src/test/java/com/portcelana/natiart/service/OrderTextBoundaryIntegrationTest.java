@@ -65,6 +65,9 @@ class OrderTextBoundaryIntegrationTest {
     private OrderViewService views;
 
     @MockitoBean
+    private AsaasChargeSafetyService chargeSafety;
+
+    @MockitoBean
     private ProductManager productManager;
 
     @MockitoBean

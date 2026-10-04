@@ -78,7 +78,13 @@ class PaymentHttpCommitContractTest {
             assertEquals(first.getPaymentId(), second.getPaymentId());
             assertEquals(1, provider.posts.get());
             assertEquals(1, provider.gets.get());
-            assertEquals("http-key", provider.key.get());
+            assertEquals(
+                    reservations
+                            .findByOwnerExternalIdAndIdempotencyKey(owner, "http-key")
+                            .orElseThrow()
+                            .getId(),
+                    provider.key.get());
+            assertNotEquals("http-key", provider.key.get());
             assertTrue(provider.body.get().contains("\"customer\":\"" + owner + "\""));
             assertTrue(payments.findByOrderIdAndOwnerExternalId(order.getId(), owner)
                     .isPresent());
