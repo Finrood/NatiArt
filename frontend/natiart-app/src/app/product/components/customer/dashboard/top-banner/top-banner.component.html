@@ -1,7 +1,9 @@
-<div class="relative w-full h-96 md:h-[500px] mb-12 group">
+<div class="relative w-full h-96 md:h-[500px] mb-12 group" role="region" aria-roledescription="carousel" i18n-aria-roledescription
+  aria-label="Featured artwork" i18n-aria-label tabindex="0" (keydown)="keyboard($event)" (mouseenter)="pointer(true)" (mouseleave)="pointer(false)"
+  (focusin)="focus($event, true)" (focusout)="focus($event, false)">
   <!-- Image Slides -->
   @for (image of bannerImages; track image; let i = $index) {
-    <div class="absolute inset-0 w-full h-full transition-opacity duration-1000 ease-in-out" [class.opacity-100]="i === currentBannerIndex" [class.opacity-0]="i !== currentBannerIndex">
+    <div class="absolute inset-0 w-full h-full motion-reduce:transition-none transition-opacity duration-1000 ease-in-out" [class.opacity-100]="i === currentBannerIndex" [class.opacity-0]="i !== currentBannerIndex">
       <img [src]="image" alt="Banner Image {{ i + 1 }}" i18n-alt class="w-full h-full object-cover">
       <div class="absolute inset-0 bg-black/30"></div> <!-- Dark overlay for better text contrast -->
     </div>
@@ -11,21 +13,24 @@
   <div class="relative container mx-auto h-full flex flex-col justify-center items-start text-white p-8">
     <h2 class="text-4xl md:text-6xl font-serif font-bold mb-4 shadow-lg" i18n>The Art of Porcelain</h2>
     <p class="text-lg md:text-xl max-w-lg shadow-md" i18n>Experience the fusion of timeless tradition and modern design in every piece.</p>
-    <app-button customClass="mt-8 bg-white/90 text-secondary hover:bg-white backdrop-blur-sm" i18n>Explore Collections</app-button>
+    <app-button routerLink="/products" customClass="mt-8 bg-white/90 text-secondary hover:bg-white backdrop-blur-sm" i18n>Explore Collections</app-button>
   </div>
 
   <!-- Navigation Arrows -->
-  <button (click)="prevSlide()" class="absolute top-1/2 left-4 -translate-y-1/2 bg-white/50 hover:bg-white text-secondary p-2 rounded-full transition-opacity duration-300 opacity-0 group-hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-white">
+  <button type="button" (click)="prevSlide()" aria-label="Previous banner" i18n-aria-label class="absolute top-1/2 left-4 -translate-y-1/2 bg-white/50 hover:bg-white text-secondary p-2 rounded-full transition-opacity duration-300 opacity-100 focus:outline-none focus:ring-2 focus:ring-white">
     <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
   </button>
-  <button (click)="nextSlide()" class="absolute top-1/2 right-4 -translate-y-1/2 bg-white/50 hover:bg-white text-secondary p-2 rounded-full transition-opacity duration-300 opacity-0 group-hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-white">
+  <button type="button" (click)="nextSlide()" aria-label="Next banner" i18n-aria-label class="absolute top-1/2 right-4 -translate-y-1/2 bg-white/50 hover:bg-white text-secondary p-2 rounded-full transition-opacity duration-300 opacity-100 focus:outline-none focus:ring-2 focus:ring-white">
     <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
   </button>
 
+  <button type="button" class="absolute top-4 right-4 bg-white text-secondary p-2 rounded" (click)="toggleRotation()"
+    [attr.aria-pressed]="$paused()" [disabled]="$reducedMotion()">{{ rotationLabel }}</button>
+  <span class="sr-only" [attr.aria-live]="$paused() || $reducedMotion() ? 'polite' : 'off'" i18n>Slide {{ currentBannerIndex + 1 }} of {{ bannerImages.length }}</span>
   <!-- Navigation Dots -->
   <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex space-x-3">
     @for (image of bannerImages; track image; let i = $index) {
-      <button (click)="goToSlide(i)" class="w-3 h-3 rounded-full transition-colors duration-300" [ngClass]="i === currentBannerIndex ? 'bg-white' : 'bg-white/50 hover:bg-white'"></button>
+      <button type="button" (click)="goToSlide(i)" [attr.aria-label]="bannerLabel(i + 1)" [attr.aria-current]="i === currentBannerIndex ? 'true' : null" class="w-3 h-3 rounded-full transition-colors duration-300" [ngClass]="i === currentBannerIndex ? 'bg-white' : 'bg-white/50 hover:bg-white'"></button>
     }
   </div>
 </div>

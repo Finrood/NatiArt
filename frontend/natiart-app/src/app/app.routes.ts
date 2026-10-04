@@ -4,6 +4,7 @@ import {adminGuard} from "./directory/guards/admin.guard";
 import {productGuard} from "./product/guards/product-guard.guard";
 
 export const routes: Routes = [
+  {path: 'products', loadComponent: () => import('./product/components/customer/catalog/catalog.component').then(m => m.CatalogComponent)},
   {
     path: 'login',
     loadComponent: () => import('./directory/components/auth/login/login.component').then(m => m.LoginComponent)
@@ -22,10 +23,50 @@ export const routes: Routes = [
     loadComponent: () => import('./product/components/customer/dashboard/dashboard.component').then(m => m.DashboardComponent)
   },
   {
+    path: 'products',
+    loadComponent: () => import('./product/components/customer/catalog/catalog.component').then(m => m.CatalogComponent)
+  },
+  {
+    path: 'about',
+    data: {
+      title: $localize`About us`,
+      message: $localize`Handmade pieces for your home.`
+    },
+    loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
+  },
+  {
+    path: 'contact',
+    data: {
+      title: $localize`Contact`,
+      message: $localize`Online contact is currently unavailable. Return to the store to continue browsing.`
+    },
+    loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
+  },
+  {
     path: 'account',
     canActivate: [authGuard],
     loadComponent: () => import('./product/components/customer/order-history/order-history.component')
       .then(m => m.OrderHistoryComponent)
+  },
+  {
+    path: 'faq',
+    data: {title: $localize`Frequently asked questions`, message: $localize`Frequently asked questions are not published yet.`},
+    loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
+  },
+  {
+    path: 'shipping-returns',
+    data: {title: $localize`Shipping and returns`, message: $localize`Shipping and return information is not published on this page yet.`},
+    loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
+  },
+  {
+    path: 'care-instructions',
+    data: {title: $localize`Care instructions`, message: $localize`Handle porcelain with clean, dry hands and avoid sudden temperature changes.`},
+    loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
+  },
+  {
+    path: 'not-found',
+    data: {title: $localize`Page not found`, message: $localize`The page you requested does not exist.`},
+    loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
   },
   {
     path: 'product/:id',
@@ -85,5 +126,5 @@ export const routes: Routes = [
     ]
   },
   {path: '', redirectTo: '/dashboard', pathMatch: 'full'},
-  {path: '**', redirectTo: '/dashboard'}
+  {path: '**', redirectTo: '/not-found'}
 ];

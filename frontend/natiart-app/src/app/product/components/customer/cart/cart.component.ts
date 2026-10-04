@@ -1,8 +1,7 @@
-// START OF FILE: src/app/product/components/customer/cart/cart.component.ts
-import {ChangeDetectionStrategy, Component, inject, OnDestroy, OnInit, ViewChild} from '@angular/core'; // Import SecurityContext
+import {ImageCollection, ImageLoaderService, EMPTY_PRODUCT_IMAGE} from '../../../service/image-loader.service';
+import {ChangeDetectionStrategy, Component, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {BehaviorSubject, combineLatest, Observable, of, Subject} from 'rxjs';
 import {catchError, finalize, map, startWith, takeUntil, tap} from 'rxjs/operators';
-import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 import {Router, RouterLink} from '@angular/router';
 import { AsyncPipe, CurrencyPipe } from "@angular/common";
 import {ShippingEstimationComponent} from "../shipping-estimation/shipping-estimation.component";
@@ -13,7 +12,6 @@ import {LoadingSpinnerComponent} from "../../../../shared/components/shared/load
 import {ButtonComponent} from "../../../../shared/components/button.component";
 import {CartItem} from "../../../models/CartItem.model";
 import {CartService} from "../../../service/cart.service";
-import {ProductService} from "../../../service/product.service";
 import {reportError} from '../../../../shared/service/error-reporting.service';
 
 interface CartState {
@@ -24,7 +22,6 @@ interface CartState {
 
 @Component({
   selector: 'app-cart',
-  standalone: true,
   imports: [
     ConfirmationModalComponent,
     RouterLink,
@@ -39,22 +36,21 @@ interface CartState {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CartComponent implements OnInit, OnDestroy {
+  readonly images: ImageCollection = inject(ImageLoaderService).create();
+  readonly emptyImage: string = EMPTY_PRODUCT_IMAGE;
+  get imageUrls(): Record<string, string> { return this.images.urls(); }
+
   cartState$: Observable<CartState>;
-  // Use cartItemId as key. Store SafeUrl or placeholder string.
-  imageUrls: { [cartItemId: string]: SafeUrl | string } = {};
   isLoading$ = new BehaviorSubject<boolean>(false);
   error$ = new BehaviorSubject<string | null>(null);
 
   @ViewChild(ConfirmationModalComponent) confirmationModal!: ConfirmationModalComponent;
   modalAction: (() => void) | null = null;
 
-  private objectUrlsCreated: string[] = []; // Keep track of created blob URLs
   private destroy$ = new Subject<void>();
 
-  private readonly _cartService = inject(CartService);
-  private readonly _productService = inject(ProductService);
-  private readonly _sanitizer = inject(DomSanitizer);
-  private readonly _router = inject(Router);
+  private readonly _cartService: CartService = inject(CartService);
+  private readonly _router: Router = inject(Router);
 
   constructor() {
     this.cartState$ = combineLatest([
@@ -80,9 +76,7 @@ export class CartComponent implements OnInit, OnDestroy {
     this.clearErrorDismissTimer();
     this.destroy$.next();
     this.destroy$.complete();
-    // Clean up ALL previously created object URLs
-    this.objectUrlsCreated.forEach(url => URL.revokeObjectURL(url));
-    this.objectUrlsCreated = []; // Clear the tracking array
+    this.images.destroy();
   }
 
   updateQuantity(item: CartItem, change: number): void {
@@ -172,67 +166,9 @@ export class CartComponent implements OnInit, OnDestroy {
   }
 
   private prepareImageUrls(items: CartItem[]): void {
-    // Revoke URLs for items no longer in the cart
-    const currentItemIds = new Set(items.map(item => item.cartItemId));
-    const urlsToRemove = Object.keys(this.imageUrls).filter(id => !currentItemIds.has(id));
-    urlsToRemove.forEach(cartItemId => {
-      const url = this.imageUrls[cartItemId];
-      if (typeof url === 'string' && url.startsWith('blob:')) {
-        URL.revokeObjectURL(url);
-        const index = this.objectUrlsCreated.indexOf(url);
-        if (index > -1) this.objectUrlsCreated.splice(index, 1);
-      }
-      delete this.imageUrls[cartItemId]; // Remove from map
-    });
-
-
-    // Create/fetch URLs for current items if needed
-    items.forEach(item => {
-      if (!this.imageUrls[item.cartItemId]) { // Only process if URL doesn't exist
-        if (item.image instanceof File) {
-          // Create Object URL for the custom File image
-          const objectUrl = URL.createObjectURL(item.image);
-          this.imageUrls[item.cartItemId] = this._sanitizer.bypassSecurityTrustUrl(objectUrl);
-          this.objectUrlsCreated.push(objectUrl); // Track for cleanup
-        } else if (item.product.images && item.product.images.length > 0) {
-          // Fetch the default product image if no custom image
-          this.fetchProductImage(item.cartItemId, item.product.images[0]);
-        } else {
-          // Use placeholder if no images available
-          this.imageUrls[item.cartItemId] = 'assets/img/placeholder.png';
-        }
-      }
-    });
+    this.images.update(items.map((item: CartItem) => ({key: item.cartItemId, source: item.image || item.product.images?.[0]})));
   }
 
-  private fetchProductImage(cartItemId: string, imagePath: string): void {
-    // Drop resolutions that arrive after the line was removed: the cleanup
-    // pass in prepareImageUrls deletes the key, and an unguarded write
-    // would resurrect it (AA3). Destroy teardown is covered by takeUntil.
-    this._productService.getImage(imagePath).pipe(
-      takeUntil(this.destroy$) // Auto-unsubscribe
-    ).subscribe({
-      next: (blob: Blob): void => {
-        if (!this.isCartLineLive(cartItemId)) {
-          return;
-        }
-        const objectUrl: string = URL.createObjectURL(blob);
-        this.imageUrls[cartItemId] = this._sanitizer.bypassSecurityTrustUrl(objectUrl);
-        this.objectUrlsCreated.push(objectUrl); // Track for cleanup
-      },
-      error: (error: unknown): void => {
-        if (!this.isCartLineLive(cartItemId)) {
-          return;
-        }
-        reportError('cart-image', error);
-        this.imageUrls[cartItemId] = 'assets/img/placeholder.png'; // Fallback
-      }
-    });
-  }
-
-  private isCartLineLive(cartItemId: string): boolean {
-    return this._cartService.getCartItemsSnapshot().some((item: CartItem): boolean => item.cartItemId === cartItemId);
-  }
 
   private errorDismissTimer: ReturnType<typeof setTimeout> | undefined = undefined;
 

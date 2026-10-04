@@ -1,5 +1,5 @@
 <div class="fixed top-4 right-4 z-50 flex flex-col space-y-3">
-  @for (alert of alertMessages; track alert) {
+  @for (alert of $alertMessages(); track alert) {
     <div
        animate.enter="alert-enter"
        animate.leave="alert-leave"

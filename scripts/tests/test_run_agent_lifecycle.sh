@@ -15,6 +15,7 @@ git -C "$ROOT/repo" config user.name fixture
 git -C "$ROOT/repo" config user.email fixture@example.invalid
 mkdir -p "$ROOT/repo/scripts"
 cp "$RUN_AGENT_SOURCE" "$ROOT/repo/scripts/run-agent.sh"
+cp "$TEST_DIR/../loop-lib.sh" "$ROOT/repo/scripts/loop-lib.sh"
 printf 'base\n' > "$ROOT/repo/README"
 git -C "$ROOT/repo" add .
 git -C "$ROOT/repo" commit -qm base
@@ -28,6 +29,11 @@ set -Eeuo pipefail
 case "${1:-} ${2:-}" in
     'api user') printf 'loop-machine\n' ;;
     'pr view')
+        if [[ "$*" == *headRefName* ]]; then
+            jq -n --arg sha "$(cat "$FAKE_CYCLE_STATE")" \
+                '{number:42,headRefName:"fix/produced",headRefOid:$sha,author:{login:"loop-machine"},state:"OPEN",isCrossRepository:false,body:"Loop-Owner: natiart-improvement-loop"}'
+            exit 0
+        fi
         if [[ -f "$FAKE_REVIEW_STATE" ]]; then
             printf '{"headRefOid":"%s","reviews":[{"id":"new-review","body":"VERDICT: REQUEST_CHANGES (reviewed %s)","author":{"login":"%s"},"commit":{"oid":"%s"}}]}\n' \
                 "$FAKE_HEAD" "$FAKE_HEAD" "${FAKE_REVIEW_AUTHOR:-loop-machine}" "$FAKE_HEAD"
@@ -37,7 +43,7 @@ case "${1:-} ${2:-}" in
         ;;
     'pr list')
         if [[ -f "$FAKE_CYCLE_STATE" ]]; then
-            printf '[{"number":42,"headRefOid":"%s","headRefName":"fix/produced","author":{"login":"%s"}}]\n' "$(cat "$FAKE_CYCLE_STATE")" "${FAKE_PR_AUTHOR:-loop-machine}"
+            printf '[{"number":42,"headRefOid":"%s","headRefName":"%s","author":{"login":"%s"}}]\n' "$(cat "$FAKE_CYCLE_STATE")" "${FAKE_CYCLE_BRANCH:-fix/produced}" "${FAKE_PR_AUTHOR:-loop-machine}"
         else
             printf '[{"number":42,"headRefOid":"%s"}]\n' "$FAKE_OLD_HEAD"
         fi
@@ -74,6 +80,27 @@ case "$mode" in
         touch "$FAKE_REVIEW_STATE"
         printf 'review submitted\n'
         ;;
+    failed-result-then-noop|failed-result-then-rewrite)
+        if [[ ! -f "$FAKE_COUNT_FILE" ]]; then
+            touch "$FAKE_COUNT_FILE"
+            git checkout -qb "${FAKE_CYCLE_BRANCH:-fix/failed-produced}"
+            printf 'failed attempt produced work\n' >> README
+            git add README
+            git commit -qm failed-produced
+            git push -q origin "${FAKE_CYCLE_BRANCH:-fix/failed-produced}"
+            sha="$(git rev-parse HEAD)"
+            printf '%s\n' "$sha" > "$FAKE_CYCLE_STATE"
+            jq -n --arg cycle "$NATIART_CYCLE_ID" --arg branch "${FAKE_CYCLE_BRANCH:-fix/failed-produced}" --arg sha "$sha" \
+                '{cycle:$cycle,branch:$branch,sha:$sha}' > "$NATIART_DELIVERABLE_FILE"
+            printf 'quota exhausted after writing result\n'
+            exit 1
+        fi
+        if [[ "$FAKE_MODE" == failed-result-then-rewrite ]]; then
+            jq -n --arg cycle "$NATIART_CYCLE_ID" --arg branch "$FAKE_CYCLE_BRANCH" --arg sha "$(git rev-parse HEAD)" \
+                '{cycle:$cycle,branch:$branch,sha:$sha}' > "$NATIART_DELIVERABLE_FILE"
+        fi
+        printf 'clean no-op after failed worker\n'
+        ;;
     foreign)
         # Concurrent foreign activity has no locally produced result manifest.
         printf '%s\n' "$FAKE_HEAD" > "$FAKE_CYCLE_STATE"
@@ -83,6 +110,8 @@ case "$mode" in
         printf 'VERDICT: REQUEST_CHANGES (reviewed %s)\nPR #42\n' "$FAKE_HEAD"
         ;;
     cycle-push)
+        git branch fix/human-during-run
+        git push -q origin fix/human-during-run
         git checkout -qb fix/produced
         printf 'produced\n' >> README
         git add README
@@ -157,10 +186,44 @@ if FAKE_MODE=foreign FAKE_REVIEW_AUTHOR=human "${common[@]}" bash "$RUN_AGENT" -
     echo 'foreign review was accepted as worker output' >&2; exit 1
 fi
 rm -f "$ROOT/review-state" "$ROOT/cycle-state"
-FAKE_MODE=cycle-push "${common[@]}" bash "$RUN_AGENT" --role cycle --budget 30 push \
+# A failed worker can leave an apparently valid pushed result. A retry that
+# produces nothing must not reuse that manifest or hand it to the supervisor.
+: > "$ROOT/failed-accepted"
+chmod 600 "$ROOT/failed-accepted"
+if FAKE_MODE=failed-result-then-noop FAKE_CYCLE_BRANCH=fix/failed-produced FAKE_COUNT_FILE="$ROOT/failed-count" \
+    NATIART_ACCEPTED_RESULT_FILE="$ROOT/failed-accepted" "${common[@]}" bash "$RUN_AGENT" --role cycle --budget 30 failed \
+    > "$ROOT/failed-result.log" 2>&1; then
+    echo 'failed worker manifest authorized a later no-op' >&2; exit 1
+fi
+[[ ! -s "$ROOT/failed-accepted" ]]
+git -C "$ROOT/repo" checkout -q master
+rm -f "$ROOT/cycle-state"
+# Refresh both ref and GitHub baselines: even rewriting the old manifest fails.
+if FAKE_MODE=failed-result-then-rewrite FAKE_CYCLE_BRANCH=fix/failed-rewritten FAKE_COUNT_FILE="$ROOT/rewrite-count" \
+    NATIART_ACCEPTED_RESULT_FILE="$ROOT/failed-accepted" "${common[@]}" bash "$RUN_AGENT" --role cycle --budget 30 rewrite \
+    > "$ROOT/failed-rewrite.log" 2>&1; then
+    echo 'rewritten failed result authorized a later no-op' >&2; exit 1
+fi
+[[ ! -s "$ROOT/failed-accepted" ]]
+git -C "$ROOT/repo" checkout -q master
+rm -f "$ROOT/cycle-state"
+before_refs="$(git -C "$ROOT/repo" for-each-ref --format='%(refname:short)%09%(objectname)' refs/heads/)"
+: > "$ROOT/accepted-result"
+chmod 600 "$ROOT/accepted-result"
+FAKE_MODE=cycle-push NATIART_CYCLE_ID=fixture-cycle NATIART_ACCEPTED_RESULT_FILE="$ROOT/accepted-result" "${common[@]}" bash "$RUN_AGENT" --role cycle --budget 30 push \
     >"$ROOT/cycle-push.log" 2>&1
 grep -q 'NATIART_ACTIVE_MODEL=fake' "$ROOT/cycle-push.log"
-
+jq -e '.cycle == "fixture-cycle" and .branch == "fix/produced" and .sha == .pushedSha and .pr == 42' "$ROOT/accepted-result" >/dev/null
+[[ "$(wc -c < "$ROOT/accepted-result")" -le 4096 ]]
+# The production runner hands only its validated branch to the production supervisor.
+(
+    cd "$ROOT/repo"
+    source scripts/loop-lib.sh
+    PATH="$FAKEBIN:$PATH" FAKE_CYCLE_STATE="$ROOT/cycle-state" loop_record_worker_result \
+        "$ROOT/accepted-result" fixture-cycle "$before_refs" .git/ownership "$ROOT/supervisor-accepted"
+    loop_owned_branch fix/produced .git/ownership
+    ! loop_owned_branch fix/human-during-run .git/ownership
+)
 # A failed attempt with a surviving child must be reaped before the retry.
 FAKE_MODE=retry FAKE_COUNT_FILE="$ROOT/count" FAKE_CHILD_FILE="$ROOT/retry-child" \
     "${common[@]}" bash "$RUN_AGENT" --role review --review-pr 42 --budget 30 retry \
