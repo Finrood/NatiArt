@@ -98,3 +98,12 @@ The default is two minutes. A
 process pause beyond the lease can still overlap attempts. If duplicate
 provider matches appear, the job becomes `FAILED` and requires manual
 reconciliation rather than choosing one silently.
+
+Customer search must return HTTP 200 with a non-null `data` collection and an
+explicit `hasMore` boolean. Every entry must contain a nonblank provider ID,
+match the requested immutable `externalReference`, and represent a live customer.
+Missing bodies, malformed entries and incomplete pagination remain retryable
+ambiguity; they never authorize a new customer POST. The worker follows pages
+with limit 100 and increasing offsets, bounded to 100 pages per attempt. Only a
+complete valid empty result authorizes creation. Multiple matches require manual
+reconciliation. This follows [Asaas pagination](https://docs.asaas.com/reference/listing-and-pagination).
