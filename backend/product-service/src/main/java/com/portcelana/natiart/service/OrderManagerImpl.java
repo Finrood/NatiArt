@@ -28,7 +28,6 @@ import com.portcelana.natiart.dto.PersonalizationDto;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
-import com.portcelana.natiart.service.support.DomainValidation;
 
 @Service
 public class OrderManagerImpl implements OrderManager {
@@ -144,7 +143,7 @@ public class OrderManagerImpl implements OrderManager {
             throw new IllegalArgumentException("An order must have an owner");
         }
         final String normalizedKey = normalizeIdempotencyKey(idempotencyKey);
-        orderDto.setHouseNumber(DomainValidation.requiredText(orderDto.getHouseNumber(), "houseNumber", 255));
+        orderDto.setZipCode(OrderCreationService.validateContactDetails(orderDto));
         final String fingerprint = fingerprint(orderDto);
 
         if (normalizedKey != null) {

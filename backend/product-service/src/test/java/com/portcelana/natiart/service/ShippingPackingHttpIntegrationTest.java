@@ -227,6 +227,7 @@ class ShippingPackingHttpIntegrationTest {
                 "owner");
         assertEquals(new BigDecimal("12.50"), quote.getShippingAmount());
         final OrderDto orderRequest = new OrderDto()
+                .setHouseNumber("N/A")
                 .setFirstname("Buyer")
                 .setHouseNumber("N/A")
                 .setLastname("Customer")

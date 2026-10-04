@@ -31,13 +31,14 @@ import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.repository.CartItemRepository;
 import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.ProductRepository;
+import com.portcelana.natiart.service.support.DomainValidation;
+import com.portcelana.natiart.service.support.InputValidationException;
 import com.portcelana.natiart.storage.InputFile;
 import com.portcelana.natiart.storage.StorageService;
 
 @Service
 public class ProductManagerImpl implements ProductManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductManagerImpl.class);
-    private static final BigDecimal MAX_PRODUCT_WEIGHT_KG = BigDecimal.valueOf(1000);
     private static final String IMAGE_KEY_PREFIX = "products/";
     private static final int MAX_IMAGES_PER_PRODUCT = 10;
 
@@ -224,10 +225,10 @@ public class ProductManagerImpl implements ProductManager {
     @Override
     @Transactional
     public Product createProduct(ProductDto productDto, List<InputFile> imagesInput) {
-        final String label = requireNonBlankLabel(productDto.getLabel());
-        requireNonNullPrice(productDto.getOriginalPrice());
-        requireNonNegativePrice(productDto.getOriginalPrice(), "original");
-        requireNonNegativePrice(productDto.getMarkedPrice(), "marked");
+        final String label = DomainValidation.requiredText(productDto.getLabel(), "label", 255);
+        DomainValidation.money(productDto.getOriginalPrice(), "originalPrice", true);
+        DomainValidation.money(productDto.getMarkedPrice(), "markedPrice", false);
+        DomainValidation.optionalText(productDto.getDescription(), "description", 255);
         requireNonNegativeStock(productDto.getStockQuantity());
         requirePositiveWeight(productDto.getWeightKg());
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
@@ -255,10 +256,10 @@ public class ProductManagerImpl implements ProductManager {
     @Override
     @Transactional
     public Product updateProduct(ProductDto productDto, List<InputFile> imagesInput) {
-        final String label = requireNonBlankLabel(productDto.getLabel());
-        requireNonNullPrice(productDto.getOriginalPrice());
-        requireNonNegativePrice(productDto.getOriginalPrice(), "original");
-        requireNonNegativePrice(productDto.getMarkedPrice(), "marked");
+        final String label = DomainValidation.requiredText(productDto.getLabel(), "label", 255);
+        DomainValidation.money(productDto.getOriginalPrice(), "originalPrice", true);
+        DomainValidation.money(productDto.getMarkedPrice(), "markedPrice", false);
+        DomainValidation.optionalText(productDto.getDescription(), "description", 255);
         requireNonNegativeStock(productDto.getStockQuantity());
         requirePositiveWeight(productDto.getWeightKg());
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
@@ -364,40 +365,13 @@ public class ProductManagerImpl implements ProductManager {
         }
     }
 
-    private static String requireNonBlankLabel(String label) {
-        if (label == null || label.isBlank()) {
-            throw new IllegalArgumentException("Product label must not be blank");
-        }
-        return label.trim();
-    }
-
-    private static void requireNonNullPrice(BigDecimal price) {
-        if (price == null) {
-            throw new IllegalArgumentException("Product price must not be null");
-        }
-    }
-
-    private static void requireNonNegativePrice(BigDecimal price, String field) {
-        if (price != null && price.signum() < 0) {
-            throw new IllegalArgumentException("Product " + field + " price must not be negative");
-        }
-    }
-
     private static void requireNonNegativeStock(int stockQuantity) {
         if (stockQuantity < 0) {
-            throw new IllegalArgumentException("Product stock quantity must not be negative");
+            throw new InputValidationException("stockQuantity", "stockQuantity must not be negative");
         }
     }
 
     private static void requirePositiveWeight(BigDecimal weightKg) {
-        if (weightKg == null || weightKg.signum() <= 0) {
-            throw new IllegalArgumentException("Product weight must be greater than zero kilograms");
-        }
-        if (weightKg.scale() > 3) {
-            throw new IllegalArgumentException("Product weight must have at most three decimal places");
-        }
-        if (weightKg.compareTo(MAX_PRODUCT_WEIGHT_KG) > 0) {
-            throw new IllegalArgumentException("Product weight must not exceed 1000 kilograms");
-        }
+        DomainValidation.weightKg(weightKg);
     }
 }

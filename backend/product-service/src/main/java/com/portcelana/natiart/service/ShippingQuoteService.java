@@ -291,12 +291,7 @@ public class ShippingQuoteService {
         if (!product.isActive()) {
             throw new IllegalArgumentException("Product [" + product.getLabel() + "] is no longer available");
         }
-        if (product.getWeightKg() == null
-                || product.getWeightKg().signum() <= 0
-                || product.getWeightKg().compareTo(BigDecimal.valueOf(1000)) > 0
-                || !Float.isFinite(product.getWeightKg().floatValue())) {
-            throw new IllegalArgumentException("Product [" + product.getLabel() + "] has no valid shipping weight");
-        }
+        com.portcelana.natiart.service.support.DomainValidation.weightKg(product.getWeightKg());
         final Package packaging = product.getPackaging().orElse(null);
         if (packaging == null || !packaging.isActive()) {
             throw new IllegalArgumentException("Product [" + product.getLabel() + "] has no active shipping package");
