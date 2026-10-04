@@ -1,9 +1,9 @@
-import {Injectable, OnDestroy} from '@angular/core';
+import {inject, Injectable, OnDestroy} from '@angular/core';
 import {HttpClient, HttpErrorResponse, HttpHeaders} from "@angular/common/http";
 import {Router} from "@angular/router";
 import {RoleName, User} from "../models/user.model";
 import {environment} from "../../../environments/environment";
-import {BehaviorSubject, catchError, Observable, Subject, throwError, timer, Subscription, of} from "rxjs";
+import {BehaviorSubject, catchError, Observable, Subject, throwError, timer, Subscription, of, timeout, shareReplay} from "rxjs";
 import {Credentials} from "../models/credentials.model";
 import {map, switchMap, takeUntil, tap, finalize} from "rxjs/operators";
 import {LoginResponse} from "../models/loginResponse.model";
@@ -17,8 +17,8 @@ export class AuthenticationService implements OnDestroy {
   private readonly apiUrl: string = `${environment.api.directory.url}`;
   private readonly tokenCheckInterval = 60000; // 1 minute
   private readonly tokenRefreshBuffer = 300000; // 5 minutes before expiration
-  private readonly refreshTokenRefreshBuffer = 86400000; // refresh again 1 day before the 7-day refresh token expires
   private readonly inactivityTimeout = 900000; // 15 minutes
+  private readonly authInitializationTimeout = 10000;
 
   private inactivityTimerSubscription: Subscription | undefined;
 
@@ -36,20 +36,49 @@ export class AuthenticationService implements OnDestroy {
 
   private destroy$ = new Subject<void>();
   private readonly tokenClearSubscription: Subscription;
+  private refreshInProgress$: Observable<string> | null = null;
+  private sessionGeneration = 0;
+  private initialization$: Observable<void> | null = null;
+  private initializationIdentity = "";
+  private userLookup$: Observable<User> | null = null;
+  private userLookupIdentity = "";
 
-  constructor(private http: HttpClient, private router: Router, private tokenService: TokenService) {
-    this.tokenClearSubscription = this.tokenService.tokensCleared$
+  private readonly _http = inject(HttpClient);
+  private readonly _router = inject(Router);
+  private readonly _tokenService = inject(TokenService);
+
+  constructor() {
+    this.tokenClearSubscription = this._tokenService.tokensCleared$
       .pipe(takeUntil(this.destroy$))
-      .subscribe(() => this.updateState(null));
-    this.initializeAuthState()
-      .pipe(finalize(() => this.authResolvedSubject.next(true)))
+      .subscribe(() => {
+        this.invalidateSession();
+        this.updateState(null);
+      });
+    timer(0).pipe(
+      takeUntil(this.destroy$),
+      switchMap(() => this.initializeAuthState()),
+      finalize(() => this.authResolvedSubject.next(true)))
       .subscribe();
     this.startTokenMonitoring();
     this.resetInactivityTimer();
   }
 
+  private invalidateSession(): void {
+    this.sessionGeneration++;
+    this.refreshInProgress$ = null;
+    this.initialization$ = null;
+    this.userLookup$ = null;
+  }
+
+  private establishSession(response: LoginResponse): void {
+    this.invalidateSession();
+    this.updateState(null);
+    this._tokenService.accessToken = response.accessToken;
+    this._tokenService.refreshToken = response.refreshToken;
+  }
+
   private clearLocalAuthState() {
-    this.tokenService.clearTokens();
+    this._tokenService.clearTokens();
   }
 
   resetInactivityTimer() {
@@ -60,7 +89,7 @@ export class AuthenticationService implements OnDestroy {
     this.inactivityTimerSubscription = timer(this.inactivityTimeout)
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
-        if (this.isTokenExpired(this.tokenService.refreshToken)) {
+        if (this.isTokenExpired(this._tokenService.refreshToken)) {
           this.resetAuthStateAndRedirect();
         } else {
           this.doRefreshToken().pipe(takeUntil(this.destroy$)).subscribe({
@@ -84,13 +113,12 @@ export class AuthenticationService implements OnDestroy {
   }
 
   login(credentials: Credentials): Observable<User> {
-    return this.http.post<LoginResponse>(
+    return this._http.post<LoginResponse>(
       `${this.apiUrl}${environment.api.directory.endpoints.login}`,
       credentials
     ).pipe(
       tap((loginResponse: LoginResponse) => {
-        this.tokenService.accessToken = loginResponse.accessToken;
-        this.tokenService.refreshToken = loginResponse.refreshToken;
+        this.establishSession(loginResponse);
       }),
       switchMap(() => this.fetchCurrentUser()),
       catchError(error => this.handleError(error, 'Login failed'))
@@ -98,19 +126,21 @@ export class AuthenticationService implements OnDestroy {
   }
 
   setAuthTokensAndUser(loginResponse: LoginResponse): Observable<User> {
-    this.tokenService.accessToken = loginResponse.accessToken;
-    this.tokenService.refreshToken = loginResponse.refreshToken;
+    this.establishSession(loginResponse);
     return this.fetchCurrentUser().pipe(
       catchError(error => this.handleError(error, 'Failed to set ghost user authentication'))
     );
   }
 
   logout(): Observable<void> {
-    return this.http.post<void>(`${this.apiUrl}${environment.api.directory.endpoints.logout}`, {}).pipe(
-      tap(() => this.clearLocalAuthState()),
+    this.invalidateSession();
+    const generation = this.sessionGeneration;
+    this.updateState(null);
+    return this._http.post<void>(`${this.apiUrl}${environment.api.directory.endpoints.logout}`, {}).pipe(
+      tap(() => { if (generation === this.sessionGeneration) this.clearLocalAuthState(); }),
       catchError(error => {
         reportError('logout', error);
-        this.clearLocalAuthState();
+        if (generation === this.sessionGeneration) this.clearLocalAuthState();
         return throwError(() => error);
       })
     );
@@ -121,19 +151,28 @@ export class AuthenticationService implements OnDestroy {
   }
 
   fetchCurrentUser(): Observable<User> {
-    const headers = this.tokenService.accessToken
-      ? new HttpHeaders({ Authorization: `Bearer ${this.tokenService.accessToken}` })
+    const generation = this.sessionGeneration;
+    const identity = `${generation}:${this._tokenService.accessToken}`;
+    if (this.userLookup$ && this.userLookupIdentity === identity) return this.userLookup$;
+    this.userLookupIdentity = identity;
+    const headers = this._tokenService.accessToken
+      ? new HttpHeaders({ Authorization: `Bearer ${this._tokenService.accessToken}` })
       : new HttpHeaders();
 
-    return this.http.get<User>(
+    const lookup$: Observable<User> = this._http.get<User>(
       `${this.apiUrl}${environment.api.directory.endpoints.user}${environment.api.directory.endpoints.current}`,
       { headers }
     ).pipe(
       tap(user => {
+        if (generation !== this.sessionGeneration) throw new Error('Authentication session changed during lookup');
         this.updateState(user);
       }),
-      catchError(error => this.handleError(error, 'Failed to fetch user'))
+      catchError(error => this.handleError(error, 'Failed to fetch user', generation)),
+      finalize(() => { if (this.userLookup$ === lookup$) this.userLookup$ = null; }),
+      shareReplay({bufferSize: 1, refCount: false})
     );
+    this.userLookup$ = lookup$;
+    return lookup$;
   }
 
   private updateState(user: User | null) {
@@ -141,43 +180,75 @@ export class AuthenticationService implements OnDestroy {
   }
 
   private doRefreshToken(): Observable<void> {
-    if (!this.tokenService.refreshToken || this.isTokenExpired(this.tokenService.refreshToken)) {
-      this.resetAuthStateAndRedirect();
-      return throwError(() => new Error('Refresh token expired or missing'));
-    }
-
-    return this.http.post<{ accessToken: string, refreshToken: string }>(
-      `${this.apiUrl}${environment.api.directory.endpoints.refreshToken}`,
-      null,
-      { headers: new HttpHeaders({ Authorization: `Bearer ${this.tokenService.refreshToken}` }) }
-    ).pipe(
-      tap(({ accessToken, refreshToken }) => {
-        this.tokenService.accessToken = accessToken;
-        this.tokenService.refreshToken = refreshToken;
-        this.fetchCurrentUser().pipe(takeUntil(this.destroy$)).subscribe();
-      }),
-      map(() => void 0),
-      catchError((error: HttpErrorResponse) => {
-        console.error('Token refresh failed:', error.message);
-        return throwError(() => error);
-      })
+    return this.refreshAccessToken().pipe(
+      switchMap(() => this.fetchCurrentUser()),
+      map(() => void 0)
     );
   }
 
-  public initializeAuthState(): Observable<void> {
-    const accessToken = this.tokenService.accessToken;
-    const refreshToken = this.tokenService.refreshToken;
+  public refreshAccessToken(): Observable<string> {
+    if (this.refreshInProgress$) {
+      return this.refreshInProgress$;
+    }
 
-    if (accessToken && !this.isTokenExpired(accessToken)) {
-      return this.fetchCurrentUser().pipe(
+    // The interceptor reaches this method after the API has rejected an access
+    // token. The server remains authoritative for refresh-token validity;
+    // scheduled and bootstrap paths perform local expiry checks before calling
+    // this method.
+    if (!this._tokenService.refreshToken) {
+      return throwError(() => new Error('Refresh token expired or missing'));
+    }
+
+    const generation = this.sessionGeneration;
+    const refreshToken = this._tokenService.refreshToken;
+    const refresh$ = this._http.post<{ accessToken: string, refreshToken: string }>(
+      `${this.apiUrl}${environment.api.directory.endpoints.refreshToken}`,
+      null,
+      { headers: new HttpHeaders({ Authorization: `Bearer ${refreshToken}` }) }
+    ).pipe(
+      timeout({first: this.authInitializationTimeout}),
+      tap(({ accessToken, refreshToken }) => {
+        if (generation !== this.sessionGeneration) {
+          throw new Error('Authentication session changed during refresh');
+        }
+        this._tokenService.accessToken = accessToken;
+        this._tokenService.refreshToken = refreshToken;
+      }),
+      map(({accessToken}) => accessToken),
+      finalize(() => { if (this.refreshInProgress$ === refresh$) this.refreshInProgress$ = null; }),
+      catchError((error: HttpErrorResponse) => {
+        if (generation !== this.sessionGeneration) return throwError(() => new Error('Authentication session changed during refresh'));
+        if (this.isAuthenticationFailure(error)) this.clearLocalAuthState();
+        return throwError(() => error);
+      }),
+      shareReplay({bufferSize: 1, refCount: false}),
+    );
+    this.refreshInProgress$ = refresh$;
+    return refresh$;
+  }
+
+  public initializeAuthState(): Observable<void> {
+    const generation = this.sessionGeneration;
+    const accessToken = this._tokenService.accessToken;
+    const refreshToken = this._tokenService.refreshToken;
+    const identity = `${this.sessionGeneration}:${accessToken}:${refreshToken}`;
+    if (this.initialization$ && this.initializationIdentity === identity) return this.initialization$;
+    this.initializationIdentity = identity;
+    if (this.stateSubject.value && accessToken && !this.isTokenExpired(accessToken)) return of(void 0);
+
+    let initialization$: Observable<void>;
+    if (accessToken && !this.isTokenExpired(accessToken)
+        && (!this.isAccessTokenExpiringSoon() || !refreshToken || this.isTokenExpired(refreshToken))) {
+      initialization$ = this.fetchCurrentUser().pipe(
         map(() => void 0), // Transform to Observable<void>
         catchError(() => {
+          if (generation !== this.sessionGeneration) return of(void 0);
           // If fetchCurrentUser fails, try refresh token or reset state
           if (refreshToken && !this.isTokenExpired(refreshToken)) {
             return this.doRefreshToken().pipe(
               map(() => void 0), // Transform to Observable<void>
               catchError((error: unknown) => {
-                if (this.isAuthenticationFailure(error)) {
+                if (generation === this.sessionGeneration && this.isAuthenticationFailure(error)) {
                   this.resetAuthStateAndRedirect();
                 }
                 return of(void 0); // Complete the observable
@@ -189,26 +260,32 @@ export class AuthenticationService implements OnDestroy {
         })
       );
     } else if (refreshToken && !this.isTokenExpired(refreshToken)) {
-      return this.doRefreshToken().pipe(
+      initialization$ = this.doRefreshToken().pipe(
         map(() => void 0), // Transform to Observable<void>
         catchError((error: unknown) => {
-          if (this.isAuthenticationFailure(error)) {
+          if (generation === this.sessionGeneration && this.isAuthenticationFailure(error)) {
             this.resetAuthStateAndRedirect();
           }
           return of(void 0); // Complete the observable
         })
       );
     } else {
-      this.resetAuthStateAndRedirect();
-      return of(void 0); // Complete the observable immediately if no tokens
+      initialization$ = of(void 0);
     }
+    this.initialization$ = initialization$.pipe(
+      timeout({first: this.authInitializationTimeout}),
+      catchError(() => of(void 0)),
+      takeUntil(this.destroy$),
+      shareReplay({bufferSize: 1, refCount: false})
+    );
+    return this.initialization$;
   }
 
   private startTokenMonitoring() {
-    timer(0, this.tokenCheckInterval)
+    timer(this.tokenCheckInterval, this.tokenCheckInterval)
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
-        if (this.tokenService.accessToken && this.isAccessTokenExpiringSoon() && !this.isTokenExpired(this.tokenService.refreshToken)) {
+        if (this._tokenService.accessToken && this.isAccessTokenExpiringSoon() && !this.isTokenExpired(this._tokenService.refreshToken)) {
           this.doRefreshToken().pipe(takeUntil(this.destroy$)).subscribe({
             error: (error: unknown) => {
               if (this.isAuthenticationFailure(error)) {
@@ -216,16 +293,8 @@ export class AuthenticationService implements OnDestroy {
               }
             }
           });
-        } else if (this.tokenService.refreshToken && this.isRefreshTokenExpiringSoon()) {
-          this.doRefreshToken().pipe(takeUntil(this.destroy$)).subscribe({
-            error: (error: unknown) => {
-              if (this.isAuthenticationFailure(error)) {
-                this.resetAuthStateAndRedirect();
-              }
-            }
-          });
-        } else if (this.tokenService.accessToken && this.isTokenExpired(this.tokenService.accessToken) &&
-                   (this.isTokenExpired(this.tokenService.refreshToken) || !this.tokenService.refreshToken)) {
+        } else if (this._tokenService.accessToken && this.isTokenExpired(this._tokenService.accessToken) &&
+                   (this.isTokenExpired(this._tokenService.refreshToken) || !this._tokenService.refreshToken)) {
           this.resetAuthStateAndRedirect();
         }
       });
@@ -244,11 +313,7 @@ export class AuthenticationService implements OnDestroy {
   }
 
   private isAccessTokenExpiringSoon(): boolean {
-    return this.isTokenExpiringSoon(this.tokenService.accessToken, this.tokenRefreshBuffer);
-  }
-
-  private isRefreshTokenExpiringSoon(): boolean {
-    return this.isTokenExpiringSoon(this.tokenService.refreshToken, this.refreshTokenRefreshBuffer);
+    return this.isTokenExpiringSoon(this._tokenService.accessToken, this.tokenRefreshBuffer);
   }
 
   private isAuthenticationFailure(error: unknown): boolean {
@@ -271,16 +336,17 @@ export class AuthenticationService implements OnDestroy {
 
   public resetAuthStateAndRedirect() {
     this.clearLocalAuthState();
-    if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register') && !window.location.pathname.includes('/checkout')) {
-      this.router.navigate(['/login']);
+    const pathname = window.location.pathname.replace(/^\/(?:en|pt-BR)(?=\/|$)/, '').replace(/\/+$/, '') || '/';
+    if (!['/forgot-password', '/reset-password'].includes(pathname) && !window.location.pathname.includes('/login') && !window.location.pathname.includes('/register') && !window.location.pathname.includes('/checkout')) {
+      this._router.navigate(['/login']);
     }
   }
 
-  private handleError(error: HttpErrorResponse, message: string): Observable<never> {
+  private handleError(error: HttpErrorResponse, message: string, generation = this.sessionGeneration): Observable<never> {
     reportError('authentication', error);
-    if (error.status === 401 && !message.toLowerCase().includes('login failed')) {
+    if (generation === this.sessionGeneration && error.status === 401 && !message.toLowerCase().includes('login failed')) {
       this.resetAuthStateAndRedirect();
     }
-    return throwError(() => new Error(`${message}. Status: ${error.status}. Details: ${error.message}`));
+    return throwError(() => error);
   }
 }

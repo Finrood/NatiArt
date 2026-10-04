@@ -16,10 +16,12 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationRequest;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
+import com.saas.directory.dto.asaas.AsaasCustomerSearchResponse;
 
 @Service
 public class AsaasUserManager {
@@ -62,7 +64,7 @@ public class AsaasUserManager {
                     asaasCustomerUrl, asaasPaymentCreationRequestHttpEntity, AsaasCustomerCreationResponse.class);
 
             return Optional.ofNullable(response)
-                    .orElseThrow(() -> new RuntimeException("Received a null response body from " + asaasCustomerUrl));
+                    .orElseThrow(() -> new IllegalStateException("Payment provider returned no customer response"));
         } catch (HttpClientErrorException e) {
             throw mapAsaasError(e);
         } catch (HttpServerErrorException | ResourceAccessException e) {
@@ -70,18 +72,68 @@ public class AsaasUserManager {
             // them in Exception would bypass Spring Retry's classifier.
             throw e;
         } catch (Exception e) {
-            throw new Exception("Unexpected error during asaas user registration: " + e.getMessage(), e);
+            LOGGER.warn(
+                    "Unexpected Asaas customer failure: type={}", e.getClass().getSimpleName());
+            throw new Exception("Unexpected error during Asaas user registration");
         }
     }
 
-    /**
-     * Maps an upstream Asaas customer-API error onto a service exception. The raw
-     * upstream body is logged server-side only -- it is never embedded in the
-     * exception message because the directory advice reflects that message to
-     * the caller.
-     */
+    public List<AsaasCustomerCreationResponse> findCustomersByExternalReference(String externalReference)
+            throws Exception {
+        if (externalReference == null || externalReference.isBlank()) {
+            throw new IllegalArgumentException("External customer reference is required");
+        }
+        final List<AsaasCustomerCreationResponse> matches = new java.util.ArrayList<>();
+        try {
+            for (int offset = 0; offset < 10000; offset += 100) {
+                final java.net.URI requestUri = UriComponentsBuilder.fromUriString(asaasCustomerUrl)
+                        .queryParam("externalReference", externalReference)
+                        .queryParam("limit", 100)
+                        .queryParam("offset", offset)
+                        .build()
+                        .encode()
+                        .toUri();
+                final ResponseEntity<AsaasCustomerSearchResponse> response = restTemplate.exchange(
+                        requestUri,
+                        HttpMethod.GET,
+                        new HttpEntity<>(getRequestHeaders()),
+                        AsaasCustomerSearchResponse.class);
+                final AsaasCustomerSearchResponse body = response.getBody();
+                if (response.getStatusCode() != HttpStatus.OK
+                        || body == null
+                        || body.data() == null
+                        || body.hasMore() == null
+                        || (body.hasMore() && body.data().isEmpty())) {
+                    throw new IllegalStateException("Ambiguous payment provider customer search");
+                }
+                for (final AsaasCustomerCreationResponse customer : body.data()) {
+                    if (customer == null
+                            || customer.getId() == null
+                            || customer.getId().isBlank()
+                            || !externalReference.equals(customer.getExternalReference())
+                            || customer.isDeleted()) {
+                        throw new IllegalStateException("Invalid payment provider customer identity");
+                    }
+                    matches.add(customer);
+                }
+                if (!body.hasMore()) return List.copyOf(matches);
+            }
+            throw new IllegalStateException("Payment provider customer search exceeded pagination bound");
+        } catch (HttpClientErrorException e) {
+            throw mapAsaasError(e);
+        } catch (HttpServerErrorException | ResourceAccessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new Exception("Unexpected error while reconciling Asaas customer", e);
+        }
+    }
+
+    /** Maps an upstream error without retaining its potentially sensitive body. */
     static AsaasApiException mapAsaasError(HttpClientErrorException e) {
-        LOGGER.warn("Asaas customer API error: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
+        LOGGER.warn(
+                "Asaas customer API error: providerStatusCode={}, responseBodyBytes={}",
+                e.getStatusCode().value(),
+                Math.min(e.getResponseBodyAsByteArray().length, 8192));
         return new AsaasApiException(
                 "Customer registration failed at the payment provider", (HttpStatus) e.getStatusCode());
     }

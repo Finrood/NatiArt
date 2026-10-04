@@ -9,5 +9,5 @@ allprojects {
 }
 
 tasks.register("buildAll") {
-    dependsOn(":backend:build", ":frontend:build")
+    dependsOn(":backend:directory-service:build", ":backend:product-service:build", ":frontend:natiart-app:build")
 }
