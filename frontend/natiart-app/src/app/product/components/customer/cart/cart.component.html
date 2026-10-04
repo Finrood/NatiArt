@@ -11,7 +11,7 @@
           <strong class="font-bold" i18n>Error!</strong>
           <span class="block sm:inline ml-2">{{ errorMessage }}</span>
         </div>
-        <app-button (click)="setError(null)" color="link" customClass="ml-4 text-red-700 hover:text-red-900 focus:outline-none">
+        <app-button aria-label="Dismiss cart error" i18n-aria-label (click)="setError(null)" color="link" customClass="ml-4 text-red-700 hover:text-red-900 focus:outline-none">
           <span class="sr-only" i18n>Close</span>
           <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
         </app-button>
@@ -52,8 +52,8 @@
                     <div class="flex items-center">
                       <div class="shrink-0 h-16 w-16 relative group">
                         <!-- *** USE item.cartItemId for image key *** -->
-                        <img class="h-16 w-16 rounded-md object-cover border border-primary-lighter/30"
-                          [src]="imageUrls[item.cartItemId] || 'assets/img/placeholder.png'"
+                        <img (error)="images.failed(item.cartItemId)" class="h-16 w-16 rounded-md object-cover border border-primary-lighter/30"
+                          [src]="imageUrls[item.cartItemId] || emptyImage"
                           [alt]="item.product.label">
                         <!-- *** Custom Image Indicator *** -->
                       </div>
@@ -121,8 +121,8 @@
                 <!-- Image -->
                 <div class="h-20 w-20 rounded-md border border-primary-lighter/30 shrink-0 relative group">
                   <!-- *** USE item.cartItemId for image key *** -->
-                  <img class="h-full w-full object-cover rounded-md"
-                    [src]="imageUrls[item.cartItemId] || 'assets/img/placeholder.png'"
+                  <img (error)="images.failed(item.cartItemId)" class="h-full w-full object-cover rounded-md"
+                    [src]="imageUrls[item.cartItemId] || emptyImage"
                     [alt]="item.product.label">
                   <!-- *** Custom Image Indicator *** -->
                   @if (item.image || item.customImageUploadId) {

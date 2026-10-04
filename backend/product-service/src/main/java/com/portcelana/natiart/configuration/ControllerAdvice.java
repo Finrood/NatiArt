@@ -1,5 +1,7 @@
 package com.portcelana.natiart.configuration;
 
+import java.util.Map;
+
 import jakarta.persistence.OptimisticLockException;
 
 import org.slf4j.Logger;
@@ -18,6 +20,7 @@ import com.portcelana.natiart.controller.helper.ShippingQuoteNotValidException;
 import com.portcelana.natiart.controller.helper.UserNotAllowedException;
 import com.portcelana.natiart.service.AsaasApiException;
 import com.portcelana.natiart.service.UpstreamServiceException;
+import com.portcelana.natiart.service.support.InputValidationException;
 
 @org.springframework.web.bind.annotation.ControllerAdvice
 public class ControllerAdvice {
@@ -75,6 +78,17 @@ public class ControllerAdvice {
     public ResponseEntity<Object> handleArgumentException(IllegalArgumentException e) {
         LOGGER.debug("Rejected invalid request: {}", e.getMessage(), e);
         return new ResponseEntity<>("Invalid request", HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Jackson wraps {@code @JsonCreator} guard failures (e.g. our
+     * {@code IllegalArgumentException}s) in {@code ValueInstantiationException},
+     * surfacing as {@code HttpMessageNotReadableException} -- without this
+     * handler the catch-all below would render those client errors as 500s.
+     */
+    @ExceptionHandler(InputValidationException.class)
+    public ResponseEntity<Object> handleInputValidationException(InputValidationException e) {
+        return new ResponseEntity<>(Map.of("field", e.getField(), "message", e.getMessage()), HttpStatus.BAD_REQUEST);
     }
 
     /**

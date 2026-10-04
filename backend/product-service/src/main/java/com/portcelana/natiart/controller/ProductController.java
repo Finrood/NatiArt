@@ -16,11 +16,16 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.portcelana.natiart.dto.PagedResponseDto;
 import com.portcelana.natiart.dto.ProductDto;
+import com.portcelana.natiart.model.Product;
+import com.portcelana.natiart.service.CategoryManager;
 import com.portcelana.natiart.service.ImageConversionService;
 import com.portcelana.natiart.service.ProductManager;
 import com.portcelana.natiart.storage.InputFile;
@@ -32,10 +37,15 @@ public class ProductController {
     private static final int MAX_IMAGES_PER_REQUEST = 10;
 
     private final ProductManager productManager;
+    private final CategoryManager categoryManager;
     private final ImageConversionService imageConversionService;
 
-    public ProductController(ProductManager productManager, ImageConversionService imageConversionService) {
+    public ProductController(
+            ProductManager productManager,
+            CategoryManager categoryManager,
+            ImageConversionService imageConversionService) {
         this.productManager = productManager;
+        this.categoryManager = categoryManager;
         this.imageConversionService = imageConversionService;
     }
 
@@ -43,18 +53,26 @@ public class ProductController {
     public ProductDto getProduct(@PathVariable String productId) {
         LOGGER.debug("Getting product with id [{}]", productId);
 
-        return ProductDto.from(productManager.getProductWithImagesOrDie(productId));
+        final Product product = isAdmin()
+                ? productManager.getProductWithImagesOrDie(productId)
+                : productManager.getActiveProductWithImagesOrDie(productId);
+        return ProductDto.from(product);
     }
 
     @GetMapping("/products")
     public List<ProductDto> getProducts(
             @RequestParam(required = false, defaultValue = "0") int page,
-            @RequestParam(required = false, defaultValue = "20") int size) {
+            @RequestParam(required = false, defaultValue = "20") int size,
+            @RequestParam(required = false) String categoryId) {
         LOGGER.debug("Getting all products page [{}] size [{}]", page, size);
         Pageable pageable = toPageable(page, size);
-        return productManager.getProducts(pageable).stream()
-                .map(ProductDto::from)
-                .toList();
+        final List<Product> products = categoryId == null || categoryId.isBlank()
+                ? (isAdmin() ? productManager.getProducts(pageable) : productManager.getActiveProducts(pageable))
+                : (isAdmin()
+                        ? productManager.getProductsByCategory(categoryManager.getCategoryOrDie(categoryId), pageable)
+                        : productManager.getActiveProductsByCategory(
+                                categoryManager.getActiveCategoryOrDie(categoryId), pageable));
+        return products.stream().map(ProductDto::from).toList();
     }
 
     @GetMapping("/products/new")
@@ -63,9 +81,9 @@ public class ProductController {
             @RequestParam(required = false, defaultValue = "20") int size) {
         LOGGER.debug("Getting new products page [{}] size [{}]", page, size);
         Pageable pageable = toPageable(page, size);
-        return productManager.getNewProducts(pageable).stream()
-                .map(ProductDto::from)
-                .toList();
+        final List<Product> products =
+                isAdmin() ? productManager.getNewProducts(pageable) : productManager.getActiveNewProducts(pageable);
+        return products.stream().map(ProductDto::from).toList();
     }
 
     @GetMapping("/products/featured")
@@ -74,9 +92,10 @@ public class ProductController {
             @RequestParam(required = false, defaultValue = "20") int size) {
         LOGGER.debug("Getting featured products page [{}] size [{}]", page, size);
         Pageable pageable = toPageable(page, size);
-        return productManager.getFeaturedProducts(pageable).stream()
-                .map(ProductDto::from)
-                .toList();
+        final List<Product> products = isAdmin()
+                ? productManager.getFeaturedProducts(pageable)
+                : productManager.getActiveFeaturedProducts(pageable);
+        return products.stream().map(ProductDto::from).toList();
     }
 
     @PostMapping(value = "/products/create")
@@ -130,10 +149,36 @@ public class ProductController {
                 .body(productManager.getProductImage(path));
     }
 
+    @GetMapping("/products/page")
+    public PagedResponseDto<ProductDto> getProductsPage(
+            @RequestParam(required = false) String categoryId,
+            @RequestParam(required = false, defaultValue = "") String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return productManager.getProductsPage(categoryId, query, toPageable(page, size), false);
+    }
+
+    @GetMapping("/admin/products/page")
+    @PreAuthorize("hasRole('ADMIN')")
+    public PagedResponseDto<ProductDto> getAdminProductsPage(
+            @RequestParam(required = false) String categoryId,
+            @RequestParam(required = false, defaultValue = "") String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return productManager.getProductsPage(categoryId, query, toPageable(page, size), true);
+    }
+
     private static Pageable toPageable(int page, int size) {
         final int safePage = Math.max(0, page);
         final int safeSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
-        return PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "label"));
+        return PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "label", "id"));
+    }
+
+    private static boolean isAdmin() {
+        final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null
+                && authentication.getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
     }
 
     private List<InputFile> processImages(List<MultipartFile> images) throws IOException {
