@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -18,15 +19,27 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.portcelana.natiart.dto.OrderDto;
 import com.portcelana.natiart.dto.OrderItemDto;
 import com.portcelana.natiart.model.CustomerOrder;
+import com.portcelana.natiart.model.OrderReservationOwner;
 import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.model.ShippingQuote;
 import com.portcelana.natiart.model.ShippingQuoteItem;
 import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
+import com.portcelana.natiart.repository.OrderReservationOwnerRepository;
 import com.portcelana.natiart.repository.ProductRepository;
 
 @ExtendWith(MockitoExtension.class)
 class OrderCreationServiceShippingQuoteTest {
+    @BeforeEach
+    void configureReservationOwnerLock() {
+        org.mockito.Mockito.lenient()
+                .when(reservationOwners.findByOwnerExternalIdForUpdate(org.mockito.ArgumentMatchers.anyString()))
+                .thenAnswer(invocation -> java.util.Optional.of(new OrderReservationOwner(invocation.getArgument(0))));
+    }
+
+    @Mock
+    private OrderReservationOwnerRepository reservationOwners;
+
     @Mock
     private OrderRepository orderRepository;
 
@@ -60,9 +73,15 @@ class OrderCreationServiceShippingQuoteTest {
         when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         final CustomerOrder order = new OrderCreationService(
-                        orderRepository, productManager, productRepository, shippingQuoteService)
+                        reservationOwners, orderRepository, productManager, productRepository, shippingQuoteService)
                 .createOrder(
                         new OrderDto()
+                                .setHouseNumber("N/A")
+                                .setCountry("Brazil")
+                                .setState("SP")
+                                .setCity("City")
+                                .setNeighborhood("Area")
+                                .setStreet("Street")
                                 .setFirstname("Ada")
                                 .setHouseNumber("N/A")
                                 .setLastname("Lovelace")

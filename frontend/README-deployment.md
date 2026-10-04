@@ -73,3 +73,10 @@ The browser probe for this repair showed **A / A** in the original tab after
 replacement and **B / B** in a newly opened tab. The full Angular suite and
 explicit production build are separate checks; fixture images do not claim to
 exercise the real backend authentication deployment.
+
+Both Docker contexts exclude recursively generated dependencies, build/cache
+outputs, Git metadata and local/secret configuration. Run
+`bash frontend/scripts/smoke_contexts.sh` to verify real context boundaries,
+identical clean/dirty production artifacts and lockfile-drift rejection. The
+fixture also checks nested generated directories outside `natiart-app` so
+recursive exclusions cannot regress to app-root-only patterns.

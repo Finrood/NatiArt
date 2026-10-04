@@ -99,42 +99,55 @@
           <!-- Label -->
           <div class="mb-4">
             <label for="productLabel" class="block text-sm font-medium text-gray-700 mb-1" i18n>Label</label>
-            <input id="productLabel" name="productLabel" type="text" formControlName="label"
-              class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
+            <input id="productLabel" name="productLabel" type="text" formControlName="label" maxlength="255"
+              class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm" i18n-placeholder>
             @if (productForm.get('label')?.invalid && productForm.get('label')?.touched) {
               <div
-                class="text-red-600 text-sm mt-1" i18n>Label is required.
+                class="text-red-600 text-sm mt-1" i18n>
+                Enter a label of 1–255 characters.
               </div>
             }
           </div>
           <!-- Description -->
           <div class="mb-4">
             <label for="productDescription" class="block text-sm font-medium text-gray-700 mb-1" i18n>Description</label>
-            <textarea id="productDescription" name="productDescription" formControlName="description" rows="3"
+            <textarea id="productDescription" name="productDescription" formControlName="description" rows="3" maxlength="255"
             class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm"></textarea>
+            @if (productForm.get('description')?.invalid && productForm.get('description')?.touched) {
+              <div class="text-red-600 text-sm mt-1" i18n>Description must be at most 255 characters.</div>
+            }
           </div>
           <!-- Original Price -->
           <div class="mb-4">
             <label for="productOriginalPrice" class="block text-sm font-medium text-gray-700 mb-1" i18n>Original Price</label>
-            <input id="productOriginalPrice" name="productOriginalPrice" type="number" formControlName="originalPrice"
+            <input id="productOriginalPrice" name="productOriginalPrice" type="number" formControlName="originalPrice" min="0.01" max="99999999.99" step="0.01"
               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
+            @if (productForm.get('originalPrice')?.invalid && productForm.get('originalPrice')?.touched) {
+              <div class="text-red-600 text-sm mt-1" i18n>Enter a price from R$0.01 to R$99,999,999.99 with at most two decimal places.</div>
+            }
           </div>
           <!-- Marked Price -->
           <div class="mb-4">
             <label for="productMarkedPrice" class="block text-sm font-medium text-gray-700 mb-1" i18n>Marked Price</label>
-            <input id="productMarkedPrice" name="productMarkedPrice" type="number" formControlName="markedPrice"
+            <input id="productMarkedPrice" name="productMarkedPrice" type="number" formControlName="markedPrice" min="0.01" max="99999999.99" step="0.01"
               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
+            @if (productForm.get('markedPrice')?.invalid && productForm.get('markedPrice')?.touched) {
+              <div class="text-red-600 text-sm mt-1" i18n>Leave this blank or enter a price from R$0.01 to R$99,999,999.99 with at most two decimal places.</div>
+            }
           </div>
           <!-- Stock Quantity -->
           <div class="mb-4">
             <label for="productStockQuantity" class="block text-sm font-medium text-gray-700 mb-1" i18n>Stock Quantity</label>
-            <input id="productStockQuantity" name="productStockQuantity" type="number" formControlName="stockQuantity"
+            <input id="productStockQuantity" name="productStockQuantity" type="number" formControlName="stockQuantity" min="0" step="1"
               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
+            @if (productForm.get('stockQuantity')?.invalid && productForm.get('stockQuantity')?.touched) {
+              <div class="text-red-600 text-sm mt-1" i18n>Enter a whole number of items, zero or greater.</div>
+            }
           </div>
           <!-- Shipping Weight -->
           <div class="mb-4">
             <label for="productWeightKg" class="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
-            <input id="productWeightKg" name="productWeightKg" type="number" step="0.001" min="0.001" formControlName="weightKg"
+            <input id="productWeightKg" name="productWeightKg" type="number" step="0.001" min="0.01" max="100" formControlName="weightKg"
               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
           </div>
           <!-- Category Select -->
@@ -225,14 +238,14 @@
           <div class="mb-4">
             <label class="block text-sm font-medium text-gray-700 mb-1" i18n>Image Previews (Drag to reorder)</label>
             <div cdkDropList (cdkDropListDropped)="onImageDrop($event)" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              @for (preview of imagePreviews; track preview; let i = $index) {
+              @for (preview of imagePreviews; track preview.id; let i = $index) {
                 <div cdkDrag [cdkDragStartDelay]="100"
                   (cdkDragStarted)="dragStarted()" (cdkDragEnded)="dragEnded()"
                   class="relative group">
                   <div class="aspect-w-1 aspect-h-1">
                     <img [src]="preview.url" alt="Image preview" class="object-cover w-full h-full rounded-md" i18n-alt>
                   </div>
-                  <app-button type="button" (click)="removeImage(i)" color="danger" size="sm" [disabled]="isDragging" i18n>Remove
+                  <app-button type="button" (click)="removeImage(preview.id)" color="danger" size="sm" [disabled]="isDragging" i18n>Remove
                   </app-button>
                   <div
                     class="absolute inset-0 bg-blue-500/50 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" i18n>{isTouch, select, true {Long press to reorder} other {Drag to reorder}}</div>

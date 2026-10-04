@@ -24,6 +24,7 @@ import com.saas.directory.model.Profile;
 import com.saas.directory.model.Role;
 import com.saas.directory.model.RoleName;
 import com.saas.directory.model.User;
+import com.saas.directory.repository.AsaasProvisioningJobRepository;
 import com.saas.directory.repository.ExternalUserRepository;
 import com.saas.directory.repository.RoleRepository;
 import com.saas.directory.repository.UserRepository;
@@ -33,6 +34,7 @@ public class UserManagerTest {
     private final UserRepository userRepository = mock(UserRepository.class);
     private final ExternalUserRepository externalUserRepository = mock(ExternalUserRepository.class);
     private final RoleRepository roleRepository = mock(RoleRepository.class);
+    private final AsaasProvisioningJobRepository provisioningJobRepository = mock(AsaasProvisioningJobRepository.class);
     private final ProfileManager profileManager = mock(ProfileManager.class);
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
 
@@ -43,8 +45,13 @@ public class UserManagerTest {
 
     @BeforeEach
     public void initContext() {
-        userManager =
-                new UserManager(userRepository, externalUserRepository, roleRepository, profileManager, eventPublisher);
+        userManager = new UserManager(
+                userRepository,
+                externalUserRepository,
+                roleRepository,
+                provisioningJobRepository,
+                profileManager,
+                eventPublisher);
     }
 
     @Test
@@ -91,7 +98,8 @@ public class UserManagerTest {
         profileDto.setStreet("123 Main St");
         profileDto.setComplement("Apt 101");
 
-        final UserRegistrationDto userRegistrationDto = new UserRegistrationDto("new_username", "password", profileDto);
+        final UserRegistrationDto userRegistrationDto =
+                new UserRegistrationDto("new_username", "Password1", profileDto);
 
         final User user = new User("new_username", "password");
         when(userRepository.existsUserByUsernameIgnoreCase("new_username")).thenReturn(false);
@@ -186,7 +194,7 @@ public class UserManagerTest {
     @Test
     public void test_register_user_with_null_profile() throws RoleNotFoundException {
         // Prepare test data
-        final UserRegistrationDto userRegistrationDto = new UserRegistrationDto("new_username", "password", null);
+        final UserRegistrationDto userRegistrationDto = new UserRegistrationDto("new_username", "Password1", null);
 
         final User user = new User("new_username", "password");
         when(userRepository.existsUserByUsernameIgnoreCase("new_username")).thenReturn(false);
@@ -213,7 +221,8 @@ public class UserManagerTest {
         // Prepare test data
         final ProfileDto profileDto = new ProfileDto();
 
-        final UserRegistrationDto userRegistrationDto = new UserRegistrationDto("new_username", "password", profileDto);
+        final UserRegistrationDto userRegistrationDto =
+                new UserRegistrationDto("new_username", "Password1", profileDto);
 
         final User user = new User("new_username", "password");
         when(userRepository.existsUserByUsernameIgnoreCase("new_username")).thenReturn(false);

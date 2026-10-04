@@ -35,6 +35,9 @@ import com.portcelana.natiart.service.ProductManager;
 @DataJpaTest(properties = "spring.sql.init.mode=never")
 class OrderReplayIntegrationTest {
     @Autowired
+    private OrderReservationOwnerRepository reservationOwners;
+
+    @Autowired
     private OrderRepository orderRepository;
 
     @Autowired
@@ -134,6 +137,7 @@ class OrderReplayIntegrationTest {
         return new OrderManagerImpl(
                 orderRepository,
                 new OrderCreationService(
+                        reservationOwners,
                         orderRepository,
                         productManager,
                         productRepository,
@@ -152,6 +156,11 @@ class OrderReplayIntegrationTest {
                 .setFirstname("Jane")
                 .setLastname("Customer")
                 .setEmail("jane@example.com")
+                .setCountry("Brazil")
+                .setState("SP")
+                .setCity("City")
+                .setNeighborhood("Area")
+                .setStreet("Street")
                 .setZipCode("01001000")
                 .setItems(List.of(new OrderItemDto().setProductId(productId).setQuantity(1)));
     }

@@ -59,8 +59,9 @@ describe('authenticationService', () => {
     localStorage.setItem('accessToken', unsignedToken(past));
     localStorage.setItem('refreshToken', unsignedToken(future));
 
-    // Constructor init picks up the stored tokens and refreshes synchronously.
+    // Initialization starts after construction, allowing the interceptor graph to resolve.
     const service: AuthenticationService = TestBed.inject(AuthenticationService);
+    tick();
 
     const refreshReq: TestRequest = TestBed.inject(HttpTestingController).expectOne(REFRESH_URL);
     expect(refreshReq.request.headers.get('Authorization')).toBe(`Bearer ${unsignedToken(future)}`);
@@ -107,6 +108,7 @@ describe('authenticationService', () => {
 
     const service: AuthenticationService = TestBed.inject(AuthenticationService);
     const httpTesting: HttpTestingController = TestBed.inject(HttpTestingController);
+    tick();
     httpTesting.expectOne(CURRENT_USER_URL).flush(mockUser);
     tick();
 

@@ -19,6 +19,7 @@ import com.portcelana.natiart.dto.PackageDto;
 import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.repository.PackageRepository;
 import com.portcelana.natiart.repository.ProductRepository;
+import com.portcelana.natiart.service.support.InputValidationException;
 
 @ExtendWith(MockitoExtension.class)
 class PackageManagerImplTest {
@@ -81,6 +82,36 @@ class PackageManagerImplTest {
 
         assertThrows(IllegalArgumentException.class, () -> packageManager.createPackage(dto));
 
+        verify(packageRepository, never()).save(any(Package.class));
+    }
+
+    @Test
+    void createPackage_rejectsNonFiniteOversizedAndOverlongFieldsBeforeSave() {
+        final PackageDto nonFinite = new PackageDto()
+                .setLabel("box")
+                .setHeight(Float.NaN)
+                .setWidth(10)
+                .setDepth(10);
+        final PackageDto oversized =
+                new PackageDto().setLabel("box").setHeight(10).setWidth(201).setDepth(10);
+        final PackageDto overlong = new PackageDto()
+                .setLabel("x".repeat(256))
+                .setHeight(10)
+                .setWidth(10)
+                .setDepth(10);
+
+        assertEquals(
+                "height",
+                assertThrows(InputValidationException.class, () -> packageManager.createPackage(nonFinite))
+                        .getField());
+        assertEquals(
+                "width",
+                assertThrows(InputValidationException.class, () -> packageManager.createPackage(oversized))
+                        .getField());
+        assertEquals(
+                "label",
+                assertThrows(InputValidationException.class, () -> packageManager.createPackage(overlong))
+                        .getField());
         verify(packageRepository, never()).save(any(Package.class));
     }
 
