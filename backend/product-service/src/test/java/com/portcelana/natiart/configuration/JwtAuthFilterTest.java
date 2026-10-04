@@ -19,10 +19,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -173,6 +175,28 @@ class JwtAuthFilterTest {
                         .map(GrantedAuthority::getAuthority)
                         .anyMatch("ROLE_USER"::equals),
                 "authorities from validate-token must be mapped onto the authenticated token");
+    }
+
+    @Test
+    void tokenValidationForwardsRequestIdToDirectoryService() throws Exception {
+        final AtomicReference<String> forwardedId = new AtomicReference<>();
+        server.createContext("/validate-token", exchange -> {
+            forwardedId.set(exchange.getRequestHeaders().getFirst(RequestCorrelationFilter.HEADER_NAME));
+            final byte[] body = VALID_AUTH_JSON.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        final JwtAuthFilter filter = new JwtAuthFilter(WebClient.builder(), "http://localhost:" + port, emptyCache());
+        MDC.put(RequestCorrelationFilter.MDC_KEY, "checkout-42");
+        try {
+            filter.doFilter(requestWithToken(), new MockHttpServletResponse(), new MockFilterChain());
+        } finally {
+            MDC.remove(RequestCorrelationFilter.MDC_KEY);
+        }
+        assertEquals("checkout-42", forwardedId.get());
     }
 
     @Test

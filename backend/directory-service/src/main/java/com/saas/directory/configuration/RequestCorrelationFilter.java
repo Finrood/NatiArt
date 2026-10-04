@@ -41,7 +41,8 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
         }
     }
 
-    static String safeCorrelationId(String candidate) {
+    /** Reuses only bounded safe IDs; generates one for missing or unsafe input. */
+    public static String safeCorrelationId(String candidate) {
         return candidate != null && SAFE_ID.matcher(candidate).matches()
                 ? candidate
                 : UUID.randomUUID().toString();

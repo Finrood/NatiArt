@@ -3,3 +3,16 @@
 **/.angular
 **/coverage
 .git
+**/logs
+**/*.log
+**/*.local
+**/*.secret
+**/*.secrets
+**/*secrets*.json
+**/.env
+**/.env.*
+**/.npmrc
+**/*.pem
+**/*.p12
+**/*.jks
+**/*.key
