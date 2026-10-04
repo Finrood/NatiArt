@@ -18,13 +18,13 @@
       <div class="flex items-center space-x-4">
         <!-- Search -->
         <div class="relative hidden md:block">
-          <input type="search" placeholder="Search..." class="bg-surface-variant/50 rounded-full py-2 pl-10 pr-4 w-48 focus:w-56 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary/50" i18n-placeholder>
+          <input type="search" placeholder="Search (coming soon)" i18n-placeholder aria-label="Search (coming soon)" i18n-aria-label disabled class="bg-surface-variant/50 rounded-full py-2 pl-10 pr-4 w-48 opacity-60 cursor-not-allowed">
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-secondary-light" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
         </div>
 
         <!-- Cart -->
         <div (mouseenter)="showCartModal()" (mouseleave)="hideCartModal()" class="relative cart-container">
-          <a routerLink="/cart" class="relative block text-secondary hover:text-primary transition-colors">
+          <a aria-label="Shopping cart" routerLink="/cart" class="relative block text-secondary hover:text-primary transition-colors">
             <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
             @if ((cartItemCount$ | async); as count) {
               @if (count > 0) {
@@ -39,8 +39,9 @@
 
         <!-- User Account -->
         <div class="hidden lg:block">
-          @if (isLoggedIn) {
+          @if ($isLoggedIn()) {
             <a routerLink="/account" class="text-secondary hover:text-primary transition-colors" i18n>My Account</a>
+            <a routerLink="/logout" class="ml-4 text-secondary hover:text-primary transition-colors" i18n>Logout</a>
           } @else {
             <a routerLink="/login" class="text-secondary hover:text-primary transition-colors" i18n>Login</a>
           }
@@ -48,7 +49,7 @@
 
         <!-- Mobile Menu Button -->
         <div class="lg:hidden">
-          <button (click)="toggleMobileMenu()" class="text-secondary hover:text-primary">
+          <button aria-label="Toggle navigation" [attr.aria-expanded]="isMobileMenuOpen" (click)="toggleMobileMenu()" class="text-secondary hover:text-primary">
             <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg>
           </button>
         </div>
@@ -58,21 +59,22 @@
 
   <!-- Mobile Menu Overlay -->
   @if (isMobileMenuOpen) {
-    <div class="lg:hidden fixed inset-0 bg-black/40 z-40" (click)="toggleMobileMenu()"></div>
-    <div class="lg:hidden fixed inset-y-0 right-0 bg-background w-72 shadow-xl z-50 p-6 transform transition-transform duration-300 ease-in-out" [class.translate-x-0]="isMobileMenuOpen" [class.translate-x-full]="!isMobileMenuOpen">
-      <nav class="flex flex-col space-y-6 text-lg">
+    <app-accessible-dialog label="Navigation menu" i18n-label (dismiss)="closeMobileMenu()">
+      <div class="bg-background w-72 max-w-full p-6">
+      <nav class="flex flex-col space-y-6 text-lg" (click)="closeMobileMenu()">
         <a routerLink="/dashboard" class="text-secondary hover:text-primary transition-colors duration-200" i18n>Home</a>
         <a routerLink="/products" class="text-secondary hover:text-primary transition-colors duration-200" i18n>Collections</a>
         <a routerLink="/about" class="text-secondary hover:text-primary transition-colors duration-200" i18n>About</a>
         <a routerLink="/contact" class="text-secondary hover:text-primary transition-colors duration-200" i18n>Contact</a>
         <hr class="border-primary-lighter/50">
-        @if (isLoggedIn) {
+        @if ($isLoggedIn()) {
           <a routerLink="/account" class="text-secondary hover:text-primary transition-colors" i18n>My Account</a>
           <a routerLink="/logout" class="text-secondary hover:text-primary transition-colors" i18n>Logout</a>
         } @else {
           <a routerLink="/login" class="text-secondary hover:text-primary transition-colors" i18n>Login</a>
         }
       </nav>
-    </div>
+      </div>
+    </app-accessible-dialog>
   }
 </header>

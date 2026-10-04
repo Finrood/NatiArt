@@ -1,4 +1,5 @@
-import {Component, HostListener, OnDestroy, OnInit} from '@angular/core';
+import {AccessibleDialogComponent} from '../../../../shared/components/accessible-dialog.component';
+import {Component, inject, signal, HostListener, OnDestroy, OnInit} from '@angular/core';
 import { AsyncPipe } from "@angular/common";
 import {CartService} from "../../../service/cart.service";
 import {Observable, Subscription} from "rxjs";
@@ -11,13 +12,16 @@ import {RouterLink} from "@angular/router";
     imports: [
     CartModalComponent,
     AsyncPipe,
-    RouterLink
+    RouterLink,
+    AccessibleDialogComponent
 ],
     templateUrl: './top-menu.component.html',
     styleUrl: './top-menu.component.css'
 })
 export class TopMenuComponent implements OnInit, OnDestroy {
-  isLoggedIn = false;
+  readonly $isLoggedIn = signal(false);
+  get isLoggedIn(): boolean { return this.$isLoggedIn(); }
+  set isLoggedIn(value: boolean) { this.$isLoggedIn.set(value); }
   cartItemCount$: Observable<number>;
   isCartHovered = false;
   isMobileMenuOpen = false;
@@ -25,15 +29,15 @@ export class TopMenuComponent implements OnInit, OnDestroy {
   private authSubscription: Subscription | undefined;
   private cartHoverCloseTimer: ReturnType<typeof setTimeout> | undefined = undefined;
 
-  constructor(
-    private cartService: CartService,
-    private authService: AuthenticationService
-  ) {
-    this.cartItemCount$ = this.cartService.getCartCount();
+  private readonly _cartService = inject(CartService);
+  private readonly _authService = inject(AuthenticationService);
+
+  constructor() {
+    this.cartItemCount$ = this._cartService.getCartCount();
   }
 
   ngOnInit() {
-    this.authSubscription = this.authService.isLoggedIn$.subscribe(isLoggedIn => {
+    this.authSubscription = this._authService.isLoggedIn$.subscribe(isLoggedIn => {
       this.isLoggedIn = isLoggedIn;
     });
   }
@@ -50,7 +54,9 @@ export class TopMenuComponent implements OnInit, OnDestroy {
     }
   }
 
-  toggleMobileMenu() {
+  closeMobileMenu(): void { this.isMobileMenuOpen = false; }
+
+  toggleMobileMenu(): void {
     this.isMobileMenuOpen = !this.isMobileMenuOpen;
   }
 
@@ -75,7 +81,4 @@ export class TopMenuComponent implements OnInit, OnDestroy {
     }
   }
 
-  search(term: string) {
-    //TODO
-  }
 }

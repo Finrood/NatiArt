@@ -18,7 +18,7 @@ Phase 0 — sync and pickup (~2 min):
 1. `git checkout master && git pull --ff-only`, verify `git status` is clean.
    If dirty and no open PR of YOURS owns the dirt, STOP and report — never
    stash, reset, or checkout over foreign dirt (a human or another agent may
-   own this checkout; the script guard salvages loop dirt at cycle start, so
+   own this checkout; the script guard refuses dirty worktrees at cycle start, so
    anything still dirty is not yours to touch). If the pull fails, stop and report.
    `DOC ROT` lines in the invocation are authoritative backlog corrections:
    move the named item's `###` section per step 4 batching and reference the
@@ -161,6 +161,8 @@ Every PR created by this loop must contain the exact own-line marker
 `Loop-Owner: natiart-improvement-loop` in its body. The merge guard verifies
 that marker together with the authenticated PR author allowlist; branch names
 and self-described verdict text are not ownership proof.
+
+The supervisor enrolls only the explicitly validated worker result; branch discovery and manual worker enrollment grant no cleanup authority.
 
 SELF-MODIFICATION BAN: PRs touching `scripts/**`, `agents/**`, any `AGENTS.md`
 (root or module), `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.github/**`,

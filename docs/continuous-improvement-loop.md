@@ -129,8 +129,8 @@ empty level loudly (exit 2) and warns on any non-`xhigh` level.
 - **Lifecycle and delivery contract**: every attempt runs in its own process
   group; TERM/INT/EXIT cleanup terminates and waits for that group before the
   wrapper returns or retries. A clean CLI exit is accepted only when a cycle
-  reports a PR number/URL or a reviewer reports `VERDICT: APPROVE`/
-  `VERDICT: REQUEST_CHANGES`. Each attempt leaves a bounded, redacted recovery
+  produces a newly verified pushed PR result or an authenticated head-bound
+  review from that attempt. Printed references alone never establish completion. Each attempt leaves a bounded, redacted recovery
   artifact under `logs/agent-outcomes/` before its private temporary log is
   removed, so failover can reconcile the prior attempt without overlapping it.
 - **Reviewer independence.** Review invocations pass `--skip <author's Model:
@@ -313,10 +313,13 @@ table above is agent discipline, enforced by the cycle prompt.
   explicitly listed in `NATIART_TRUSTED_REVIEWERS` (empty by default). The
   provider review commit and the verdict's full SHA must both match the PR
   head. `COMMENTED`, dismissed, self, and stale reviews cannot authorize it.
-- Remote hygiene: every cycle retries deletion of merged loop-prefix branches
-  (`fix|perf|chore|docs|feature/*`) — the `--delete-branch` flag occasionally
-  races GitHub auto-delete. Never touches unmerged work, `master`, or
-  dependabot branches. Logs keep the last 300 cycles.
+
+- Remote hygiene: every cycle retries deletion of merged branches recorded when
+  an explicit accepted implementation result attributed to this cycle. The record lives in the common Git
+  directory and is tied to the origin URL and exact produced branch tip. A fresh
+  checkout preserves older unrecorded branches; operators must clean those up
+  manually after verifying ownership. Deletion also checks the merged remote
+  tip and uses a commit lease. Logs keep the last 300 cycles.
 
 ## Backlog
 
@@ -354,3 +357,27 @@ Each trusted independent reviewer's latest formal GitHub state is evaluated
 before custom verdict syntax. An active changes request vetoes approval even
 without a VERDICT body. Dismissal cannot resurrect an older approval; a later
 current-head formal approval can supersede that reviewer's earlier request.
+
+### Branch ownership record and cleanup
+
+All producers and cleanup callers share the versioned five-column record
+`natiart-owned-v1`, origin URL hash, exact branch, explicit cycle ID, and exact
+produced commit SHA. Unversioned legacy records grant no ownership. Changing
+origin does not transfer ownership. A branch prefix or merged ancestor does
+not enroll a branch or authorize a newer tip.
+
+Every remote cleanup path reads the current remote tip and deletes with a lease
+on that exact recorded, merged commit. Failed deletion keeps the record;
+successful deletion retires it before the branch name can be reused. Local
+cleanup uses an expected-SHA ref deletion and preserves branches checked out in
+any attached worktree. Unknown and advanced branches remain for manual review.
+
+The runner receives raw worker JSON with cycle, branch and SHA through its private `NATIART_DELIVERABLE_FILE`. After verification it writes normalized cycle, origin hash, branch, SHA, pushed SHA and PR fields to the separate private `NATIART_ACCEPTED_RESULT_FILE` handoff. Worker ownership requires that size-bounded accepted result and an authenticated open same-repository PR. The supervisor checks baseline refs, local and fresh remote tips, PR ownership marker and authenticated author before writing its normalized accepted artifact and enrolling that exact tip. Audit-only, failed, no-op and unrelated concurrent branches grant no authority; existing unowned repair PRs stay unowned. Candidate/accepted artifacts live in a private cycle directory and are removed after validation. There is no blanket before/after branch enrollment. Current dirty-worktree handling refuses salvage entirely; any future supervisor-created salvage must be registered explicitly at its own creation site.
+
+### Attempt isolation
+
+Before every worker launch, the runner refreshes authenticated GitHub and local
+branch baselines, archives any bounded private candidate for recovery, and clears
+the candidate and accepted handoff. A later no-op or rewrite of a failed
+attempt's pushed result cannot establish success or branch ownership. The
+supervisor independently rechecks the normalized result before enrollment.
