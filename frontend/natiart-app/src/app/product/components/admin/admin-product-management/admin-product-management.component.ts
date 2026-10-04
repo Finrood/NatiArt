@@ -1,5 +1,5 @@
 import {AccessibleDialogComponent} from '../../../../shared/components/accessible-dialog.component';
-import {DestroyRef, AfterViewInit, Component, HostListener, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
+import {ChangeDetectorRef, DestroyRef, AfterViewInit, Component, HostListener, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {ProductService} from '../../../service/product.service';
@@ -8,7 +8,7 @@ import {PackageService} from '../../../service/package.service';
 import {Category} from '../../../models/category.model';
 import {Package} from '../../../models/package.model';
 import {Product} from '../../../models/product.model';
-import {BehaviorSubject, Subscription} from 'rxjs';
+import {BehaviorSubject, finalize, Subscription} from 'rxjs';
 import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 import {CdkDragDrop, DragDropModule, moveItemInArray} from '@angular/cdk/drag-drop';
 import {PersonalizationOption} from '../../../models/support/personalization-option';
@@ -20,6 +20,8 @@ import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportError, reportWarning} from '../../../../shared/service/error-reporting.service';
 
 interface ImagePreview {
+  id: string;
+  objectUrl?: string;
   url: string | SafeUrl;
   isExisting: boolean;
   file?: File;
@@ -63,6 +65,11 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   private objectUrlsCreated: string[] = [];
   private pendingAlerts: Array<{ message: string; type: 'success' | 'error' }> = [];
   private pendingAlertsTimer: ReturnType<typeof setTimeout> | undefined = undefined;
+  private imageSessionGeneration = 0;
+  private readonly _cdr = inject(ChangeDetectorRef);
+  private readonly previewSubscriptions = new Map<string, Subscription>();
+  private readonly coverSubscriptions = new Map<string, Subscription>();
+  private readonly coverObjectUrls = new Map<string, string>();
 
   availablePersonalizationOptions = Object.values(PersonalizationOption);
 
@@ -124,6 +131,9 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngOnDestroy(): void {
+    this.releasePreviews();
+    for (const id of this.coverPaths.keys()) this.releaseCover(id);
+    this.imageSessionGeneration++;
     this.subscriptions.forEach(subscription => subscription.unsubscribe());
     this.objectUrlsCreated.forEach((url: string) => URL.revokeObjectURL(url));
     this.objectUrlsCreated = [];
@@ -145,6 +155,8 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   }
 
   openModal(product?: Product): void {
+    this.releasePreviews();
+    const sessionGeneration = ++this.imageSessionGeneration;
     this.isEditingProduct = !!product;
     if (product) {
       this.productForm.patchValue(product);
@@ -157,12 +169,13 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         this.productForm.get('CUSTOM_IMAGE')?.setValue(true);
       }
 
-      this.imagePreviews = (product.images || []).map(imagePath => ({
+      this.imagePreviews = Array.from(new Set(product.images || [])).map(imagePath => ({
+        id: imagePath,
         url: imagePath,
         isExisting: true,
         originalUrl: imagePath
       }));
-      this.loadExistingImages(product.images || []);
+      this.loadExistingImages(this.imagePreviews.map((preview: ImagePreview) => preview.originalUrl!), sessionGeneration);
     } else {
       this.productForm.reset({
         originalPrice: null,
@@ -180,17 +193,20 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   }
 
   closeModal(): void {
+    this.releasePreviews();
+    this.imageSessionGeneration++;
     this.modalVisible = false;
     this.productForm.reset();
     this.imageFiles = [];
     this.imagePreviews = [];
+    this.isLoadingImages = false;
   }
 
   submitForm(): void {
-    if (this.productForm.valid && !this.isSubmitting) {
+    if (this.productForm.valid && !this.isSubmitting && !this.isLoadingImages) {
       this.isSubmitting = true;
       const formData = new FormData();
-      const product: Product = this.productForm.getRawValue();
+      const product: Product & {imageManifest?: Array<{existingImage?: string; uploadId?: string}>} = this.productForm.getRawValue();
 
       product.availablePersonalizations = []
       if (this.productForm.get('GOLDEN_BORDER')?.getRawValue() === true) {
@@ -205,12 +221,14 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         .filter(preview => preview.isExisting)
         .map(preview => preview.originalUrl || preview.url as string);
 
+      product.imageManifest = this.imagePreviews.map((preview: ImagePreview) => preview.isExisting
+        ? {existingImage: preview.originalUrl!} : {uploadId: preview.id});
       formData.append('productDto', new Blob([JSON.stringify(product)], { type: 'application/json' }));
       this.imagePreviews
         .filter(preview => !preview.isExisting)
         .forEach(preview => {
           if (preview.file) {
-            formData.append('newImages', preview.file, preview.file.name);
+            formData.append('newImages', preview.file, `${preview.id}.webp`);
           }
         });
 
@@ -317,76 +335,132 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   private updateProductImage(product: Product): void {
     if (product.images && product.images.length > 0) {
       this.fetchImage(product.id!, product.images[0]);
+    } else if (product.id) {
+      this.coverSubscriptions.get(product.id)?.unsubscribe();
+      const previous: string | undefined = this.coverObjectUrls.get(product.id);
+      if (previous) this.revokeObjectUrl(previous);
+      this.coverObjectUrls.delete(product.id);
+      this.imageUrls[product.id] = null;
     }
   }
 
+  private readonly coverPaths: Map<string, string> = new Map<string, string>();
+
   private updateAllProductImages(products: Product[]): void {
-    products.forEach(product => {
-      if (product.images && product.images.length > 0) {
-        this.fetchImage(product.id!, product.images[0]);
-      }
-    });
+    const desired: Map<string, string> = new Map<string, string>();
+    for (const product of products) {
+      if (product.id && product.images?.length) desired.set(product.id, product.images[0]);
+    }
+    for (const id of new Set<string>([...this.coverPaths.keys(), ...Object.keys(this.imageUrls)])) {
+      if (!desired.has(id) || desired.get(id) !== this.coverPaths.get(id)) this.releaseCover(id);
+    }
+    for (const [id, path] of desired) {
+      if (this.coverPaths.get(id) === path) continue;
+      this.coverPaths.set(id, path);
+      this.fetchImage(id, path);
+    }
+  }
+
+  private releaseCover(productId: string): void {
+    this.coverSubscriptions.get(productId)?.unsubscribe();
+    this.coverSubscriptions.delete(productId);
+    const previous: string | undefined = this.coverObjectUrls.get(productId);
+    if (previous) this.revokeObjectUrl(previous);
+    this.coverObjectUrls.delete(productId);
+    this.coverPaths.delete(productId);
+    delete this.imageUrls[productId];
   }
 
   private fetchImage(productId: string, imagePath: string): void {
-    const subscription = this.productService.getImage(imagePath).subscribe({
-      next: blob => {
-        const objectUrl = URL.createObjectURL(blob);
+    const subscription: Subscription = this.productService.getImage(imagePath).pipe(
+      finalize((): void => {this.coverSubscriptions.delete(productId);})
+    ).subscribe({
+      next: (blob: Blob): void => {
+        if (this.coverPaths.get(productId) !== imagePath) return;
+        const previous: string | undefined = this.coverObjectUrls.get(productId);
+        if (previous) this.revokeObjectUrl(previous);
+        const objectUrl: string = URL.createObjectURL(blob);
+        this.coverObjectUrls.set(productId, objectUrl);
         this.objectUrlsCreated.push(objectUrl);
         this.imageUrls[productId] = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
         this._products$.next([...this._products$.value]);
       },
-      error: error => {
+      error: (error: unknown): void => {
         reportError('product-image', error);
+        this.releaseCover(productId);
         this.imageUrls[productId] = null;
       }
     });
-    this.subscriptions.push(subscription);
+    if (!subscription.closed) this.coverSubscriptions.set(productId, subscription);
   }
 
-  private loadExistingImages(imagePaths: string[]): void {
-    imagePaths.forEach((path, index) => {
-      this.fetchImagePreview(path, index);
-    });
+  private loadExistingImages(imagePaths: string[], sessionGeneration: number): void {
+    imagePaths.forEach((path: string): void => this.fetchImagePreview(path, path, sessionGeneration));
   }
 
-  private fetchImagePreview(imagePath: string, index: number): void {
-    const subscription = this.productService.getImage(imagePath).subscribe({
-      next: blob => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          this.imagePreviews[index] = {
-            url: this.sanitizer.bypassSecurityTrustResourceUrl(reader.result as string),
-            isExisting: true,
-            originalUrl: imagePath
-          };
-        };
-        reader.readAsDataURL(blob);
+  private fetchImagePreview(imagePath: string, previewId: string, sessionGeneration: number): void {
+    const subscription: Subscription = this.productService.getImage(imagePath).subscribe({
+      next: (blob: Blob): void => {
+        const index: number = this.imagePreviews.findIndex((preview: ImagePreview) => preview.id === previewId);
+        if (sessionGeneration !== this.imageSessionGeneration || index < 0) return;
+        const objectUrl: string = URL.createObjectURL(blob);
+        this.objectUrlsCreated.push(objectUrl);
+        const previous: string | undefined = this.imagePreviews[index].objectUrl;
+        if (previous) this.revokeObjectUrl(previous);
+        this.imagePreviews[index] = {...this.imagePreviews[index], objectUrl,
+          url: this.sanitizer.bypassSecurityTrustUrl(objectUrl)};
+        this._cdr.markForCheck();
       },
-      error: error => {
+      error: (error: unknown): void => {
+        if (sessionGeneration !== this.imageSessionGeneration
+          || !this.imagePreviews.some((preview: ImagePreview) => preview.id === previewId)) return;
         reportError('product-image', error);
         this.showAlert($localize`Error loading product image`, 'error');
       }
     });
-    this.subscriptions.push(subscription);
+    this.previewSubscriptions.set(previewId, subscription);
+  }
+
+  private revokeObjectUrl(url: string): void {
+    URL.revokeObjectURL(url);
+    this.objectUrlsCreated = this.objectUrlsCreated.filter((entry: string) => entry !== url);
+  }
+
+  private releasePreviews(): void {
+    this.previewSubscriptions.forEach((subscription: Subscription): void => subscription.unsubscribe());
+    this.previewSubscriptions.clear();
+    this.imagePreviews.forEach((preview: ImagePreview): void => {
+      if (preview.objectUrl) this.revokeObjectUrl(preview.objectUrl);
+    });
   }
 
   async onFileSelected(event: Event): Promise<void> {
+    const sessionGeneration = this.imageSessionGeneration;
     this.isLoadingImages = true;
     const element = event.target as HTMLInputElement;
     const fileList: FileList | null = element.files;
     if (fileList) {
       const newFiles = Array.from(fileList);
       for (const file of newFiles) {
+        if (sessionGeneration !== this.imageSessionGeneration) {
+          return;
+        }
         if (this.imageService.isValidImageFile(file)) {
           try {
-            const preview = await this.imageService.generateImagePreview(file);
+            const converted: File = await this.imageService.convertFile(file);
+            if (sessionGeneration !== this.imageSessionGeneration) {
+              return;
+            }
+            const objectUrl: string = URL.createObjectURL(converted);
+            this.objectUrlsCreated.push(objectUrl);
             this.imagePreviews.push({
-              url: preview.url,
+              id: crypto.randomUUID(),
+              objectUrl,
+              url: this.sanitizer.bypassSecurityTrustUrl(objectUrl),
               isExisting: false,
-              file: preview.file
+              file: converted
             });
-            this.imageFiles.push(preview.file);
+            this.imageFiles.push(converted);
           } catch (error) {
             reportError('image-conversion', error);
           }
@@ -395,7 +469,10 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         }
       }
     }
-    this.isLoadingImages = false;
+    if (sessionGeneration === this.imageSessionGeneration) {
+      this.isLoadingImages = false;
+      this._cdr.markForCheck();
+    }
   }
 
   onImageDrop(event: CdkDragDrop<ImagePreview[]>): void {
@@ -403,8 +480,13 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
     this.updateProductImages();
   }
 
-  removeImage(index: number): void {
+  removeImage(previewId: string): void {
+    const index: number = this.imagePreviews.findIndex((preview: ImagePreview) => preview.id === previewId);
     if (!this.isDragging && index >= 0 && index < this.imagePreviews.length) {
+      this.previewSubscriptions.get(previewId)?.unsubscribe();
+      this.previewSubscriptions.delete(previewId);
+      const objectUrl: string | undefined = this.imagePreviews[index].objectUrl;
+      if (objectUrl) this.revokeObjectUrl(objectUrl);
       this.imagePreviews.splice(index, 1);
       this.updateProductImages();
     }

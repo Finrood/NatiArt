@@ -238,14 +238,14 @@
           <div class="mb-4">
             <label class="block text-sm font-medium text-gray-700 mb-1" i18n>Image Previews (Drag to reorder)</label>
             <div cdkDropList (cdkDropListDropped)="onImageDrop($event)" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              @for (preview of imagePreviews; track preview; let i = $index) {
+              @for (preview of imagePreviews; track preview.id; let i = $index) {
                 <div cdkDrag [cdkDragStartDelay]="100"
                   (cdkDragStarted)="dragStarted()" (cdkDragEnded)="dragEnded()"
                   class="relative group">
                   <div class="aspect-w-1 aspect-h-1">
                     <img [src]="preview.url" alt="Image preview" class="object-cover w-full h-full rounded-md" i18n-alt>
                   </div>
-                  <app-button type="button" (click)="removeImage(i)" color="danger" size="sm" [disabled]="isDragging" i18n>Remove
+                  <app-button type="button" (click)="removeImage(preview.id)" color="danger" size="sm" [disabled]="isDragging" i18n>Remove
                   </app-button>
                   <div
                     class="absolute inset-0 bg-blue-500/50 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" i18n>{isTouch, select, true {Long press to reorder} other {Drag to reorder}}</div>
