@@ -19,6 +19,12 @@ cp "$ROOT/scripts/tests/test_watchdog.sh" "$WORK/repo/scripts/tests/"
 cp "$ROOT/docs/audit-findings.md" "$WORK/repo/docs/"
 cp "$ROOT/docs/loop-lenses.md" "$WORK/repo/docs/"
 printf '#!/usr/bin/env bash\nif [[ "${1:-}" == auth && "${2:-}" == status ]]; then exit 0; fi\nexit 1\n' > "$WORK/bin/gh"
+# This fixture tests read-only behavior independently of its host's free disk space.
+cat > "$WORK/bin/df" <<'DF'
+#!/usr/bin/env bash
+printf '%s\n' 'Filesystem 1K-blocks Used Available Use% Mounted on' 'fixture 4194304 0 4194304 0% /'
+DF
+chmod +x "$WORK/bin/df"
 chmod +x "$WORK/bin/gh"
 cat > "$WORK/bin/df" <<'EOF'
 #!/usr/bin/env bash

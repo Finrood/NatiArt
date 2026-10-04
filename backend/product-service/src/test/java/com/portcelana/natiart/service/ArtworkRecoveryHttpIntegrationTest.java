@@ -145,6 +145,7 @@ class ArtworkRecoveryHttpIntegrationTest {
     private OrderDto request(Product product, String uploadId) {
         return new OrderDto()
                 .setFirstname("Buyer")
+                .setHouseNumber("N/A")
                 .setLastname("Customer")
                 .setEmail("buyer@example.test")
                 .setCountry("Brazil")

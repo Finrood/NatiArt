@@ -30,24 +30,24 @@ class CategoryControllerPaginationTest {
     @Test
     void getCategories_clampsOversizedSizeToMax() {
         final Category category = new Category("label");
-        when(categoryManager.getCategories(any(Pageable.class))).thenReturn(List.of(category));
+        when(categoryManager.getActiveCategories(any(Pageable.class))).thenReturn(List.of(category));
 
         categoryController.getCategories(0, Integer.MAX_VALUE);
 
         final ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(categoryManager).getCategories(captor.capture());
+        verify(categoryManager).getActiveCategories(captor.capture());
         assertEquals(0, captor.getValue().getPageNumber());
         assertEquals(100, captor.getValue().getPageSize());
     }
 
     @Test
     void getCategories_clampsNegativePageToZero() {
-        when(categoryManager.getCategories(any(Pageable.class))).thenReturn(List.of());
+        when(categoryManager.getActiveCategories(any(Pageable.class))).thenReturn(List.of());
 
         categoryController.getCategories(-3, 20);
 
         final ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(categoryManager).getCategories(captor.capture());
+        verify(categoryManager).getActiveCategories(captor.capture());
         assertEquals(0, captor.getValue().getPageNumber());
         assertEquals(20, captor.getValue().getPageSize());
     }

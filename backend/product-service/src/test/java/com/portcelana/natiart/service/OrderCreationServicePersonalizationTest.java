@@ -210,7 +210,11 @@ class OrderCreationServicePersonalizationTest {
     }
 
     private OrderDto validOrder() {
-        return new OrderDto().setFirstname("Ada").setLastname("Lovelace").setEmail("ada@example.test");
+        return new OrderDto()
+                .setFirstname("Ada")
+                .setHouseNumber("N/A")
+                .setLastname("Lovelace")
+                .setEmail("ada@example.test");
     }
 
     private ShippingQuote quoteFor(List<OrderItemDto> items, Map<String, Product> products) {
