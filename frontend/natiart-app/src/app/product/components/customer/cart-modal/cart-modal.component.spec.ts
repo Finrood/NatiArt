@@ -19,7 +19,7 @@ function makeProduct(): Product {
     stockQuantity: 10,
     categoryId: 'cat-1',
     availablePersonalizations: [],
-    tags: new Set<string>(),
+    tags: [],
     images: []
   };
 }
@@ -125,7 +125,7 @@ describe('CartModalComponent', () => {
     const fixture = TestBed.createComponent(CartModalComponent);
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.imageUrls['line-9']).toBe('assets/img/placeholder.png');
+    expect(fixture.componentInstance.imageUrls['line-9']).toBe(fixture.componentInstance.emptyImage);
   });
 
   it('never resurrects a removed line when its image GET resolves late (AA3)', () => {

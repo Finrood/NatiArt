@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
 import com.portcelana.natiart.dto.CategoryDto;
+import com.portcelana.natiart.dto.PagedResponseDto;
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.repository.CategoryRepository;
 import com.portcelana.natiart.repository.ProductRepository;
@@ -44,8 +45,33 @@ public class CategoryManagerImpl implements CategoryManager {
 
     @Override
     @Transactional(readOnly = true)
+    public Category getActiveCategoryOrDie(String categoryId) {
+        if (categoryId == null) {
+            throw new ResourceNotFoundException("Category with id null not found");
+        }
+        return categoryRepository
+                .findByIdAndActiveTrue(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category with id " + categoryId + " not found"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Category> getCategories(Pageable pageable) {
         return categoryRepository.findAll(pageable).stream().toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PagedResponseDto<CategoryDto> getCategoriesPage(Pageable pageable, boolean includeInactive) {
+        return PagedResponseDto.from(
+                (includeInactive ? categoryRepository.findAll(pageable) : categoryRepository.findByActiveTrue(pageable))
+                        .map(CategoryDto::from));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Category> getActiveCategories(Pageable pageable) {
+        return categoryRepository.findByActiveTrue(pageable).getContent();
     }
 
     @Override

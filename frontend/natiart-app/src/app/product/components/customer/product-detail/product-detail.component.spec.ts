@@ -18,7 +18,7 @@ function makeProduct(id: string): Product {
     stockQuantity: 10,
     categoryId: 'cat-1',
     availablePersonalizations: [],
-    tags: new Set<string>(),
+    tags: [],
     images: [],
   };
 }
@@ -42,6 +42,7 @@ describe('ProductDetailComponent', () => {
         {
           provide: ProductService,
           useValue: {
+            imageInvalidations: new Subject<void>().asObservable(),
             getProduct,
             getProductsByCategory: () => of([]),
             getImage: () => of(new Blob()),
@@ -126,6 +127,7 @@ describe('ProductDetailComponent stale main images', () => {
         {
           provide: ProductService,
           useValue: {
+            imageInvalidations: new Subject<void>().asObservable(),
             getProduct: (id: string) => of(makeImagedProduct(id)),
             getProductsByCategory: () => of([]),
             getImage: (path: string) => {
@@ -147,13 +149,15 @@ describe('ProductDetailComponent stale main images', () => {
     fixture.detectChanges();
     expect(component.product$.value?.id).toBe('p1');
 
-    // Navigate to p2 before p1's image resolves; the p1 fetch stays in flight.
+    // Navigate to p2 before p1's image resolves; the old owner is cancelled.
     paramMap$.next(convertToParamMap({id: 'p2'}));
     expect(component.product$.value?.id).toBe('p2');
 
-    // Late p1 resolution must not populate the reset index-keyed map.
+    // Late p1 resolution must not populate the current product image.
     imageSubjects.get('img-p1')!.next(new Blob(['p1-bytes']));
-    expect(component.imageUrls[0]).toBeUndefined();
+    expect(imageSubjects.get('img-p1')!.observed).toBeFalse();
+    expect(component.$productImages()[0].state).toBe('loading');
+    expect(component.imageUrls[0]).toBe(component.emptyImage);
 
     // The current product image still loads normally.
     imageSubjects.get('img-p2')!.next(new Blob(['p2-bytes']));
@@ -188,6 +192,7 @@ describe('ProductDetailComponent stale related images (AA5)', () => {
         {
           provide: ProductService,
           useValue: {
+            imageInvalidations: new Subject<void>().asObservable(),
             getProduct: (id: string) => of(makeCategorizedProduct(id)),
             // Each product view lists a different related product, so the
             // stale and current image fetches use different paths.
