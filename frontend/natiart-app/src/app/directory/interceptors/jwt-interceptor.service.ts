@@ -45,8 +45,9 @@ const directoryAuthEndpoints = (): string[] => {
   return [endpoints.login, endpoints.registerUser];
 };
 
-const isAuthRequest = (url: string): boolean =>
-  isEndpoint(url, directoryAuthEndpoints());
+const isAuthRequest = (url: string, method: string): boolean =>
+  isEndpoint(url, directoryAuthEndpoints()) || (method === 'POST' &&
+    isEndpoint(url, [environment.api.directory.endpoints.passwordResetRequest, environment.api.directory.endpoints.passwordReset]));
 
 const isRefreshTokenRequest = (url: string): boolean =>
   isEndpoint(url, [environment.api.directory.endpoints.refreshToken]);
@@ -56,7 +57,7 @@ const isLogoutRequest = (url: string): boolean =>
 
 export const AUTH_RETRY_CONTEXT = new HttpContextToken<boolean>(() => false);
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
-  if (!isConfiguredApiUrl(req.url) || isAuthRequest(req.url) || isRefreshTokenRequest(req.url)) {
+  if (!isConfiguredApiUrl(req.url) || isAuthRequest(req.url, req.method) || isRefreshTokenRequest(req.url)) {
     return next(req);
   }
 
@@ -78,7 +79,7 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(cloned).pipe(
     catchError(error => {
-      if (error.status === 401 && !isAuthRequest(req.url) && !isRefreshTokenRequest(req.url) && !alreadyRetried) {
+      if (error.status === 401 && !alreadyRetried) {
         if (isLogoutRequest(req.url)) {
           // Explicit logout must never mint fresh tokens: end the local
           // session instead of refreshing-then-retrying the signout.
