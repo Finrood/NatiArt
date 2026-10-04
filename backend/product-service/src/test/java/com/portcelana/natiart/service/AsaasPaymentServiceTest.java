@@ -333,8 +333,9 @@ class AsaasPaymentServiceTest {
     }
 
     @Test
-    void mapAsaasError_warnLogsUpstreamStatusAndBodyOnFallThrough() {
-        final byte[] body = "{\"errors\":[\"validation-failed-marker\"]}".getBytes(StandardCharsets.UTF_8);
+    void mapAsaasError_warnLogsUpstreamStatusAndBoundedMetadataOnly() {
+        final byte[] body = ("cpf=12345678909 email=synthetic@example.invalid\nFORGED_LOG " + "x".repeat(20_000))
+                .getBytes(StandardCharsets.UTF_8);
         final HttpClientErrorException upstream = HttpClientErrorException.create(
                 HttpStatus.BAD_REQUEST, "Bad Request", null, body, StandardCharsets.UTF_8);
 
@@ -347,7 +348,11 @@ class AsaasPaymentServiceTest {
         assertEquals(Level.WARN, events.get(0).getLevel());
         final String message = events.get(0).getFormattedMessage();
         assertTrue(message.contains("400"));
-        assertTrue(message.contains("validation-failed-marker"));
+        assertTrue(message.contains("responseBodyBytes=8192"));
+        assertFalse(message.contains("12345678909"));
+        assertFalse(message.contains("synthetic@example.invalid"));
+        assertFalse(message.contains("FORGED_LOG"));
+        assertTrue(message.length() < 200);
     }
 
     @Test
@@ -538,8 +543,8 @@ class AsaasPaymentServiceTest {
         assertTrue(events.stream()
                 .anyMatch(event -> event.getLevel() == Level.INFO
                         && event.getFormattedMessage().contains("pay-9")
-                        && event.getFormattedMessage().contains("10.00")
-                        && event.getFormattedMessage().contains("cus_MINE")));
+                        && !event.getFormattedMessage().contains("10.00")
+                        && !event.getFormattedMessage().contains("cus_MINE")));
         verify(paymentRepository)
                 .save(argThat(
                         payment -> "pay-9".equals(payment.getId()) && "cus_MINE".equals(payment.getOwnerExternalId())));
@@ -790,7 +795,7 @@ class AsaasPaymentServiceTest {
     }
 
     @Test
-    void getPaymentStatus_completedOrderPaymentMarksOrderPaid() {
+    void getPaymentStatus_completedOrderPaymentDoesNotMutateOrderFromBrowserPolling() {
         final RestTemplate restTemplate = mock(RestTemplate.class);
         final PaymentRepository paymentRepository = mock(PaymentRepository.class);
         final OrderRepository orderRepository = mock(OrderRepository.class);
@@ -813,7 +818,7 @@ class AsaasPaymentServiceTest {
 
         assertEquals(PaymentStatus.COMPLETED, response.getStatus());
         assertEquals("ord-1", response.getOrderId());
-        verify(orderManager).markOrderPaid("ord-1");
+        verifyNoInteractions(orderManager);
     }
 
     @Test

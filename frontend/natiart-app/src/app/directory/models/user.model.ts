@@ -11,4 +11,6 @@ export interface User {
   profile: Profile;
   role: RoleName;
   externalId: string;
+  provisioningStatus?: 'PENDING' | 'IN_PROGRESS' | 'SUCCEEDED' | 'FAILED';
+  provisioningNextAttemptAt?: string;
 }

@@ -7,7 +7,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -35,6 +34,7 @@ import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.repository.CartItemRepository;
 import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.ProductRepository;
+import com.portcelana.natiart.service.support.InputValidationException;
 import com.portcelana.natiart.storage.InputFile;
 import com.portcelana.natiart.storage.StorageService;
 
@@ -113,20 +113,56 @@ class ProductManagerImplTest {
     }
 
     @Test
-    void createProduct_zeroPriceAndStock_persists() {
+    void createProduct_zeroPrice_rejectsBeforePersistence() {
+        final ProductDto dto =
+                new ProductDto("Mug", BigDecimal.ZERO).setCategoryId("cat-1").setStockQuantity(0);
+
+        assertThrows(IllegalArgumentException.class, () -> productManager.createProduct(dto, null));
+
+        verify(productRepository, never()).save(any(Product.class));
+    }
+
+    @Test
+    void createProduct_rejectsDatabaseBoundaryViolationsBeforeLookupOrSave() {
+        final List<ProductDto> invalid = List.of(
+                new ProductDto("x".repeat(256), BigDecimal.ONE).setCategoryId("cat-1"),
+                new ProductDto("Mug", BigDecimal.ONE)
+                        .setDescription("x".repeat(256))
+                        .setCategoryId("cat-1"),
+                new ProductDto("Mug", new BigDecimal("10.001")).setCategoryId("cat-1"),
+                new ProductDto("Mug", new BigDecimal("100000000.00")).setCategoryId("cat-1"),
+                new ProductDto("Mug", BigDecimal.ONE)
+                        .setMarkedPrice(BigDecimal.ZERO)
+                        .setCategoryId("cat-1"));
+        final List<String> fields = List.of("label", "description", "originalPrice", "originalPrice", "markedPrice");
+
+        for (int i = 0; i < invalid.size(); i++) {
+            final ProductDto dto = invalid.get(i);
+            final InputValidationException failure =
+                    assertThrows(InputValidationException.class, () -> productManager.createProduct(dto, null));
+            assertEquals(fields.get(i), failure.getField());
+        }
+
+        verify(productRepository, never()).save(any(Product.class));
+        verify(categoryManager, never()).getCategoryOrDie(any());
+    }
+
+    @Test
+    void createProduct_acceptsMaximumRepresentablePriceWithoutChangingIt() {
         final Category category = new Category("Tableware");
         when(categoryManager.getCategoryOrDie("cat-1")).thenReturn(category);
         when(packageManager.getPackage(null)).thenReturn(Optional.empty());
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        final ProductDto dto = new ProductDto("Mug", BigDecimal.ZERO)
-                .setCategoryId("cat-1")
-                .setStockQuantity(0)
-                .setWeightKg(BigDecimal.ONE);
+        final BigDecimal boundary = new BigDecimal("99999999.99");
 
-        final Product created = productManager.createProduct(dto, null);
+        final Product created = productManager.createProduct(
+                new ProductDto("Mug", boundary)
+                        .setCategoryId("cat-1")
+                        .setStockQuantity(0)
+                        .setWeightKg(BigDecimal.ONE),
+                null);
 
-        assertEquals(BigDecimal.ZERO, created.getOriginalPrice());
-        verify(productRepository, atLeastOnce()).save(any(Product.class));
+        assertEquals(boundary, created.getOriginalPrice());
     }
 
     @Test

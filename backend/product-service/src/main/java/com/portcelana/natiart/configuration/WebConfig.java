@@ -26,6 +26,7 @@ public class WebConfig {
         config.setAllowCredentials(true);
         config.setAllowedOrigins(allowedOrigins);
         config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of(RequestCorrelationFilter.HEADER_NAME));
         config.setAllowedMethods(List.of("*"));
         config.setMaxAge(3600L);
         source.registerCorsConfiguration("/**", config);
