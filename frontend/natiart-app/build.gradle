@@ -27,6 +27,12 @@ tasks.register("verifyProductionArtifacts", Exec) {
     commandLine("node", "scripts/verify-production-artifacts.mjs")
 }
 
+tasks.register("verifyProductionArtifactTests", Exec) {
+    dependsOn("verifyProductionArtifacts")
+    workingDir(projectDir)
+    commandLine("node", "--test", "scripts/verify-production-artifacts.test.mjs")
+}
+
 tasks.named("build") {
-    dependsOn("verifyProductionArtifacts", "npmTest")
+    dependsOn("verifyProductionArtifactTests", "npmTest")
 }
