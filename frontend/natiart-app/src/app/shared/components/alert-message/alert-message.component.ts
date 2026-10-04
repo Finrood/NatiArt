@@ -1,4 +1,4 @@
-import {Component, OnDestroy} from '@angular/core';
+import {Component, OnDestroy, signal} from '@angular/core';
 import { NgClass } from '@angular/common';
 
 export interface AlertMessage {
@@ -10,17 +10,19 @@ export interface AlertMessage {
   selector: 'app-alert-messages',
   templateUrl: './alert-message.component.html',
   imports: [NgClass],
+  styleUrl: './alert-message.component.css',
 })
 export class AlertMessageComponent implements OnDestroy {
-  alertMessages: AlertMessage[] = [];
+  readonly $alertMessages = signal<AlertMessage[]>([]);
+  get alertMessages(): AlertMessage[] { return this.$alertMessages(); }
   private readonly dismissTimers = new Set<ReturnType<typeof setTimeout>>();
 
   /**
    * Display a new alert message and auto-dismiss it after a given timeout (default 3000ms).
    */
-  showAlert(alert: AlertMessage, timeout = 3000) {
+  showAlert(alert: AlertMessage, timeout: number = 3000): void {
     // Add the new alert at the beginning so it appears on top.
-    this.alertMessages.unshift(alert);
+    this.$alertMessages.update((messages: AlertMessage[]): AlertMessage[] => [alert, ...messages]);
     // Remove the alert after the specified timeout.
     const dismissTimer: ReturnType<typeof setTimeout> = setTimeout(() => {
       this.dismissTimers.delete(dismissTimer);
@@ -32,11 +34,8 @@ export class AlertMessageComponent implements OnDestroy {
   /**
    * Remove a given alert from the list.
    */
-  dismissAlert(alert: AlertMessage) {
-    const index = this.alertMessages.indexOf(alert);
-    if (index > -1) {
-      this.alertMessages.splice(index, 1);
-    }
+  dismissAlert(alert: AlertMessage): void {
+    this.$alertMessages.update((messages: AlertMessage[]): AlertMessage[] => messages.filter((message: AlertMessage) => message !== alert));
   }
 
   ngOnDestroy(): void {

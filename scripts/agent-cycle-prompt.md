@@ -18,7 +18,7 @@ Phase 0 — sync and pickup (~2 min):
 1. `git checkout master && git pull --ff-only`, verify `git status` is clean.
    If dirty and no open PR of YOURS owns the dirt, STOP and report — never
    stash, reset, or checkout over foreign dirt (a human or another agent may
-   own this checkout; the script guard salvages loop dirt at cycle start, so
+   own this checkout; the script guard refuses dirty worktrees at cycle start, so
    anything still dirty is not yours to touch). If the pull fails, stop and report.
    `DOC ROT` lines in the invocation are authoritative backlog corrections:
    move the named item's `###` section per step 4 batching and reference the
@@ -167,10 +167,7 @@ Every PR created by this loop must contain the exact own-line marker
 that marker together with the authenticated PR author allowlist; branch names
 and self-described verdict text are not ownership proof.
 
-After creating and pushing a **new** loop branch, record it in this checkout:
-`source scripts/loop-lib.sh && record_loop_branch "$(git branch --show-current)"`.
-Do not register an existing repair PR branch. The cleanup job preserves branches
-without a matching local ownership record.
+The supervisor enrolls only the explicitly validated worker result; branch discovery and manual worker enrollment grant no cleanup authority. Audit-only completion grants no branch ownership.
 
 SELF-MODIFICATION BAN: PRs touching `scripts/**`, `agents/**`, any `AGENTS.md`
 (root or module), `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.github/**`,
@@ -215,5 +212,3 @@ Hunt with that lens, never the previous cycle's lens.
   Follow it exactly.
 
 If anything is ambiguous or risky, open the PR and stop before merging.
-
-Branch cleanup attribution is handled by the supervisor from your validated deliverable result. Do not enroll branches or infer ownership from newly appearing refs. Audit-only completion grants no branch cleanup authority.

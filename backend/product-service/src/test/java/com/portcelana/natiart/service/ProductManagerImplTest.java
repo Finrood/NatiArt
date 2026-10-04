@@ -58,6 +58,9 @@ class ProductManagerImplTest {
     @Mock
     private StorageService storageService;
 
+    @Mock
+    private ProductImageLifecycle imageLifecycle;
+
     @InjectMocks
     private ProductManagerImpl productManager;
 
@@ -153,23 +156,57 @@ class ProductManagerImplTest {
     }
 
     @Test
+    void failedUploadBatchClosesAttemptedAndUnattemptedInputs() throws Exception {
+        final Category category = new Category("Tableware");
+        when(categoryManager.getCategoryOrDie("cat-1")).thenReturn(category);
+        when(packageManager.getPackage(null)).thenReturn(Optional.empty());
+        when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(imageLifecycle.upload(any(String.class), any(String.class), any(String.class), any(InputFile.class)))
+                .thenReturn(URI.create("file:///fixture/first"))
+                .thenThrow(new IllegalStateException("fixture upload failed"));
+        final java.io.ByteArrayInputStream first =
+                org.mockito.Mockito.spy(new java.io.ByteArrayInputStream(new byte[] {1}));
+        final java.io.ByteArrayInputStream second =
+                org.mockito.Mockito.spy(new java.io.ByteArrayInputStream(new byte[] {2}));
+        final java.io.ByteArrayInputStream third =
+                org.mockito.Mockito.spy(new java.io.ByteArrayInputStream(new byte[] {3}));
+        final List<InputFile> inputs = List.of(
+                new InputFile(first, "image/webp", "first", 1),
+                new InputFile(second, "image/webp", "second", 1),
+                new InputFile(third, "image/webp", "third", 1));
+        assertThrows(
+                IllegalStateException.class,
+                () -> productManager.createProduct(
+                        new ProductDto("Mug", BigDecimal.TEN)
+                                .setCategoryId("cat-1")
+                                .setWeightKg(BigDecimal.ONE),
+                        inputs));
+        verify(first).close();
+        verify(second).close();
+        verify(third).close();
+        verify(imageLifecycle, times(2))
+                .upload(any(String.class), any(String.class), any(String.class), any(InputFile.class));
+    }
+
+    @Test
     void createProductWritesStableImageKeyWithoutAProcessRelativeLocation() {
         final Category category = new Category("Tableware");
         final InputFile image = new InputFile(new ByteArrayInputStream(new byte[] {1}), "image/webp", "mug.webp", 1);
         when(categoryManager.getCategoryOrDie("cat-1")).thenReturn(category);
         when(packageManager.getPackage(null)).thenReturn(Optional.empty());
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(storageService.uploadFile(any(String.class), eq(image)))
+        when(imageLifecycle.upload(any(String.class), any(String.class), any(String.class), eq(image)))
                 .thenReturn(URI.create("file:products/stable.webp"));
 
         final Product created = productManager.createProduct(
                 new ProductDto("Mug", BigDecimal.TEN).setCategoryId("cat-1").setWeightKg(BigDecimal.ONE),
                 List.of(image));
 
-        verify(storageService)
-                .uploadFile(
-                        argThat(key -> key.startsWith("products/" + created.getId() + "/")
-                                && key.length() > ("products/" + created.getId() + "/").length()),
+        verify(imageLifecycle)
+                .upload(
+                        eq(created.getId()),
+                        argThat(key -> key.startsWith("products/" + created.getId() + "/")),
+                        any(String.class),
                         eq(image));
         assertEquals(List.of("file:products/stable.webp"), created.getImages());
     }

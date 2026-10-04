@@ -3,6 +3,10 @@
 # advanced after validation. The force-with-lease must reject the stale SHA.
 set -Eeuo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/loop-lib.sh
+source "$SCRIPT_DIR/../loop-lib.sh"
+
 ROOT="$(mktemp -d)"
 trap 'rm -rf "$ROOT"' EXIT
 
@@ -77,3 +81,15 @@ if [[ "$actual" == "$captured" || "$actual" != "$advanced" ]]; then
     exit 1
 fi
 echo "ok: stale leased salvage deletion rejected and advanced remote preserved"
+
+# The same production helper must delete a stable validated tip successfully.
+stable="salvage/stable"
+git -C "$ROOT/a" branch "$stable" master
+git -C "$ROOT/a" push -q origin "$stable"
+stable_sha="$(git -C "$ROOT/a" rev-parse "$stable")"
+(cd "$ROOT/a" && loop_record_owned_tip "$stable" fixture-cycle "$stable_sha" "$(git rev-parse --git-common-dir)/natiart-loop-owned-branches.tsv" && loop_delete_merged_remote_branch "$stable" "$(git rev-parse --git-common-dir)/natiart-loop-owned-branches.tsv")
+[[ -z "$(git -C "$ROOT/a" ls-remote origin "refs/heads/$stable")" ]]
+# An unowned branch must never reach the deletion command.
+(cd "$ROOT/a" && loop_delete_merged_remote_branch master "$(git rev-parse --git-common-dir)/natiart-loop-owned-branches.tsv")
+[[ -n "$(git -C "$ROOT/a" ls-remote origin refs/heads/master)" ]]
+echo "ok: production helper deletes only stable validated salvage tips"

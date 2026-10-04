@@ -9,6 +9,7 @@ import java.util.Optional;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.Pageable;
 
+import com.portcelana.natiart.dto.PagedResponseDto;
 import com.portcelana.natiart.dto.ProductDto;
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Product;
@@ -23,6 +24,8 @@ public interface ProductManager {
 
     Product getProductWithImagesOrDie(String id);
 
+    Product getActiveProductWithImagesOrDie(String id);
+
     /**
      * Loads all requested products in one query, throwing when any id is unknown.
      */
@@ -30,11 +33,23 @@ public interface ProductManager {
 
     List<Product> getProducts(Pageable pageable);
 
+    /** Returns a filtered page; inactive records are available only to authorized admin callers. */
+    PagedResponseDto<ProductDto> getProductsPage(
+            String categoryId, String query, Pageable pageable, boolean includeInactive);
+
+    List<Product> getActiveProducts(Pageable pageable);
+
     List<Product> getNewProducts(Pageable pageable);
+
+    List<Product> getActiveNewProducts(Pageable pageable);
 
     List<Product> getFeaturedProducts(Pageable pageable);
 
+    List<Product> getActiveFeaturedProducts(Pageable pageable);
+
     List<Product> getProductsByCategory(Category category, Pageable pageable);
+
+    List<Product> getActiveProductsByCategory(Category category, Pageable pageable);
 
     boolean existsByCategory(Category category);
 

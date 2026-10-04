@@ -289,7 +289,6 @@ DELIVERABLE_BASELINE=""
 DELIVERABLE_AFTER=""
 DELIVERABLE_REFS=""
 AUDIT_ARTIFACT=""
-AUDIT_BASELINE_PRESENT=0
 DELIVERABLE_RESULT=""
 LOOP_LOGIN=""
 
@@ -298,6 +297,33 @@ capture_deliverable_state() { # targeted, authenticated GitHub state
         review) gh pr view "$REVIEW_PR" --json headRefOid,reviews > "$1" ;;
         cycle) gh pr list --state open --author "$LOOP_LOGIN" --limit 1000 --json number,headRefOid,headRefName,author > "$1" ;;
     esac
+}
+
+prepare_attempt_evidence() {
+    local archived
+    # Prior output is recovery evidence, never authority for the next attempt.
+    [[ -f "$DELIVERABLE_RESULT" && ! -L "$DELIVERABLE_RESULT" && -O "$DELIVERABLE_RESULT" &&
+       "$(stat -c %a "$DELIVERABLE_RESULT")" == 600 &&
+       "$(stat -c %s "$DELIVERABLE_RESULT")" -le 4096 ]] || return 1
+    if [[ -s "$DELIVERABLE_RESULT" ]]; then
+        archived="$(mktemp "$OUTCOME_DIR/failed-result-XXXXXX.json")" || return 1
+        cp -- "$DELIVERABLE_RESULT" "$archived" || return 1
+    fi
+    : > "$DELIVERABLE_RESULT"
+    if [[ -e "$AUDIT_ARTIFACT" || -L "$AUDIT_ARTIFACT" ]]; then
+        [[ -f "$AUDIT_ARTIFACT" && ! -L "$AUDIT_ARTIFACT" && -O "$AUDIT_ARTIFACT" &&
+           "$(stat -c %s "$AUDIT_ARTIFACT")" -le 16384 ]] || return 1
+        archived="$(mktemp "$OUTCOME_DIR/failed-audit-XXXXXX.json")" || return 1
+        mv -- "$AUDIT_ARTIFACT" "$archived" || return 1
+        chmod 600 "$archived" || return 1
+    fi
+    if [[ -n "${NATIART_ACCEPTED_RESULT_FILE:-}" ]]; then
+        [[ -f "$NATIART_ACCEPTED_RESULT_FILE" && ! -L "$NATIART_ACCEPTED_RESULT_FILE" &&
+           -O "$NATIART_ACCEPTED_RESULT_FILE" && "$(stat -c %a "$NATIART_ACCEPTED_RESULT_FILE")" == 600 ]] || return 1
+        : > "$NATIART_ACCEPTED_RESULT_FILE"
+    fi
+    git -C "$REPO" for-each-ref --format='%(refname:short)%09%(objectname)' refs/heads/ > "$DELIVERABLE_REFS" || return 1
+    capture_deliverable_state "$DELIVERABLE_BASELINE"
 }
 
 role_deliverable_present() {
@@ -314,7 +340,7 @@ role_deliverable_present() {
         cycle)
             local branch sha local_sha remote_sha baseline_sha
             if [[ ! -s "$DELIVERABLE_RESULT" ]]; then
-                [[ "$AUDIT_BASELINE_PRESENT" -eq 0 ]] && loop_valid_audit_artifact "$AUDIT_ARTIFACT" "$NATIART_CYCLE_ID" "$NATIART_REVIEWED_COMMIT"
+                loop_valid_audit_artifact "$AUDIT_ARTIFACT" "$NATIART_CYCLE_ID" "$NATIART_REVIEWED_COMMIT"
                 return $?
             fi
             [[ -f "$DELIVERABLE_RESULT" && ! -L "$DELIVERABLE_RESULT" && -O "$DELIVERABLE_RESULT" ]] || return 1
@@ -415,7 +441,6 @@ export NATIART_DELIVERABLE_FILE="$DELIVERABLE_RESULT"
 NATIART_REVIEWED_COMMIT="$(git -C "$REPO" rev-parse HEAD)"
 export NATIART_REVIEWED_COMMIT
 AUDIT_ARTIFACT="$REPO/logs/cycle-$NATIART_CYCLE_ID.audit"
-[[ ! -e "$AUDIT_ARTIFACT" ]] || AUDIT_BASELINE_PRESENT=1
 # shellcheck source=scripts/loop-lib.sh
 source "$REPO/scripts/loop-lib.sh"
 PROMPT+="
@@ -483,8 +508,10 @@ while true; do
 
         same_retry=0
         while :; do # retry-same-model loop: silence ≠ quota (see below)
-            # A failed attempt's manifest cannot authorize a later no-op attempt.
-            : > "$DELIVERABLE_RESULT"
+            if ! prepare_attempt_evidence; then
+                log_err "Cannot isolate attempt evidence and refresh deliverable baselines."
+                exit 2
+            fi
             ATT_LOG="$(mktemp "$TMP_ROOT/natiart-agent-attempt-XXXXXX.log")"
             log "Attempt $attempt/${label}: $cli :: $model_id${think:+, thinking=$think} (${remaining}s left)"
             if ! launch_attempt "$cli" "$model_id" "$think"; then

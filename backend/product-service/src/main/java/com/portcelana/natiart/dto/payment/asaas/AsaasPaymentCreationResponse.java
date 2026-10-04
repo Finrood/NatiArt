@@ -3,6 +3,11 @@ package com.portcelana.natiart.dto.payment.asaas;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AsaasPaymentCreationResponse {
     private final String object;
     private final String id;
@@ -25,9 +30,9 @@ public class AsaasPaymentCreationResponse {
     private final String invoiceUrl;
     private final String invoiceNumber;
     private final String externalReference;
-    private final boolean deleted;
-    private final boolean anticipated;
-    private final boolean anticipable;
+    private final Boolean deleted;
+    private final Boolean anticipated;
+    private final Boolean anticipable;
     private final LocalDate creditDate;
     private final LocalDate estimatedCreditDate;
     private final String transactionReceiptUrl;
@@ -38,48 +43,49 @@ public class AsaasPaymentCreationResponse {
     private final Discount discount;
     private final Fine fine;
     private final Interest interest;
-    private final boolean postalService;
+    private final Boolean postalService;
     private final Object custody;
     private final List<Object> refunds;
 
+    @JsonCreator
     private AsaasPaymentCreationResponse(
-            String object,
-            String id,
-            LocalDate dateCreated,
-            String customer,
-            String paymentLink,
-            Double value,
-            Double netValue,
-            Double originalValue,
-            Double interestValue,
-            String description,
-            String billingType,
-            Object pixTransaction,
-            String status,
-            LocalDate dueDate,
-            LocalDate originalDueDate,
-            LocalDate paymentDate,
-            LocalDate clientPaymentDate,
-            Integer installmentNumber,
-            String invoiceUrl,
-            String invoiceNumber,
-            String externalReference,
-            boolean deleted,
-            boolean anticipated,
-            boolean anticipable,
-            LocalDate creditDate,
-            LocalDate estimatedCreditDate,
-            String transactionReceiptUrl,
-            String nossoNumero,
-            String bankSlipUrl,
-            LocalDate lastInvoiceViewedDate,
-            LocalDate lastBankSlipViewedDate,
-            Discount discount,
-            Fine fine,
-            Interest interest,
-            boolean postalService,
-            Object custody,
-            List<Object> refunds) {
+            @JsonProperty("object") String object,
+            @JsonProperty("id") String id,
+            @JsonProperty("dateCreated") LocalDate dateCreated,
+            @JsonProperty("customer") String customer,
+            @JsonProperty("paymentLink") String paymentLink,
+            @JsonProperty("value") Double value,
+            @JsonProperty("netValue") Double netValue,
+            @JsonProperty("originalValue") Double originalValue,
+            @JsonProperty("interestValue") Double interestValue,
+            @JsonProperty("description") String description,
+            @JsonProperty("billingType") String billingType,
+            @JsonProperty("pixTransaction") Object pixTransaction,
+            @JsonProperty("status") String status,
+            @JsonProperty("dueDate") LocalDate dueDate,
+            @JsonProperty("originalDueDate") LocalDate originalDueDate,
+            @JsonProperty("paymentDate") LocalDate paymentDate,
+            @JsonProperty("clientPaymentDate") LocalDate clientPaymentDate,
+            @JsonProperty("installmentNumber") Integer installmentNumber,
+            @JsonProperty("invoiceUrl") String invoiceUrl,
+            @JsonProperty("invoiceNumber") String invoiceNumber,
+            @JsonProperty("externalReference") String externalReference,
+            @JsonProperty("deleted") Boolean deleted,
+            @JsonProperty("anticipated") Boolean anticipated,
+            @JsonProperty("anticipable") Boolean anticipable,
+            @JsonProperty("creditDate") LocalDate creditDate,
+            @JsonProperty("estimatedCreditDate") LocalDate estimatedCreditDate,
+            @JsonProperty("transactionReceiptUrl") String transactionReceiptUrl,
+            @JsonProperty("nossoNumero") String nossoNumero,
+            @JsonProperty("bankSlipUrl") String bankSlipUrl,
+            @JsonProperty("lastInvoiceViewedDate") LocalDate lastInvoiceViewedDate,
+            @JsonProperty("lastBankSlipViewedDate") LocalDate lastBankSlipViewedDate,
+            @JsonProperty("discount") Discount discount,
+            @JsonProperty("fine") Fine fine,
+            @JsonProperty("interest") Interest interest,
+            @JsonProperty("postalService") Boolean postalService,
+            @JsonProperty("custody") Object custody,
+            @JsonProperty("refunds") List<Object> refunds) {
         this.object = object;
         this.id = id;
         this.dateCreated = dateCreated;
@@ -203,15 +209,15 @@ public class AsaasPaymentCreationResponse {
         return externalReference;
     }
 
-    public boolean isDeleted() {
+    public Boolean isDeleted() {
         return deleted;
     }
 
-    public boolean isAnticipated() {
+    public Boolean isAnticipated() {
         return anticipated;
     }
 
-    public boolean isAnticipable() {
+    public Boolean isAnticipable() {
         return anticipable;
     }
 
@@ -255,7 +261,7 @@ public class AsaasPaymentCreationResponse {
         return interest;
     }
 
-    public boolean isPostalService() {
+    public Boolean isPostalService() {
         return postalService;
     }
 
@@ -267,13 +273,19 @@ public class AsaasPaymentCreationResponse {
         return refunds;
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Discount {
         private final Double value;
         private final LocalDate limitDate;
         private final Integer dueDateLimitDays;
         private final String type;
 
-        private Discount(Double value, LocalDate limitDate, Integer dueDateLimitDays, String type) {
+        @JsonCreator
+        private Discount(
+                @JsonProperty("value") Double value,
+                @JsonProperty("limitDate") LocalDate limitDate,
+                @JsonProperty("dueDateLimitDays") Integer dueDateLimitDays,
+                @JsonProperty("type") String type) {
             this.value = value;
             this.limitDate = limitDate;
             this.dueDateLimitDays = dueDateLimitDays;
@@ -297,11 +309,13 @@ public class AsaasPaymentCreationResponse {
         }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Fine {
         private final Double value;
         private final String type;
 
-        private Fine(Double value, String type) {
+        @JsonCreator
+        private Fine(@JsonProperty("value") Double value, @JsonProperty("type") String type) {
             this.value = value;
             this.type = type;
         }
@@ -315,11 +329,13 @@ public class AsaasPaymentCreationResponse {
         }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Interest {
         private final Double value;
         private final String type;
 
-        private Interest(Double value, String type) {
+        @JsonCreator
+        private Interest(@JsonProperty("value") Double value, @JsonProperty("type") String type) {
             this.value = value;
             this.type = type;
         }

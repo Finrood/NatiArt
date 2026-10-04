@@ -57,6 +57,9 @@ class CartAddSerializationTest {
     @MockitoBean
     StorageService storage;
 
+    @MockitoBean
+    ProductImageLifecycle imageLifecycle;
+
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
     void serializeExistingLineAfterRealManagerTransaction(boolean personalized) throws Exception {
