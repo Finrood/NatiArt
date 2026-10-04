@@ -329,16 +329,20 @@ table above is agent discipline, enforced by the cycle prompt.
 history grows). PRs reference their item; the merging cycle moves the section.
 Severity labels are exactly `High`/`Medium`/`Low`.
 
-### Worker deliverable attribution
+### Integrated runner registry and result contract
 
-A successful CLI exit must be accompanied by a verified result. The runner
-provides an explicit cycle ID and private `NATIART_DELIVERABLE_FILE` path.
-Implementation workers write a JSON object with `cycle`, `branch` and full
-`sha` after committing and pushing. The runner verifies a changed local branch,
-the same exact remote tip, and an open PR by the authenticated account on that
-branch and commit. Unrelated repository activity cannot complete the attempt.
-Review workers must submit a new verdict as the authenticated reviewer on the
-specified PR and unchanged captured head. Printed verdicts do not count.
+Every registry entry has five explicit fields: CLI, label, model ID, thinking
+level, and canonical model family. Both CLI adapters receive only the thinking
+level; `NATIART_MODEL` retains the CLI/model/effort footer and
+`NATIART_MODEL_FAMILY` carries family separately. Malformed rows fail before
+launch. Actual offline adapter tests exercise both production model entries.
+
+Successful implementation work requires the cycle-scoped private result JSON,
+a changed local branch at its full SHA, the identical pushed remote tip, and an
+open PR by the authenticated author. Review success requires a new authenticated
+head-bound review on the specified target. Foreign concurrent PR/review activity
+and printed references cannot complete a worker. Numeric bounds and private,
+distinct retry logs remain enforced.
 
 ### Captured candidate validation
 

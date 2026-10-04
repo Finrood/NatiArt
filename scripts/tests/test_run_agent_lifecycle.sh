@@ -144,7 +144,7 @@ esac
 EOF
 chmod +x "$FAKEBIN/opencode"
 cat >"$ROOT/models.conf" <<'EOF'
-PRIORITY=("opencode|fake|fake/model|xhigh")
+PRIORITY=("opencode|fake|fake/model|xhigh|fake-family")
 EOF
 
 common=(env "PATH=$FAKEBIN:$PATH" NATIART_MODELS_CONF="$ROOT/models.conf" NATIART_OUTCOME_DIR="$ROOT/outcomes"

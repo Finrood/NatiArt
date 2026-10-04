@@ -58,6 +58,27 @@ EOF
 log() { echo "[$(date -Is)] $*"; }
 log_err() { echo "[$(date -Is)] ERROR: $*" >&2; }
 
+bounded_decimal() { # $1=value $2=option $3=min $4=max; prints canonical integer
+    local raw="$1" option="$2" min="$3" max="$4" normalized value
+    if [[ ! "$raw" =~ ^[0-9]+$ ]]; then
+        log_err "$option must be a base-10 integer in [$min,$max], got '$raw'."
+        return 1
+    fi
+    normalized="${raw#${raw%%[!0]*}}"
+    normalized="${normalized:-0}"
+    # Avoid handing arbitrarily long input to shell arithmetic at all.
+    if (( ${#normalized} > ${#max} )); then
+        log_err "$option is outside [$min,$max]."
+        return 1
+    fi
+    value=$((10#$normalized))
+    if (( value < min || value > max )); then
+        log_err "$option is outside [$min,$max]."
+        return 1
+    fi
+    printf '%d\n' "$value"
+}
+
 # --- argument parsing ------------------------------------------------------
 PROMPT_ARGS=()
 while [[ $# -gt 0 ]]; do
@@ -88,10 +109,9 @@ if [[ -z "$BUDGET" ]]; then
         review) BUDGET=360 ;;
     esac
 fi
-if [[ ! "$BUDGET" =~ ^[0-9]+$ ]] || [[ "$BUDGET" -eq 0 ]]; then
-    log_err "Invalid --budget '$BUDGET'."
-    exit 2
-fi
+if ! BUDGET="$(bounded_decimal "$BUDGET" --budget 1 86400)"; then exit 2; fi
+if ! STALL_SEC="$(bounded_decimal "$STALL_SEC" --stall 1 86400)"; then exit 2; fi
+if ! SIMULATE_QUOTA_AT="$(bounded_decimal "$SIMULATE_QUOTA_AT" --simulate-quota-at 0 10000)"; then exit 2; fi
 # Role stall defaults: a review (360s total) must fail over from a silent
 # quota-dead model in seconds, while a cycle (1500s) may legitimately go quiet
 # for minutes inside Gradle/npm runs — killing a healthy attempt there would
@@ -131,9 +151,27 @@ fi
 # level silently downgrades to whatever the provider picks, so it is a loud
 # config error, not a default.
 for _conf_entry in "${PRIORITY[@]}"; do
-    IFS='|' read -r _conf_cli _conf_label _conf_model _conf_think <<< "$_conf_entry"
+    if [[ ! "$_conf_entry" =~ ^[^\|]+\|[^\|]+\|[^\|]+\|[^\|]*\|[^\|]+$ ]]; then
+        log_err "agent-models.conf entry must contain CLI|label|model_id|thinking_level|canonical_model_family fields."
+        exit 2
+    fi
+    IFS='|' read -r _conf_cli _conf_label _conf_model _conf_think _conf_family <<< "$_conf_entry"
+    case "$_conf_cli" in
+        opencode|cline) ;;
+        *) log_err "agent-models.conf entry '$_conf_label' uses unsupported CLI '$_conf_cli'."; exit 2 ;;
+    esac
+    if [[ ! "$_conf_label" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ || \
+          ! "$_conf_model" =~ ^[^[:space:]\|]+$ ]]; then
+        log_err "agent-models.conf entry has an invalid label or model ID."
+        exit 2
+    fi
+    [[ "$_conf_family" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || { log_err "agent-models.conf entry has an invalid model family."; exit 2; }
     if [[ -z "${_conf_think:-}" ]]; then
         log_err "agent-models.conf entry '$_conf_label' has no thinking level (policy: always xhigh, never provider default)."
+        exit 2
+    fi
+    if [[ ! "$_conf_think" =~ ^[^[:space:]\|]+$ ]]; then
+        log_err "agent-models.conf entry '$_conf_label' has an invalid thinking level."
         exit 2
     fi
     if [[ "$_conf_think" != "xhigh" ]]; then
@@ -148,12 +186,25 @@ done
 # INFERENCE_CAP_ERROR/429, Anthropic-style 529 overload/capacity.
 QUOTA_RE='quota|rate.?limit(ed)?|429|too many requests|insufficient[_ ]quota|(monthly|daily|usage|free tier) (quota|limit)|credits? (depleted|exhausted)|billing issu|out of (free )?usage|overloaded_error|overload(ed)?[^[:alnum:]]*(capacity|server)|529'
 
-# Reviewer/author independence: drop skipped models up front (substring match on
-# cli:model_id or label). A skip list that empties the pool is ignored — never
-# idle when a model could run.
+# Reviewer/author independence: resolve skip tokens to canonical model families,
+# then drop every gateway/CLI entry for those families. A skip list that empties
+# the pool is a hard manual-review condition, not permission to review with the
+# same weights under another alias.
 EFFECTIVE=()
+SKIP_FAMILIES=()
 for entry in "${PRIORITY[@]}"; do
-    IFS='|' read -r cli label model_id think <<< "$entry"
+    IFS='|' read -r cli label model_id think family <<< "$entry"
+    family="${family:-$label}"
+    for s in ${SKIP[@]+"${SKIP[@]}"}; do
+        if [[ "$cli:$model_id" == *"$s"* || "$label" == *"$s"* || "$family" == *"$s"* || "$s" == *"$cli:$model_id"* || "$s" == *"$label"* || "$s" == *"$family"* ]]; then
+            SKIP_FAMILIES+=("$family")
+            break
+        fi
+    done
+done
+for entry in "${PRIORITY[@]}"; do
+    IFS='|' read -r cli label model_id think family <<< "$entry"
+    family="${family:-$label}"
     case "$cli" in
         opencode) bin="opencode" ;;
         cline) bin="cline" ;;
@@ -164,10 +215,8 @@ for entry in "${PRIORITY[@]}"; do
         continue
     fi
     skip_hit=""
-    for s in ${SKIP[@]+"${SKIP[@]}"}; do
-        # Bidirectional: footers carry cli:model_id[/think] (needle longer than
-        # haystack), labels carry short names — either direction may contain.
-        if [[ "$cli:$model_id" == *"$s"* || "$label" == *"$s"* || "$s" == *"$cli:$model_id"* || "$s" == *"$label"* ]]; then skip_hit="$s"; break; fi
+    for skip_family in "${SKIP_FAMILIES[@]}"; do
+        if [[ "$family" == "$skip_family" ]]; then skip_hit="$skip_family"; break; fi
     done
     if [[ -n "$skip_hit" ]]; then
         log "Skipping $label ($model_id) for independence (matched --skip '$skip_hit')."
@@ -176,8 +225,8 @@ for entry in "${PRIORITY[@]}"; do
     fi
 done
 if [[ "${#EFFECTIVE[@]}" -eq 0 && "${#SKIP[@]}" -gt 0 ]]; then
-    log "WARNING: --skip emptied the model pool; ignoring skips."
-    EFFECTIVE=("${PRIORITY[@]}")
+    log_err "--skip removed every runnable model family; independent review is unavailable. Manual review is required."
+    exit 4
 fi
 if [[ "${#EFFECTIVE[@]}" -eq 0 ]]; then
     log_err "No runnable models: every CLI is missing (not a quota event — needs a human)."
@@ -187,7 +236,7 @@ fi
 if [[ "$CHECK_ONLY" -eq 1 ]]; then
     log "Check-only: effective priority list (first = preferred):"
     for entry in "${EFFECTIVE[@]}"; do
-        IFS='|' read -r cli label model_id think <<< "$entry"
+        IFS='|' read -r cli label model_id think family <<< "$entry"
         log "  - [$cli] $label ($model_id${think:+, $think})"
     done
     printf '%s\n' "$(echo "${EFFECTIVE[0]}" | cut -d'|' -f2)"
@@ -396,6 +445,7 @@ launch_attempt() { # $1=cli $2=model_id $3=think; spawns child bg, sets $PID
     # Tell the agent which model it is running as (PR footers / review verdicts
     # name it; agents read it via `echo "$NATIART_MODEL"` in their bash tool).
     export NATIART_MODEL="$cli:$model_id${think:+/$think}"
+    export NATIART_MODEL_FAMILY="$family"
     # Repo root for prompts that reference $REPO_ROOT (review worktrees).
     export REPO_ROOT="$REPO"
     case "$cli" in
@@ -432,7 +482,7 @@ attempt=0
 BLOCKED_ROUNDS=0 # consecutive full-pool blocked rounds (drives backoff below)
 while true; do
     for entry in "${EFFECTIVE[@]}"; do
-        IFS='|' read -r cli label model_id think <<< "$entry"
+        IFS='|' read -r cli label model_id think family <<< "$entry"
 
         remaining=$(( DEADLINE - $(date +%s) ))
         if (( remaining <= 10 )); then
