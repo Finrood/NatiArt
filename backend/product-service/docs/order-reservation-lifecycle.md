@@ -55,3 +55,30 @@ Payment idempotency rows that remain `IN_PROGRESS` beyond
 `FAILED_RECOVERABLE`. They are not silently retried because a provider charge
 may have succeeded before the process stopped; reconciliation must establish
 the provider result first.
+
+## Atomic account budget
+
+The manager initializes a persistent `order_reservation_owner` row before the
+creation transaction, then that transaction locks the row before counting
+`PENDING` orders. The lock remains held until the order insertion and stock
+reservation commit or roll back. Different accounts lock different rows. The
+count uses committed order state rather than a separate mutable counter, so
+rollback, payment, cancellation and expiry cannot leak or double-release capacity.
+Existing pending orders count toward the limit as soon as their owner row is
+initialized. Replays return their existing order before taking a new budget slot.
+
+For an existing PostgreSQL deployment, pause new checkouts and drain creation
+transactions before deploying this change across every product-service instance.
+Apply the additive table first, then resume checkouts only when every creator
+uses the account lock (an older instance can still bypass the budget):
+
+```sql
+CREATE TABLE IF NOT EXISTS order_reservation_owner (
+    owner_external_id varchar(255) PRIMARY KEY
+);
+```
+
+Rows are initialized lazily; no order backfill is needed. Do not delete these
+lock rows while checkout creation is running. The initializer's first-insert
+race rolls back independently and proceeds only after verifying the committed
+winner; it cannot poison the stock/order transaction.

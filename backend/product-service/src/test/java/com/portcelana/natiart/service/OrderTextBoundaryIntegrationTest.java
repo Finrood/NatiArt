@@ -77,12 +77,14 @@ class OrderTextBoundaryIntegrationTest {
     private CustomerUploadService customerUploads;
 
     private MockMvc http;
+    private String ownerExternalId;
     private final JsonMapper json = JsonMapper.builder().build();
 
     @BeforeEach
     void setup() {
+        ownerExternalId = "text-boundary-" + UUID.randomUUID();
         final AuthenticationResponseDto.Principal principal = mock(AuthenticationResponseDto.Principal.class);
-        when(principal.getExternalId()).thenReturn("owner");
+        when(principal.getExternalId()).thenReturn(ownerExternalId);
         http = MockMvcBuilders.standaloneSetup(new OrderController(manager, views))
                 .setControllerAdvice(new ControllerAdvice())
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
@@ -121,6 +123,66 @@ class OrderTextBoundaryIntegrationTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"firstname", "street", "complement"})
+    void normalizedMaximumContactAndAddressTextCommitsAndOverLimitFailsBeforeEgress(String field) throws Exception {
+        final Category category =
+                categories.saveAndFlush(new Category(UUID.randomUUID().toString()));
+        final Product product = products.saveAndFlush(
+                new Product("Plate", BigDecimal.TEN).setCategory(category).setStockQuantity(2));
+        when(productManager.getProductsOrDie(List.of(product.getId()))).thenReturn(Map.of(product.getId(), product));
+        when(shipping.requireQuoteForOrder(any(), any(), any(), any(), any()))
+                .thenReturn(new com.portcelana.natiart.model.ShippingQuote()
+                        .setItems(List.of(new com.portcelana.natiart.model.ShippingQuoteItem(
+                                product.getId(), 1, BigDecimal.TEN, product.getVersion())))
+                        .setShippingAmount(BigDecimal.ZERO)
+                        .setItemAmount(BigDecimal.TEN)
+                        .setTotalAmount(BigDecimal.TEN));
+        final OrderDto request = request("N/A")
+                .setItems(
+                        List.of(new OrderItemDto().setProductId(product.getId()).setQuantity(1)));
+        final String expected = "a".repeat(255);
+        switch (field) {
+            case "firstname" -> request.setFirstname(" " + expected + " ");
+            case "street" -> request.setStreet(" " + expected + " ");
+            default -> request.setComplement(" " + expected + " ");
+        }
+        final String key = UUID.randomUUID().toString();
+        http.perform(post("/orders/create")
+                        .header("Idempotency-Key", key)
+                        .contentType("application/json")
+                        .content(json.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$." + field).value(expected));
+        final com.portcelana.natiart.model.CustomerOrder saved = orders.findByOwnerExternalIdAndIdempotencyKey(
+                        ownerExternalId, key)
+                .orElseThrow();
+        assertEquals(
+                expected,
+                switch (field) {
+                    case "firstname" -> saved.getFirstname();
+                    case "street" -> saved.getStreet();
+                    default -> saved.getComplement();
+                });
+        final String over = "a".repeat(256);
+        switch (field) {
+            case "firstname" -> request.setFirstname(over);
+            case "street" -> request.setStreet(over);
+            default -> request.setComplement(over);
+        }
+        org.mockito.Mockito.clearInvocations(shipping, productManager);
+        final long count = orders.count();
+        http.perform(post("/orders/create")
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType("application/json")
+                        .content(json.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.field").value(field));
+        verifyNoInteractions(shipping, productManager);
+        assertEquals(count, orders.count());
+        assertEquals(1, products.findById(product.getId()).orElseThrow().getStockQuantity());
+    }
+
+    @ParameterizedTest
     @NullSource
     @ValueSource(strings = {"", "   ", "over-limit"})
     void invalidHouseNumberIsFieldErrorBeforeEgressOrWrites(String value) throws Exception {
@@ -150,11 +212,11 @@ class OrderTextBoundaryIntegrationTest {
         when(productManager.getProductsOrDie(List.of(product.getId()))).thenReturn(Map.of(product.getId(), product));
         when(shipping.requireQuoteForOrder(any(), any(), any(), any(), any()))
                 .thenReturn(new com.portcelana.natiart.model.ShippingQuote()
+                        .setItems(List.of(new com.portcelana.natiart.model.ShippingQuoteItem(
+                                product.getId(), 1, BigDecimal.TEN, product.getVersion())))
                         .setShippingAmount(BigDecimal.ZERO)
                         .setItemAmount(BigDecimal.TEN)
-                        .setTotalAmount(BigDecimal.TEN)
-                        .setItems(List.of(new com.portcelana.natiart.model.ShippingQuoteItem(
-                                product.getId(), 1, BigDecimal.TEN, 0))));
+                        .setTotalAmount(BigDecimal.TEN));
         final OrderDto request = request(submitted)
                 .setItems(
                         List.of(new OrderItemDto().setProductId(product.getId()).setQuantity(1)));
@@ -167,7 +229,7 @@ class OrderTextBoundaryIntegrationTest {
                 .andExpect(jsonPath("$.houseNumber").value(expected));
         assertEquals(
                 expected,
-                orders.findByOwnerExternalIdAndIdempotencyKey("owner", key)
+                orders.findByOwnerExternalIdAndIdempotencyKey(ownerExternalId, key)
                         .orElseThrow()
                         .getHouseNumber());
         // The same normalized snapshot replays without a second stock reservation.

@@ -73,6 +73,16 @@ class JwtAuthFilterTest {
     }
 
     @Test
+    void recoveryLookalikesAndWrongMethodRetainAccessValidation() throws Exception {
+        assertEquals(TokenType.AUTH_ACCESS, capturedTokenTypeFor("POST", "/password-reset-evil"));
+    }
+
+    @Test
+    void wrongRecoveryMethodRetainsAccessValidation() throws Exception {
+        assertEquals(TokenType.AUTH_ACCESS, capturedTokenTypeFor("GET", "/password-reset/request"));
+    }
+
+    @Test
     void exactRefreshTokenPost_validatesRefreshToken() throws Exception {
         assertEquals(TokenType.AUTH_REFRESH, capturedTokenTypeFor("POST", "/refresh-token"));
     }

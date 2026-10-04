@@ -31,9 +31,9 @@ import com.portcelana.natiart.model.PaymentIdempotency;
 import com.portcelana.natiart.model.PaymentIdempotencyStatus;
 import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
+import com.portcelana.natiart.repository.OrderReservationOwnerRepository;
 import com.portcelana.natiart.repository.PaymentIdempotencyRepository;
 import com.portcelana.natiart.repository.PaymentRepository;
-import com.portcelana.natiart.service.support.DomainValidation;
 
 @Service
 public class OrderManagerImpl implements OrderManager {
@@ -72,6 +72,7 @@ public class OrderManagerImpl implements OrderManager {
 
     /** Test-friendly constructor; production uses the transaction-owning bean above. */
     OrderManagerImpl(
+            OrderReservationOwnerRepository reservationOwners,
             OrderRepository orderRepository,
             ProductManager productManager,
             com.portcelana.natiart.repository.ProductRepository productRepository,
@@ -81,7 +82,8 @@ public class OrderManagerImpl implements OrderManager {
             ShippingQuoteService shippingQuoteService) {
         this(
                 orderRepository,
-                new OrderCreationService(orderRepository, productManager, productRepository, shippingQuoteService),
+                new OrderCreationService(
+                        reservationOwners, orderRepository, productManager, productRepository, shippingQuoteService),
                 productRepository,
                 paymentRepository,
                 paymentIdempotencyRepository,
@@ -170,7 +172,7 @@ public class OrderManagerImpl implements OrderManager {
             throw new IllegalArgumentException("An order must have an owner");
         }
         final String normalizedKey = normalizeIdempotencyKey(idempotencyKey);
-        orderDto.setHouseNumber(DomainValidation.requiredText(orderDto.getHouseNumber(), "houseNumber", 255));
+        orderDto.setZipCode(OrderCreationService.validateContactDetails(orderDto));
         final String fingerprint = fingerprint(orderDto);
 
         if (normalizedKey != null) {
@@ -180,6 +182,7 @@ public class OrderManagerImpl implements OrderManager {
             }
         }
 
+        orderCreationService.prepareReservationOwner(ownerExternalId);
         try {
             return orderCreationService.createOrder(orderDto, ownerExternalId, normalizedKey, fingerprint);
         } catch (UnusableCustomerUploadException exception) {

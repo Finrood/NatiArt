@@ -108,33 +108,33 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   constructor() {
     this.checkoutForm = this._fb.group({
       userInfo: this._fb.group({
-        firstname: ['', Validators.required],
-        lastname: ['', Validators.required],
+        firstname: ['', [Validators.required, Validators.maxLength(255)]],
+        lastname: ['', [Validators.required, Validators.maxLength(255)]],
         cpf: ['', [Validators.required, CustomCpfValidators.validCpf()]],
-        email: ['', [Validators.required, Validators.email]],
-        phone: ['', Validators.pattern('[()0-9 -]*')],
+        email: ['', [Validators.required, Validators.email, Validators.maxLength(255)]],
+        phone: ['', [Validators.pattern('[()0-9 -]*'), Validators.maxLength(255)]],
       }),
       shippingInfo: this._fb.group({
-        country: ['Brazil', Validators.required],
-        state: ['', Validators.required],
-        city: ['', Validators.required],
-        neighborhood: ['', Validators.required],
+        country: ['Brazil', [Validators.required, Validators.maxLength(255)]],
+        state: ['', [Validators.required, Validators.maxLength(255)]],
+        city: ['', [Validators.required, Validators.maxLength(255)]],
+        neighborhood: ['', [Validators.required, Validators.maxLength(255)]],
         zipCode: ['', [Validators.required, CustomCepValidators.validCep()]],
-        street: ['', Validators.required],
+        street: ['', [Validators.required, Validators.maxLength(255)]],
         houseNumber: ['', [Validators.required, Validators.maxLength(255), Validators.pattern(/\S/)]],
-        complement: [''],
+        complement: ['', Validators.maxLength(255)],
       }),
       billingInfo: this._fb.group({
-        country: ['Brazil'],
-        state: [''],
-        city: [''],
-        neighborhood: [''],
+        country: ['Brazil', Validators.maxLength(255)],
+        state: ['', Validators.maxLength(255)],
+        city: ['', Validators.maxLength(255)],
+        neighborhood: ['', Validators.maxLength(255)],
         zipCode: ['', Validators.pattern(/^\d{5}-\d{3}$/)],
-        street: [''],
-        complement: [''],
+        street: ['', Validators.maxLength(255)],
+        complement: ['', Validators.maxLength(255)],
       }),
       paymentInfo: this._fb.group({
-        paymentMethod: ['', Validators.required],
+        paymentMethod: ['', [Validators.required, Validators.maxLength(255)]],
       }),
     });
 
@@ -271,8 +271,19 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       if (this.destroyed || this.attemptStorageFailed) {
         return;
       }
-      if (!user || !user.externalId) {
-        this.setErrorMessage($localize`Could not retrieve customer ID for payment. Please try again.`);
+      // Provisioning can complete after login; retrieve the latest caller state.
+      const paymentUser: User = user?.externalId
+        ? user
+        : await firstValueFrom(this._authenticationService.fetchCurrentUser().pipe(takeUntil(this.destroy$)));
+      if (this.destroyed) return;
+      if (!paymentUser.externalId) {
+        if (paymentUser.provisioningStatus === 'PENDING' || paymentUser.provisioningStatus === 'IN_PROGRESS') {
+          this.setErrorMessage($localize`Your payment account is being prepared. Please try again shortly.`);
+        } else if (paymentUser.provisioningStatus === 'FAILED') {
+          this.setErrorMessage($localize`Your payment account needs assistance. Please contact support.`);
+        } else {
+          this.setErrorMessage($localize`Could not retrieve customer ID for payment. Please try again.`);
+        }
         return;
       }
 
@@ -322,7 +333,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         this.setErrorMessage($localize`Could not confirm your order. Please try again.`);
         return;
       }
-      this._cartService.rememberPurchase(order.id, user.externalId, this.purchasedCartLines);
+      this._cartService.rememberPurchase(order.id, paymentUser.externalId, this.purchasedCartLines);
       this.currentOrder = order;
       this.persistAttempt(user.username);
 
@@ -356,7 +367,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
       const pixPaymentData: PaymentCreationRequest = {
         paymentProcessor: 'ASAAS',
-        customerId: user.externalId,
+        customerId: paymentUser.externalId,
         billingType: PaymentMethod.PIX,
         orderId: order.id,
         value: order.totalAmount,

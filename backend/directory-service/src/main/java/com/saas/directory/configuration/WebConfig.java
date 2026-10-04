@@ -25,7 +25,9 @@ public class WebConfig {
         final CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
         config.setAllowedOrigins(allowedOrigins);
-        config.setAllowedHeaders(List.of("Origin", "Content-Type", "Accept", "Authorization"));
+        config.setAllowedHeaders(
+                List.of("Origin", "Content-Type", "Accept", "Authorization", RequestCorrelationFilter.HEADER_NAME));
+        config.setExposedHeaders(List.of(RequestCorrelationFilter.HEADER_NAME));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setMaxAge(3600L);
         source.registerCorsConfiguration("/**", config);

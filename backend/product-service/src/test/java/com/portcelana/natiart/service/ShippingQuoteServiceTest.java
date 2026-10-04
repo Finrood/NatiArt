@@ -34,16 +34,25 @@ import com.portcelana.natiart.dto.shipping.ShippingQuoteRequest;
 import com.portcelana.natiart.dto.shipping.ShippingQuoteResponse;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.CustomerUpload;
+import com.portcelana.natiart.model.OrderReservationOwner;
 import com.portcelana.natiart.model.Package;
 import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.model.ShippingQuote;
 import com.portcelana.natiart.model.support.PersonalizationOption;
 import com.portcelana.natiart.repository.OrderRepository;
+import com.portcelana.natiart.repository.OrderReservationOwnerRepository;
 import com.portcelana.natiart.repository.ProductRepository;
 import com.portcelana.natiart.repository.ShippingQuoteRepository;
 
 @ExtendWith(MockitoExtension.class)
 class ShippingQuoteServiceTest {
+    @BeforeEach
+    void configureReservationOwnerLock() {
+        org.mockito.Mockito.lenient()
+                .when(reservationOwners.findByOwnerExternalIdForUpdate(org.mockito.ArgumentMatchers.anyString()))
+                .thenAnswer(invocation -> java.util.Optional.of(new OrderReservationOwner(invocation.getArgument(0))));
+    }
+
     private static final Instant NOW = Instant.parse("2030-01-01T00:00:00Z");
 
     @Mock
@@ -60,6 +69,9 @@ class ShippingQuoteServiceTest {
 
     @Mock
     private ProductManager productManager;
+
+    @Mock
+    private OrderReservationOwnerRepository reservationOwners;
 
     @Mock
     private OrderRepository orderRepository;
@@ -190,6 +202,7 @@ class ShippingQuoteServiceTest {
         when(customerUploadService.claimForOrder(uploadId, "owner-1"))
                 .thenReturn(new CustomerUpload(uploadId, "owner-1", "file:customer-uploads/art.webp", "image/webp", 3));
         final CustomerOrder order = new OrderCreationService(
+                        reservationOwners,
                         orderRepository,
                         productManager,
                         productRepository,
@@ -198,6 +211,12 @@ class ShippingQuoteServiceTest {
                         new BigDecimal("2.50"))
                 .createOrder(
                         new OrderDto()
+                                .setHouseNumber("N/A")
+                                .setCountry("Brazil")
+                                .setState("SP")
+                                .setCity("City")
+                                .setNeighborhood("Area")
+                                .setStreet("Street")
                                 .setFirstname("Ada")
                                 .setHouseNumber("N/A")
                                 .setLastname("Lovelace")

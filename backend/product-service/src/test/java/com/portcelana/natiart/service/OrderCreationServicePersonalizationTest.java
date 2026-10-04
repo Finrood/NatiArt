@@ -29,15 +29,26 @@ import com.portcelana.natiart.dto.OrderItemDto;
 import com.portcelana.natiart.dto.PersonalizationDto;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.CustomerUpload;
+import com.portcelana.natiart.model.OrderReservationOwner;
 import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.model.ShippingQuote;
 import com.portcelana.natiart.model.ShippingQuoteItem;
 import com.portcelana.natiart.model.support.PersonalizationOption;
 import com.portcelana.natiart.repository.OrderRepository;
+import com.portcelana.natiart.repository.OrderReservationOwnerRepository;
 import com.portcelana.natiart.repository.ProductRepository;
 
 @ExtendWith(MockitoExtension.class)
 class OrderCreationServicePersonalizationTest {
+    @BeforeEach
+    void configureReservationOwnerLock() {
+        org.mockito.Mockito.lenient()
+                .when(reservationOwners.findByOwnerExternalIdForUpdate(org.mockito.ArgumentMatchers.anyString()))
+                .thenAnswer(invocation -> java.util.Optional.of(new OrderReservationOwner(invocation.getArgument(0))));
+    }
+
+    @Mock
+    private OrderReservationOwnerRepository reservationOwners;
 
     @Mock
     private OrderRepository orderRepository;
@@ -60,6 +71,7 @@ class OrderCreationServicePersonalizationTest {
     @BeforeEach
     void setUp() {
         service = new OrderCreationService(
+                reservationOwners,
                 orderRepository,
                 productManager,
                 productRepository,
@@ -180,6 +192,7 @@ class OrderCreationServicePersonalizationTest {
         when(productManager.getProductsOrDie(List.of("p1"))).thenReturn(Map.of("p1", product));
         when(productRepository.decreaseStockIfAvailable(product.getId(), 2)).thenReturn(1);
         service = new OrderCreationService(
+                reservationOwners,
                 orderRepository,
                 productManager,
                 productRepository,
@@ -209,10 +222,42 @@ class OrderCreationServicePersonalizationTest {
                 .setPersonalization(new PersonalizationDto().setPersonalizationOptions(options));
     }
 
+    @Test
+    void prepareReservationOwnerAcceptsOnlyACommittedConcurrentWinner() {
+        final org.springframework.dao.DataIntegrityViolationException concurrentInsert =
+                new org.springframework.dao.DataIntegrityViolationException("duplicate owner");
+        org.mockito.Mockito.doThrow(concurrentInsert).when(reservationOwners).initializeOwner("owner-1");
+        when(reservationOwners.existsById("owner-1")).thenReturn(true);
+
+        service.prepareReservationOwner("owner-1");
+
+        org.mockito.Mockito.verify(reservationOwners).existsById("owner-1");
+    }
+
+    @Test
+    void prepareReservationOwnerPropagatesIntegrityFailureWithoutACommittedWinner() {
+        final org.springframework.dao.DataIntegrityViolationException failure =
+                new org.springframework.dao.DataIntegrityViolationException("unrelated integrity failure");
+        org.mockito.Mockito.doThrow(failure).when(reservationOwners).initializeOwner("owner-1");
+        when(reservationOwners.existsById("owner-1")).thenReturn(false);
+
+        assertEquals(
+                failure,
+                assertThrows(
+                        org.springframework.dao.DataIntegrityViolationException.class,
+                        () -> service.prepareReservationOwner("owner-1")));
+    }
+
     private OrderDto validOrder() {
         return new OrderDto()
-                .setFirstname("Ada")
                 .setHouseNumber("N/A")
+                .setZipCode("01001000")
+                .setCountry("Brazil")
+                .setState("SP")
+                .setCity("City")
+                .setNeighborhood("Area")
+                .setStreet("Street")
+                .setFirstname("Ada")
                 .setLastname("Lovelace")
                 .setEmail("ada@example.test");
     }
