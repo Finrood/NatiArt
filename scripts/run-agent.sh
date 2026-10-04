@@ -203,10 +203,19 @@ quota_blocked() { # $1 = rc, $2 = log file; 0 if quota, 1 otherwise
     return 1
 }
 
-print_tail() { # $1 = log file
+redact_output() { # redact complete credentials before any output truncation
+    sed -E \
+        -e 's/sk-[A-Za-z0-9_-]+/[REDACTED]/g' \
+        -e 's/(bearer[[:space:]]+)[A-Za-z0-9._~+\/-]+=*/\1[REDACTED]/Ig' \
+        -e 's/((ACCESS_KEY|SECRET|api[_-]?key|password)"?[[:space:]]*[:=][[:space:]]*)"[^"]*"/\1"[REDACTED]"/Ig' \
+        -e "s/((ACCESS_KEY|SECRET|api[_-]?key|password)'?[[:space:]]*[:=][[:space:]]*)'[^']*'/\1'[REDACTED]'/Ig" \
+        -e "s/((ACCESS_KEY|SECRET|api[_-]?key|password)[\"']?[[:space:]]*[:=][[:space:]]*)[^\"'[:space:],;}]+/\1[REDACTED]/Ig"
+}
+
+print_tail() { # $1 = log file; shares the retained outcome's redaction boundary
     local f="$1"
     echo "--- last lines of the attempt ($f) ---"
-    tail -n 15 "$f" 2>/dev/null || true
+    redact_output < "$f" | tail -n 15 | tail -c 16384 || true
 }
 
 retain_outcome() { # writes a bounded, redacted recovery artifact before cleanup
@@ -221,10 +230,7 @@ retain_outcome() { # writes a bounded, redacted recovery artifact before cleanup
         printf 'role=%s\nmodel=%s\nattempt=%s\nreason=%s\nrc=%s\n' \
             "$ROLE" "${NATIART_MODEL:-unknown}" "${attempt:-0}" \
             "${reason:-unknown}" "${rc:-unknown}"
-        tail -c 16384 "$f" | sed -E \
-            -e 's/sk-[A-Za-z0-9]+/[REDACTED]/g' \
-            -e 's/(ACCESS_KEY|SECRET|api[_-]?key|password)[=:][^[:space:]]+/\1=[REDACTED]/Ig' \
-            -e 's/(bearer )[A-Za-z0-9._-]+/\1[REDACTED]/Ig' || true
+        redact_output < "$f" | tail -c 16384 || true
     } >"$tmp"
     chmod 600 "$tmp"
     mv -f "$tmp" "$artifact"

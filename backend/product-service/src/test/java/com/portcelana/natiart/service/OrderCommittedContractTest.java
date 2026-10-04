@@ -115,6 +115,11 @@ class OrderCommittedContractTest {
                 .setLastname("Customer")
                 .setEmail("contract@example.test")
                 .setZipCode("01001000")
+                .setCountry("Brazil")
+                .setState("SP")
+                .setCity("City")
+                .setNeighborhood("Area")
+                .setStreet("Street")
                 .setHouseNumber("N/A")
                 .setItems(items);
     }

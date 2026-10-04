@@ -1,5 +1,8 @@
 package com.portcelana.natiart.dto.shipping;
 
+import com.portcelana.natiart.service.support.DomainValidation;
+import com.portcelana.natiart.service.support.InputValidationException;
+
 public class ShippingEstimateRequest {
     private final String to;
     private final float weight; // in KG
@@ -9,23 +12,14 @@ public class ShippingEstimateRequest {
     private final int quantity;
 
     public ShippingEstimateRequest(String to, float weight, float length, float width, float height, int quantity) {
-        if (to == null || to.isBlank()) {
-            throw new IllegalArgumentException("Destination postal code cannot be empty");
-        }
-        if (!Float.isFinite(weight)
-                || !Float.isFinite(length)
-                || !Float.isFinite(width)
-                || !Float.isFinite(height)
-                || weight <= 0
-                || length <= 0
-                || width <= 0
-                || height <= 0) {
-            throw new IllegalArgumentException("Shipping weight and dimensions must be greater than zero");
-        }
+        this.to = DomainValidation.cep(to);
+        DomainValidation.shippingWeight(weight);
+        DomainValidation.finitePositive(length, "length", 200);
+        DomainValidation.finitePositive(width, "width", 200);
+        DomainValidation.finitePositive(height, "height", 200);
         if (quantity < 1 || quantity > 100) {
-            throw new IllegalArgumentException("Shipping quantity must be between one and 100");
+            throw new InputValidationException("quantity", "quantity must be between 1 and 100");
         }
-        this.to = to;
         this.weight = weight;
         this.length = length;
         this.width = width;

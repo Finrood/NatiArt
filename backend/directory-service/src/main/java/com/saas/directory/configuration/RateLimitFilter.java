@@ -31,8 +31,14 @@ import com.saas.directory.service.RateLimitStore;
 public class RateLimitFilter extends OncePerRequestFilter {
     static final String INTERNAL_SERVICE_TOKEN_HEADER = "X-Internal-Service-Token";
     private static final String INTERNAL_VALIDATION_BUCKET = "internal-token-validation";
-    private static final List<String> PROTECTED_ROUTES =
-            List.of("/login", "/register-user", "/validate-token", "/refresh-token", "/client-errors");
+    private static final List<String> PROTECTED_ROUTES = List.of(
+            "/login",
+            "/register-user",
+            "/validate-token",
+            "/refresh-token",
+            "/password-reset/request",
+            "/password-reset",
+            "/client-errors");
     private final int maxRequestsPerWindow;
     private final int clientErrorMaxRequestsPerWindow;
     private final int internalValidationMaxRequestsPerWindow;

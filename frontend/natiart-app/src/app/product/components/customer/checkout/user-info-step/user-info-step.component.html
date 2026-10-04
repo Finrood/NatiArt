@@ -1,16 +1,16 @@
 <div [formGroup]="userInfoGroup" class="space-y-4">
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
     <app-natiart-form-field label="First Name" controlName="firstname" [form]="userInfoGroup" i18n-label>
-      <input formControlName="firstname" id="firstname" type="text" placeholder="John" class="form-input" i18n-placeholder>
+      <input formControlName="firstname" id="firstname" type="text" placeholder="John" maxlength="255" class="form-input" i18n-placeholder>
     </app-natiart-form-field>
 
     <app-natiart-form-field label="Last Name" controlName="lastname" [form]="userInfoGroup" i18n-label>
-      <input formControlName="lastname" id="lastname" type="text" placeholder="Doe" class="form-input" i18n-placeholder>
+      <input formControlName="lastname" id="lastname" type="text" placeholder="Doe" maxlength="255" class="form-input" i18n-placeholder>
     </app-natiart-form-field>
   </div>
 
   <app-natiart-form-field label="Email Address" controlName="email" [form]="userInfoGroup" i18n-label>
-    <input formControlName="email" id="email" type="email" placeholder="you@example.com" class="form-input" i18n-placeholder>
+    <input formControlName="email" id="email" type="email" placeholder="you@example.com" maxlength="255" class="form-input" i18n-placeholder>
   </app-natiart-form-field>
 
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -19,7 +19,7 @@
     </app-natiart-form-field>
 
     <app-natiart-form-field label="Phone (Optional)" controlName="phone" [form]="userInfoGroup" [isOptional]="true" i18n-label>
-      <input formControlName="phone" id="phone" type="tel" placeholder="(XX) XXXXX-XXXX" appPhoneFormatBrazil class="form-input" i18n-placeholder>
+      <input formControlName="phone" id="phone" type="tel" placeholder="(XX) XXXXX-XXXX" appPhoneFormatBrazil maxlength="255" class="form-input" i18n-placeholder>
     </app-natiart-form-field>
   </div>
 </div>

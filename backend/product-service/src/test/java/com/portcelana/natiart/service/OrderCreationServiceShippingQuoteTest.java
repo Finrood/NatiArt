@@ -63,6 +63,12 @@ class OrderCreationServiceShippingQuoteTest {
                         orderRepository, productManager, productRepository, shippingQuoteService)
                 .createOrder(
                         new OrderDto()
+                                .setHouseNumber("N/A")
+                                .setCountry("Brazil")
+                                .setState("SP")
+                                .setCity("City")
+                                .setNeighborhood("Area")
+                                .setStreet("Street")
                                 .setFirstname("Ada")
                                 .setHouseNumber("N/A")
                                 .setLastname("Lovelace")

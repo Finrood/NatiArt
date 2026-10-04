@@ -9,7 +9,16 @@
 **/.gradle
 **/product-images
 **/logs
+**/coverage
+**/.angular
 **/*.local
 **/*.secrets
 **/*.secret
 **/*secrets*.json
+**/.env
+**/.env.*
+**/.npmrc
+**/*.pem
+**/*.p12
+**/*.jks
+**/*.key

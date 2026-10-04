@@ -27,6 +27,7 @@ class WebConfigTest {
 
         assertNotNull(config, "Expected a CORS configuration for /**");
         assertEquals(origins, config.getAllowedOrigins());
+        assertTrue(config.getExposedHeaders().contains(RequestCorrelationFilter.HEADER_NAME));
     }
 
     @Test

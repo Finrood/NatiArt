@@ -377,3 +377,13 @@ branch baselines, archives any bounded private candidate for recovery, and clear
 the candidate and accepted handoff. A later no-op or rewrite of a failed
 attempt's pushed result cannot establish success or branch ownership. The
 supervisor independently rechecks the normalized result before enrollment.
+
+### Recovery output redaction
+
+Retained outcomes and forwarded retry tails share one credential redactor. It
+consumes complete `sk-` token alphabets (including hyphens/underscores), bearer
+tokens and quoted or unquoted credential assignments before byte truncation,
+so a key crossing the retained-tail boundary cannot expose its suffix.
+Recovery logs stay private (mode 600) and bounded; raw attempt logs are removed
+after cleanup. This covers supported credential shapes, not arbitrary sensitive
+text in worker output.

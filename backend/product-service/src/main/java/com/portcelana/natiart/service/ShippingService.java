@@ -144,12 +144,13 @@ public class ShippingService {
      * 4xx/5xx responses, so without this mapping every upstream error would
      * surface as a 500.
      *
-     * The raw upstream body is logged server-side only -- it is never embedded
-     * in the exception message because the product advice reflects mapped
-     * messages to the caller.
+     * The upstream body is neither logged nor reflected to the caller.
      */
     static RuntimeException mapShippingError(HttpStatusCodeException e) {
-        LOGGER.warn("Shipping provider API error: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
+        LOGGER.warn(
+                "Shipping provider API error: providerStatusCode={}, responseBodyBytes={}",
+                e.getStatusCode().value(),
+                Math.min(e.getResponseBodyAsByteArray().length, 8192));
         final HttpStatusCode statusCode = e.getStatusCode();
         if (statusCode == HttpStatus.UNAUTHORIZED || statusCode == HttpStatus.FORBIDDEN) {
             return new UserNotAllowedException("Unauthorized api call to the shipping provider");
@@ -165,7 +166,8 @@ public class ShippingService {
     }
 
     static UpstreamServiceException mapShippingTransportError(ResourceAccessException e) {
-        LOGGER.warn("Shipping provider API transport failure: {}", e.getMessage());
+        LOGGER.warn(
+                "Shipping provider API transport failure: type={}", e.getClass().getSimpleName());
         return new UpstreamServiceException("Shipping provider unavailable", HttpStatus.SERVICE_UNAVAILABLE);
     }
 

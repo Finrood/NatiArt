@@ -49,7 +49,8 @@ export class PasswordRequirementsComponent {
       {
         text: $localize`Contains number`,
         valid: results.hasNumber
-      }
+      },
+      {text: $localize`Within the supported password length`, valid: results.hasMaxBytes}
     ];
   }
 }
