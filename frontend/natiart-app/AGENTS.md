@@ -47,7 +47,7 @@ building blocks go in `shared/`. Keep `app.component` a thin shell.
 - Runner: **Karma + Jasmine** (`npm test -- --watch=false
   --browsers=ChromeHeadless`, ChromeHeadless in CI —
   `.github/workflows/frontend_workflow.yml`).
-- 307 passing specs in the current Angular suite. Policy: **test complex logic**
+- 330 passing specs in the current Angular suite. Policy: **test complex logic**
   (services, pipes, state handling);
   obvious markup needs no spec. Boilerplate "should create" specs must keep passing
   (they run in CI).

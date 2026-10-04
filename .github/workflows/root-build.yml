@@ -1,0 +1,39 @@
+name: Root build
+
+on:
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - "build.gradle"
+      - "settings.gradle"
+      - "frontend/build.gradle"
+      - "frontend/natiart-app/build.gradle"
+      - ".github/workflows/root-build.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-all:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Set up JDK 25
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
+        with:
+          distribution: 'corretto'
+          java-version: '25'
+      - name: Set up Node.js 22.22.3
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22.22.3'
+          cache: 'npm'
+          cache-dependency-path: frontend/natiart-app/package-lock.json
+      - name: Set up Gradle caching
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+      - name: Build and test all applications
+        env:
+          CHROME_BIN: /usr/bin/google-chrome
+        run: ./gradlew buildAll --no-daemon
