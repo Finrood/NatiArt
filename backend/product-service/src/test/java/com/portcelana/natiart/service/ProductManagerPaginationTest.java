@@ -51,7 +51,8 @@ class ProductManagerPaginationTest {
                 cartItemRepository,
                 categoryManager,
                 packageManager,
-                storageService);
+                storageService,
+                org.mockito.Mockito.mock(ProductImageLifecycle.class));
     }
 
     @Test

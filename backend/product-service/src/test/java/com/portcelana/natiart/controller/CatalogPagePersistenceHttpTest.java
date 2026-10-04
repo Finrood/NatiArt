@@ -52,6 +52,9 @@ class CatalogPagePersistenceHttpTest {
     @MockitoBean
     private StorageService storage;
 
+    @MockitoBean
+    private com.portcelana.natiart.service.ProductImageLifecycle imageLifecycle;
+
     @Test
     void twentyFirstRowsAreReachableWithMetadataAndCategoryFilteringBeforeStablePaging() throws Exception {
         final List<Category> categoryRows = new ArrayList<>();

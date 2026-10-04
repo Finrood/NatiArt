@@ -43,6 +43,7 @@ public class ProductManagerImpl implements ProductManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductManagerImpl.class);
     private static final BigDecimal MAX_PRODUCT_WEIGHT_KG = BigDecimal.valueOf(1000);
     private static final String IMAGE_KEY_PREFIX = "products/";
+    private static final int MAX_IMAGES_PER_PRODUCT = 10;
 
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
@@ -50,6 +51,7 @@ public class ProductManagerImpl implements ProductManager {
     private final CategoryManager categoryManager;
     private final PackageManager packageManager;
     private final StorageService storageService;
+    private final ProductImageLifecycle imageLifecycle;
 
     public ProductManagerImpl(
             ProductRepository productRepository,
@@ -57,13 +59,15 @@ public class ProductManagerImpl implements ProductManager {
             CartItemRepository cartItemRepository,
             CategoryManager categoryManager,
             PackageManager packageManager,
-            StorageService storageService) {
+            StorageService storageService,
+            ProductImageLifecycle imageLifecycle) {
         this.productRepository = productRepository;
         this.orderRepository = orderRepository;
         this.cartItemRepository = cartItemRepository;
         this.categoryManager = categoryManager;
         this.packageManager = packageManager;
         this.storageService = storageService;
+        this.imageLifecycle = imageLifecycle;
     }
 
     @Override
@@ -263,8 +267,8 @@ public class ProductManagerImpl implements ProductManager {
         requirePositiveWeight(productDto.getWeightKg());
         final Category category = categoryManager.getCategoryOrDie(productDto.getCategoryId());
         final Optional<Package> pack = packageManager.getPackage(productDto.getPackageId());
-        final Product product = getProductOrDie(productDto.getId())
-                .setLabel(label)
+        final Product product = getProductOrDie(productDto.getId());
+        product.setLabel(label)
                 .setDescription(productDto.getDescription())
                 .setCategory(category)
                 .setPackaging(pack.orElse(null))
@@ -280,8 +284,9 @@ public class ProductManagerImpl implements ProductManager {
 
         final List<String> imagesUris = processImages(product, productDto, imagesInput);
         product.setImages(imagesUris);
+        final Product saved = productRepository.save(product);
 
-        return productRepository.save(product);
+        return saved;
     }
 
     @Override
@@ -297,6 +302,7 @@ public class ProductManagerImpl implements ProductManager {
             throw new IllegalArgumentException(
                     "Product [" + product.getLabel() + "] is referenced by an order or cart; deactivate it instead");
         }
+        imageLifecycle.prepareReferences(product.getImages(), List.of());
         productRepository.delete(product);
     }
 
@@ -329,11 +335,15 @@ public class ProductManagerImpl implements ProductManager {
 
     private List<String> processImages(Product product, ProductDto dto, List<InputFile> newImages) {
         final List<InputFile> uploads = newImages != null ? newImages : List.of();
+        try {
         final List<ProductImageReferenceDto> manifest = dto.getImageManifest();
+        final int count = manifest == null ? (dto.getImages() == null ? 0 : dto.getImages().size()) + uploads.size() : manifest.size();
+        if (count > MAX_IMAGES_PER_PRODUCT) throw new IllegalArgumentException("A product may contain at most " + MAX_IMAGES_PER_PRODUCT + " images");
         final Set<String> owned = new HashSet<>(product.getImages());
         final List<String> retained = dto.getImages() != null ? dto.getImages() : List.of();
         if (manifest == null) {
             requireOwnedImages(retained, owned);
+            imageLifecycle.prepareReferences(product.getImages(), retained);
             final List<String> result = new ArrayList<>(retained);
             for (final InputFile upload : uploads) result.add(uploadImage(product, upload));
             return result;
@@ -367,6 +377,8 @@ public class ProductManagerImpl implements ProductManager {
         if (selectedUploads.size() != uploads.size()) {
             throw new IllegalArgumentException("Every uploaded image must appear exactly once in the manifest");
         }
+        imageLifecycle.prepareReferences(product.getImages(), manifest.stream()
+                .map(ProductImageReferenceDto::existingImage).filter(Objects::nonNull).toList());
         final List<String> result = new ArrayList<>();
         for (final ProductImageReferenceDto reference : manifest) {
             result.add(
@@ -375,6 +387,12 @@ public class ProductManagerImpl implements ProductManager {
                             : uploadImage(product, uploadsById.get(reference.uploadId())));
         }
         return result;
+        } finally {
+            for (final InputFile input : uploads) {
+                try { input.inputStream().close(); }
+                catch (java.io.IOException error) { LOGGER.warn("Unable to close product upload input"); }
+            }
+        }
     }
 
     private static void requireOwnedImages(List<String> retained, Set<String> owned) {
@@ -388,7 +406,7 @@ public class ProductManagerImpl implements ProductManager {
 
     private String uploadImage(Product product, InputFile inputFile) {
         final String imagePath = IMAGE_KEY_PREFIX + product.getId() + "/" + UUID.randomUUID();
-        return storageService.uploadFile(imagePath, inputFile).toString();
+        return imageLifecycle.upload(product.getId(), imagePath, UUID.randomUUID().toString(), inputFile).toString();
     }
 
     private static String requireNonBlankLabel(String label) {

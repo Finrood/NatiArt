@@ -48,17 +48,17 @@ describe('CartComponent', () => {
     const product: Product = {
       id: 'p1', label: 'Vase', originalPrice: 100, markedPrice: 80,
       stockQuantity: 5, categoryId: 'c1', availablePersonalizations: [],
-      tags: new Set<string>(), images: ['a.jpg'],
+      tags: [], images: ['a.jpg'],
     };
     const item: CartItem = { cartItemId: 'line-1', product, quantity: 1 };
     spyOn(cartService, 'getCartItemsSnapshot').and.returnValue([item]);
     const image$: Subject<Blob> = new Subject<Blob>();
     spyOn(productService, 'getImage').and.returnValue(image$.asObservable());
     const internals = component as unknown as {
-      fetchProductImage(cartItemId: string, imagePath: string): void;
+      prepareImageUrls(items: CartItem[]): void;
     };
 
-    internals.fetchProductImage('line-1', 'a.jpg');
+    internals.prepareImageUrls([item]);
     image$.next(new Blob(['x'], { type: 'image/png' }));
 
     expect(component.imageUrls['line-1']).toBeDefined();
@@ -74,10 +74,12 @@ describe('CartComponent', () => {
     const image$: Subject<Blob> = new Subject<Blob>();
     spyOn(productService, 'getImage').and.returnValue(image$.asObservable());
     const internals = component as unknown as {
-      fetchProductImage(cartItemId: string, imagePath: string): void;
+      prepareImageUrls(items: CartItem[]): void;
     };
 
-    internals.fetchProductImage('gone-line', 'a.jpg');
+    const product: Product = {id: 'gone-product', label: 'Old', originalPrice: 1, markedPrice: 1, stockQuantity: 1, categoryId: 'c', images: ['a.jpg'], tags: [], availablePersonalizations: []};
+    internals.prepareImageUrls([{cartItemId: 'gone-line', product, quantity: 1}]);
+    internals.prepareImageUrls([]);
     image$.next(new Blob(['x'], { type: 'image/png' }));
     image$.complete();
 

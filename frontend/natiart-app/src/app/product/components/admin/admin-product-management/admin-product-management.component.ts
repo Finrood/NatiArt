@@ -1,4 +1,5 @@
-import {AfterViewInit, ChangeDetectorRef, Component, DestroyRef, HostListener, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
+import {AccessibleDialogComponent} from '../../../../shared/components/accessible-dialog.component';
+import {ChangeDetectorRef, DestroyRef, AfterViewInit, Component, HostListener, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {ProductService} from '../../../service/product.service';
@@ -29,7 +30,7 @@ interface ImagePreview {
 
 @Component({
   selector: 'app-admin-product-management',
-  imports: [CommonModule, ReactiveFormsModule, DragDropModule, AlertMessageComponent, ButtonComponent, PageControlsComponent],
+  imports: [CommonModule, ReactiveFormsModule, DragDropModule, AlertMessageComponent, ButtonComponent, PageControlsComponent, AccessibleDialogComponent],
   templateUrl: './admin-product-management.component.html',
   styleUrls: ['./admin-product-management.component.css']
 })

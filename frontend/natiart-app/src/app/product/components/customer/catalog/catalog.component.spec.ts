@@ -60,6 +60,13 @@ describe('Catalog URL-backed pagination', () => {
     back.flush({items: [product('21', 'A')], page: 1, size: 20, total: 21, hasNext: false});
     harness.detectChanges();
     expect(harness.routeNativeElement!.textContent).toContain('Print 21');
+    const forwarded = firstValueFrom(TestBed.inject(Router).events.pipe(filter((event) => event instanceof NavigationEnd), take(1)));
+    TestBed.inject(Location).forward();
+    await forwarded;
+    const forward = http.expectOne((r) => r.url === `${api}/products/page`);
+    expect(forward.request.params.get('categoryId')).toBe('B');
+    expect(forward.request.params.get('page')).toBe('0');
+    forward.flush({items: [product('B', 'B')], page: 0, size: 20, total: 1, hasNext: false});
     harness.fixture.destroy();
     http.verify();
   });
