@@ -18,7 +18,7 @@ Phase 0 — sync and pickup (~2 min):
 1. `git checkout master && git pull --ff-only`, verify `git status` is clean.
    If dirty and no open PR of YOURS owns the dirt, STOP and report — never
    stash, reset, or checkout over foreign dirt (a human or another agent may
-   own this checkout; the script guard salvages loop dirt at cycle start, so
+   own this checkout; the script guard refuses dirty worktrees at cycle start, so
    anything still dirty is not yours to touch). If the pull fails, stop and report.
    `DOC ROT` lines in the invocation are authoritative backlog corrections:
    move the named item's `###` section per step 4 batching and reference the
@@ -75,7 +75,7 @@ Phase 3 — review, then merge the green ones (max-2 budget, Phase 0):
 7. For each PR YOU opened this cycle (at most 3 — the script's mechanical
    reviewer covers backlog PRs, so never spawn for those), launch one
    independent reviewer, all in parallel in the background
-   (`timeout 360 scripts/run-agent.sh --role review --budget 360 --title
+   (`timeout 420 scripts/run-agent.sh --role review --review-pr <N> --budget 360 --title
    "review-pr-<N>" --skip "<the PR's Model: footer value>" "$(cat scripts/agent-review-prompt.md)
    ---
    Review PR <N>. Known status — Build: <your gh pr checks result>, Merge:

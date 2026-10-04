@@ -126,6 +126,13 @@ empty level loudly (exit 2) and warns on any non-`xhigh` level.
   simply re-probed each round/cycle. Stateless, like lens rotation.
 - **Which model won** is printed (`opencode-muse` / `cline-muse` / `cline-deepseek` / `cline-glm`)
   (also echoed as `NATIART_ACTIVE_MODEL`) for the agent's cycle summary.
+- **Lifecycle and delivery contract**: every attempt runs in its own process
+  group; TERM/INT/EXIT cleanup terminates and waits for that group before the
+  wrapper returns or retries. A clean CLI exit is accepted only when a cycle
+  produces a newly verified pushed PR result or an authenticated head-bound
+  review from that attempt. Printed references alone never establish completion. Each attempt leaves a bounded, redacted recovery
+  artifact under `logs/agent-outcomes/` before its private temporary log is
+  removed, so failover can reconcile the prior attempt without overlapping it.
 - **Reviewer independence.** Review invocations pass `--skip <author's Model:
   footer value>` (`run-agent.sh`, substring match, ignored if it would empty
   the pool), so the reviewer is a different model than the author whenever the
@@ -322,6 +329,17 @@ table above is agent discipline, enforced by the cycle prompt.
 history grows). PRs reference their item; the merging cycle moves the section.
 Severity labels are exactly `High`/`Medium`/`Low`.
 
+### Worker deliverable attribution
+
+A successful CLI exit must be accompanied by a verified result. The runner
+provides an explicit cycle ID and private `NATIART_DELIVERABLE_FILE` path.
+Implementation workers write a JSON object with `cycle`, `branch` and full
+`sha` after committing and pushing. The runner verifies a changed local branch,
+the same exact remote tip, and an open PR by the authenticated account on that
+branch and commit. Unrelated repository activity cannot complete the attempt.
+Review workers must submit a new verdict as the authenticated reviewer on the
+specified PR and unchanged captured head. Printed verdicts do not count.
+
 ### Captured candidate validation
 
 The implementation and Dependabot merge loops capture the full candidate SHA
@@ -350,4 +368,22 @@ successful deletion retires it before the branch name can be reused. Local
 cleanup uses an expected-SHA ref deletion and preserves branches checked out in
 any attached worktree. Unknown and advanced branches remain for manual review.
 
-Worker ownership requires a private, size-bounded JSON result naming cycle, origin hash, exact branch, produced SHA, pushed SHA and authenticated open same-repository PR. The supervisor checks baseline refs, local and fresh remote tips, PR ownership marker and authenticated author before writing its normalized accepted artifact and enrolling that exact tip. Audit-only, failed, no-op and unrelated concurrent branches grant no authority; existing unowned repair PRs stay unowned. Candidate/accepted artifacts live in a private cycle directory and are removed after validation. There is no blanket before/after branch enrollment. Current dirty-worktree handling refuses salvage entirely; any future supervisor-created salvage must be registered explicitly at its own creation site.
+The runner receives raw worker JSON with cycle, branch and SHA through its private `NATIART_DELIVERABLE_FILE`. After verification it writes normalized cycle, origin hash, branch, SHA, pushed SHA and PR fields to the separate private `NATIART_ACCEPTED_RESULT_FILE` handoff. Worker ownership requires that size-bounded accepted result and an authenticated open same-repository PR. The supervisor checks baseline refs, local and fresh remote tips, PR ownership marker and authenticated author before writing its normalized accepted artifact and enrolling that exact tip. Audit-only, failed, no-op and unrelated concurrent branches grant no authority; existing unowned repair PRs stay unowned. Candidate/accepted artifacts live in a private cycle directory and are removed after validation. There is no blanket before/after branch enrollment. Current dirty-worktree handling refuses salvage entirely; any future supervisor-created salvage must be registered explicitly at its own creation site.
+
+### Attempt isolation
+
+Before every worker launch, the runner refreshes authenticated GitHub and local
+branch baselines, archives any bounded private candidate for recovery, and clears
+the candidate and accepted handoff. A later no-op or rewrite of a failed
+attempt's pushed result cannot establish success or branch ownership. The
+supervisor independently rechecks the normalized result before enrollment.
+
+### Recovery output redaction
+
+Retained outcomes and forwarded retry tails share one credential redactor. It
+consumes complete `sk-` token alphabets (including hyphens/underscores), bearer
+tokens and quoted or unquoted credential assignments before byte truncation,
+so a key crossing the retained-tail boundary cannot expose its suffix.
+Recovery logs stay private (mode 600) and bounded; raw attempt logs are removed
+after cleanup. This covers supported credential shapes, not arbitrary sensitive
+text in worker output.

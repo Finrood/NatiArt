@@ -470,7 +470,7 @@ for n in $ALL_PRS; do
     else
         RC_NOTE=""
     fi
-    timeout 660 scripts/run-agent.sh --role review --budget 600 --title "review-pr-$n" \
+    timeout 660 scripts/run-agent.sh --role review --review-pr "$n" --budget 600 --title "review-pr-$n" \
         ${AUTHOR_SKIP:+--skip "$AUTHOR_SKIP"} \
         "$(cat scripts/agent-review-prompt.md)
 ---
@@ -560,17 +560,12 @@ fi
 log "Invoking agent for one cycle item."
 BEFORE_BRANCH_REFS="$(git for-each-ref --format='%(refname:short)%09%(objectname)' refs/heads/ refs/remotes/origin/ | sed 's#^origin/##')"
 CYCLE_OWNERSHIP_ID="$(cat /proc/sys/kernel/random/uuid)"
-CYCLE_ORIGIN_ID="$(loop_origin_id)"
 RESULT_DIR="$(mktemp -d "$LOOP_GIT_DIR/natiart-worker-result.XXXXXX")"
 chmod 700 "$RESULT_DIR"
 WORKER_RESULT="$RESULT_DIR/candidate.json"
 ACCEPTED_RESULT="$RESULT_DIR/accepted.json"
 : > "$WORKER_RESULT"
 chmod 600 "$WORKER_RESULT"
-CYCLE_MSG="$CYCLE_MSG
-Explicit worker result: after producing and pushing a commit, write JSON to $WORKER_RESULT:
-{\"cycle\":\"$CYCLE_OWNERSHIP_ID\",\"origin\":\"$CYCLE_ORIGIN_ID\",\"branch\":\"exact branch\",\"sha\":\"full produced SHA\",\"pushedSha\":\"same full pushed SHA\",\"pr\":123}.
-Name only your intended implementation branch and authenticated PR. Audit-only or failed/no-op work must leave this file empty. Do not enroll branches yourself."
 # Model failover: run-agent.sh walks the priority list from
 # scripts/agent-models.conf (opencode Muse free -> cline Muse -> cline DeepSeek
 # -> cline GLM),
@@ -580,7 +575,7 @@ Name only your intended implementation branch and authenticated PR. Audit-only o
 # STATUS is preset: a failing agent run must NOT trip `set -e` before the
 # reviewer-wait and health row below (a dead reviewer wait orphans the review).
 STATUS=0
-NATIART_CYCLE_ID="$CYCLE_OWNERSHIP_ID" NATIART_DELIVERABLE_FILE="$WORKER_RESULT" timeout 1500 scripts/run-agent.sh --role cycle --budget 1500 --title "improvement-loop $(date +%Y%m%d-%H%M)" "$CYCLE_MSG" || STATUS=$?
+NATIART_CYCLE_ID="$CYCLE_OWNERSHIP_ID" NATIART_ACCEPTED_RESULT_FILE="$WORKER_RESULT" timeout 1560 scripts/run-agent.sh --role cycle --budget 1500 --title "improvement-loop $(date +%Y%m%d-%H%M)" "$CYCLE_MSG" || STATUS=$?
 if [[ "$STATUS" -eq 0 && -s "$WORKER_RESULT" ]]; then
     if ! loop_record_worker_result "$WORKER_RESULT" "$CYCLE_OWNERSHIP_ID" "$BEFORE_BRANCH_REFS" \
         "$OWNERSHIP_LEDGER" "$ACCEPTED_RESULT"; then
