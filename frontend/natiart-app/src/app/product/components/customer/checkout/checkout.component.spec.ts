@@ -152,7 +152,7 @@ describe('CheckoutComponent', () => {
         },
         {
           provide: ProductService,
-          useValue: { uploadCustomerImage: uploadCustomerImageSpy },
+          useValue: { imageInvalidations: of(), getImage: (): unknown => of(new Blob()), uploadCustomerImage: uploadCustomerImageSpy },
         },
       ],
     }).compileComponents();

@@ -1,4 +1,4 @@
-import {ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject} from '@angular/core';
+import {ChangeDetectionStrategy, Component, inject, OnDestroy, OnInit} from '@angular/core';
 import { AsyncPipe } from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
 import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
@@ -47,7 +47,9 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
 
   constructor() {
     this.shippingForm = this._fb.group({
-      cep: ['', [Validators.required, Validators.pattern(/^\d{5}-\d{3}$/)]],
+      // CepFormat keeps the control normalized to eight digits; the hyphen is
+      // presentation-only.
+      cep: ['', [Validators.required, Validators.pattern(/^\d{8}$/)]],
     });
   }
 
@@ -96,7 +98,7 @@ export class ShippingEstimationComponent implements OnInit, OnDestroy {
 
   private calculateShippingEstimate(cep: string): Observable<ShippingEstimate[]> {
     const request: ShippingEstimateRequest = {
-      to: cep.replace('-', ''),
+      to: cep.replace(/\D/g, ''),
       height: 2,
       width: 12.7,
       length: 17,

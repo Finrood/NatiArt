@@ -61,6 +61,9 @@ class OrderTextBoundaryIntegrationTest {
     @Autowired
     private OrderManager manager;
 
+    @Autowired
+    private OrderViewService views;
+
     @MockitoBean
     private ProductManager productManager;
 
@@ -69,9 +72,6 @@ class OrderTextBoundaryIntegrationTest {
 
     @MockitoBean
     private CustomerUploadService customerUploads;
-
-    @Autowired
-    private OrderViewService views;
 
     private MockMvc http;
     private final JsonMapper json = JsonMapper.builder().build();
@@ -199,8 +199,10 @@ class OrderTextBoundaryIntegrationTest {
         final String submitted = "padded".equals(value) ? " " + expected + " " : expected;
         final Category category =
                 categories.saveAndFlush(new Category(UUID.randomUUID().toString()));
-        final Product product = products.saveAndFlush(
-                new Product("Plate", BigDecimal.TEN).setCategory(category).setStockQuantity(2));
+        final Product product = products.saveAndFlush(new Product("Plate", BigDecimal.TEN)
+                .setCategory(category)
+                .setMarkedPrice(BigDecimal.TEN)
+                .setStockQuantity(2));
         when(productManager.getProductsOrDie(List.of(product.getId()))).thenReturn(Map.of(product.getId(), product));
         when(shipping.requireQuoteForOrder(any(), any(), any(), any(), any()))
                 .thenReturn(new com.portcelana.natiart.model.ShippingQuote()

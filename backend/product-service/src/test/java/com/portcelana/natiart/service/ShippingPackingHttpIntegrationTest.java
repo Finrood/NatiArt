@@ -229,6 +229,7 @@ class ShippingPackingHttpIntegrationTest {
         final OrderDto orderRequest = new OrderDto()
                 .setHouseNumber("N/A")
                 .setFirstname("Buyer")
+                .setHouseNumber("N/A")
                 .setLastname("Customer")
                 .setEmail("buyer@example.test")
                 .setCountry("Brazil")

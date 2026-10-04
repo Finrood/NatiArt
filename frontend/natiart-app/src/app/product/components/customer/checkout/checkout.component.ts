@@ -163,6 +163,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
     if (this.currentStep < 3) {
       this.currentStep++;
+      this._cdr.markForCheck();
     }
   }
 

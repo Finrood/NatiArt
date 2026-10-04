@@ -1,6 +1,6 @@
 # Frontend Guide — natiart-app
 
-Single Angular 22 application (no monorepo), Tailwind CSS 4, Adyen payments,
+Single Angular 22 application (no monorepo), Tailwind CSS 4, Asaas/PIX payments,
 Karma/Jasmine tests. Generic rules in `agents/*.md` supersede nothing here — this
 file is the frontend source of truth.
 
@@ -24,7 +24,7 @@ building blocks go in `shared/`. Keep `app.component` a thin shell.
   dependencies in the `imports: []` array.
 - **Control flow**: `@if` / `@for`. Never `*ngIf` / `*ngFor` (already 100% migrated).
 - **DI**: `private readonly _x = inject(X)` for new code; convert constructor
-  injections when touching (currently 24 non-spec files converted; keep this
+  injections when touching (currently 28 non-spec files using inject(); keep this
   count synchronized when changing the migration).
 - **Signals**: adopt `signal()`/`computed()` for new component state; prefix with
   `$` (e.g. `$user`). RxJS `BehaviorSubject`/streams remain acceptable for
@@ -37,8 +37,8 @@ building blocks go in `shared/`. Keep `app.component` a thin shell.
 
 ## Payments & Security
 
-- Adyen integration (`@adyen/adyen-web`) and auth-token handling are
-  security-sensitive: never log tokens, never bypass API-provided validation.
+- Asaas/PIX payment and auth-token handling are security-sensitive: never log
+  tokens, never bypass API-provided validation.
 - Environments in `src/environments/` — API endpoints per environment; never
   hard-code URLs in components.
 
@@ -47,7 +47,7 @@ building blocks go in `shared/`. Keep `app.component` a thin shell.
 - Runner: **Karma + Jasmine** (`npm test -- --watch=false
   --browsers=ChromeHeadless`, ChromeHeadless in CI —
   `.github/workflows/frontend_workflow.yml`).
-- 257 passing specs in the current Angular suite. Policy: **test complex logic**
+- 305 passing specs in the current Angular suite. Policy: **test complex logic**
   (services, pipes, state handling);
   obvious markup needs no spec. Boilerplate "should create" specs must keep passing
   (they run in CI).
@@ -57,6 +57,6 @@ building blocks go in `shared/`. Keep `app.component` a thin shell.
 
 ```bash
 npm start                      # dev server
-npm run build                  # production build
+npm run build -- --configuration production       # production build
 npm test -- --watch=false --browsers=ChromeHeadless   # CI-style tests (npm form, never bare ng)
 ```

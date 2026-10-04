@@ -205,6 +205,7 @@ class ShippingQuoteServiceTest {
                                 .setNeighborhood("Area")
                                 .setStreet("Street")
                                 .setFirstname("Ada")
+                                .setHouseNumber("N/A")
                                 .setLastname("Lovelace")
                                 .setEmail("ada@example.test")
                                 .setZipCode("01001000")
