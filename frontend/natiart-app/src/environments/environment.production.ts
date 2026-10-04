@@ -4,7 +4,7 @@ export const environment = {
   errorReporting: {url: '/server/directory/client-errors'},
   api: {
     directory: {
-      url: 'https://natiart.samuelpetre.com/server/directory',
+      url: '/server/directory',
       endpoints: {
         login: '/login',
         logout: '/signout',
@@ -17,7 +17,7 @@ export const environment = {
       }
     },
     product: {
-      url: 'https://natiart.samuelpetre.com/server/product',
+      url: '/server/product',
       endpoints: {
         category: '/categories',
         package: '/packages',

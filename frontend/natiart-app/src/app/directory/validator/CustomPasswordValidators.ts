@@ -9,8 +9,9 @@ export class CustomPasswordValidators {
         return null; // Don't validate empty values to allow optional controls
       }
 
-      const requirements = checkPasswordRequirements(value, DEFAULT_REQUIREMENTS);
-      const isValid = Object.values(requirements).every(Boolean);
+      const checks = checkPasswordRequirements(value, DEFAULT_REQUIREMENTS);
+      if (!checks.hasMaxBytes) return {passwordTooLong: true};
+      const isValid = Object.values(checks).every(Boolean);
 
       return isValid ? null : {passwordComplexity: true};
     };

@@ -1,4 +1,3 @@
-// password-requirements.component.ts
 import {Component, Input} from '@angular/core';
 import {checkPasswordRequirements, DEFAULT_REQUIREMENTS, PasswordRequirements} from "../../../../utils/password-utils";
 
@@ -31,9 +30,10 @@ export class PasswordRequirementsComponent {
   @Input() password = '';
   @Input() requirements: PasswordRequirements = DEFAULT_REQUIREMENTS;
 
-  get requirementsList(): {text: string; valid: boolean}[] {
+  get requirementsList(): Array<{text: string; valid: boolean}> {
     const results = checkPasswordRequirements(this.password, this.requirements);
     return [
+      {text: $localize`Maximum ${this.requirements.maxUtf8Bytes}:MAX_BYTES: UTF-8 bytes`, valid: results.hasMaxBytes},
       {
         text: $localize`Minimum ${this.requirements.minLength}:MIN_LENGTH: characters`,
         valid: results.hasMinLength
