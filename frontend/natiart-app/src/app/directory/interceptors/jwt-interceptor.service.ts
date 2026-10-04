@@ -1,7 +1,8 @@
-import {HttpClient, HttpContextToken, HttpInterceptorFn} from '@angular/common/http';
-import {inject} from '@angular/core';
+import {HttpContextToken, HttpInterceptorFn} from '@angular/common/http';
+import {inject, Injector} from '@angular/core';
 import {Router} from "@angular/router";
-import {BehaviorSubject, catchError, filter, first, switchMap, throwError, timeout} from "rxjs";
+import {catchError, switchMap, throwError} from "rxjs";
+import {AuthenticationService} from "../service/authentication.service";
 import {TokenService} from "../service/token.service";
 import {environment} from "../../../environments/environment";
 
@@ -44,8 +45,9 @@ const directoryAuthEndpoints = (): string[] => {
   return [endpoints.login, endpoints.registerUser];
 };
 
-const isAuthRequest = (url: string): boolean =>
-  isEndpoint(url, directoryAuthEndpoints());
+const isAuthRequest = (url: string, method: string): boolean =>
+  isEndpoint(url, directoryAuthEndpoints()) || (method === 'POST' &&
+    isEndpoint(url, [environment.api.directory.endpoints.passwordResetRequest, environment.api.directory.endpoints.passwordReset]));
 
 const isRefreshTokenRequest = (url: string): boolean =>
   isEndpoint(url, [environment.api.directory.endpoints.refreshToken]);
@@ -53,59 +55,17 @@ const isRefreshTokenRequest = (url: string): boolean =>
 const isLogoutRequest = (url: string): boolean =>
   isEndpoint(url, [environment.api.directory.endpoints.logout]);
 
-const AUTH_RETRIED = new HttpContextToken<boolean>(() => false);
-const REFRESH_TIMEOUT_MS = 10000;
-
-let refreshInProgress$: BehaviorSubject<string | null> | null = null;
-
-const performRefresh = (http: HttpClient, tokenService: TokenService): BehaviorSubject<string | null> => {
-  if (!refreshInProgress$) {
-    const subject = new BehaviorSubject<string | null>(null);
-    refreshInProgress$ = subject;
-
-    const refreshTokenValue = tokenService.refreshToken;
-    if (!refreshTokenValue) {
-      refreshInProgress$ = null;
-      subject.error(new Error('No refresh token available'));
-      return subject;
-    }
-
-    http.post<{ accessToken: string; refreshToken: string }>(
-      `${environment.api.directory.url}${environment.api.directory.endpoints.refreshToken}`,
-      null,
-      {headers: {Authorization: `Bearer ${refreshTokenValue}`}}
-    ).pipe(timeout({first: REFRESH_TIMEOUT_MS})).subscribe({
-      next: (response) => {
-        tokenService.accessToken = response.accessToken;
-        tokenService.refreshToken = response.refreshToken;
-        subject.next(response.accessToken);
-        subject.complete();
-        if (refreshInProgress$ === subject) {
-          refreshInProgress$ = null;
-        }
-      },
-      error: (error) => {
-        tokenService.clearTokens();
-        if (refreshInProgress$ === subject) {
-          refreshInProgress$ = null;
-        }
-        subject.error(error);
-      }
-    });
-  }
-  return refreshInProgress$!;
-};
-
+export const AUTH_RETRY_CONTEXT = new HttpContextToken<boolean>(() => false);
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
-  if (!isConfiguredApiUrl(req.url) || isAuthRequest(req.url) || isRefreshTokenRequest(req.url)) {
+  if (!isConfiguredApiUrl(req.url) || isAuthRequest(req.url, req.method) || isRefreshTokenRequest(req.url)) {
     return next(req);
   }
 
   const tokenService = inject(TokenService);
   const router = inject(Router);
-  const http = inject(HttpClient);
+  const injector = inject(Injector);
 
-  const alreadyRetried = req.context.get(AUTH_RETRIED);
+  const alreadyRetried = req.context.get(AUTH_RETRY_CONTEXT);
 
   // A caller-supplied credential belongs to the caller. The interceptor only
   // manages credentials for requests that do not already carry Authorization.
@@ -119,7 +79,7 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(cloned).pipe(
     catchError(error => {
-      if (error.status === 401 && !isAuthRequest(req.url) && !isRefreshTokenRequest(req.url) && !alreadyRetried) {
+      if (error.status === 401 && !alreadyRetried) {
         if (isLogoutRequest(req.url)) {
           // Explicit logout must never mint fresh tokens: end the local
           // session instead of refreshing-then-retrying the signout.
@@ -131,17 +91,15 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
           router.navigate(['/login']);
           return throwError(() => error);
         }
-        return performRefresh(http, tokenService).pipe(
-          filter(token => token !== null),
-          first(),
+        return injector.get(AuthenticationService).refreshAccessToken().pipe(
+          catchError(refreshError => {
+            if (refreshError.status === 401 || refreshError.status === 403) router.navigate(['/login']);
+            return throwError(() => refreshError);
+          }),
           switchMap(token => next(req.clone({
             setHeaders: {Authorization: `Bearer ${token}`},
-            context: req.context.set(AUTH_RETRIED, true)
-          }))),
-          catchError(refreshError => {
-            router.navigate(['/login']);
-            return throwError(() => refreshError);
-          })
+            context: req.context.set(AUTH_RETRY_CONTEXT, true)
+          })))
         );
       }
       return throwError(() => error);

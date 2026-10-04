@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM node:22 AS build
+FROM node:22.22.3 AS build
 WORKDIR /app/natiart-app
 
 # Copy only the necessary files for the build process

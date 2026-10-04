@@ -26,6 +26,7 @@ import com.saas.directory.configuration.ControllerAdvice;
 import com.saas.directory.event.UserRegisteredEvent;
 import com.saas.directory.model.Role;
 import com.saas.directory.model.RoleName;
+import com.saas.directory.repository.AsaasProvisioningJobRepository;
 import com.saas.directory.repository.ExternalUserRepository;
 import com.saas.directory.repository.ProfileRepository;
 import com.saas.directory.repository.RoleRepository;
@@ -49,7 +50,12 @@ class UserRegistrationHttpTest {
         eventPublisher = mock(ApplicationEventPublisher.class);
         final ProfileManager profileManager = new ProfileManager(profileRepository);
         final UserManager userManager = new UserManager(
-                userRepository, mock(ExternalUserRepository.class), roleRepository, profileManager, eventPublisher);
+                userRepository,
+                mock(ExternalUserRepository.class),
+                roleRepository,
+                mock(AsaasProvisioningJobRepository.class),
+                profileManager,
+                eventPublisher);
         validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
         mvc = MockMvcBuilders.standaloneSetup(new UserRegistrationController(userManager))

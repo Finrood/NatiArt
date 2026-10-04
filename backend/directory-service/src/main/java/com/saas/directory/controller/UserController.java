@@ -8,7 +8,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.saas.directory.dto.UserDto;
 import com.saas.directory.helper.TargetUser;
+import com.saas.directory.model.AsaasProvisioningStatus;
 import com.saas.directory.model.ExternalUser;
+import com.saas.directory.model.User;
+import com.saas.directory.service.AsaasProvisioningStateService;
 import com.saas.directory.service.UserManager;
 
 @RestController
@@ -16,9 +19,11 @@ public class UserController {
     public static Logger LOGGER = LoggerFactory.getLogger(UserController.class);
 
     private final UserManager userManager;
+    private final AsaasProvisioningStateService provisioningState;
 
-    public UserController(UserManager userManager) {
+    public UserController(UserManager userManager, AsaasProvisioningStateService provisioningState) {
         this.userManager = userManager;
+        this.provisioningState = provisioningState;
     }
 
     @GetMapping("/users/current")
@@ -28,11 +33,19 @@ public class UserController {
         if (username == null || username.isEmpty()) {
             return ResponseEntity.ok(null);
         }
-        final UserDto userDto = UserDto.from(userManager.getUserOrDie(username), null);
+        final User user = userManager.getUserOrDie(username);
+        final UserDto userDto = UserDto.from(user, null);
         userDto.setExternalId(userManager
                 .getAsaasCustomer(username)
                 .map(ExternalUser::getExternalId)
                 .orElse(null));
+        provisioningState
+                .statusForUser(user.getId())
+                .ifPresent(status -> userDto.setProvisioningStatus(status.status())
+                        .setProvisioningNextAttemptAt(status.nextAttemptAt()));
+        if (userDto.getExternalId() != null) {
+            userDto.setProvisioningStatus(AsaasProvisioningStatus.SUCCEEDED);
+        }
         return ResponseEntity.ok(userDto);
     }
 }

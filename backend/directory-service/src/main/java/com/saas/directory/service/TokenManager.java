@@ -63,6 +63,20 @@ public class TokenManager {
     }
 
     @Transactional
+    public void clearTokensOfUserByType(User user, TokenType tokenType) {
+        tokenRepository.deleteAllByUserAndTokenType(user, tokenType);
+    }
+
+    /**
+     * Atomically consumes a still-valid token. The row-count check prevents two
+     * concurrent redemption requests from both changing the password.
+     */
+    @Transactional
+    public boolean consumeValidToken(String jti, TokenType tokenType) {
+        return tokenRepository.consumeValidToken(jti, tokenType, Instant.now()) == 1;
+    }
+
+    @Transactional
     public Token generateRandomSixNumbersToken(User user, long timeToLive, ChronoUnit timeUnit, TokenType tokenType) {
         final Instant expiryDate = Instant.now().plus(timeToLive, timeUnit);
 

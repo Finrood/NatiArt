@@ -13,6 +13,7 @@ interface CartPurchase { orderId: string; customerId: string; lines: PurchasedCa
   providedIn: 'root'
 })
 export class CartService {
+  private readonly maxProductQuantity = 100;
   private static readonly storageVersion = 1;
   private cartItems: CartItem[] = [];
   private purchases: CartPurchase[] = [];
@@ -171,7 +172,7 @@ export class CartService {
     const reserved = variants.reduce(
       (total, item) => total + (item.cartItemId === excludedCartItemId ? 0 : item.quantity), 0
     );
-    return Math.max(0, stockLimit - reserved);
+    return Math.max(0, Math.min(this.maxProductQuantity, stockLimit) - reserved);
   }
 
   rememberPurchase(orderId: string, customerId: string, lines: PurchasedCartLine[]): void {
@@ -273,7 +274,7 @@ export class CartService {
     const stockLimits = new Map<string, number>();
     for (const line of lines) {
       stockLimits.set(line.product.id, Math.min(
-        stockLimits.get(line.product.id) ?? line.product.stockQuantity, line.product.stockQuantity
+        stockLimits.get(line.product.id) ?? Math.min(line.product.stockQuantity, this.maxProductQuantity), Math.min(line.product.stockQuantity, this.maxProductQuantity)
       ));
     }
     const seenIds = new Set<string>();

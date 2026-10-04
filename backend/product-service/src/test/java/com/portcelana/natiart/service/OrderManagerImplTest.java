@@ -21,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 
 import com.portcelana.natiart.controller.helper.ResourceAlreadyExistsException;
 import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
@@ -36,6 +37,7 @@ import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.model.support.PersonalizationOption;
 import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.ProductRepository;
+import com.portcelana.natiart.service.support.InputValidationException;
 
 @ExtendWith(MockitoExtension.class)
 class OrderManagerImplTest {
@@ -110,7 +112,13 @@ class OrderManagerImplTest {
                 .setHouseNumber("N/A")
                 .setFirstname("Test")
                 .setLastname("Customer")
-                .setEmail("customer@example.com");
+                .setEmail("customer@example.com")
+                .setCountry("Brazil")
+                .setState("SC")
+                .setCity("Florianopolis")
+                .setNeighborhood("Centro")
+                .setZipCode("88010000")
+                .setStreet("Main Street");
     }
 
     @Test
@@ -492,6 +500,81 @@ class OrderManagerImplTest {
 
         assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
         verify(productRepository, never()).decreaseStockIfAvailable(any(), anyInt());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void createOrderRejectsOversizedAddressBeforeShippingOrPersistence() {
+        final OrderDto dto = validOrder().setStreet("x".repeat(256)).setItems(List.of(item("p1", 1)));
+
+        final InputValidationException failure =
+                assertThrows(InputValidationException.class, () -> orderManager.createOrder(dto, "user-1"));
+
+        assertEquals("street", failure.getField());
+        verifyNoInteractions(shippingQuoteService);
+        verify(productRepository, never()).decreaseStockIfAvailable(any(), anyInt());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void createOrderRejectsMalformedCepBeforeShippingOrPersistence() {
+        final OrderDto dto = validOrder().setZipCode("abc88010000").setItems(List.of(item("p1", 1)));
+
+        final InputValidationException failure =
+                assertThrows(InputValidationException.class, () -> orderManager.createOrder(dto, "user-1"));
+
+        assertEquals("zipCode", failure.getField());
+        verifyNoInteractions(shippingQuoteService);
+        verify(productRepository, never()).decreaseStockIfAvailable(any(), anyInt());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void createOrderRejectsShippingAmountOutsideMoneyColumnAsUpstreamFailure() {
+        final Product product = product("p1", "Plate", BigDecimal.TEN, null, 10);
+        when(productManager.getProductsOrDie(List.of("p1"))).thenReturn(Map.of("p1", product));
+        shippingAmount = new BigDecimal("100000000.00");
+        final OrderDto dto = validOrder().setItems(List.of(item("p1", 1)));
+
+        final UpstreamServiceException failure =
+                assertThrows(UpstreamServiceException.class, () -> orderManager.createOrder(dto, "user-1"));
+
+        assertEquals(HttpStatus.BAD_GATEWAY, failure.getHttpStatus());
+        verify(productRepository, never()).decreaseStockIfAvailable(any(), anyInt());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void createOrderRejectsLegacyZeroPricedItemBeforeStockReservation() {
+        final Product product = product("p1", "Free item", BigDecimal.ZERO, null, 10);
+        when(productManager.getProductsOrDie(List.of("p1"))).thenReturn(Map.of("p1", product));
+        final OrderDto dto = validOrder().setItems(List.of(item("p1", 1)));
+
+        final com.portcelana.natiart.controller.helper.OrderCreationRejectedException rejection = assertThrows(
+                com.portcelana.natiart.controller.helper.OrderCreationRejectedException.class,
+                () -> orderManager.createOrder(dto, "user-1"));
+        final InputValidationException failure =
+                org.junit.jupiter.api.Assertions.assertInstanceOf(InputValidationException.class, rejection.getCause());
+
+        assertEquals("unitPrice", failure.getField());
+        verify(productRepository, never()).decreaseStockIfAvailable(any(), anyInt());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void createOrderRejectsTotalAboveMoneyColumnBeforeSaving() {
+        final Product product = product("p1", "Large item", new BigDecimal("99999999.99"), null, 10);
+        when(productManager.getProductsOrDie(List.of("p1"))).thenReturn(Map.of("p1", product));
+        final OrderDto dto = validOrder().setItems(List.of(item("p1", 2)));
+
+        final com.portcelana.natiart.controller.helper.OrderCreationRejectedException rejection = assertThrows(
+                com.portcelana.natiart.controller.helper.OrderCreationRejectedException.class,
+                () -> orderManager.createOrder(dto, "user-1"));
+        final InputValidationException failure =
+                org.junit.jupiter.api.Assertions.assertInstanceOf(InputValidationException.class, rejection.getCause());
+
+        assertEquals("items", failure.getField());
+        verifyNoInteractions(productRepository);
         verify(orderRepository, never()).save(any());
     }
 

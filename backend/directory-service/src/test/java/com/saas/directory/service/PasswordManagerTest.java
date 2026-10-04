@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +38,12 @@ public class PasswordManagerTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private RateLimitStore rateLimitStore;
+
+    @Mock
+    private PasswordResetNotificationSender notificationSender;
+
     @InjectMocks
     private PasswordManager passwordManager;
 
@@ -64,6 +71,7 @@ public class PasswordManagerTest {
         when(tokenManager.getValidTokenByJtiAndTokenTypeOrDie(jti, TokenType.PASSWORD_RESET))
                 .thenReturn(token);
         when(passwordEncoder.encode("newPass123")).thenReturn("encoded");
+        when(tokenManager.consumeValidToken(jti, TokenType.PASSWORD_RESET)).thenReturn(true);
 
         passwordManager.doResetPassword(jti, new ResetPasswordDto("newPass123", "newPass123"));
 
@@ -91,5 +99,65 @@ public class PasswordManagerTest {
 
         verify(tokenManager, never()).getValidTokenByJtiAndTokenTypeOrDie(any(), any());
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    public void notifyResetPassword_deliversAFragmentLinkForAnExistingAccount() {
+        final User user = new User("customer@example.com", "OldPass1");
+        final Token token = new Token(
+                "reset-jti", user, TokenType.PASSWORD_RESET, Instant.now().plus(15, ChronoUnit.MINUTES));
+        when(rateLimitStore.tryAcquire(any(), org.mockito.ArgumentMatchers.eq(3)))
+                .thenReturn(true);
+        when(userManager.getUser("customer@example.com")).thenReturn(Optional.of(user));
+        when(tokenManager.generateRandomUUIDToken(user, 15, ChronoUnit.MINUTES, TokenType.PASSWORD_RESET))
+                .thenReturn(token);
+
+        passwordManager.notifyResetPassword(" CUSTOMER@EXAMPLE.COM ");
+
+        verify(tokenManager).clearTokensOfUserByType(user, TokenType.PASSWORD_RESET);
+        verify(notificationSender)
+                .send(new PasswordResetNotification(
+                        "customer@example.com", "http://localhost:4200/reset-password#token=reset-jti"));
+    }
+
+    @Test
+    public void notifyResetPassword_doesNotRevealWhetherAnAccountExists() {
+        when(rateLimitStore.tryAcquire(any(), org.mockito.ArgumentMatchers.eq(3)))
+                .thenReturn(true);
+        when(userManager.getUser("unknown@example.com")).thenReturn(Optional.empty());
+
+        passwordManager.notifyResetPassword("unknown@example.com");
+
+        verify(notificationSender, never()).send(any());
+        verify(tokenManager, never()).generateRandomUUIDToken(any(), any(Long.class), any(), any());
+    }
+
+    @Test
+    public void notifyResetPassword_doesNotLookUpAnAccountWhenThrottled() {
+        when(rateLimitStore.tryAcquire(any(), org.mockito.ArgumentMatchers.eq(3)))
+                .thenReturn(false);
+
+        passwordManager.notifyResetPassword("customer@example.com");
+
+        verify(userManager, never()).getUser(any());
+        verify(notificationSender, never()).send(any());
+    }
+
+    @Test
+    public void doResetPassword_rejectsAConcurrentSecondRedemption() {
+        final User user = new User("customer@example.com", "OldPass1");
+        final Token token = new Token(
+                "reset-jti", user, TokenType.PASSWORD_RESET, Instant.now().plus(15, ChronoUnit.MINUTES));
+        when(tokenManager.getValidTokenByJtiAndTokenTypeOrDie("reset-jti", TokenType.PASSWORD_RESET))
+                .thenReturn(token);
+        when(tokenManager.consumeValidToken("reset-jti", TokenType.PASSWORD_RESET))
+                .thenReturn(false);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> passwordManager.doResetPassword("reset-jti", new ResetPasswordDto("NewPass1", "NewPass1")));
+
+        verify(userRepository, never()).save(any());
+        verify(tokenManager, never()).clearTokensOfUser(any());
     }
 }
