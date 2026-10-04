@@ -7,7 +7,7 @@ NatiArt is a personal e-commerce platform for handmade art: a Spring Boot backen
   `backend/product-service` (products, cart, orders, payments, storage).
   Gradle Kotlin DSL, Spring Boot 4.1.x, JPA (H2 local / PostgreSQL prod), JWT auth.
 - **Frontend**: `frontend/natiart-app` — single Angular 22 application,
-  Tailwind CSS 4, Adyen payments, Karma/Jasmine tests.
+  Tailwind CSS 4, Asaas/PIX payments, Karma/Jasmine tests.
 - **CI**: GitHub Actions (`.github/workflows/`) builds and tests both sides on every PR to `master`.
 
 ## Pre-flight Protocol

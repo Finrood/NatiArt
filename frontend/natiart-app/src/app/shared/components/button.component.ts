@@ -18,5 +18,10 @@ export class ButtonComponent {
   @Input() block: boolean = false;
   @Input() shape: 'rounded-full' | null = null;
   @Input() customClass: string = '';
+  @Input('aria-label') ariaLabel: string | null = null;
+  @Input('aria-pressed') ariaPressed: boolean | null = null;
+  @Input('aria-expanded') ariaExpanded: boolean | null = null;
+  @Input('aria-controls') ariaControls: string | null = null;
+  @Input('aria-describedby') ariaDescribedby: string | null = null;
 
 }

@@ -26,9 +26,13 @@ public interface ProductRepository extends JpaRepository<Product, String> {
             "SELECT p FROM Product p LEFT JOIN FETCH p.images LEFT JOIN FETCH p.category LEFT JOIN FETCH p.packaging WHERE p.id = :id")
     Optional<Product> findByIdWithImages(String id);
 
-    @Modifying
     @Query(
-            "UPDATE Product p SET p.stockQuantity = p.stockQuantity - :quantity WHERE p.id = :id AND p.stockQuantity >= :quantity")
+            "SELECT p FROM Product p LEFT JOIN FETCH p.images LEFT JOIN FETCH p.category LEFT JOIN FETCH p.packaging WHERE p.id = :id AND p.active = true AND p.category.active = true")
+    Optional<Product> findActiveByIdWithImages(String id);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(
+            "UPDATE Product p SET p.stockQuantity = p.stockQuantity - :quantity, p.version = p.version + 1 WHERE p.id = :id AND p.stockQuantity >= :quantity AND p.active = true AND p.category IN (SELECT c FROM Category c WHERE c.active = true)")
     int decreaseStockIfAvailable(@Param("id") String id, @Param("quantity") int quantity);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
@@ -39,18 +43,44 @@ public interface ProductRepository extends JpaRepository<Product, String> {
     @Query("SELECT p.id FROM Product p")
     Page<String> findAllIds(Pageable pageable);
 
+    @Query("SELECT p.id FROM Product p WHERE p.active = true AND p.category.active = true")
+    Page<String> findAllActiveIds(Pageable pageable);
+
     @Query("SELECT p.id FROM Product p WHERE p.newProduct = :newProduct")
     Page<String> findAllIdsByNewProduct(boolean newProduct, Pageable pageable);
+
+    @Query(
+            "SELECT p.id FROM Product p WHERE p.newProduct = :newProduct AND p.active = true AND p.category.active = true")
+    Page<String> findAllActiveIdsByNewProduct(boolean newProduct, Pageable pageable);
 
     @Query("SELECT p.id FROM Product p WHERE p.featuredProduct = :featuredProduct")
     Page<String> findAllIdsByFeaturedProduct(boolean featuredProduct, Pageable pageable);
 
+    @Query(
+            "SELECT p.id FROM Product p WHERE p.featuredProduct = :featuredProduct AND p.active = true AND p.category.active = true")
+    Page<String> findAllActiveIdsByFeaturedProduct(boolean featuredProduct, Pageable pageable);
+
     @Query("SELECT p.id FROM Product p WHERE p.category = :category")
     Page<String> findAllIdsByCategory(Category category, Pageable pageable);
+
+    @Query("SELECT p.id FROM Product p WHERE p.category = :category AND p.active = true AND p.category.active = true")
+    Page<String> findAllActiveIdsByCategory(Category category, Pageable pageable);
 
     @Query(
             "SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.images LEFT JOIN FETCH p.category LEFT JOIN FETCH p.packaging WHERE p.id IN :ids")
     List<Product> findAllWithImagesByIds(@Param("ids") List<String> ids);
+
+    @Query("select count(p) from Product p join p.images image where image = :uri")
+    long countImageReferences(String uri);
+
+    @Query("SELECT p.id FROM Product p WHERE (:categoryId IS NULL OR p.category.id = :categoryId) "
+            + "AND (:query = '' OR LOWER(p.label) LIKE CONCAT('%', :query, '%')) "
+            + "AND (:includeInactive = true OR (p.active = true AND p.category.active = true))")
+    Page<String> findCatalogIds(String categoryId, String query, boolean includeInactive, Pageable pageable);
+
+    @Query(
+            "SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.images LEFT JOIN FETCH p.category LEFT JOIN FETCH p.packaging WHERE p.id IN :ids AND p.active = true AND p.category.active = true")
+    List<Product> findAllActiveWithImagesByIds(@Param("ids") List<String> ids);
 
     @Query("SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.packaging WHERE p.id IN :ids")
     List<Product> findAllWithShippingDataByIds(@Param("ids") List<String> ids);

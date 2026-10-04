@@ -46,6 +46,9 @@ jobs:
         working-directory: backend
         run: ./gradlew :directory-service:clean :directory-service:build
 
+      - name: Require executed boundary suites
+        run: python3 backend/scripts/check_boundary_reports.py directory-service
+
       - name: Upload test reports on failure
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -76,6 +79,9 @@ jobs:
       - name: Build and test product-service
         working-directory: backend
         run: ./gradlew :product-service:clean :product-service:build
+
+      - name: Require executed boundary suites
+        run: python3 backend/scripts/check_boundary_reports.py product-service
 
       - name: Upload test reports on failure
         if: failure()
