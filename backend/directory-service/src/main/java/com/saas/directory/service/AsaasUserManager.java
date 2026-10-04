@@ -81,24 +81,42 @@ public class AsaasUserManager {
         if (externalReference == null || externalReference.isBlank()) {
             throw new IllegalArgumentException("External customer reference is required");
         }
-        final java.net.URI requestUri = UriComponentsBuilder.fromUriString(asaasCustomerUrl)
-                .queryParam("externalReference", externalReference)
-                .build()
-                .encode()
-                .toUri();
+        final List<AsaasCustomerCreationResponse> matches = new java.util.ArrayList<>();
         try {
-            final ResponseEntity<AsaasCustomerSearchResponse> response = restTemplate.exchange(
-                    requestUri,
-                    HttpMethod.GET,
-                    new HttpEntity<>(getRequestHeaders()),
-                    AsaasCustomerSearchResponse.class);
-            final AsaasCustomerSearchResponse body = response.getBody();
-            if (body == null || body.data() == null) {
-                return List.of();
+            for (int offset = 0; offset < 10000; offset += 100) {
+                final java.net.URI requestUri = UriComponentsBuilder.fromUriString(asaasCustomerUrl)
+                        .queryParam("externalReference", externalReference)
+                        .queryParam("limit", 100)
+                        .queryParam("offset", offset)
+                        .build()
+                        .encode()
+                        .toUri();
+                final ResponseEntity<AsaasCustomerSearchResponse> response = restTemplate.exchange(
+                        requestUri,
+                        HttpMethod.GET,
+                        new HttpEntity<>(getRequestHeaders()),
+                        AsaasCustomerSearchResponse.class);
+                final AsaasCustomerSearchResponse body = response.getBody();
+                if (response.getStatusCode() != HttpStatus.OK
+                        || body == null
+                        || body.data() == null
+                        || body.hasMore() == null
+                        || (body.hasMore() && body.data().isEmpty())) {
+                    throw new IllegalStateException("Ambiguous payment provider customer search");
+                }
+                for (final AsaasCustomerCreationResponse customer : body.data()) {
+                    if (customer == null
+                            || customer.getId() == null
+                            || customer.getId().isBlank()
+                            || !externalReference.equals(customer.getExternalReference())
+                            || customer.isDeleted()) {
+                        throw new IllegalStateException("Invalid payment provider customer identity");
+                    }
+                    matches.add(customer);
+                }
+                if (!body.hasMore()) return List.copyOf(matches);
             }
-            return body.data().stream()
-                    .filter(customer -> externalReference.equals(customer.getExternalReference()))
-                    .toList();
+            throw new IllegalStateException("Payment provider customer search exceeded pagination bound");
         } catch (HttpClientErrorException e) {
             throw mapAsaasError(e);
         } catch (HttpServerErrorException | ResourceAccessException e) {
