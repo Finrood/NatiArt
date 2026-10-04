@@ -1,6 +1,7 @@
 # NatiArtFrontend
 
-This project uses Angular 22 and the Angular CLI application builder.
+This project uses Angular 22 and the Angular CLI application builder. Use
+Node.js 22.22.3 or a later version supported by the installed Angular CLI.
 
 ## Development server
 
