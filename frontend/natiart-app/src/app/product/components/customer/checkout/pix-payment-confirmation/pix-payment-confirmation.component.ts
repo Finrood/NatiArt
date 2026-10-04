@@ -148,6 +148,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
           } else {
             consecutiveErrors = 0;
             this.paymentStatus = result.status;
+            this._changeDetectorRef.markForCheck();
             if (this.paymentStatus === 'COMPLETED') {
               this.completePayment(result.orderId);
               return;

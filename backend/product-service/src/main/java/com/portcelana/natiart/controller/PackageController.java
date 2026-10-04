@@ -10,6 +10,7 @@ import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
 
 import com.portcelana.natiart.dto.PackageDto;
+import com.portcelana.natiart.dto.PagedResponseDto;
 import com.portcelana.natiart.service.PackageManager;
 
 @RestController
@@ -36,10 +37,23 @@ public class PackageController {
                 .toList();
     }
 
+    @GetMapping("/packages/page")
+    public PagedResponseDto<PackageDto> getPackagesPage(
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        return packageManager.getPackagesPage(toPageable(page, size), false);
+    }
+
+    @GetMapping("/admin/packages/page")
+    @PreAuthorize("hasRole('ADMIN')")
+    public PagedResponseDto<PackageDto> getAdminPackagesPage(
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        return packageManager.getPackagesPage(toPageable(page, size), true);
+    }
+
     private static Pageable toPageable(int page, int size) {
         final int safePage = Math.max(0, page);
         final int safeSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
-        return PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "label"));
+        return PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "label", "id"));
     }
 
     @PostMapping("/packages/create")

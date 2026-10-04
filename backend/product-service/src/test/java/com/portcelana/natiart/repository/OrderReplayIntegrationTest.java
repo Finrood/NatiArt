@@ -135,6 +135,7 @@ class OrderReplayIntegrationTest {
 
     private OrderDto orderRequest(String productId) {
         return new OrderDto()
+                .setHouseNumber("N/A")
                 .setFirstname("Jane")
                 .setLastname("Customer")
                 .setEmail("jane@example.com")
