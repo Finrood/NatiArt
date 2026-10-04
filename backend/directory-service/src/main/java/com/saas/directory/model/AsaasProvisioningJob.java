@@ -2,6 +2,7 @@ package com.saas.directory.model;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -20,6 +21,8 @@ import com.saas.directory.model.helper.PaymentProcessor;
 @Entity
 @Table(uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "payment_processor"}))
 public class AsaasProvisioningJob {
+    private static final Pattern SAFE_CORRELATION_ID = Pattern.compile("[A-Za-z0-9._-]{1,64}");
+
     @Id
     private String id;
 
@@ -50,16 +53,26 @@ public class AsaasProvisioningJob {
     @Column(length = 128)
     private String providerCustomerId;
 
+    @Column(length = 64)
+    private String correlationId;
+
     protected AsaasProvisioningJob() {
         // FOR JPA
     }
 
     public AsaasProvisioningJob(User user, PaymentProcessor paymentProcessor, Instant nextAttemptAt) {
+        this(user, paymentProcessor, nextAttemptAt, UUID.randomUUID().toString());
+    }
+
+    public AsaasProvisioningJob(
+            User user, PaymentProcessor paymentProcessor, Instant nextAttemptAt, String correlationId) {
         this.id = UUID.randomUUID().toString();
         this.user = user;
         this.paymentProcessor = paymentProcessor;
         this.status = AsaasProvisioningStatus.PENDING;
         this.nextAttemptAt = nextAttemptAt;
+        this.correlationId = correlationId;
+        ensureCorrelationId();
     }
 
     public String getId() {
@@ -92,6 +105,17 @@ public class AsaasProvisioningJob {
 
     public String getProviderCustomerId() {
         return providerCustomerId;
+    }
+
+    public String getCorrelationId() {
+        return correlationId;
+    }
+
+    public String ensureCorrelationId() {
+        if (correlationId == null || !SAFE_CORRELATION_ID.matcher(correlationId).matches()) {
+            correlationId = UUID.randomUUID().toString();
+        }
+        return correlationId;
     }
 
     public void claim(Instant now, Instant leaseUntil) {

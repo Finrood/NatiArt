@@ -60,8 +60,10 @@ CREATE TABLE IF NOT EXISTS asaas_provisioning_job (
     next_attempt_at timestamptz NOT NULL,
     last_error varchar(512),
     provider_customer_id varchar(128),
+    correlation_id varchar(64),
     CONSTRAINT uq_asaas_provisioning_user_processor UNIQUE (user_id, payment_processor)
 );
+ALTER TABLE asaas_provisioning_job ADD COLUMN IF NOT EXISTS correlation_id varchar(64);
 ```
 
 For pre-existing users without an Asaas mapping, create jobs once so the
@@ -70,8 +72,8 @@ provider duplicates before resuming registrations:
 
 ```sql
 INSERT INTO asaas_provisioning_job
-    (id, version, user_id, payment_processor, status, attempt_count, next_attempt_at)
-SELECT gen_random_uuid()::text, 0, u.id, 'ASAAS', 'PENDING', 0, now()
+    (id, version, user_id, payment_processor, status, attempt_count, next_attempt_at, correlation_id)
+SELECT gen_random_uuid()::text, 0, u.id, 'ASAAS', 'PENDING', 0, now(), gen_random_uuid()::text
 FROM users u
 WHERE NOT EXISTS (
     SELECT 1 FROM external_user e

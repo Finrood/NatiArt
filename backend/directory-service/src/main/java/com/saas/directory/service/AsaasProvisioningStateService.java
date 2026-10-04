@@ -126,9 +126,15 @@ public class AsaasProvisioningStateService {
             return null;
         }
         job.claim(now, now.plus(lease));
+        final String requestId = job.ensureCorrelationId();
         jobRepository.saveAndFlush(job);
         return new Claim(
-                job.getId(), job.getAttemptCount(), user.getId(), user.getUsername(), UserDto.from(user, null));
+                job.getId(),
+                job.getAttemptCount(),
+                user.getId(),
+                user.getUsername(),
+                UserDto.from(user, null),
+                requestId);
     }
 
     private boolean ownsClaim(AsaasProvisioningJob job, Claim claim) {
@@ -137,7 +143,18 @@ public class AsaasProvisioningStateService {
                 && job.getAttemptCount() == claim.attemptCount();
     }
 
-    public record Claim(String jobId, int attemptCount, String userId, String username, UserDto customer) {}
+    public record Claim(
+            String jobId, int attemptCount, String userId, String username, UserDto customer, String correlationId) {
+        public Claim(String jobId, int attemptCount, String userId, String username, UserDto customer) {
+            this(
+                    jobId,
+                    attemptCount,
+                    userId,
+                    username,
+                    customer,
+                    java.util.UUID.randomUUID().toString());
+        }
+    }
 
     public record ProvisioningSnapshot(AsaasProvisioningStatus status, Instant nextAttemptAt) {}
 }

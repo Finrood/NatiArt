@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import javax.management.relation.RoleNotFoundException;
 
+import org.slf4j.MDC;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -88,10 +89,11 @@ public class UserManager {
         newUser.setProfile(profile);
         final User savedUser = userRepository.save(newUser);
 
+        final String requestId = com.saas.directory.configuration.RequestCorrelationFilter.safeCorrelationId(
+                MDC.get(com.saas.directory.configuration.RequestCorrelationFilter.MDC_KEY));
         provisioningJobRepository.save(
-                new AsaasProvisioningJob(savedUser, PaymentProcessor.ASAAS, java.time.Instant.now()));
-
-        eventPublisher.publishEvent(new UserRegisteredEvent(savedUser.getUsername()));
+                new AsaasProvisioningJob(savedUser, PaymentProcessor.ASAAS, java.time.Instant.now(), requestId));
+        eventPublisher.publishEvent(new UserRegisteredEvent(savedUser.getUsername(), requestId));
 
         return savedUser;
     }

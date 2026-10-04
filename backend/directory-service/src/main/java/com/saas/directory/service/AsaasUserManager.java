@@ -64,7 +64,7 @@ public class AsaasUserManager {
                     asaasCustomerUrl, asaasPaymentCreationRequestHttpEntity, AsaasCustomerCreationResponse.class);
 
             return Optional.ofNullable(response)
-                    .orElseThrow(() -> new RuntimeException("Received a null response body from " + asaasCustomerUrl));
+                    .orElseThrow(() -> new IllegalStateException("Payment provider returned no customer response"));
         } catch (HttpClientErrorException e) {
             throw mapAsaasError(e);
         } catch (HttpServerErrorException | ResourceAccessException e) {
@@ -72,7 +72,9 @@ public class AsaasUserManager {
             // them in Exception would bypass Spring Retry's classifier.
             throw e;
         } catch (Exception e) {
-            throw new Exception("Unexpected error during asaas user registration: " + e.getMessage(), e);
+            LOGGER.warn(
+                    "Unexpected Asaas customer failure: type={}", e.getClass().getSimpleName());
+            throw new Exception("Unexpected error during Asaas user registration");
         }
     }
 
@@ -126,14 +128,12 @@ public class AsaasUserManager {
         }
     }
 
-    /**
-     * Maps an upstream Asaas customer-API error onto a service exception. The raw
-     * upstream body is logged server-side only -- it is never embedded in the
-     * exception message because the directory advice reflects that message to
-     * the caller.
-     */
+    /** Maps an upstream error without retaining its potentially sensitive body. */
     static AsaasApiException mapAsaasError(HttpClientErrorException e) {
-        LOGGER.warn("Asaas customer API error: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
+        LOGGER.warn(
+                "Asaas customer API error: providerStatusCode={}, responseBodyBytes={}",
+                e.getStatusCode().value(),
+                Math.min(e.getResponseBodyAsByteArray().length, 8192));
         return new AsaasApiException(
                 "Customer registration failed at the payment provider", (HttpStatus) e.getStatusCode());
     }

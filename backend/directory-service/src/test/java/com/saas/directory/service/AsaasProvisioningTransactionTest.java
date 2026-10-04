@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -16,6 +17,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.ResourceAccessException;
 
+import com.saas.directory.configuration.RequestCorrelationFilter;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
 import com.saas.directory.model.AsaasProvisioningJob;
 import com.saas.directory.model.AsaasProvisioningStatus;
@@ -62,8 +64,9 @@ class AsaasProvisioningTransactionTest {
                 .orElseGet(() -> roleRepository.save(new Role(RoleName.USER)));
         final User user = userRepository.save(new User(UUID.randomUUID() + "@example.test", "password").setRole(role));
         final AsaasProvisioningJob job =
-                jobRepository.save(new AsaasProvisioningJob(user, PaymentProcessor.ASAAS, Instant.now()));
+                jobRepository.save(new AsaasProvisioningJob(user, PaymentProcessor.ASAAS, Instant.now(), "signup-42"));
         when(provider.findCustomersByExternalReference(user.getId())).thenAnswer(invocation -> {
+            assertEquals("signup-42", MDC.get(RequestCorrelationFilter.MDC_KEY));
             assertFalse(
                     TransactionSynchronizationManager.isActualTransactionActive(),
                     "provider I/O must start after the claim transaction commits");
@@ -78,6 +81,7 @@ class AsaasProvisioningTransactionTest {
         final AsaasProvisioningJob pending = jobRepository.findById(job.getId()).orElseThrow();
         assertEquals(AsaasProvisioningStatus.PENDING, pending.getStatus());
         assertEquals(1, pending.getAttemptCount());
+        assertEquals("signup-42", pending.getCorrelationId());
         assertTrue(pending.getNextAttemptAt().isAfter(Instant.now()));
 
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
@@ -87,7 +91,12 @@ class AsaasProvisioningTransactionTest {
         });
         final AsaasCustomerCreationResponse existing = mock(AsaasCustomerCreationResponse.class);
         when(existing.getId()).thenReturn("cus_reconciled");
-        doReturn(List.of(existing)).when(provider).findCustomersByExternalReference(user.getId());
+        doAnswer(invocation -> {
+                    assertEquals("signup-42", MDC.get(RequestCorrelationFilter.MDC_KEY));
+                    return List.of(existing);
+                })
+                .when(provider)
+                .findCustomersByExternalReference(user.getId());
 
         provisioningService.processDueJobs();
 
