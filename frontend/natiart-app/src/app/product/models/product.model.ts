@@ -9,10 +9,12 @@ export interface Product {
   stockQuantity: number;
   weightKg?: number;
   categoryId: string;
+  categoryLabel?: string | null;
+  packageLabel?: string | null;
   packageId?: string;
   hasFixedGoldenBorder?: boolean;
   availablePersonalizations: PersonalizationOption[];
-  tags: Set<string>;
+  tags: string[];
   images: string[];
   active?: boolean;
   newProduct?: boolean;

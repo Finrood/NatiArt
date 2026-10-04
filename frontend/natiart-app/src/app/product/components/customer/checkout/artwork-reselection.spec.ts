@@ -18,7 +18,7 @@ describe('Restored artwork reselection', (): void => {
     profile: {firstname: 'Buyer', lastname: 'Customer', cpf: '52998224725', phone: '11999999999',
       country: 'Brazil', state: 'SP', city: 'City', neighborhood: 'Area', zipCode: '01001000', street: 'Street'}};
   const product: Product = {id: 'p1', label: 'Plate', originalPrice: 10, markedPrice: 10,
-    stockQuantity: 2, categoryId: 'c1', tags: new Set<string>(), availablePersonalizations: [], images: []};
+    stockQuantity: 2, categoryId: 'c1', tags: [], availablePersonalizations: [], images: []};
   beforeEach((): void => localStorage.clear());
   afterEach((): void => localStorage.clear());
 
@@ -33,7 +33,7 @@ describe('Restored artwork reselection', (): void => {
       {provide: AuthenticationService, useValue: {isLoggedIn$: of(true), currentUser$: of(user), fetchCurrentUser: (): unknown => of(user)}},
       {provide: OrderService, useValue: {orderProcessing$: of(false), createOrder: create}},
       {provide: ShippingService, useValue: {createQuote: (): unknown => of({quoteId: 'quote', expiresAt: '2099-01-01T00:00:00Z', itemAmount: 10, shippingAmount: 0, totalAmount: 10, items: []} as unknown as ShippingQuote)}},
-      {provide: ProductService, useValue: {uploadCustomerImage: upload}},
+      {provide: ProductService, useValue: {imageInvalidations: of(), getImage: (): unknown => of(new Blob()), uploadCustomerImage: upload}},
       {provide: PaymentService, useValue: {createPixPayment: (): unknown => of({paymentId: 'paid'})}},
     ]}).compileComponents();
     spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);

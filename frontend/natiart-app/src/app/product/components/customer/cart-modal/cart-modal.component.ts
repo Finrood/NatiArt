@@ -1,11 +1,10 @@
+import {ImageCollection, ImageLoaderService, EMPTY_PRODUCT_IMAGE} from '../../../service/image-loader.service';
 import {Component, inject, OnDestroy, OnInit} from '@angular/core';
 import { AsyncPipe, CurrencyPipe } from "@angular/common";
 import {CartItem} from "../../../models/CartItem.model";
 import {Observable, Subscription} from "rxjs";
 import {CartService} from "../../../service/cart.service";
 import {FormsModule} from "@angular/forms";
-import {ProductService} from "../../../service/product.service";
-import {DomSanitizer, SafeUrl} from "@angular/platform-browser";
 import {RouterLink} from "@angular/router";
 import {ButtonComponent} from "../../../../shared/components/button.component";
 
@@ -21,16 +20,15 @@ import {ButtonComponent} from "../../../../shared/components/button.component";
     templateUrl: './cart-modal.component.html'
 })
 export class CartModalComponent implements OnInit, OnDestroy {
+  readonly images: ImageCollection = inject(ImageLoaderService).create();
+  readonly emptyImage: string = EMPTY_PRODUCT_IMAGE;
+  get imageUrls(): Record<string, string> { return this.images.urls(); }
+
   cartItems$: Observable<CartItem[]>;
   cartTotal$: Observable<number>;
-  imageUrls: { [cartItemId: string]: SafeUrl | string | null } = {};
   private subscriptions: Subscription[] = [];
-  private rawObjectUrlsByLine: Map<string, string> = new Map();
-  private liveLineIds: Set<string> = new Set<string>();
 
   private readonly _cartService: CartService = inject(CartService);
-  private readonly _productService: ProductService = inject(ProductService);
-  private readonly _sanitizer: DomSanitizer = inject(DomSanitizer);
 
   constructor() {
     this.cartItems$ = this._cartService.getCartItems();
@@ -43,7 +41,7 @@ export class CartModalComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subscriptions.forEach(subscription => subscription.unsubscribe());
-    this.revokeAllObjectUrls();
+    this.images.destroy();
   }
 
   updateQuantity(item: CartItem, newQuantity: number): void {
@@ -60,71 +58,10 @@ export class CartModalComponent implements OnInit, OnDestroy {
     this._cartService.removeFromCart(item.cartItemId);
   }
 
-  onImageError(cartItemId: string): void {
-    this.revokeObjectUrl(cartItemId);
-    this.imageUrls[cartItemId] = null;
-  }
-
-  private revokeObjectUrl(cartItemId: string): void {
-    const rawUrl: string | undefined = this.rawObjectUrlsByLine.get(cartItemId);
-    if (rawUrl) {
-      URL.revokeObjectURL(rawUrl);
-      this.rawObjectUrlsByLine.delete(cartItemId);
-    }
-  }
-
-  private revokeAllObjectUrls(): void {
-    this.rawObjectUrlsByLine.forEach((rawUrl: string) => URL.revokeObjectURL(rawUrl));
-    this.rawObjectUrlsByLine.clear();
-  }
-
+  onImageError(key: string): void { this.images.failed(key); }
   private loadProductImages(): void {
-    const subscription: Subscription = this.cartItems$.subscribe((items: CartItem[]): void => {
-      const liveIds: Set<string> = new Set(items.map((item: CartItem): string => item.cartItemId));
-      this.liveLineIds = liveIds;
-      Array.from(this.rawObjectUrlsByLine.keys()).forEach((cartItemId: string) => {
-        if (!liveIds.has(cartItemId)) {
-          this.revokeObjectUrl(cartItemId);
-          delete this.imageUrls[cartItemId];
-        }
-      });
-      items.forEach((item: CartItem): void => {
-        // Skip lines already loading/loaded: without this guard every cart
-        // emission re-issues GET image for all lines (siblings cart/order-summary
-        // already guard on imageUrls[cartItemId]).
-        if (this.imageUrls[item.cartItemId]) {
-          return;
-        }
-        if (item.product.images && item.product.images.length > 0) {
-          this.fetchImage(item.cartItemId, item.product.images[0]);
-        }
-      });
-    });
-    this.subscriptions.push(subscription);
-  }
-
-  private fetchImage(cartItemId: string, imagePath: string): void {
-    // Drop resolutions that arrive after the line was removed: the cleanup
-    // pass above deletes the key, and an unguarded write would resurrect
-    // it (AA3). Destroy teardown is covered by the subscriptions list.
-    const subscription: Subscription = this._productService.getImage(imagePath).subscribe({
-      next: (blob: Blob): void => {
-        if (!this.liveLineIds.has(cartItemId)) {
-          return;
-        }
-        this.revokeObjectUrl(cartItemId);
-        const objectUrl: string = URL.createObjectURL(blob);
-        this.rawObjectUrlsByLine.set(cartItemId, objectUrl);
-        this.imageUrls[cartItemId] = this._sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
-      },
-      error: (): void => {
-        if (!this.liveLineIds.has(cartItemId)) {
-          return;
-        }
-        this.revokeObjectUrl(cartItemId);
-        this.imageUrls[cartItemId] = 'assets/img/placeholder.png';
-      }
-    });
-    this.subscriptions.push(subscription);
+    this.subscriptions.push(this.cartItems$.subscribe((items: CartItem[]): void => {
+      this.images.update(items.map((item: CartItem) => ({key: item.cartItemId, source: item.image || item.product.images?.[0]})));
+    }));
   }
 }

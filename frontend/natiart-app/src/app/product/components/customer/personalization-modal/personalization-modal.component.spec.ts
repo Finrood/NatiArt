@@ -31,7 +31,7 @@ describe('PersonalizationModalComponent', () => {
       stockQuantity: 3,
       categoryId: 'cat-1',
       availablePersonalizations: undefined as unknown as PersonalizationOption[],
-      tags: new Set<string>(),
+      tags: [],
       images: [],
     };
     expect((): boolean => component.canAddGoldBorder).not.toThrow();
@@ -52,7 +52,7 @@ describe('PersonalizationModalComponent', () => {
       stockQuantity: 5,
       categoryId: 'cat-1',
       availablePersonalizations: [PersonalizationOption.GOLDEN_BORDER, PersonalizationOption.CUSTOM_IMAGE],
-      tags: new Set<string>(),
+      tags: [],
       images: [],
     };
     expect(component.canAddGoldBorder).toBeTrue();

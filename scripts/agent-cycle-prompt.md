@@ -162,6 +162,8 @@ Every PR created by this loop must contain the exact own-line marker
 that marker together with the authenticated PR author allowlist; branch names
 and self-described verdict text are not ownership proof.
 
+The supervisor enrolls only the explicitly validated worker result; branch discovery and manual worker enrollment grant no cleanup authority.
+
 SELF-MODIFICATION BAN: PRs touching `scripts/**`, `agents/**`, any `AGENTS.md`
 (root or module), `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.github/**`,
 `scripts/systemd/**`, `docs/continuous-improvement-loop.md` or

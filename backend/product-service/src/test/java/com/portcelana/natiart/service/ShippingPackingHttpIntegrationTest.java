@@ -228,6 +228,7 @@ class ShippingPackingHttpIntegrationTest {
         assertEquals(new BigDecimal("12.50"), quote.getShippingAmount());
         final OrderDto orderRequest = new OrderDto()
                 .setFirstname("Buyer")
+                .setHouseNumber("N/A")
                 .setLastname("Customer")
                 .setEmail("buyer@example.test")
                 .setCountry("Brazil")

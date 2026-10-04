@@ -31,6 +31,7 @@ import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.model.support.PersonalizationOption;
 import com.portcelana.natiart.repository.OrderRepository;
 import com.portcelana.natiart.repository.ProductRepository;
+import com.portcelana.natiart.service.support.DomainValidation;
 
 /**
  * Owns the transaction that reserves stock and persists an order. Keeping
@@ -80,6 +81,7 @@ public class OrderCreationService {
     @Transactional
     public CustomerOrder createOrder(
             OrderDto orderDto, String ownerExternalId, String idempotencyKey, String requestFingerprint) {
+        orderDto.setHouseNumber(DomainValidation.requiredText(orderDto.getHouseNumber(), "houseNumber", 255));
         validateContactDetails(orderDto);
         final Map<String, Integer> quantitiesByProduct = aggregateQuantities(orderDto.getItems());
         final Map<String, Product> products = productManager.getProductsOrDie(orderDto.getItems().stream()
@@ -108,6 +110,7 @@ public class OrderCreationService {
                 .setNeighborhood(orderDto.getNeighborhood())
                 .setZipCode(orderDto.getZipCode())
                 .setStreet(orderDto.getStreet())
+                .setHouseNumber(orderDto.getHouseNumber())
                 .setComplement(orderDto.getComplement())
                 .setDeliveryAmount(serverDeliveryAmount)
                 .setShippingQuoteId(shippingQuote.getId())
@@ -142,9 +145,11 @@ public class OrderCreationService {
 
         // Stock is reserved by product, but resolvedItems below intentionally
         // remains one line per distinct fulfillment instruction.
-        for (Map.Entry<String, Integer> entry : quantitiesByProduct.entrySet()) {
-            final Product product = products.get(entry.getKey());
-            final int reserved = productRepository.decreaseStockIfAvailable(product.getId(), entry.getValue());
+        // Acquire each product row in a stable order while preserving fulfillment line order.
+        for (String productId : quantitiesByProduct.keySet().stream().sorted().toList()) {
+            final Product product = products.get(productId);
+            final int reserved =
+                    productRepository.decreaseStockIfAvailable(product.getId(), quantitiesByProduct.get(productId));
             if (reserved == 0) {
                 throw new IllegalArgumentException("Insufficient stock for product [" + product.getLabel() + "]");
             }
