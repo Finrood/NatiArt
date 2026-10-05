@@ -91,7 +91,7 @@ class OrderCancellationJpaTest {
                 .when(chargeSafetyService)
                 .ensureChargeInactive(any(Payment.class));
 
-        assertThrows(IllegalStateException.class, () -> orderManager.cancelPendingOrder(seed.orderId(), null));
+        assertThrows(IllegalStateException.class, () -> orderManager.cancelPendingOrderInternally(seed.orderId()));
 
         assertEquals(
                 8, productRepository.findById(seed.productId()).orElseThrow().getStockQuantity());
@@ -108,7 +108,7 @@ class OrderCancellationJpaTest {
                         new PaymentIdempotency("cus_MINE", seed.idempotencyKey(), "fingerprint", seed.orderId())
                                 .setStatus(PaymentIdempotencyStatus.FAILED_RECOVERABLE)));
 
-        assertThrows(IllegalArgumentException.class, () -> orderManager.cancelPendingOrder(seed.orderId(), null));
+        assertThrows(IllegalArgumentException.class, () -> orderManager.cancelPendingOrderInternally(seed.orderId()));
 
         assertEquals(
                 8, productRepository.findById(seed.productId()).orElseThrow().getStockQuantity());
@@ -125,7 +125,7 @@ class OrderCancellationJpaTest {
                         new PaymentIdempotency("cus_MINE", seed.idempotencyKey(), "fingerprint", seed.orderId())
                                 .setStatus(PaymentIdempotencyStatus.FAILED_RECOVERABLE)));
 
-        orderManager.cancelPendingOrder(seed.orderId(), null);
+        orderManager.cancelPendingOrderInternally(seed.orderId());
 
         assertEquals(
                 10, productRepository.findById(seed.productId()).orElseThrow().getStockQuantity());
@@ -144,7 +144,7 @@ class OrderCancellationJpaTest {
                 .executeWithoutResult(ignored -> paymentIdempotencyRepository.save(
                         new PaymentIdempotency("cus_MINE", seed.idempotencyKey(), "fingerprint", seed.orderId())));
 
-        assertThrows(IllegalArgumentException.class, () -> orderManager.cancelPendingOrder(seed.orderId(), null));
+        assertThrows(IllegalArgumentException.class, () -> orderManager.cancelPendingOrderInternally(seed.orderId()));
 
         assertEquals(
                 8, productRepository.findById(seed.productId()).orElseThrow().getStockQuantity());
@@ -156,7 +156,7 @@ class OrderCancellationJpaTest {
 
         paymentIdempotencyService.reserve("cus_MINE", seed.idempotencyKey(), "fingerprint", seed.orderId());
 
-        assertThrows(IllegalArgumentException.class, () -> orderManager.cancelPendingOrder(seed.orderId(), null));
+        assertThrows(IllegalArgumentException.class, () -> orderManager.cancelPendingOrderInternally(seed.orderId()));
         assertEquals(
                 8, productRepository.findById(seed.productId()).orElseThrow().getStockQuantity());
     }

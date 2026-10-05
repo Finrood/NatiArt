@@ -48,9 +48,15 @@ public interface OrderManager {
     /** Marks a payment-backed order as paid; repeated confirmations are safe. */
     CustomerOrder markOrderPaid(String orderId);
 
-    /** Cancels an unpaid order and releases its stock reservation exactly once. */
+    /** Cancels an unpaid order for its required authenticated owner and releases stock exactly once. */
     CustomerOrder cancelPendingOrder(String orderId, String requesterExternalId);
 
-    /** Returns the cancelled order while its purchase details are still attached. */
+    /**
+     * Cancels through the trusted reaper or administrative lifecycle, without a customer response.
+     * Customer controllers must use the owner-checked cancellation methods instead.
+     */
+    CustomerOrder cancelPendingOrderInternally(String orderId);
+
+    /** Returns the authenticated owner's cancelled order while its purchase details are attached. */
     OrderDto cancelPendingOrderResponse(String orderId, String requesterExternalId);
 }

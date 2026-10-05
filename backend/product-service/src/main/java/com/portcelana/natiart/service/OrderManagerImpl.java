@@ -312,7 +312,7 @@ public class OrderManagerImpl implements OrderManager {
     @Transactional
     public CustomerOrder updateOrderStatus(String orderId, OrderStatus status) {
         if (status == OrderStatus.CANCELLED) {
-            return cancelPendingOrder(orderId, null);
+            return cancelPendingOrderInternally(orderId);
         }
         final CustomerOrder current = getOrderById(orderId);
         if (current.getStatus() == null
@@ -340,13 +340,32 @@ public class OrderManagerImpl implements OrderManager {
     @Override
     @Transactional
     public CustomerOrder cancelPendingOrder(String orderId, String requesterExternalId) {
-        final CustomerOrder order = orderRepository
-                .findByIdForUpdate(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("CustomerOrder with id " + orderId + " not found"));
-        if (requesterExternalId != null && !requesterExternalId.equals(order.getOwnerExternalId())) {
+        if (requesterExternalId == null || requesterExternalId.isBlank()) {
+            throw new com.portcelana.natiart.controller.helper.UserNotAllowedException(
+                    "An authenticated customer owner is required");
+        }
+        final CustomerOrder order = lockOrder(orderId);
+        if (!requesterExternalId.equals(order.getOwnerExternalId())) {
             throw new com.portcelana.natiart.controller.helper.UserNotAllowedException(
                     "The authenticated user does not own this order");
         }
+        return cancelLockedOrder(order);
+    }
+
+    @Override
+    @Transactional
+    public CustomerOrder cancelPendingOrderInternally(String orderId) {
+        return cancelLockedOrder(lockOrder(orderId));
+    }
+
+    private CustomerOrder lockOrder(String orderId) {
+        return orderRepository
+                .findByIdForUpdate(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("CustomerOrder with id " + orderId + " not found"));
+    }
+
+    private CustomerOrder cancelLockedOrder(CustomerOrder order) {
+        final String orderId = order.getId();
         if (order.getStatus() == OrderStatus.CANCELLED) {
             return order;
         }

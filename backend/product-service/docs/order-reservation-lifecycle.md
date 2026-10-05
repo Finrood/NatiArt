@@ -6,10 +6,16 @@ orders by default. `NATIART_ORDER_MAX_OUTSTANDING_RESERVATIONS` changes that
 limit.
 
 Customers can cancel a pending order with `DELETE /orders/{orderId}`. The
-operation locks the order row, verifies ownership, restores each line exactly
+operation rejects absent or blank customer IDs before reading the order, then
+locks the order row, verifies ownership, restores each line exactly
 once, and then stores `CANCELLED`; repeated cancellation cannot restore stock a
 second time. A scheduled reaper applies the same lifecycle to pending orders
-older than the configured TTL. Set `NATIART_ORDER_RESERVATION_TTL_MILLIS` and
+older than the configured TTL through a separate internal cancellation method.
+A missing customer ID never authorizes internal expiry or an administrative
+cancellation. Accounts awaiting payment-profile provisioning receive HTTP 403
+from customer cancellation, including repeated cancellation requests. The
+internal method is for trusted service callers and is not exposed by a customer
+controller. Set `NATIART_ORDER_RESERVATION_TTL_MILLIS` and
 `NATIART_ORDER_RESERVATION_REAPER_DELAY_MILLIS` to tune it.
 
 Before deploying this revision to an existing database, add the nullable order
