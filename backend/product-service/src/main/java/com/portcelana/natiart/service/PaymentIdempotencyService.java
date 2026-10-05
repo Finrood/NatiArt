@@ -167,26 +167,29 @@ public class PaymentIdempotencyService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markRecoverableFailure(String ownerExternalId, String idempotencyKey) {
-        repository
-                .findByOwnerExternalIdAndIdempotencyKey(ownerExternalId, idempotencyKey)
-                .ifPresent(record -> {
-                    if (record.getStatus() == PaymentIdempotencyStatus.IN_PROGRESS) {
-                        record.setStatus(PaymentIdempotencyStatus.FAILED_RECOVERABLE);
-                        repository.save(record);
-                    }
-                });
+        repository.failInProgressReservation(
+                ownerExternalId,
+                idempotencyKey,
+                PaymentIdempotencyStatus.IN_PROGRESS,
+                PaymentIdempotencyStatus.FAILED_RECOVERABLE,
+                Instant.now());
     }
 
     /** Moves abandoned reservations into the explicit reconciliation state after a restart. */
     @Scheduled(fixedDelayString = "${natiart.payment.idempotency.recovery-delay-millis:60000}")
     @Transactional
     public void recoverStaleReservations() {
-        final Instant cutoff = Instant.now().minusMillis(staleReservationMillis);
+        final Instant now = Instant.now();
+        final Instant cutoff = now.minusMillis(staleReservationMillis);
         repository
-                .findStaleByStatus(PaymentIdempotencyStatus.IN_PROGRESS, cutoff, PageRequest.of(0, 100))
-                .forEach(record -> {
-                    record.setStatus(PaymentIdempotencyStatus.FAILED_RECOVERABLE);
-                    repository.save(record);
-                });
+                .findStaleIdsByStatus(PaymentIdempotencyStatus.IN_PROGRESS, cutoff, PageRequest.of(0, 100))
+                // Scalar candidates cannot flush stale entity state. A zero-row update
+                // means completion or a refresh won; preserve its status and provider ID.
+                .forEach(id -> repository.failStaleReservation(
+                        id,
+                        PaymentIdempotencyStatus.IN_PROGRESS,
+                        PaymentIdempotencyStatus.FAILED_RECOVERABLE,
+                        cutoff,
+                        now));
     }
 }

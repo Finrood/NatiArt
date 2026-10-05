@@ -1,8 +1,8 @@
 package com.portcelana.natiart.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -42,12 +42,17 @@ class PaymentIdempotencyRecoveryTest {
     void staleInProgressReservationMovesToRecoverableState() {
         final PaymentIdempotencyRepository repository = mock(PaymentIdempotencyRepository.class);
         final PaymentIdempotency record = new PaymentIdempotency("cus-1", "key-1", "fingerprint");
-        when(repository.findStaleByStatus(any(), any(Instant.class), any())).thenReturn(List.of(record));
+        when(repository.findStaleIdsByStatus(any(), any(Instant.class), any())).thenReturn(List.of(record.getId()));
         final PaymentIdempotencyService service = new PaymentIdempotencyService(repository, 1000);
 
         service.recoverStaleReservations();
 
-        assertEquals(PaymentIdempotencyStatus.FAILED_RECOVERABLE, record.getStatus());
-        verify(repository).save(record);
+        verify(repository)
+                .failStaleReservation(
+                        eq(record.getId()),
+                        eq(PaymentIdempotencyStatus.IN_PROGRESS),
+                        eq(PaymentIdempotencyStatus.FAILED_RECOVERABLE),
+                        any(Instant.class),
+                        any(Instant.class));
     }
 }

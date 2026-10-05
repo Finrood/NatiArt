@@ -60,7 +60,13 @@ Payment idempotency rows that remain `IN_PROGRESS` beyond
 `NATIART_PAYMENT_IDEMPOTENCY_STALE_RESERVATION_MILLIS` are moved to
 `FAILED_RECOVERABLE`. They are not silently retried because a provider charge
 may have succeeded before the process stopped; reconciliation must establish
-the provider result first.
+the provider result first. Recovery selects at most 100 scalar IDs, then updates
+only rows still `IN_PROGRESS` and older than the original cutoff. The update
+changes only status and modification time; a concurrent committed success or
+refreshed reservation is skipped, preserving provider identity. Ordinary failure
+transitions also require the current database state to be `IN_PROGRESS`, so a
+late failure cannot demote proven success. No stale managed entity is saved by
+either failure path.
 
 ## Atomic account budget
 
