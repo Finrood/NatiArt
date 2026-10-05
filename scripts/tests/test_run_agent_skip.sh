@@ -52,11 +52,12 @@ assert_contains "$out" "cline-muse" "no skip -> cline Muse listed"
 assert_contains "$out" "cline-deepseek" "no skip -> fallback listed"
 assert_contains "$out" "cline-glm" "no skip -> second fallback listed"
 
-# --- skip author model: reviewer starts at next model ---
+# --- skip author model family: reviewer starts at a different set of weights ---
 out=$(check_only --skip opencode-muse) || out=""
 first=$(tail -1 <<<"$out")
-assert_eq "cline-muse" "$first" "skip author -> next model first"
+assert_eq "cline-deepseek" "$first" "skip author family -> next model family first"
 assert_contains "$out" "Skipping opencode-muse" "skip logged"
+assert_contains "$out" "Skipping cline-muse" "same-family alias also skipped"
 
 # --- skip by model_id substring (footer values are cli:model_id) ---
 out=$(check_only --skip deepseek/deepseek-v4-flash) || out=""
@@ -77,11 +78,10 @@ first=$(tail -1 <<<"$out")
 assert_eq "cline-deepseek" "$first" "skip both Muse pipes -> deepseek first"
 assert_contains "$out" "Skipping cline-muse" "cline Muse skip logged"
 
-# --- skips that empty the pool are ignored, never idle ---
-out=$(check_only --skip opencode --skip muse --skip deepseek --skip glm) || out=""
-first=$(tail -1 <<<"$out")
-assert_eq "opencode-muse" "$first" "total skip -> fallback to full list"
-assert_contains "$out" "ignoring skips" "empty-pool fallback warned"
+# --- skips that empty the pool require a human review ---
+empty_skip_out=$(bash "$RUN_AGENT" --skip opencode --skip muse --skip deepseek --skip glm --check-only dummy 2>&1) && empty_skip_rc=0 || empty_skip_rc=$?
+assert_eq "4" "$empty_skip_rc" "total skip -> independent review unavailable"
+assert_contains "$empty_skip_out" "Manual review is required" "empty-pool fallback is not silently bypassed"
 
 # --- no runnable CLI anywhere: loud abort (exit 2), not a silent spin ---
 emptyd=$(mktemp -d)
