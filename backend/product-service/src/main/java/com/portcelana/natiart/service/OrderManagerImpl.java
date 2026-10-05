@@ -26,8 +26,14 @@ import com.portcelana.natiart.dto.OrderDto;
 import com.portcelana.natiart.dto.OrderItemDto;
 import com.portcelana.natiart.dto.PersonalizationDto;
 import com.portcelana.natiart.model.CustomerOrder;
+import com.portcelana.natiart.model.Payment;
+import com.portcelana.natiart.model.PaymentIdempotency;
+import com.portcelana.natiart.model.PaymentIdempotencyStatus;
 import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.repository.OrderRepository;
+import com.portcelana.natiart.repository.OrderReservationOwnerRepository;
+import com.portcelana.natiart.repository.PaymentIdempotencyRepository;
+import com.portcelana.natiart.repository.PaymentRepository;
 
 @Service
 public class OrderManagerImpl implements OrderManager {
@@ -43,22 +49,45 @@ public class OrderManagerImpl implements OrderManager {
 
     private final OrderRepository orderRepository;
     private final OrderCreationService orderCreationService;
+    private final com.portcelana.natiart.repository.ProductRepository productRepository;
+    private final PaymentRepository paymentRepository;
+    private final PaymentIdempotencyRepository paymentIdempotencyRepository;
+    private final AsaasChargeSafetyService chargeSafetyService;
 
     @Autowired
-    public OrderManagerImpl(OrderRepository orderRepository, OrderCreationService orderCreationService) {
+    public OrderManagerImpl(
+            OrderRepository orderRepository,
+            OrderCreationService orderCreationService,
+            com.portcelana.natiart.repository.ProductRepository productRepository,
+            PaymentRepository paymentRepository,
+            PaymentIdempotencyRepository paymentIdempotencyRepository,
+            AsaasChargeSafetyService chargeSafetyService) {
         this.orderRepository = orderRepository;
         this.orderCreationService = orderCreationService;
+        this.productRepository = productRepository;
+        this.paymentRepository = paymentRepository;
+        this.paymentIdempotencyRepository = paymentIdempotencyRepository;
+        this.chargeSafetyService = chargeSafetyService;
     }
 
     /** Test-friendly constructor; production uses the transaction-owning bean above. */
     OrderManagerImpl(
+            OrderReservationOwnerRepository reservationOwners,
             OrderRepository orderRepository,
             ProductManager productManager,
             com.portcelana.natiart.repository.ProductRepository productRepository,
+            PaymentRepository paymentRepository,
+            PaymentIdempotencyRepository paymentIdempotencyRepository,
+            AsaasChargeSafetyService chargeSafetyService,
             ShippingQuoteService shippingQuoteService) {
         this(
                 orderRepository,
-                new OrderCreationService(orderRepository, productManager, productRepository, shippingQuoteService));
+                new OrderCreationService(
+                        reservationOwners, orderRepository, productManager, productRepository, shippingQuoteService),
+                productRepository,
+                paymentRepository,
+                paymentIdempotencyRepository,
+                chargeSafetyService);
     }
 
     @Override
@@ -153,6 +182,7 @@ public class OrderManagerImpl implements OrderManager {
             }
         }
 
+        orderCreationService.prepareReservationOwner(ownerExternalId);
         try {
             return orderCreationService.createOrder(orderDto, ownerExternalId, normalizedKey, fingerprint);
         } catch (UnusableCustomerUploadException exception) {
@@ -281,6 +311,9 @@ public class OrderManagerImpl implements OrderManager {
     @Override
     @Transactional
     public CustomerOrder updateOrderStatus(String orderId, OrderStatus status) {
+        if (status == OrderStatus.CANCELLED) {
+            return cancelPendingOrderInternally(orderId);
+        }
         final CustomerOrder current = getOrderById(orderId);
         if (current.getStatus() == null
                 || !ALLOWED_TRANSITIONS
@@ -302,5 +335,83 @@ public class OrderManagerImpl implements OrderManager {
             throw new IllegalArgumentException("Administrators may only advance fulfillment status");
         }
         return updateOrderStatus(orderId, status);
+    }
+
+    @Override
+    @Transactional
+    public CustomerOrder cancelPendingOrder(String orderId, String requesterExternalId) {
+        if (requesterExternalId == null || requesterExternalId.isBlank()) {
+            throw new com.portcelana.natiart.controller.helper.UserNotAllowedException(
+                    "An authenticated customer owner is required");
+        }
+        final CustomerOrder order = lockOrder(orderId);
+        if (!requesterExternalId.equals(order.getOwnerExternalId())) {
+            throw new com.portcelana.natiart.controller.helper.UserNotAllowedException(
+                    "The authenticated user does not own this order");
+        }
+        return cancelLockedOrder(order);
+    }
+
+    @Override
+    @Transactional
+    public CustomerOrder cancelPendingOrderInternally(String orderId) {
+        return cancelLockedOrder(lockOrder(orderId));
+    }
+
+    private CustomerOrder lockOrder(String orderId) {
+        return orderRepository
+                .findByIdForUpdate(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("CustomerOrder with id " + orderId + " not found"));
+    }
+
+    private CustomerOrder cancelLockedOrder(CustomerOrder order) {
+        final String orderId = order.getId();
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            return order;
+        }
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new IllegalArgumentException("Only unpaid pending orders can be cancelled");
+        }
+        final List<PaymentIdempotency> attempts = paymentIdempotencyRepository.findByOrderId(orderId);
+        if (!paymentIdempotencyRepository
+                .findByOwnerExternalIdAndOrderIdIsNullAndStatusIn(
+                        order.getOwnerExternalId(),
+                        List.of(PaymentIdempotencyStatus.IN_PROGRESS, PaymentIdempotencyStatus.FAILED_RECOVERABLE))
+                .isEmpty()) {
+            throw new IllegalArgumentException("An unresolved payment attempt must be reconciled before cancellation");
+        }
+        final Optional<Payment> payment = paymentRepository.findByOrderId(orderId);
+        if (payment.isEmpty()) {
+            if (!attempts.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "A missing payment ledger row must be reconciled before cancellation");
+            }
+        } else {
+            final Payment charge = payment.get();
+            if (attempts.stream()
+                    .anyMatch(attempt -> attempt.getStatus() == PaymentIdempotencyStatus.IN_PROGRESS
+                            || !Objects.equals(attempt.getIdempotencyKey(), charge.getIdempotencyKey())
+                            || (attempt.getProviderPaymentId() != null
+                                    && !attempt.getProviderPaymentId().equals(charge.getId())))) {
+                throw new IllegalArgumentException(
+                        "An unresolved payment attempt must be reconciled before cancellation");
+            }
+            chargeSafetyService.ensureChargeInactive(charge);
+            attempts.stream()
+                    .filter(attempt -> attempt.getStatus() == PaymentIdempotencyStatus.FAILED_RECOVERABLE)
+                    .forEach(attempt -> paymentIdempotencyRepository.save(attempt.setProviderPaymentId(charge.getId())
+                            .setStatus(PaymentIdempotencyStatus.SUCCEEDED)));
+        }
+        order.getItems()
+                .forEach(
+                        item -> productRepository.restoreStock(item.getProduct().getId(), item.getQuantity()));
+        order.setStatus(OrderStatus.CANCELLED);
+        return orderRepository.save(order);
+    }
+
+    @Override
+    @Transactional
+    public OrderDto cancelPendingOrderResponse(String orderId, String requesterExternalId) {
+        return OrderDto.from(cancelPendingOrder(orderId, requesterExternalId));
     }
 }

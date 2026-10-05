@@ -27,12 +27,16 @@ import com.portcelana.natiart.dto.OrderDto;
 import com.portcelana.natiart.dto.OrderItemDto;
 import com.portcelana.natiart.model.Category;
 import com.portcelana.natiart.model.Product;
+import com.portcelana.natiart.service.AsaasChargeSafetyService;
 import com.portcelana.natiart.service.OrderCreationService;
 import com.portcelana.natiart.service.OrderManagerImpl;
 import com.portcelana.natiart.service.ProductManager;
 
 @DataJpaTest(properties = "spring.sql.init.mode=never")
 class OrderReplayIntegrationTest {
+    @Autowired
+    private OrderReservationOwnerRepository reservationOwners;
+
     @Autowired
     private OrderRepository orderRepository;
 
@@ -81,7 +85,15 @@ class OrderReplayIntegrationTest {
         when(losingCreation.createOrder(any(OrderDto.class), eq("cus_jane"), eq("checkout-1"), anyString()))
                 .thenThrow(new DataIntegrityViolationException("duplicate idempotency key"));
 
-        final OrderDto replayed = controller(new OrderManagerImpl(racingRepository, losingCreation), product)
+        final OrderDto replayed = controller(
+                        new OrderManagerImpl(
+                                racingRepository,
+                                losingCreation,
+                                productRepository,
+                                mock(PaymentRepository.class),
+                                mock(PaymentIdempotencyRepository.class),
+                                mock(AsaasChargeSafetyService.class)),
+                        product)
                 .createOrder(request, "checkout-1", principal);
 
         assertSameResponse(winner, replayed);
@@ -125,12 +137,17 @@ class OrderReplayIntegrationTest {
         return new OrderManagerImpl(
                 orderRepository,
                 new OrderCreationService(
+                        reservationOwners,
                         orderRepository,
                         productManager,
                         productRepository,
                         shippingService,
                         mock(com.portcelana.natiart.service.CustomerUploadService.class),
-                        BigDecimal.ZERO));
+                        BigDecimal.ZERO),
+                productRepository,
+                mock(PaymentRepository.class),
+                mock(PaymentIdempotencyRepository.class),
+                mock(AsaasChargeSafetyService.class));
     }
 
     private OrderDto orderRequest(String productId) {

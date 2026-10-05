@@ -13,8 +13,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.portcelana.natiart.controller.helper.ShippingQuoteNotValidException;
@@ -31,6 +33,7 @@ import com.portcelana.natiart.model.ShippingQuoteItem;
 import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.model.support.PersonalizationOption;
 import com.portcelana.natiart.repository.OrderRepository;
+import com.portcelana.natiart.repository.OrderReservationOwnerRepository;
 import com.portcelana.natiart.repository.ProductRepository;
 import com.portcelana.natiart.service.support.DomainValidation;
 import com.portcelana.natiart.service.support.InputValidationException;
@@ -48,20 +51,25 @@ public class OrderCreationService {
     private static final int MAX_ORDER_LINES = 50;
 
     private final OrderRepository orderRepository;
+    private final OrderReservationOwnerRepository reservationOwners;
     private final ProductManager productManager;
     private final ProductRepository productRepository;
     private final ShippingQuoteService shippingQuoteService;
     private final CustomerUploadService customerUploadService;
     private final BigDecimal personalizationSurcharge;
+    private final int maxOutstandingReservations;
 
     @Autowired
     public OrderCreationService(
+            OrderReservationOwnerRepository reservationOwners,
             OrderRepository orderRepository,
             ProductManager productManager,
             ProductRepository productRepository,
             ShippingQuoteService shippingQuoteService,
             CustomerUploadService customerUploadService,
-            @Value("${natiart.order.personalization-surcharge:0.00}") BigDecimal personalizationSurcharge) {
+            @Value("${natiart.order.personalization-surcharge:0.00}") BigDecimal personalizationSurcharge,
+            @Value("${natiart.order.max-outstanding-reservations:5}") int maxOutstandingReservations) {
+        this.reservationOwners = reservationOwners;
         this.orderRepository = orderRepository;
         this.productManager = productManager;
         this.productRepository = productRepository;
@@ -69,20 +77,70 @@ public class OrderCreationService {
         this.customerUploadService = customerUploadService;
         requireRepresentableShippingAmount(personalizationSurcharge);
         this.personalizationSurcharge = personalizationSurcharge;
+        if (maxOutstandingReservations <= 0)
+            throw new IllegalArgumentException("The outstanding reservation limit must be positive");
+        this.maxOutstandingReservations = maxOutstandingReservations;
     }
 
     /** Test-friendly constructor for order flows without personalization uploads. */
     OrderCreationService(
+            OrderReservationOwnerRepository reservationOwners,
             OrderRepository orderRepository,
             ProductManager productManager,
             ProductRepository productRepository,
             ShippingQuoteService shippingQuoteService) {
-        this(orderRepository, productManager, productRepository, shippingQuoteService, null, BigDecimal.ZERO);
+        this(
+                reservationOwners,
+                orderRepository,
+                productManager,
+                productRepository,
+                shippingQuoteService,
+                null,
+                BigDecimal.ZERO,
+                5);
     }
 
-    @Transactional
+    public OrderCreationService(
+            OrderReservationOwnerRepository reservationOwners,
+            OrderRepository orderRepository,
+            ProductManager productManager,
+            ProductRepository productRepository,
+            ShippingQuoteService shippingQuoteService,
+            CustomerUploadService customerUploadService,
+            BigDecimal personalizationSurcharge) {
+        this(
+                reservationOwners,
+                orderRepository,
+                productManager,
+                productRepository,
+                shippingQuoteService,
+                customerUploadService,
+                personalizationSurcharge,
+                5);
+    }
+
+    /** Prepares the account lock row before starting the stock/order transaction. */
+    public void prepareReservationOwner(String ownerExternalId) {
+        try {
+            reservationOwners.initializeOwner(ownerExternalId);
+        } catch (DataIntegrityViolationException concurrentInsert) {
+            // The independent losing insert rolled back; only a committed winner permits proceeding.
+            if (!reservationOwners.existsById(ownerExternalId)) {
+                throw concurrentInsert;
+            }
+        }
+    }
+
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public CustomerOrder createOrder(
             OrderDto orderDto, String ownerExternalId, String idempotencyKey, String requestFingerprint) {
+        reservationOwners
+                .findByOwnerExternalIdForUpdate(ownerExternalId)
+                .orElseThrow(() -> new IllegalStateException("Reservation owner has not been initialized"));
+        if (orderRepository.countByOwnerExternalIdAndStatus(ownerExternalId, OrderStatus.PENDING)
+                >= maxOutstandingReservations) {
+            throw new IllegalArgumentException("Too many unpaid orders are reserved for this account");
+        }
         final String destinationCep = validateContactDetails(orderDto);
         final Map<String, Integer> quantitiesByProduct = aggregateQuantities(orderDto.getItems());
         final Map<String, Product> products = productManager.getProductsOrDie(orderDto.getItems().stream()

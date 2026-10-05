@@ -55,6 +55,9 @@ class OrderCommittedContractTest {
     private PlatformTransactionManager transactions;
 
     @MockitoBean
+    private AsaasChargeSafetyService chargeSafety;
+
+    @MockitoBean
     private ProductManager productManager;
 
     @MockitoBean

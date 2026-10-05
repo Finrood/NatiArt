@@ -20,6 +20,8 @@ import com.portcelana.natiart.model.Payment;
 
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, String> {
+    Optional<Payment> findByOrderId(String orderId);
+
     Optional<Payment> findByOrderIdAndOwnerExternalId(String orderId, String ownerExternalId);
 
     @Query("SELECT p.orderId FROM Payment p WHERE p.id = :id")

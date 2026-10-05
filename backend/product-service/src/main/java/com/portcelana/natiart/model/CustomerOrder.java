@@ -18,6 +18,8 @@ import com.portcelana.natiart.model.support.OrderStatus;
                         name = "uk_customer_order_owner_idempotency",
                         columnNames = {"owner_external_id", "idempotency_key"}))
 public class CustomerOrder {
+    private Instant reservationNextAttemptAt;
+
     @Id
     private String id;
 

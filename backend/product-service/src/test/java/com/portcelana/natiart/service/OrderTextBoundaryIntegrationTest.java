@@ -65,6 +65,9 @@ class OrderTextBoundaryIntegrationTest {
     private OrderViewService views;
 
     @MockitoBean
+    private AsaasChargeSafetyService chargeSafety;
+
+    @MockitoBean
     private ProductManager productManager;
 
     @MockitoBean
@@ -74,12 +77,14 @@ class OrderTextBoundaryIntegrationTest {
     private CustomerUploadService customerUploads;
 
     private MockMvc http;
+    private String ownerExternalId;
     private final JsonMapper json = JsonMapper.builder().build();
 
     @BeforeEach
     void setup() {
+        ownerExternalId = "text-boundary-" + UUID.randomUUID();
         final AuthenticationResponseDto.Principal principal = mock(AuthenticationResponseDto.Principal.class);
-        when(principal.getExternalId()).thenReturn("owner");
+        when(principal.getExternalId()).thenReturn(ownerExternalId);
         http = MockMvcBuilders.standaloneSetup(new OrderController(manager, views))
                 .setControllerAdvice(new ControllerAdvice())
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
@@ -148,8 +153,9 @@ class OrderTextBoundaryIntegrationTest {
                         .content(json.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$." + field).value(expected));
-        final com.portcelana.natiart.model.CustomerOrder saved =
-                orders.findByOwnerExternalIdAndIdempotencyKey("owner", key).orElseThrow();
+        final com.portcelana.natiart.model.CustomerOrder saved = orders.findByOwnerExternalIdAndIdempotencyKey(
+                        ownerExternalId, key)
+                .orElseThrow();
         assertEquals(
                 expected,
                 switch (field) {
@@ -223,7 +229,7 @@ class OrderTextBoundaryIntegrationTest {
                 .andExpect(jsonPath("$.houseNumber").value(expected));
         assertEquals(
                 expected,
-                orders.findByOwnerExternalIdAndIdempotencyKey("owner", key)
+                orders.findByOwnerExternalIdAndIdempotencyKey(ownerExternalId, key)
                         .orElseThrow()
                         .getHouseNumber());
         // The same normalized snapshot replays without a second stock reservation.

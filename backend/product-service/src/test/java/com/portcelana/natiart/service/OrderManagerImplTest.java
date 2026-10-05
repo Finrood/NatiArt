@@ -30,17 +30,30 @@ import com.portcelana.natiart.dto.OrderItemDto;
 import com.portcelana.natiart.dto.PersonalizationDto;
 import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.model.CustomerOrderItem;
+import com.portcelana.natiart.model.OrderReservationOwner;
 import com.portcelana.natiart.model.Product;
 import com.portcelana.natiart.model.ShippingQuote;
 import com.portcelana.natiart.model.ShippingQuoteItem;
 import com.portcelana.natiart.model.support.OrderStatus;
 import com.portcelana.natiart.model.support.PersonalizationOption;
 import com.portcelana.natiart.repository.OrderRepository;
+import com.portcelana.natiart.repository.OrderReservationOwnerRepository;
+import com.portcelana.natiart.repository.PaymentIdempotencyRepository;
+import com.portcelana.natiart.repository.PaymentRepository;
 import com.portcelana.natiart.repository.ProductRepository;
 import com.portcelana.natiart.service.support.InputValidationException;
 
 @ExtendWith(MockitoExtension.class)
 class OrderManagerImplTest {
+    @BeforeEach
+    void configureReservationOwnerLock() {
+        org.mockito.Mockito.lenient()
+                .when(reservationOwners.findByOwnerExternalIdForUpdate(org.mockito.ArgumentMatchers.anyString()))
+                .thenAnswer(invocation -> java.util.Optional.of(new OrderReservationOwner(invocation.getArgument(0))));
+    }
+
+    @Mock
+    private OrderReservationOwnerRepository reservationOwners;
 
     @Mock
     private OrderRepository orderRepository;
@@ -54,17 +67,38 @@ class OrderManagerImplTest {
     @Mock
     private ShippingQuoteService shippingQuoteService;
 
+    @Mock
+    private PaymentRepository paymentRepository;
+
+    @Mock
+    private PaymentIdempotencyRepository paymentIdempotencyRepository;
+
+    @Mock
+    private AsaasChargeSafetyService chargeSafetyService;
+
     private OrderManagerImpl orderManager;
     private BigDecimal shippingAmount;
 
     @BeforeEach
     void setUp() {
         shippingAmount = BigDecimal.ZERO;
-        orderManager = new OrderManagerImpl(orderRepository, productManager, productRepository, shippingQuoteService);
+        orderManager = new OrderManagerImpl(
+                reservationOwners,
+                orderRepository,
+                productManager,
+                productRepository,
+                paymentRepository,
+                paymentIdempotencyRepository,
+                chargeSafetyService,
+                shippingQuoteService);
         lenient()
                 .when(shippingQuoteService.requireQuoteForOrder(any(), any(), any(), any(), any()))
                 .thenAnswer(
                         invocation -> quoteFor(invocation.getArgument(3), invocation.getArgument(4), shippingAmount));
+        lenient().when(paymentIdempotencyRepository.findByOrderId(anyString())).thenReturn(List.of());
+        lenient()
+                .when(paymentIdempotencyRepository.findByOwnerExternalIdAndOrderIdIsNullAndStatusIn(anyString(), any()))
+                .thenReturn(List.of());
     }
 
     private ShippingQuote quoteFor(List<OrderItemDto> items, Map<String, Product> products, BigDecimal amount) {
@@ -276,7 +310,9 @@ class OrderManagerImplTest {
                 validOrder().setDeliveryAmount(BigDecimal.ZERO).setItems(java.util.Arrays.asList((OrderItemDto) null));
 
         assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
-        verifyNoInteractions(productManager, productRepository, orderRepository);
+        verify(orderRepository).countByOwnerExternalIdAndStatus("user-1", OrderStatus.PENDING);
+        verifyNoInteractions(productManager, productRepository);
+        verify(orderRepository, never()).save(any());
     }
 
     @Test
@@ -504,6 +540,18 @@ class OrderManagerImplTest {
     }
 
     @Test
+    void createOrderRejectsWhenOutstandingReservationCapIsReached() {
+        when(orderRepository.countByOwnerExternalIdAndStatus("user-1", OrderStatus.PENDING))
+                .thenReturn(5L);
+        final OrderDto dto = validOrder().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p1", 1)));
+
+        assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
+
+        verifyNoInteractions(productManager, productRepository);
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
     void createOrderRejectsOversizedAddressBeforeShippingOrPersistence() {
         final OrderDto dto = validOrder().setStreet("x".repeat(256)).setItems(List.of(item("p1", 1)));
 
@@ -588,8 +636,10 @@ class OrderManagerImplTest {
         OrderDto dto = validOrder().setDeliveryAmount(BigDecimal.ZERO).setItems(List.of(item("p1", 1)));
 
         assertThrows(IllegalArgumentException.class, () -> orderManager.createOrder(dto, "user-1"));
+        verify(orderRepository).countByOwnerExternalIdAndStatus("user-1", OrderStatus.PENDING);
         verify(productManager).getProductsOrDie(List.of("p1"));
-        verifyNoInteractions(productRepository, orderRepository);
+        verifyNoInteractions(productRepository);
+        verify(orderRepository, never()).save(any());
     }
 
     @Test
@@ -706,5 +756,70 @@ class OrderManagerImplTest {
 
         assertEquals(OrderStatus.PROCESSING, order.getStatus());
         verify(orderRepository).saveAndFlush(order);
+    }
+
+    @Test
+    void cancelPendingOrderReleasesEachLineAndIsIdempotent() {
+        final Product plate = product("p1", "Plate", new BigDecimal("15.00"), null, 10);
+        final CustomerOrderItem line =
+                new CustomerOrderItem().setProduct(plate).setQuantity(2).setPrice(new BigDecimal("15.00"));
+        final CustomerOrder order = new CustomerOrder()
+                .setStatus(OrderStatus.PENDING)
+                .setOwnerExternalId("user-1")
+                .setItems(new java.util.ArrayList<>(List.of(line)));
+        when(orderRepository.findByIdForUpdate(order.getId())).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(CustomerOrder.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertEquals(
+                OrderStatus.CANCELLED,
+                orderManager.cancelPendingOrder(order.getId(), "user-1").getStatus());
+        assertSame(order, orderManager.cancelPendingOrder(order.getId(), "user-1"));
+
+        verify(productRepository, times(1)).restoreStock(plate.getId(), 2);
+        verify(orderRepository, times(1)).save(order);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.NullAndEmptySource
+    @org.junit.jupiter.params.provider.ValueSource(strings = {" ", "\t"})
+    void customerCancellationRejectsMissingOwnerBeforeLoadingOrder(String owner) {
+        assertThrows(
+                com.portcelana.natiart.controller.helper.UserNotAllowedException.class,
+                () -> orderManager.cancelPendingOrder("victim-order", owner));
+        assertThrows(
+                com.portcelana.natiart.controller.helper.UserNotAllowedException.class,
+                () -> orderManager.cancelPendingOrderResponse("victim-order", owner));
+        verifyNoInteractions(
+                orderRepository,
+                productRepository,
+                paymentRepository,
+                paymentIdempotencyRepository,
+                chargeSafetyService);
+    }
+
+    @Test
+    void cancelPendingOrderRejectsForeignOwnerBeforeRelease() {
+        final CustomerOrder order =
+                new CustomerOrder().setStatus(OrderStatus.PENDING).setOwnerExternalId("user-1");
+        when(orderRepository.findByIdForUpdate(order.getId())).thenReturn(Optional.of(order));
+
+        assertThrows(
+                com.portcelana.natiart.controller.helper.UserNotAllowedException.class,
+                () -> orderManager.cancelPendingOrder(order.getId(), "user-2"));
+
+        verifyNoInteractions(productRepository);
+        verify(orderRepository, never()).save(any(CustomerOrder.class));
+    }
+
+    @Test
+    void cancelPendingOrderDoesNotReleasePaidOrder() {
+        final CustomerOrder order =
+                new CustomerOrder().setStatus(OrderStatus.PAID).setOwnerExternalId("user-1");
+        when(orderRepository.findByIdForUpdate(order.getId())).thenReturn(Optional.of(order));
+
+        assertThrows(IllegalArgumentException.class, () -> orderManager.cancelPendingOrder(order.getId(), "user-1"));
+
+        verifyNoInteractions(productRepository);
+        verify(orderRepository, never()).save(any(CustomerOrder.class));
     }
 }
