@@ -5,6 +5,72 @@
 # Callers run under `set -euo pipefail`; this file sets nothing itself.
 log() { printf '%s\n' "[$(date -Is)] $*"; }
 
+LOOP_HEARTBEAT_TITLE="[Watchdog] Loop heartbeat"
+LOOP_HEARTBEAT_MARKER="NATIART_LOOP_HEARTBEAT"
+
+heartbeat_machine_login() { # dedicated service account; owner account is human
+    local login="${NATIART_HEARTBEAT_MACHINE_LOGIN:-}"
+    [[ "$login" =~ ^[A-Za-z0-9-]{1,39}$ && "$login" != "${NATIART_LOOP_OWNER_LOGIN:-Finrood}" ]] || return 1
+    printf '%s\n' "$login"
+}
+
+heartbeat_issue_number() { # prints the open issue reserved for loop heartbeats
+    gh issue list --search "$LOOP_HEARTBEAT_TITLE in:title state:open" \
+        --json number --jq '.[0].number // empty' 2>/dev/null
+}
+
+latest_heartbeat() { # prints newest machine-readable heartbeat JSON, or empty
+    local issue machine_login
+    machine_login="$(heartbeat_machine_login)" || return 0
+    issue=$(heartbeat_issue_number) || return 1
+    [[ -n "$issue" ]] || return 0
+    gh issue view "$issue" --json comments 2>/dev/null | jq -c --arg login "$machine_login" '
+        [.comments[]? | select(.author.login == $login)
+         | select(.body | type == "string" and length <= 1800 and
+             test("^NATIART_LOOP_HEARTBEAT\\ncycle_id=[0-9]{8}T[0-9]{6}Z-[0-9]{1,7}\\ncompleted_at=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\\nreviewed_commit=[0-9a-f]{40}\\noutcome=(PR_DELIVERED|AUDIT_ONLY|RED_TEAM_COMPLETED|FAILED)\\nartifacts=[A-Za-z0-9 #,./_-]{0,500}\\nlens=[A-Za-z0-9 +:/._-]{1,100}\\nred_team_slot=(none|[0-9]{1,12})\\n?$"))
+         | . as $comment
+         | (.body | capture("cycle_id=(?<y>[0-9]{4})(?<m>[0-9]{2})(?<d>[0-9]{2})T(?<h>[0-9]{2})(?<min>[0-9]{2})(?<s>[0-9]{2})Z")) as $id
+         | (.body | capture("completed_at=(?<value>[^\\n]+)").value | fromdateiso8601) as $completed
+         | (($id.y + "-" + $id.m + "-" + $id.d + "T" + $id.h + ":" + $id.min + ":" + $id.s + "Z") | fromdateiso8601) as $started
+         | select(try (($comment.createdAt | fromdateiso8601) - $completed >= 0 and
+             ($comment.createdAt | fromdateiso8601) - $completed <= 120 and
+             $completed - $started >= 0 and $completed - $started <= 3600) catch false)
+         | {timestamp: $comment.createdAt, body: $comment.body}]
+        | sort_by(.timestamp) | last // empty'
+}
+
+emit_cycle_heartbeat() { # cycle_id commit outcome artifacts lens red_team_slot
+    local cycle_id="$1" commit="$2" outcome="$3" artifacts="$4" lens="$5" red_team_slot="$6"
+    local issue body issue_url machine_login current_login
+    [[ -n "${NATIART_HEARTBEAT_GH_TOKEN:-}" ]] || return 1
+    local -x GH_TOKEN="$NATIART_HEARTBEAT_GH_TOKEN"
+    machine_login="$(heartbeat_machine_login)" || return 1
+    current_login="$(gh api user --jq .login 2>/dev/null)" || return 1
+    [[ "$current_login" == "$machine_login" ]] || return 1
+    issue=$(heartbeat_issue_number) || return 1
+    if [[ -z "$issue" ]]; then
+        issue_url=$(gh issue create --title "$LOOP_HEARTBEAT_TITLE" \
+            --body "Machine-readable completion heartbeats for the laptop improvement loop. Do not use ordinary comments as health signals." \
+            2>/dev/null) || return 1
+        issue="${issue_url##*/}"
+    fi
+    # Keep the payload bounded and single-purpose: artifacts are reduced to
+    # loop-generated PR numbers and the remaining values are local state.
+    body=$(printf '%s\ncycle_id=%s\ncompleted_at=%s\nreviewed_commit=%s\noutcome=%s\nartifacts=%s\nlens=%s\nred_team_slot=%s\n' \
+        "$LOOP_HEARTBEAT_MARKER" "$cycle_id" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$commit" "$outcome" "$artifacts" "$lens" "$red_team_slot")
+    [[ "${#body}" -le 1800 ]] || return 1
+    gh issue comment "$issue" --body "$body" >/dev/null 2>&1
+}
+
+red_team_is_due() { # $1 = current half-hour slot, $2 = last successful slot file
+    local slot="$1" state="$2" last
+    [[ "$slot" =~ ^[0-9]+$ ]] || return 1
+    [[ -f "$state" ]] || return 0
+    last="$(cat "$state")" || return 0
+    [[ "$last" =~ ^[0-9]+$ ]] || return 0
+    (( slot < last || slot - last >= 480 ))
+}
+
 health_init_or_migrate() { # $1=file $2=current header; returns non-zero on I/O failure
     local file="$1" header="$2"
     local legacy="timestamp,slot,open_code,open_docs,repair_prs,merged,reviewed_pr,exit_status"
@@ -477,4 +543,15 @@ pr_checks_summary() { # $1 = PR number; prints FAIL|PASS|PENDING (never fails)
     if checks_failed <<<"$checks"; then echo "FAIL"
     elif checks_passed <<<"$checks"; then echo "PASS"
     else echo "PENDING"; fi
+}
+
+loop_valid_audit_artifact() { # exact newly produced cycle, reviewed commit, bounded structured evidence
+    local file="$1" cycle="$2" commit="$3" bytes
+    [[ -f "$file" && ! -L "$file" ]] || return 1
+    bytes="$(wc -c < "$file")" || return 1
+    [[ "$bytes" -gt 0 && "$bytes" -le 16384 ]] || return 1
+    jq -e --arg cycle "$cycle" --arg commit "$commit" '
+        type == "object" and .cycle == $cycle and .reviewed_commit == $commit and
+        all(.lens, .checked, .outcome; type == "string" and length > 0 and length <= 4000)
+    ' "$file" >/dev/null 2>&1
 }

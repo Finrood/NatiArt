@@ -294,6 +294,7 @@ close_attempt() { # persist recovery context, then release the private log
 DELIVERABLE_BASELINE=""
 DELIVERABLE_AFTER=""
 DELIVERABLE_REFS=""
+AUDIT_ARTIFACT=""
 DELIVERABLE_RESULT=""
 LOOP_LOGIN=""
 
@@ -315,6 +316,13 @@ prepare_attempt_evidence() {
         cp -- "$DELIVERABLE_RESULT" "$archived" || return 1
     fi
     : > "$DELIVERABLE_RESULT"
+    if [[ -e "$AUDIT_ARTIFACT" || -L "$AUDIT_ARTIFACT" ]]; then
+        [[ -f "$AUDIT_ARTIFACT" && ! -L "$AUDIT_ARTIFACT" && -O "$AUDIT_ARTIFACT" &&
+           "$(stat -c %s "$AUDIT_ARTIFACT")" -le 16384 ]] || return 1
+        archived="$(mktemp "$OUTCOME_DIR/failed-audit-XXXXXX.json")" || return 1
+        mv -- "$AUDIT_ARTIFACT" "$archived" || return 1
+        chmod 600 "$archived" || return 1
+    fi
     if [[ -n "${NATIART_ACCEPTED_RESULT_FILE:-}" ]]; then
         [[ -f "$NATIART_ACCEPTED_RESULT_FILE" && ! -L "$NATIART_ACCEPTED_RESULT_FILE" &&
            -O "$NATIART_ACCEPTED_RESULT_FILE" && "$(stat -c %a "$NATIART_ACCEPTED_RESULT_FILE")" == 600 ]] || return 1
@@ -337,7 +345,10 @@ role_deliverable_present() {
             ' "$DELIVERABLE_AFTER" >/dev/null ;;
         cycle)
             local branch sha local_sha remote_sha baseline_sha
-            [[ -s "$DELIVERABLE_RESULT" ]] || return 1
+            if [[ ! -s "$DELIVERABLE_RESULT" ]]; then
+                loop_valid_audit_artifact "$AUDIT_ARTIFACT" "$NATIART_CYCLE_ID" "$NATIART_REVIEWED_COMMIT"
+                return $?
+            fi
             [[ -f "$DELIVERABLE_RESULT" && ! -L "$DELIVERABLE_RESULT" && -O "$DELIVERABLE_RESULT" ]] || return 1
             [[ "$(stat -c %a "$DELIVERABLE_RESULT")" == 600 && "$(stat -c %s "$DELIVERABLE_RESULT")" -le 4096 ]] || return 1
             jq -e --arg cycle "$NATIART_CYCLE_ID" '
@@ -433,8 +444,13 @@ DELIVERABLE_RESULT="$(mktemp "$TMP_ROOT/natiart-deliverable-result-XXXXXX.json")
 git -C "$REPO" for-each-ref --format='%(refname:short)%09%(objectname)' refs/heads/ > "$DELIVERABLE_REFS"
 export NATIART_CYCLE_ID="${NATIART_CYCLE_ID:-$(cat /proc/sys/kernel/random/uuid)}"
 export NATIART_DELIVERABLE_FILE="$DELIVERABLE_RESULT"
+NATIART_REVIEWED_COMMIT="$(git -C "$REPO" rev-parse HEAD)"
+export NATIART_REVIEWED_COMMIT
+AUDIT_ARTIFACT="$REPO/logs/cycle-$NATIART_CYCLE_ID.audit"
+# shellcheck source=scripts/loop-lib.sh
+source "$REPO/scripts/loop-lib.sh"
 PROMPT+="
-Deliverable attribution: cycle $NATIART_CYCLE_ID. For implementation, write JSON to $NATIART_DELIVERABLE_FILE after committing and pushing: {\"cycle\":\"$NATIART_CYCLE_ID\",\"branch\":\"exact intended branch\",\"sha\":\"full produced and pushed SHA\"}. The supervisor verifies local and remote refs and the authenticated PR author. For review, submit a head-bound verdict as the authenticated reviewer on the specified target."
+Deliverable attribution: cycle $NATIART_CYCLE_ID. For implementation, write JSON to $NATIART_DELIVERABLE_FILE after committing and pushing: {\"cycle\":\"$NATIART_CYCLE_ID\",\"branch\":\"exact intended branch\",\"sha\":\"full produced and pushed SHA\"}. The supervisor verifies local and remote refs and the authenticated PR author. Audit-only alternative: write $AUDIT_ARTIFACT as bounded JSON with cycle=$NATIART_CYCLE_ID, reviewed_commit=$NATIART_REVIEWED_COMMIT, lens, checked and outcome (nonempty strings). For review, submit a head-bound verdict as the authenticated reviewer on the specified target."
 if ! capture_deliverable_state "$DELIVERABLE_BASELINE"; then
     log_err "Cannot inspect GitHub deliverable state before launching a worker."
     exit 2

@@ -21,7 +21,10 @@ logs/loop-<timestamp>.log        per-cycle log (gitignored; last 480 retained)
 Laptop timer semantics: `Persistent=true` replays one catch-up run after
 suspend/off (no storm); a boot double-fire is serialized by `flock`. Exit 124
 means healthy budget exhaustion (unit stays green via `SuccessExitStatus`);
-anything else red is a real abort.
+anything else red is a real abort. Completed cycles publish a bounded
+heartbeat issue comment containing their cycle ID, reviewed commit, outcome
+and artifacts. The watchdog accepts only a correctly shaped comment from a
+dedicated machine GitHub login, with a cycle time close to the comment time.
 
 ## Install / control
 
@@ -61,6 +64,8 @@ Note: the timer needs a lingering user session to fire while logged out
    refuses dirty worktrees and locally-ahead `master` commits without staging,
    publishing, or resetting them. A non-fast-forward `master` also aborts for
    manual inspection.
+   Completion health is based on authenticated machine heartbeats; successful
+   audit-only cycles require a validated bounded artifact.
    Docs-only flips and dependabot PRs are excluded from blocking — they never
    stop the loop, and green docs PRs with `VERDICT: APPROVE` are auto-merged
    like code (max 2 merges/cycle shared).
@@ -93,8 +98,7 @@ the verdict comment), so every change and review on GitHub is attributable
 to the exact model that produced it — even after failover mid-cycle.
 The value is never blank: manual runs outside the wrapper use
 `Model: manual/<cli>/<thinking>`, author inline-fallback reviews append
-`/inline-fallback`, and loop-guard salvage PRs carry
-`Model: loop-guard/salvage`. A missing/blank/`unknown` footer parses as
+`/inline-fallback`. A missing/blank/`unknown` footer parses as
 unattributed (reviewer independence degrades to best-effort, logged).
 
 1. `opencode` + Muse Spark 1.3 free (xhigh) — `opencode/muse-spark-1.3-contributor-free`
@@ -129,14 +133,16 @@ empty level loudly (exit 2) and warns on any non-`xhigh` level.
 - **Lifecycle and delivery contract**: every attempt runs in its own process
   group; TERM/INT/EXIT cleanup terminates and waits for that group before the
   wrapper returns or retries. A clean CLI exit is accepted only when a cycle
-  produces a newly verified pushed PR result or an authenticated head-bound
-  review from that attempt. Printed references alone never establish completion. Each attempt leaves a bounded, redacted recovery
+  produces a newly verified pushed PR result, a new authenticated head-bound
+  review, or a bounded audit artifact from that attempt. Printed references
+  alone never establish completion. Each attempt leaves a bounded, redacted recovery
   artifact under `logs/agent-outcomes/` before its private temporary log is
   removed, so failover can reconcile the prior attempt without overlapping it.
 - **Reviewer independence.** Review invocations pass `--skip <author's Model:
-  footer value>` (`run-agent.sh`, substring match, ignored if it would empty
-  the pool), so the reviewer is a different model than the author whenever the
-  pool allows — a fresh context in weights, not just in prompt.
+  footer value>` (`run-agent.sh` resolves that value to the canonical model-family
+  ID in `scripts/agent-models.conf`). Both Muse gateway entries therefore count
+  as one family; if skipping the author's family empties the runnable pool, no
+  automated verdict is produced and manual review is required.
 - **Buttons**: `--check-only` prints the priority list; `--simulate-quota-at N`
   fails the first N attempts synthetically (no tokens) to prove fallthrough;
   `--stall SEC` tunes the stall detector. The cline fallback needs the cline CLI
@@ -155,9 +161,11 @@ empty level loudly (exit 2) and warns on any non-`xhigh` level.
 - **Ratchets**: at most one small strictness tightening per cycle (coverage
   gate, pagination cap, one ArchUnit-style fitness rule) — green build kept,
   revertible in one commit. Each tightening breeds its own follow-ups.
-- **Red-team cadence**: every 480th slot (~10 days) is adversarial (see
-  `scripts/redteam-addendum.md`): threat-model one flow, file PoCs as backlog
-  items, fix on the spot only if trivial.
+- **Red-team cadence**: every 480 slots (~10 days at full cadence) is adversarial
+  (see `scripts/redteam-addendum.md`). The last successfully completed red-team
+  slot is persisted locally after a nonempty red-team evidence file and a
+  published completion heartbeat. Missing state runs on the next cycle, and
+  an overdue slot runs once after suspend/offline recovery.
 - **Boy-scout ledger**: every PR converts one discovered nit into a tracked
   backlog item instead of silently fixing or ignoring it.
 - **Health metrics** (read from `logs/`): `health.csv` (one row/cycle: slot,
@@ -269,10 +277,15 @@ table above is agent discipline, enforced by the cycle prompt.
   deletion. A `fix/*` name by itself never proves ownership; pre-existing
   branches and tips advanced outside the recorded cycle are never adopted.
 - Watchdog: `loop-watchdog.yml` runs cloud-side every 6h and opens an issue
-  when no PR on the configured loop branch prefixes moved
-  in 24h — exits read as success and logs stay local, so without this every
-  stall class is silent. An open alert gets timestamped comments, never
-  duplicates; all logic lives in tested `scripts/loop-watchdog-check.sh`.
+  when no trusted successful completion heartbeat arrived in 24h. A dedicated
+  GitHub service account with issue write access must post heartbeats. Set
+  `NATIART_HEARTBEAT_MACHINE_LOGIN` and `NATIART_HEARTBEAT_GH_TOKEN` in the local
+  timer environment, and set the repository Actions variable
+  `NATIART_HEARTBEAT_MACHINE_LOGIN` to the same login. The service account must
+  differ from `NATIART_LOOP_OWNER_LOGIN` (default `Finrood`). Missing configuration
+  fails closed and triggers the watchdog alert. Human comments, unrelated PRs,
+  and failed cycles do not count. An open alert gets timestamped comments,
+  never duplicates; all logic lives in `scripts/loop-watchdog-check.sh`.
 - Script tests: `scripts/tests/run.sh` (zero-dep bash, stubbed `gh`) covers
   `loop-lib.sh` helpers; `loop-scripts.yml` runs shellcheck + tests on every
   `scripts/**` PR. New helper → lib + test in the same PR.
@@ -329,21 +342,25 @@ table above is agent discipline, enforced by the cycle prompt.
 history grows). PRs reference their item; the merging cycle moves the section.
 Severity labels are exactly `High`/`Medium`/`Low`.
 
-### Integrated runner registry and result contract
+### Completion timestamps and audit evidence
 
-Every registry entry has five explicit fields: CLI, label, model ID, thinking
-level, and canonical model family. Both CLI adapters receive only the thinking
-level; `NATIART_MODEL` retains the CLI/model/effort footer and
-`NATIART_MODEL_FAMILY` carries family separately. Malformed rows fail before
-launch. Actual offline adapter tests exercise both production model entries.
+The authenticated heartbeat contains `completed_at` separately from its
+start-based cycle ID. Completion must precede comment creation by at most two
+minutes; elapsed cycle time must be between zero and one hour, covering the
+25-minute worker budget and the surrounding review/scan phases. Long valid
+cycles count as progress; old completion replays, future timestamps and
+unbounded durations do not.
 
-Successful implementation work requires the cycle-scoped private result JSON,
-a changed local branch at its full SHA, the identical pushed remote tip, and an
-open PR by the authenticated author. Review success requires a new authenticated
-head-bound review on the specified target. Foreign concurrent PR/review activity
-and printed references cannot complete a worker. Numeric bounds and private,
-distinct retry logs remain enforced.
+The integrated runner validates the five-field registry and exports thinking
+and canonical family separately. PR results are attributed to the explicit
+cycle, authenticated author, local branch and identical pushed full SHA.
+Audit-only completion requires a newly written, regular, non-symlink JSON file
+at `logs/cycle-<cycle-id>.audit`, at most 16 KiB, containing the exact `cycle`
+and `reviewed_commit` plus nonempty bounded `lens`, `checked` and `outcome`.
+Both runner and heartbeat classification use the same validator.
 
+Provisioning the separate live machine account/token remains owner-deferred;
+these source repairs do not provision or enable it.
 ### Captured candidate validation
 
 The implementation and Dependabot merge loops capture the full candidate SHA
@@ -371,16 +388,42 @@ on that exact recorded, merged commit. Failed deletion keeps the record;
 successful deletion retires it before the branch name can be reused. Local
 cleanup uses an expected-SHA ref deletion and preserves branches checked out in
 any attached worktree. Unknown and advanced branches remain for manual review.
+### Integrated runner registry and result contract
 
-The runner receives raw worker JSON with cycle, branch and SHA through its private `NATIART_DELIVERABLE_FILE`. After verification it writes normalized cycle, origin hash, branch, SHA, pushed SHA and PR fields to the separate private `NATIART_ACCEPTED_RESULT_FILE` handoff. Worker ownership requires that size-bounded accepted result and an authenticated open same-repository PR. The supervisor checks baseline refs, local and fresh remote tips, PR ownership marker and authenticated author before writing its normalized accepted artifact and enrolling that exact tip. Audit-only, failed, no-op and unrelated concurrent branches grant no authority; existing unowned repair PRs stay unowned. Candidate/accepted artifacts live in a private cycle directory and are removed after validation. There is no blanket before/after branch enrollment. Current dirty-worktree handling refuses salvage entirely; any future supervisor-created salvage must be registered explicitly at its own creation site.
+Every registry entry has five explicit fields: CLI, label, model ID, thinking
+level, and canonical model family. Both CLI adapters receive only the thinking
+level; `NATIART_MODEL` retains the CLI/model/effort footer and
+`NATIART_MODEL_FAMILY` carries family separately. Malformed rows fail before
+launch. Actual offline adapter tests exercise both production model entries.
+
+Successful implementation work requires the cycle-scoped private result JSON,
+a changed local branch at its full SHA, the identical pushed remote tip, and an
+open PR by the authenticated author. Review success requires a new authenticated
+head-bound review on the specified target. Foreign concurrent PR/review activity
+and printed references cannot complete a worker. Numeric bounds and private,
+distinct retry logs remain enforced.
+### Worker deliverable attribution
+
+A successful CLI exit must be accompanied by a verified result. The runner
+provides an explicit cycle ID and private `NATIART_DELIVERABLE_FILE` path.
+Implementation workers write a JSON object with `cycle`, `branch` and full
+`sha` after committing and pushing. The runner verifies a changed local branch,
+the same exact remote tip, and an open PR by the authenticated account on that
+branch and commit. Unrelated repository activity cannot complete the attempt.
+Review workers must submit a new verdict as the authenticated reviewer on the
+specified PR and unchanged captured head. Printed verdicts do not count.
+
+Cleanup ownership comes only from the runner's accepted implementation result, handed to the supervisor through a private 4096-byte-bounded JSON artifact. The supervisor rechecks cycle, origin, exact local/remote tip and authenticated same-repository PR before enrolling the five-field ledger row. The runner's validated audit-only completion writes no ownership result. Failed/no-op workers, unrelated concurrent refs and existing unowned repair PRs gain no cleanup authority. Dirty-worktree salvage is refused; future supervisor-created salvage must be explicitly attributed at its creation site. Artifacts are private and removed after enrollment.
 
 ### Attempt isolation
 
-Before every worker launch, the runner refreshes authenticated GitHub and local
-branch baselines, archives any bounded private candidate for recovery, and clears
-the candidate and accepted handoff. A later no-op or rewrite of a failed
-attempt's pushed result cannot establish success or branch ownership. The
-supervisor independently rechecks the normalized result before enrollment.
+Before every real worker launch, the runner refreshes the authenticated GitHub
+and local branch baselines, clears its private result and accepted handoff,
+and moves any prior bounded audit artifact into private recovery storage.
+Failed attempt evidence remains available there, but cannot authorize another
+attempt. Rewriting a failed attempt's old result without new work is rejected.
+Only evidence produced during the successful attempt can authorize completion
+or a heartbeat; failed and audit-only attempts grant no branch ownership.
 
 ### Recovery output redaction
 

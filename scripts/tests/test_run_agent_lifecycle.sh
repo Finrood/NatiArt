@@ -109,6 +109,24 @@ case "$mode" in
         fi
         printf 'clean no-op after failed worker\n'
         ;;
+    failed-audit-then-noop)
+        if [[ ! -f "$FAKE_COUNT_FILE" ]]; then
+            touch "$FAKE_COUNT_FILE"
+            mkdir -p logs
+            jq -n --arg cycle "$NATIART_CYCLE_ID" --arg commit "$NATIART_REVIEWED_COMMIT" \
+                '{cycle:$cycle,reviewed_commit:$commit,lens:"storage",checked:"failed attempt inspection",outcome:"no new defect"}' \
+                > "logs/cycle-$NATIART_CYCLE_ID.audit"
+            printf 'quota exhausted after audit\n'
+            exit 1
+        fi
+        printf 'no audit produced in retry\n'
+        ;;
+    audit)
+        mkdir -p logs
+        jq -n --arg cycle "$NATIART_CYCLE_ID" --arg commit "$NATIART_REVIEWED_COMMIT" \
+            '{cycle:$cycle,reviewed_commit:$commit,lens:"storage",checked:"confined filesystem paths",outcome:"no new defect"}' \
+            > "logs/cycle-$NATIART_CYCLE_ID.audit"
+        ;;
     long-secret)
         printf 'sk-proj-'
         printf '%020000d' 0
@@ -221,6 +239,17 @@ fi
 [[ ! -s "$ROOT/failed-accepted" ]]
 git -C "$ROOT/repo" checkout -q master
 rm -f "$ROOT/cycle-state"
+# Failed audit evidence must survive privately, but cannot publish success.
+if FAKE_MODE=failed-audit-then-noop FAKE_COUNT_FILE="$ROOT/audit-count" NATIART_CYCLE_ID=failed-audit-cycle \
+    NATIART_ACCEPTED_RESULT_FILE="$ROOT/failed-accepted" "${common[@]}" bash "$RUN_AGENT" --role cycle --budget 30 stale-audit \
+    > "$ROOT/failed-audit.log" 2>&1; then
+    echo 'failed audit authorized retry success and heartbeat' >&2; exit 1
+fi
+[[ ! -s "$ROOT/failed-accepted" && ! -e "$ROOT/repo/logs/cycle-failed-audit-cycle.audit" ]]
+! grep -q 'NATIART_ACTIVE_MODEL=' "$ROOT/failed-audit.log"
+archived_audits=("$ROOT/outcomes"/failed-audit-*.json)
+[[ -f "${archived_audits[0]}" && "$(stat -c %a "${archived_audits[0]}")" == 600 ]]
+jq -e '.cycle == "failed-audit-cycle" and .checked == "failed attempt inspection"' "${archived_audits[0]}" >/dev/null
 before_refs="$(git -C "$ROOT/repo" for-each-ref --format='%(refname:short)%09%(objectname)' refs/heads/)"
 : > "$ROOT/accepted-result"
 chmod 600 "$ROOT/accepted-result"
@@ -238,6 +267,14 @@ jq -e '.cycle == "fixture-cycle" and .branch == "fix/produced" and .sha == .push
     loop_owned_branch fix/produced .git/ownership
     ! loop_owned_branch fix/human-during-run .git/ownership
 )
+: > "$ROOT/audit-accepted"
+chmod 600 "$ROOT/audit-accepted"
+
+FAKE_MODE=audit NATIART_ACCEPTED_RESULT_FILE="$ROOT/audit-accepted" "${common[@]}" bash "$RUN_AGENT" --role cycle --budget 30 audit \
+    >"$ROOT/audit.log" 2>&1
+grep -q 'NATIART_ACTIVE_MODEL=fake' "$ROOT/audit.log"
+[[ ! -s "$ROOT/audit-accepted" ]]
+
 # A failed attempt with a surviving child must be reaped before the retry.
 FAKE_MODE=retry FAKE_COUNT_FILE="$ROOT/count" FAKE_CHILD_FILE="$ROOT/retry-child" \
     "${common[@]}" bash "$RUN_AGENT" --role review --review-pr 42 --budget 30 retry \
