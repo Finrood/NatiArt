@@ -11,6 +11,15 @@ updates:
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
+    # Angular 22 requires TypeScript >=6.0 <6.1; revisit with the next Angular upgrade.
+    ignore:
+      - dependency-name: "typescript"
+        versions: [">=6.1.0"]
+      # Jasmine 7 is incompatible with Karma and Zone.js.
+      - dependency-name: "jasmine-core"
+        versions: [">=7.0.0"]
+      - dependency-name: "@types/jasmine"
+        versions: [">=7.0.0"]
     groups:
       frontend-dependencies:
         patterns:
