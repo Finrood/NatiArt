@@ -32,8 +32,8 @@ class OrderReservationReaperTest {
 
         reaper.expireAbandonedOrders();
 
-        verify(orderManager).cancelPendingOrder("order-1", null);
-        verify(orderManager).cancelPendingOrder("order-2", null);
+        verify(orderManager).cancelPendingOrderInternally("order-1");
+        verify(orderManager).cancelPendingOrderInternally("order-2");
     }
 
     @Test
@@ -42,13 +42,13 @@ class OrderReservationReaperTest {
                 .thenReturn(List.of("order-1", "order-2"));
         org.mockito.Mockito.doThrow(new RuntimeException("locked"))
                 .when(orderManager)
-                .cancelPendingOrder("order-1", null);
+                .cancelPendingOrderInternally("order-1");
         when(orderRepository.scheduleReservationRetry(any(), any(), any())).thenReturn(1);
         final OrderReservationReaper reaper = new OrderReservationReaper(orderRepository, orderManager, 1000);
 
         reaper.expireAbandonedOrders();
 
-        verify(orderManager).cancelPendingOrder("order-2", null);
+        verify(orderManager).cancelPendingOrderInternally("order-2");
     }
 
     @Test

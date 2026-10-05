@@ -78,6 +78,12 @@ public class OrderController {
     @PreAuthorize("isFullyAuthenticated()")
     public OrderDto cancelOrder(
             @PathVariable String orderId, @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
-        return orderManager.cancelPendingOrderResponse(orderId, principal != null ? principal.getExternalId() : null);
+        if (principal == null
+                || principal.getExternalId() == null
+                || principal.getExternalId().isBlank()) {
+            throw new com.portcelana.natiart.controller.helper.UserNotAllowedException(
+                    "An authenticated customer owner is required");
+        }
+        return orderManager.cancelPendingOrderResponse(orderId, principal.getExternalId());
     }
 }

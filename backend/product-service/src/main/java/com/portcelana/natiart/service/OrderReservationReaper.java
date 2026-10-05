@@ -48,7 +48,7 @@ public class OrderReservationReaper {
             // failed cancellation cannot monopolize the next bounded sweep.
             if (orderRepository.scheduleReservationRetry(orderId, OrderStatus.PENDING, now.plusSeconds(60)) == 0)
                 return;
-            orderManager.cancelPendingOrder(orderId, null);
+            orderManager.cancelPendingOrderInternally(orderId);
         } catch (RuntimeException e) {
             LOGGER.warn("Could not expire pending order [{}]: {}", orderId, e.getMessage());
         }

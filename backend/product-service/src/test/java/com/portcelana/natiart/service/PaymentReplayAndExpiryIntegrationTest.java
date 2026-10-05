@@ -134,10 +134,10 @@ class PaymentReplayAndExpiryIntegrationTest {
             final CustomerOrder old = order(OrderStatus.PENDING, Instant.now().minusSeconds(86400 + i));
             doThrow(new IllegalArgumentException("synthetic unresolved charge"))
                     .when(orderManager)
-                    .cancelPendingOrder(old.getId(), null);
+                    .cancelPendingOrderInternally(old.getId());
         }
         final CustomerOrder later = order(OrderStatus.PENDING, Instant.now().minusSeconds(3600));
         for (int i = 0; i < 3; i++) reaper.expireAbandonedOrders();
-        verify(orderManager, atLeastOnce()).cancelPendingOrder(later.getId(), null);
+        verify(orderManager, atLeastOnce()).cancelPendingOrderInternally(later.getId());
     }
 }

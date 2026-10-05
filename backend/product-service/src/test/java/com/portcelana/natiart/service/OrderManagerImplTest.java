@@ -779,6 +779,24 @@ class OrderManagerImplTest {
         verify(orderRepository, times(1)).save(order);
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.NullAndEmptySource
+    @org.junit.jupiter.params.provider.ValueSource(strings = {" ", "\t"})
+    void customerCancellationRejectsMissingOwnerBeforeLoadingOrder(String owner) {
+        assertThrows(
+                com.portcelana.natiart.controller.helper.UserNotAllowedException.class,
+                () -> orderManager.cancelPendingOrder("victim-order", owner));
+        assertThrows(
+                com.portcelana.natiart.controller.helper.UserNotAllowedException.class,
+                () -> orderManager.cancelPendingOrderResponse("victim-order", owner));
+        verifyNoInteractions(
+                orderRepository,
+                productRepository,
+                paymentRepository,
+                paymentIdempotencyRepository,
+                chargeSafetyService);
+    }
+
     @Test
     void cancelPendingOrderRejectsForeignOwnerBeforeRelease() {
         final CustomerOrder order =
