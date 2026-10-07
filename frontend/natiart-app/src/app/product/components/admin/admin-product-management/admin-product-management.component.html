@@ -86,7 +86,7 @@
   @if (modalVisible) {
     <app-accessible-dialog label="Product editor" i18n-label (dismiss)="closeModal()">
       <div
-        class="relative bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto transform transition-transform duration-300 ease-in-out">
+        class="relative bg-white p-6 rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto transform transition-transform duration-300 ease-in-out">
         <!-- Loading overlay -->
         @if (isSubmitting) {
           <div
@@ -256,7 +256,7 @@
             </div>
           </div>
           <!-- Form Actions -->
-          <div class="flex justify-end space-x-2">
+          <div class="flex flex-wrap justify-end gap-2">
             <app-button type="button" (click)="closeModal()" color="secondary" size="md" i18n>Cancel
             </app-button>
             <app-button type="submit" [disabled]="isSubmitting || isLoadingImages || productForm.invalid" color="primary" size="md" i18n>{isEditingProduct, select, true {Update} other {Add}}</app-button>

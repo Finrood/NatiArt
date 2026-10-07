@@ -1,3 +1,4 @@
+import {clearCompletedCheckoutAttempt} from '../../../../service/checkout-attempt-storage';
 import {ChangeDetectorRef, Component, inject, signal, OnDestroy, OnInit} from '@angular/core';
 import {exhaustMap, map} from "rxjs/operators";
 import {catchError, interval, of, Subscription, take, takeUntil, throwError, timeout, timer} from "rxjs";
@@ -25,6 +26,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   copyFailed: boolean = false;
   readonly $orderId = signal<string | null>(null);
   readonly $cartUpdateFailed = signal(false);
+  readonly $checkoutUpdateFailed = signal(false);
   private resumeSubscription: Subscription | null = null;
   private expirySubscription: Subscription | null = null;
   pollingInterval!: Subscription;
@@ -56,6 +58,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
       this.qrCodeData = undefined;
       this.$orderId.set(null);
       this.$cartUpdateFailed.set(false);
+      this.$checkoutUpdateFailed.set(false);
       this.stopFireworks();
       this.copyFailed = false;
       if (routedId) {
@@ -235,6 +238,10 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
         if (!user?.externalId) return;
         try { this._cartService.completePurchase(orderId, user.externalId); }
         catch { this.$cartUpdateFailed.set(true); }
+        if (user.username) {
+          try { clearCompletedCheckoutAttempt(localStorage, user.username, orderId); }
+          catch { this.$checkoutUpdateFailed.set(true); }
+        }
       });
     }
     this.triggerFireworks();
