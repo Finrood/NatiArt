@@ -18,3 +18,7 @@ Regression tests use the actual catalog and HTTP client with real router categor
 clicks, Back and Forward navigation, request cancellation and same-page retry.
 The combined CA23/CA24/CA27 check verifies production compilation plus backend
 filtering/security and the merged UI. This PR alone requires the CA23 page API.
+
+The language selector observes completed router navigation, including redirects. Its
+native links therefore follow the current route/query/fragment without a page reload;
+the existing dirty-form confirmation still protects unsaved entries.
