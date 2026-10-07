@@ -1,5 +1,8 @@
 import {DOCUMENT} from '@angular/common';
-import {Component, inject, LOCALE_ID} from '@angular/core';
+import {Component, inject, LOCALE_ID, Signal} from '@angular/core';
+import {toSignal} from '@angular/core/rxjs-interop';
+import {Event, NavigationEnd, Router} from '@angular/router';
+import {filter, map} from 'rxjs';
 
 export type ShopLanguage = 'en' | 'pt-BR';
 
@@ -22,11 +25,20 @@ export function languageUrl(language: ShopLanguage, pathname: string, search: st
 })
 export class LanguageSelectorComponent {
   private readonly _document = inject(DOCUMENT);
+  private readonly _router: Router = inject(Router);
+  private readonly $currentUrl: Signal<string> = toSignal(this._router.events.pipe(
+    filter((event: Event): event is NavigationEnd => event instanceof NavigationEnd),
+    map((event: NavigationEnd): string => event.urlAfterRedirects),
+  ), {initialValue: this.initialUrl()});
   readonly language: string = inject(LOCALE_ID);
 
-  url(language: ShopLanguage): string {
+  private initialUrl(): string {
     const location: Location | undefined = this._document.defaultView?.location;
-    return languageUrl(language, location?.pathname ?? '/', location?.search ?? '', location?.hash ?? '');
+    return (location?.pathname ?? '/') + (location?.search ?? '') + (location?.hash ?? '');
+  }
+
+  url(language: ShopLanguage): string {
+    return languageUrl(language, this.$currentUrl(), '', '');
   }
 
   beforeSwitch(event: MouseEvent, language: ShopLanguage): void {

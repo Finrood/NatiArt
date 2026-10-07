@@ -4,6 +4,9 @@ import {ChangeDetectorRef, Component, DestroyRef, inject, OnInit, signal} from '
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {OrderDto} from '../../../models/order.model';
 import {OrderService} from '../../../service/order.service';
+import {OrderItemDto} from '../../../models/orderItem.model';
+import {PersonalizationOption} from '../../../models/support/personalization-option';
+import {Subscription} from 'rxjs';
 
 @Component({
   selector: 'app-admin-order-management',
@@ -29,6 +32,48 @@ export class AdminOrderManagementComponent implements OnInit {
   readonly $hasMore = signal<boolean>(true);
   private readonly pageSize: number = 20;
   private nextPage: number = 0;
+  readonly $artwork = signal<{itemId: string; url: string} | null>(null);
+  readonly $artworkError = signal<string | null>(null);
+  readonly $loadingArtwork = signal<string | null>(null);
+  private artworkSubscription: Subscription | null = null;
+
+  constructor() {
+    this._destroyRef.onDestroy((): void => this.closeArtwork());
+  }
+
+  hasArtwork(item: OrderItemDto): boolean {
+    return !!item.personalization?.personalizationOptions[PersonalizationOption.CUSTOM_IMAGE];
+  }
+
+  hasGoldBorder(item: OrderItemDto): boolean {
+    return item.personalization?.personalizationOptions[PersonalizationOption.GOLDEN_BORDER] === 'true';
+  }
+
+  showArtwork(orderId: string, itemId: string): void {
+    this.closeArtwork();
+    this.$loadingArtwork.set(itemId);
+    this.artworkSubscription = this._orderService.getFulfillmentArtwork(orderId, itemId)
+      .pipe(takeUntilDestroyed(this._destroyRef)).subscribe({
+        next: (blob: Blob): void => {
+          this.$artwork.set({itemId, url: URL.createObjectURL(blob)});
+          this.$loadingArtwork.set(null);
+        },
+        error: (): void => {
+          this.$artworkError.set(itemId);
+          this.$loadingArtwork.set(null);
+        },
+      });
+  }
+
+  closeArtwork(): void {
+    this.artworkSubscription?.unsubscribe();
+    this.artworkSubscription = null;
+    const preview: {itemId: string; url: string} | null = this.$artwork();
+    if (preview) URL.revokeObjectURL(preview.url);
+    this.$artwork.set(null);
+    this.$artworkError.set(null);
+    this.$loadingArtwork.set(null);
+  }
 
   ngOnInit(): void {
     this.reload();
@@ -36,6 +81,7 @@ export class AdminOrderManagementComponent implements OnInit {
 
   reload(): void {
     if (this.loading && this.orders.length > 0) return;
+    this.closeArtwork();
     this.orders = [];
     this.nextPage = 0;
     this.$hasMore.set(true);

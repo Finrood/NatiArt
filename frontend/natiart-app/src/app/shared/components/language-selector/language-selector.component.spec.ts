@@ -1,9 +1,14 @@
 import {TestBed} from '@angular/core/testing';
 import {DOCUMENT} from '@angular/common';
-import {LOCALE_ID} from '@angular/core';
+import {Component, LOCALE_ID} from '@angular/core';
+import {provideRouter, Router} from '@angular/router';
+
+@Component({template: ''})
+class LanguageRoutePage {}
 import {LanguageSelectorComponent, languageUrl} from './language-selector.component';
 
 describe('LanguageSelectorComponent', () => {
+  beforeEach((): void => {TestBed.configureTestingModule({providers: [provideRouter([{path: 'account', component: LanguageRoutePage}, {path: 'products', component: LanguageRoutePage}])]});});
   afterEach((): void => document.querySelector('form[data-language-test]')?.remove());
 
   it('preserves route, query and fragment while replacing only the language prefix', (): void => {
@@ -24,6 +29,18 @@ describe('LanguageSelectorComponent', () => {
     expect(links[1].getAttribute('aria-current')).toBe('true');
     expect(links[1].getAttribute('hreflang')).toBe('pt-BR');
     expect(links[0].getAttribute('href')).toContain('/en/');
+  });
+
+  it('updates rendered native links after in-app navigation, including query and fragment', async (): Promise<void> => {
+    TestBed.configureTestingModule({imports: [LanguageSelectorComponent], providers: [{provide: LOCALE_ID, useValue: 'en'}]});
+    const fixture = TestBed.createComponent(LanguageSelectorComponent); fixture.detectChanges();
+    const router: Router = TestBed.inject(Router);
+    await router.navigateByUrl('/account'); fixture.detectChanges();
+    const links: NodeListOf<HTMLAnchorElement> = fixture.nativeElement.querySelectorAll('a');
+    expect(links[1].getAttribute('href')).toBe('/pt-BR/account');
+    await router.navigateByUrl('/products?query=vase#collection'); fixture.detectChanges();
+    expect(links[1].getAttribute('href')).toBe('/pt-BR/products?query=vase#collection');
+    fixture.destroy();
   });
 
   it('keeps edited form values and cancels a language reload when confirmation is declined', (): void => {
