@@ -8,14 +8,14 @@
   </label>
 
   <!-- Input container with error state -->
-  <div class="relative rounded-md shadow-sm" [class.has-error]="showErrors()">
+  <div class="relative rounded-md shadow-sm" [class.has-error]="showErrors()" [class.password-field]="isPassword">
     <ng-content></ng-content>
 
     <!-- Password Visibility Toggle -->
     @if (isPassword) {
       <app-button (click)="togglePasswordVisibility()" type="button"
-        color="primary"
-        class="absolute inset-y-0 right-8 pr-3 flex items-center text-sm leading-5 focus:outline-none z-30 transition-colors duration-200"
+        color="link" size="sm" customClass="p-2! text-secondary! rounded-md!"
+        class="absolute inset-y-0 flex items-center z-30" [style.right.px]="showErrors() ? 32 : 8"
         [aria-label]="passwordVisibilityLabel" [aria-pressed]="showPassword">
         <span class="w-5 h-5 flex items-center justify-center">
           @if (!showPassword) {
@@ -52,6 +52,8 @@
     }
   </div>
 
+  <ng-content select="[field-hint]"></ng-content>
+
   <!-- Error messages -->
   @if (showErrors()) {
     <div class="text-error text-sm space-y-1" [id]="resolvedInputId + '-error'" role="alert">
@@ -84,7 +86,7 @@
         <p i18n>Error fetching address</p>
       }
       @if (control?.errors?.['passwordTooLong']) {
-        <p i18n>Password is too long (maximum {{ passwordRequirements.maxUtf8Bytes }} UTF-8 bytes). Use fewer characters.</p>
+        <p i18n>Password is too long. Remove a few characters.</p>
       }
       @if (control?.errors?.['passwordComplexity']) {
         <p i18n>Password must have at least {{ passwordRequirements.minLength }} characters, an uppercase letter, a lowercase letter and a number.</p>

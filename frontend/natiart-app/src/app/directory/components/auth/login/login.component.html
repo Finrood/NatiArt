@@ -34,8 +34,8 @@
                        class="form-input" i18n-placeholder>
               </app-natiart-form-field>
 
-              <app-natiart-form-field label="Password" controlName="password" [form]="credentialsForm" i18n-label>
-                <input [type]="showPassword ? 'text' : 'password'" formControlName="password" autocomplete="current-password"
+              <app-natiart-form-field label="Password" [isPassword]="true" controlName="password" [form]="credentialsForm" i18n-label>
+                <input type="password" formControlName="password" autocomplete="current-password"
                        placeholder="••••••••" class="form-input">
               </app-natiart-form-field>
             </div>
