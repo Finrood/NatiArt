@@ -52,6 +52,31 @@ describe('ProductManagementComponent', () => {
     expect(form.get('description')!.invalid).toBeTrue();
   });
 
+  it('keeps references outside the first page selected without loading every option', (): void => {
+    const fixture = TestBed.createComponent(ProductManagementComponent);
+    const component: ProductManagementComponent = fixture.componentInstance;
+    spyOn(TestBed.inject(ProductService), 'getProductsPage').and.returnValue(of({items: [], page: 0, size: 20, total: 0, hasNext: false}));
+    const categories = Array.from({length: 20}, (_, i: number) => ({id: 'cat-' + i, label: 'Category ' + i}));
+    const packages = Array.from({length: 20}, (_, i: number) => ({id: 'pack-' + i, label: 'Package ' + i, height: 1, width: 1, depth: 1}));
+    spyOn(TestBed.inject(CategoryService), 'getCategoriesPage').and.returnValue(of({items: categories, page: 0, size: 20, total: 24, hasNext: true}));
+    spyOn(TestBed.inject(PackageService), 'getPackagesPage').and.returnValue(of({items: packages, page: 0, size: 20, total: 24, hasNext: true}));
+    component.openModal({id: 'product', label: 'Art', originalPrice: 10, markedPrice: 10, stockQuantity: 1,
+      categoryId: 'later-category', categoryLabel: 'Tableware', packageId: 'later-package', packageLabel: 'Small Box',
+      images: [], tags: [], availablePersonalizations: []});
+    fixture.detectChanges();
+    const category: HTMLSelectElement = fixture.nativeElement.querySelector('[formControlName="categoryId"]');
+    const pack: HTMLSelectElement = fixture.nativeElement.querySelector('[formControlName="packageId"]');
+    expect(category.value).toBe('later-category');
+    expect(category.selectedOptions[0].textContent).toContain('Tableware');
+    expect(pack.value).toBe('later-package');
+    expect(pack.selectedOptions[0].textContent).toContain('Small Box');
+    component.categories.next([...categories, {id: 'later-category', label: 'Tableware', active: false}]);
+    fixture.detectChanges();
+    expect(Array.from(category.options).filter((option: HTMLOptionElement): boolean => option.value === 'later-category').length).toBe(1);
+    expect(category.selectedOptions[0].textContent).toContain('(inactive)');
+    fixture.destroy();
+  });
+
   it('tracks the golden-border valueChanges subscription so destroy unsubscribes it (P1)', () => {
     const fixture = TestBed.createComponent(ProductManagementComponent);
     const component = fixture.componentInstance;
