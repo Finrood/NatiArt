@@ -1,7 +1,8 @@
 import {CurrencyPipe, DatePipe} from '@angular/common';
-import {ChangeDetectorRef, Component, DestroyRef, inject, OnInit} from '@angular/core';
-import {RouterLink} from '@angular/router';
+import {ChangeDetectorRef, Component, DestroyRef, inject, OnInit, signal} from '@angular/core';
+import {ActivatedRoute, ParamMap, RouterLink} from '@angular/router';
 
+import {catchError, map, of, Subscription, switchMap, tap} from 'rxjs';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {OrderDto} from '../../../models/order.model';
 import {OrderService} from '../../../service/order.service';
@@ -14,12 +15,15 @@ import {OrderService} from '../../../service/order.service';
 export class OrderHistoryComponent implements OnInit {
   readonly loadingLabel: string = $localize`Loading…`;
   readonly loadMoreLabel: string = $localize`Load more orders`;
+  readonly $selectedOrderId = signal<string | null>(null);
+  private readonly _route = inject(ActivatedRoute);
   orders: OrderDto[] = [];
   loading = true;
   loadingMore = false;
   hasMore = false;
   errorMessage = '';
   private page = 0;
+  private loadMoreSubscription: Subscription | null = null;
   private readonly pageSize = 20;
 
   private readonly _orderService = inject(OrderService);
@@ -27,7 +31,27 @@ export class OrderHistoryComponent implements OnInit {
   private readonly _cdr = inject(ChangeDetectorRef);
 
   ngOnInit(): void {
-    this._orderService.getMyOrders(this.page, this.pageSize).pipe(takeUntilDestroyed(this._destroyRef)).subscribe({
+    this._route.queryParamMap.pipe(
+      tap((params: ParamMap): void => {
+        this.loadMoreSubscription?.unsubscribe();
+        this.loadingMore = false;
+        this.$selectedOrderId.set(params.get('orderId'));
+        this.page = 0;
+        this.orders = [];
+        this.loading = true;
+        this.errorMessage = '';
+        this.hasMore = false;
+      }),
+      switchMap(() => (this.$selectedOrderId()
+        ? this._orderService.getMyOrder(this.$selectedOrderId()!).pipe(map((order: OrderDto): OrderDto[] => [order]))
+        : this._orderService.getMyOrders(0, this.pageSize)).pipe(
+          catchError(() => {
+            this.errorMessage = $localize`We could not load your order history. Please try again.`;
+            return of<OrderDto[]>([]);
+          })
+        )),
+      takeUntilDestroyed(this._destroyRef)
+    ).subscribe({
       next: orders => {
         this.orders = orders;
         this.hasMore = orders.length === this.pageSize;
@@ -43,11 +67,11 @@ export class OrderHistoryComponent implements OnInit {
   }
 
   loadMore(): void {
-    if (this.loadingMore || !this.hasMore) {
+    if (this.$selectedOrderId() || this.loadingMore || !this.hasMore) {
       return;
     }
     this.loadingMore = true;
-    this._orderService.getMyOrders(this.page + 1, this.pageSize).pipe(takeUntilDestroyed(this._destroyRef)).subscribe({
+    this.loadMoreSubscription = this._orderService.getMyOrders(this.page + 1, this.pageSize).pipe(takeUntilDestroyed(this._destroyRef)).subscribe({
       next: orders => {
         this.page += 1;
         this.orders = [...this.orders, ...orders];

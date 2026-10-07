@@ -108,6 +108,13 @@ describe('Rendered checkout HTTP journey', (): void => {
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Payment Successful');
     expect(TestBed.inject(CartService).getCartItemsSnapshot()).toEqual([]);
+    expect(localStorage.getItem('natiart-checkout-attempt:user%40example.test')).toBeNull();
+    TestBed.inject(CartService).addToCart(items[0].product, 1).subscribe();
+    void TestBed.inject(Router).navigateByUrl('/checkout');
+    flushMicrotasks(); fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Your Information');
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Resume saved checkout');
+    http.expectNone((request): boolean => request.url.endsWith('/payments/create'));
     fixture.destroy();
   }));
 

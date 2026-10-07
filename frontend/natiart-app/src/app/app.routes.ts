@@ -4,7 +4,6 @@ import {adminGuard} from "./directory/guards/admin.guard";
 import {productGuard} from "./product/guards/product-guard.guard";
 
 export const routes: Routes = [
-  {path: 'products', loadComponent: () => import('./product/components/customer/catalog/catalog.component').then(m => m.CatalogComponent)},
   {
     path: 'login',
     loadComponent: () => import('./directory/components/auth/login/login.component').then(m => m.LoginComponent)
@@ -29,45 +28,22 @@ export const routes: Routes = [
   },
   {
     path: 'dashboard',
-    canActivate: [authGuard],
     loadComponent: () => import('./product/components/customer/dashboard/dashboard.component').then(m => m.DashboardComponent)
   },
   {
     path: 'products',
     loadComponent: () => import('./product/components/customer/catalog/catalog.component').then(m => m.CatalogComponent)
   },
-  {
-    path: 'about',
-    data: {
-      title: $localize`About us`,
-      message: $localize`Handmade pieces for your home.`
-    },
-    loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
-  },
-  {
-    path: 'contact',
-    data: {
-      title: $localize`Contact`,
-      message: $localize`Online contact is currently unavailable. Return to the store to continue browsing.`
-    },
-    loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
-  },
+  {path: 'about', redirectTo: '/products', pathMatch: 'full'},
+  {path: 'contact', redirectTo: '/products', pathMatch: 'full'},
   {
     path: 'account',
     canActivate: [authGuard],
     loadComponent: () => import('./product/components/customer/order-history/order-history.component')
       .then(m => m.OrderHistoryComponent)
   },
-  {
-    path: 'faq',
-    data: {title: $localize`Frequently asked questions`, message: $localize`Frequently asked questions are not published yet.`},
-    loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
-  },
-  {
-    path: 'shipping-returns',
-    data: {title: $localize`Shipping and returns`, message: $localize`Shipping and return information is not published on this page yet.`},
-    loadComponent: () => import('./shared/components/info-page.component').then(m => m.InfoPageComponent)
-  },
+  {path: 'faq', redirectTo: '/products', pathMatch: 'full'},
+  {path: 'shipping-returns', redirectTo: '/products', pathMatch: 'full'},
   {
     path: 'care-instructions',
     data: {title: $localize`Care instructions`, message: $localize`Handle porcelain with clean, dry hands and avoid sudden temperature changes.`},
@@ -80,13 +56,11 @@ export const routes: Routes = [
   },
   {
     path: 'product/:id',
-    canActivate: [authGuard],
     canDeactivate: [productGuard],
     loadComponent: () => import('./product/components/customer/product-detail/product-detail.component').then(m => m.ProductDetailComponent)
   },
   {
     path: 'cart',
-    canActivate: [authGuard],
     loadComponent: () => import('./product/components/customer/cart/cart.component').then(m => m.CartComponent)
   },
   {
