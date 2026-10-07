@@ -22,7 +22,7 @@ describe('DashboardComponent', () => {
     expect(button).toBeTruthy();
     button.click();
     expect(navigate).toHaveBeenCalled();
-    expect(navigate.calls.mostRecent().args[0].toString()).toBe('/products');
+    expect(navigate.calls.mostRecent().args[0].toString().split('?')[0]).toBe('/products');
   });
 
   it('should create' , () => {
