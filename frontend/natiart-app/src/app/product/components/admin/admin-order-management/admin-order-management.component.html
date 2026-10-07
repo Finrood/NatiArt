@@ -19,11 +19,50 @@
         <article class="min-w-0 break-words rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <div class="flex flex-wrap justify-between gap-4">
             <div>
-              <h3 class="font-semibold text-gray-800">{{ order.id }}</h3>
+              <h3 class="font-semibold text-gray-800">#{{ order.id?.slice(0, 8) }}</h3>
               <p class="text-sm text-gray-500">{{ order.orderDate | date:'medium' }} · {{ order.email }}</p>
             </div>
             <p class="font-medium text-gray-800">{{ order.totalAmount | currency:'BRL' }} · {{ statusLabel(order.status) }}</p>
           </div>
+          <details class="mt-4 rounded-lg border border-gray-200 p-4">
+            <summary class="cursor-pointer font-semibold" i18n>Order details</summary>
+            <div class="mt-4 grid gap-6 md:grid-cols-2">
+              <section class="min-w-0 space-y-3">
+                <h4 class="font-semibold" i18n>Purchased items</h4>
+                @for (item of order.items; track item.id || $index) {
+                  <div class="border-b pb-3 space-y-2">
+                    <p class="font-medium break-words">{{ item.productLabel || item.productId }}</p>
+                    <p i18n>Quantity: {{ item.quantity }}</p>
+                    <p i18n>Unit price: {{ item.price | currency:'BRL' }}</p>
+                    @if (hasGoldBorder(item)) { <p i18n>Gold border</p> }
+                    @if (hasArtwork(item) && order.id && item.id) {
+                      <button type="button" class="underline underline-offset-4" (click)="showArtwork(order.id, item.id)"
+                        [disabled]="$loadingArtwork() === item.id" i18n>View custom artwork</button>
+                    }
+                    @if ($loadingArtwork() === item.id) { <p role="status" i18n>Loading artwork…</p> }
+                    @if ($artworkError() === item.id) { <p role="alert" i18n>Artwork could not be loaded. Please retry.</p> }
+                    @if ($artwork(); as preview) {
+                      @if (preview.itemId === item.id) {
+                        <img [src]="preview.url" alt="Custom artwork for this order" i18n-alt class="max-w-full max-h-80 object-contain">
+                        <button type="button" class="underline" (click)="closeArtwork()" i18n>Close preview</button>
+                      }
+                    }
+                  </div>
+                }
+              </section>
+              <section class="min-w-0 space-y-2 break-words">
+                <h4 class="font-semibold" i18n>Delivery address</h4>
+                <p>{{ order.firstname }} {{ order.lastname }}</p>
+                <p>{{ order.street }}, {{ order.houseNumber }}</p>
+                @if (order.complement) { <p>{{ order.complement }}</p> }
+                <p>{{ order.neighborhood }} · {{ order.city }} · {{ order.state }}</p>
+                <p>{{ order.zipCode }} · {{ order.country }}</p>
+                @if (order.phone) { <p>{{ order.phone }}</p> }
+                <p i18n>Shipping: {{ order.deliveryAmount | currency:'BRL' }}</p>
+                <p class="text-sm break-all">{{ order.id }}</p>
+              </section>
+            </div>
+          </details>
           @if ($orderErrors()[order.id!]) {
             <p role="alert" class="text-red-700">{{ $orderErrors()[order.id!] }}</p>
           }
