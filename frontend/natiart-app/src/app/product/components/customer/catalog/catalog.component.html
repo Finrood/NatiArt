@@ -6,8 +6,8 @@
     <form (ngSubmit)="searchProducts()" class="flex gap-3 mb-6">
       <label for="catalog-search" class="sr-only" i18n>Search products</label>
       <input id="catalog-search" name="search" [(ngModel)]="search" maxlength="200" placeholder="Search products" i18n-placeholder
-        class="border rounded p-3 flex-1" />
-      <button type="submit" class="border rounded px-4" i18n>Search</button>
+        class="form-input flex-1 min-w-0" />
+      <app-button type="submit" color="primary" size="sm" i18n>Search</app-button>
     </form>
     @if (pages.$loading()) { <p role="status" i18n>Loading products...</p> }
     @else if (!pages.$error() && $items().length === 0) { <p i18n>No products match this selection.</p> }

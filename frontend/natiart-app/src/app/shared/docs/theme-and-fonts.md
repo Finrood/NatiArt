@@ -35,3 +35,8 @@ CA34 accessibility should preserve these global styles. CA28 shared alert state
 should retain the attached animation CSS; CA32 PIX-only controls remain the
 payment contract when combining its UI change. No production deployment is
 claimed by the local build/computed-style checks.
+
+Body copy, prices, forms and actions use Poppins consistently. Playfair Display
+is reserved for headings and explicit display text. Search and pagination use
+the shared button; projected inputs share a minimum 44px height. Quantity
+controls use SVG paths so their shape is independent of the active font.
