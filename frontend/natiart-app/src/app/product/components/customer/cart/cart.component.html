@@ -191,7 +191,7 @@
             <span class="text-lg text-secondary" i18n>Subtotal:</span>
             <span class="text-lg font-semibold text-secondary-dark">{{ cartState.total | currency:'BRL' }}</span>
           </div>
-          <p class="text-xs text-secondary-light mb-4" i18n>Shipping & taxes calculated at checkout.</p>
+          <p class="text-xs text-secondary-light mb-4" i18n>Shipping calculated at checkout.</p>
           <app-button (click)="proceedToCheckout()" [disabled]="(isLoading$ | async)" [block]="true" color="primary" size="lg">
             @if (!(isLoading$ | async)) {
               <span i18n>Proceed to Checkout</span>

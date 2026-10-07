@@ -134,7 +134,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         complement: ['', Validators.maxLength(255)],
       }),
       paymentInfo: this._fb.group({
-        paymentMethod: ['', [Validators.required, Validators.maxLength(255)]],
+        paymentMethod: [PaymentMethod.PIX, [Validators.required, Validators.maxLength(255)]],
       }),
     });
 

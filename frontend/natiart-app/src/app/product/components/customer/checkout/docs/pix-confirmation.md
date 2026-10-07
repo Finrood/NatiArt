@@ -31,3 +31,9 @@ must leave the cart untouched. Resolve the shared checkout/cart edits in a dispo
 integration checkout and run the combined frontend suite before merging either release.
 CA11/CA12 own provider reconciliation and reservation release; this UI does not
 release stock or infer failure from a timed-out request.
+
+PIX is selected by default, and the quoted total shows only backend-provided item
+and delivery charges. Copy has a named control and separate success/error
+feedback; expiry shows its local time. The completed screen links to the
+authorized single-order lookup in account history using orderId. Removing that
+query parameter returns to paged history without changing the order.
