@@ -279,8 +279,6 @@
     "4606091236515013460": "Error:",
     "7967531213765320199": "Dismiss error",
     "2400923620514128146": "Saved order",
-    "8121541100768866697": "Quantity: {$INTERPOLATION}",
-    "879921794373942479": "Shipping: {$INTERPOLATION}",
     "3489593325740504759": "Total: {$INTERPOLATION}",
     "5548803255085039999": "Order details will be confirmed when you resume.",
     "341061543514104176": "Calculating shipping...",
@@ -479,6 +477,9 @@
     "5332517454777298957": "Subscribe to receive updates and exclusive offers.",
     "4616894645263562158": "Your email address",
     "6767075847177447992": "© {$INTERPOLATION} NatiArt. All rights reserved. ",
-    "4876879933381167729": "Could not load this page. Please retry."
+    "4876879933381167729": "Could not load this page. Please retry.",
+    "5293697079227535093": " (inactive)",
+    "7028348166399246247": "Current category",
+    "3173294121133768693": "Current package"
   }
 }
