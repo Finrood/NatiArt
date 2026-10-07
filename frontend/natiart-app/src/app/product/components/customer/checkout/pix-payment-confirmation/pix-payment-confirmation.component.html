@@ -1,4 +1,4 @@
-<div class="max-w-md mx-auto my-10 p-8 bg-white rounded-2xl shadow-lg text-center">
+<div class="max-w-md mx-auto my-10 p-4 sm:p-8 bg-white rounded-2xl shadow-lg text-center">
 
   @if (copyFailed) {
     <p class="mb-4 text-sm text-red-600" role="alert" i18n>Could not copy the PIX code. Please select and copy it manually.
@@ -15,9 +15,14 @@
         </svg>
       </div>
       <h1 class="text-2xl font-bold text-gray-800 mb-2" i18n>Payment Successful!</h1>
-      @if ($orderId()) { <p class="text-gray-600 mb-4" i18n>Order reference: {{ $orderId() }}</p> }
+      @if ($orderId()) { <p class="text-gray-600 mb-4 break-words" i18n>Order reference: {{ $orderId() }}</p> }
       @if ($cartUpdateFailed()) { <p role="alert" i18n>Payment confirmed. Your cart could not be updated; refresh this page to retry.</p> }
+      @if ($checkoutUpdateFailed()) { <p role="alert" i18n>Payment confirmed. Your saved checkout could not be cleared; refresh this page to retry.</p> }
       <p class="text-gray-600 mb-6" i18n>Thank you for your purchase. Your order is confirmed.</p>
+      @if ($orderId()) {
+        <a routerLink="/account" [queryParams]="{orderId: $orderId()}"
+          class="mb-3 block rounded-lg border border-primary px-6 py-3 text-primary font-semibold hover:bg-primary-lighter" i18n>View order</a>
+      }
       <app-button (click)="closePayment()" [block]="true" color="primary" size="lg" i18n>
         Continue Shopping
       </app-button>
@@ -32,9 +37,9 @@
         </div>
         <p class="text-sm text-gray-500 mb-4" i18n>Or use the code below:</p>
         <div class="relative mb-6">
-          <input type="text" [value]="qrCodeData.payload" readonly #pixCodeInput
+          <input type="text" [value]="qrCodeData.payload" readonly #pixCodeInput aria-label="PIX code" i18n-aria-label
             class="w-full bg-gray-100 border border-gray-300 text-gray-700 text-sm rounded-lg p-3 pr-12 truncate">
-          <app-button (click)="copyToClipboard(pixCodeInput)" color="link" size="sm" customClass="absolute top-1/2 right-2 -translate-y-1/2 text-gray-500 hover:text-blue-500">
+          <app-button aria-label="Copy PIX code" i18n-aria-label (click)="copyToClipboard(pixCodeInput)" color="link" size="sm" customClass="absolute top-1/2 right-2 -translate-y-1/2 text-gray-500 hover:text-blue-500">
             <!-- Heroicons: clipboard-document -->
             <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a2.25 2.25 0 01-2.25 2.25h-1.5a2.25 2.25 0 01-2.25-2.25V4.5A2.25 2.25 0 019 2.25h1.5a2.25 2.25 0 012.25 2.25v.75" />
@@ -43,9 +48,10 @@
             </svg>
           </app-button>
         </div>
+        @if ($copied()) { <p role="status" aria-live="polite" class="mb-4 text-sm text-secondary" i18n>PIX code copied.</p> }
         <div class="text-sm text-gray-600">
-          <p><ng-container i18n>Payment Status: </ng-container><strong class="font-semibold" [ngClass]="{'text-yellow-500': paymentStatus === 'PENDING', 'text-green-500': paymentStatus === 'PAID'}" i18n>{paymentStatus, select, PENDING {Pending} COMPLETED {Confirmed} ERROR {Could not confirm payment} other {Awaiting confirmation}}</strong></p>
-          <p><ng-container i18n>Expires in: </ng-container><strong class="font-semibold">{{ qrCodeData.expirationDate | date: 'mediumTime' }}</strong></p>
+          <p><ng-container i18n>Payment Status: </ng-container><strong class="font-semibold" [ngClass]="{'text-yellow-800': paymentStatus === 'PENDING', 'text-green-800': paymentStatus === 'PAID'}" i18n>{paymentStatus, select, PENDING {Pending} COMPLETED {Confirmed} ERROR {Could not confirm payment} other {Awaiting confirmation}}</strong></p>
+          <p><ng-container i18n>Expires at: </ng-container><strong class="font-semibold">{{ qrCodeData.expirationDate | date: 'mediumTime' }}</strong></p>
         </div>
       </div>
     } @else if (paymentStatus === 'ERROR' || paymentStatus === 'EXPIRED') {

@@ -1,6 +1,7 @@
 import {TestBed} from '@angular/core/testing';
 import {provideHttpClient} from '@angular/common/http';
 import {provideHttpClientTesting, HttpTestingController} from '@angular/common/http/testing';
+import {RouterTestingHarness} from '@angular/router/testing';
 import {provideRouter} from '@angular/router';
 import {OrderHistoryComponent} from './order-history.component';
 import {OrderDto} from '../../../models/order.model';
@@ -9,7 +10,7 @@ describe('Customer order history pages', (): void => {
   beforeEach(async (): Promise<void> => {
     localStorage.clear();
     await TestBed.configureTestingModule({imports: [OrderHistoryComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])]}).compileComponents();
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([{path: 'account', component: OrderHistoryComponent}])]}).compileComponents();
   });
   afterEach((): void => {TestBed.inject(HttpTestingController).verify(); localStorage.clear();});
   it('renders HTTP results and lets a customer load the older 21st order', (): void => {
@@ -28,4 +29,27 @@ describe('Customer order history pages', (): void => {
     expect(fixture.nativeElement.textContent).toContain('older-21');
     expect(fixture.nativeElement.querySelector('main button')).toBeNull();
   });
+  it('opens the purchased order directly and recovers from a missing order to paged history', async (): Promise<void> => {
+    const http: HttpTestingController = TestBed.inject(HttpTestingController);
+    const harness: RouterTestingHarness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/account?orderId=purchased', OrderHistoryComponent);
+    http.expectOne(request => request.url.endsWith('/orders/purchased')).flush({
+      id: 'purchased', firstname: 'Buyer', lastname: 'Customer', email: 'buyer@example.test',
+      country: 'Brazil', state: 'SP', city: 'City', neighborhood: 'Area',
+      zipCode: '01001000', street: 'Street', items: [], totalAmount: 20, status: 'PAID'});
+    harness.detectChanges();
+    expect(harness.routeNativeElement!.textContent).toContain('purchased');
+    expect(harness.routeNativeElement!.querySelector('a[routerLink="/account"]')).not.toBeNull();
+    await harness.navigateByUrl('/account?orderId=missing', OrderHistoryComponent);
+    http.expectOne(request => request.url.endsWith('/orders/missing')).flush('missing', {status: 404, statusText: 'Not found'});
+    harness.detectChanges();
+    expect(harness.routeNativeElement!.querySelector('[role="alert"]')).not.toBeNull();
+    await harness.navigateByUrl('/account', OrderHistoryComponent);
+    http.expectOne(request => request.url.endsWith('/orders') && request.params.get('page') === '0').flush([]);
+    harness.detectChanges();
+    expect(harness.routeNativeElement!.textContent).toContain('No orders yet');
+    expect(harness.routeNativeElement!.querySelector('[role="alert"]')).toBeNull();
+    harness.fixture.destroy();
+  });
+
 });

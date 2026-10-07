@@ -1,7 +1,7 @@
 import {Component, input, output} from '@angular/core';
 
 @Component({selector: 'app-page-controls', template: `
-  <nav aria-label="Pagination" i18n-aria-label class="flex flex-wrap items-center gap-4 my-6">
+  <nav aria-label="Pagination" i18n-aria-label [attr.aria-busy]="$loading()" class="flex flex-wrap items-center gap-4 my-6">
     <button type="button" class="px-4 py-2 border rounded" [disabled]="$loading() || $page() === 0"
       (click)="pageChange.emit($page() - 1)" i18n>Previous page</button>
     <span aria-live="polite" i18n>Page {{ $page() + 1 }} · {{ $total() }} items</span>

@@ -8,7 +8,7 @@ import {RouterLink, RouterLinkActive, RouterOutlet} from '@angular/router';
   template: `
     <div class="container mx-auto px-4 py-8">
       <h1 class="text-3xl font-light mb-8 text-gray-800"><ng-container i18n>Admin Dashboard</ng-container></h1>
-      <nav class="mb-8 flex space-x-4">
+      <nav class="mb-8 flex flex-wrap gap-2">
         @for (item of menuItems; track item) {
           <a
             [routerLink]="['/admin', item.path]"

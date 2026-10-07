@@ -8,7 +8,6 @@ import {Product} from "../../../models/product.model";
 import {ActivatedRoute, ParamMap, RouterLink} from "@angular/router";
 import {ProductService} from "../../../service/product.service";
 import {Meta, Title} from '@angular/platform-browser';
-import {TopMenuComponent} from "../top-menu/top-menu.component";
 import {LeftMenuComponent} from "../left-menu/left-menu.component";
 import {CartService} from "../../../service/cart.service";
 import {PersonalizationOption} from "../../../models/support/personalization-option";
@@ -25,7 +24,6 @@ interface DetailImage { key: string; url: string | null; state: ImageState; }
     AsyncPipe,
     FormsModule,
     CurrencyPipe,
-    TopMenuComponent,
     LeftMenuComponent,
     NgStyle,
     PersonalizationModalComponent,
