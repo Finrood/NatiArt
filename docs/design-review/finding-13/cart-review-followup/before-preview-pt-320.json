@@ -1,0 +1,285 @@
+{
+  "controls": [
+    {
+      "clipping": [],
+      "height": 28,
+      "left": -55,
+      "outside": true,
+      "right": 225,
+      "tag": "H2",
+      "text": "Seu carrinho",
+      "width": 280
+    },
+    {
+      "clipping": [],
+      "height": 64,
+      "left": -55,
+      "outside": true,
+      "right": -9.98,
+      "tag": "IMG",
+      "text": "Collector’s Porcelain Gift Set",
+      "width": 45.02
+    },
+    {
+      "clipping": [],
+      "height": 48,
+      "left": 8.02,
+      "outside": false,
+      "right": 169,
+      "tag": "P",
+      "text": "Collector’s Porcelain Gift Set",
+      "width": 160.98
+    },
+    {
+      "clipping": [],
+      "height": 34,
+      "left": 8.02,
+      "outside": false,
+      "right": 72.02,
+      "tag": "INPUT",
+      "text": "",
+      "width": 64
+    },
+    {
+      "clipping": [],
+      "height": 24,
+      "left": 80.02,
+      "outside": false,
+      "right": 165.11,
+      "tag": "P",
+      "text": "R$ 1.299,90",
+      "width": 85.09
+    },
+    {
+      "clipping": [],
+      "height": 36,
+      "left": 169,
+      "outside": false,
+      "right": 225,
+      "tag": "BUTTON",
+      "text": "",
+      "width": 56
+    },
+    {
+      "clipping": [],
+      "height": 64,
+      "left": -55,
+      "outside": true,
+      "right": 225,
+      "tag": "BUTTON",
+      "text": "Ver carrinho",
+      "width": 280
+    },
+    {
+      "clipping": [
+        {
+          "left": 18,
+          "overflow": "hidden",
+          "right": 287,
+          "tag": "DIV"
+        }
+      ],
+      "height": 40,
+      "left": 135,
+      "outside": false,
+      "right": 291,
+      "tag": "H3",
+      "text": "Collector’s Porcelain Gift Set",
+      "width": 156
+    },
+    {
+      "clipping": [],
+      "height": 34,
+      "left": 135,
+      "outside": false,
+      "right": 189,
+      "tag": "BUTTON",
+      "text": "Diminuir quantidade",
+      "width": 54
+    },
+    {
+      "clipping": [
+        {
+          "left": 18,
+          "overflow": "hidden",
+          "right": 287,
+          "tag": "DIV"
+        }
+      ],
+      "height": 34,
+      "left": 237,
+      "outside": false,
+      "right": 291,
+      "tag": "BUTTON",
+      "text": "Increase quantity",
+      "width": 54
+    },
+    {
+      "clipping": [
+        {
+          "left": 18,
+          "overflow": "hidden",
+          "right": 287,
+          "tag": "DIV"
+        }
+      ],
+      "height": 36,
+      "left": 309,
+      "outside": true,
+      "right": 365,
+      "tag": "BUTTON",
+      "text": "Remover item",
+      "width": 56
+    },
+    {
+      "clipping": [],
+      "height": 32,
+      "left": 42,
+      "outside": false,
+      "right": 263,
+      "tag": "H2",
+      "text": "Calcular frete",
+      "width": 221
+    },
+    {
+      "clipping": [],
+      "height": 38,
+      "left": 42,
+      "outside": false,
+      "right": 263,
+      "tag": "INPUT",
+      "text": "",
+      "width": 221
+    },
+    {
+      "clipping": [],
+      "height": 28,
+      "left": 43,
+      "outside": false,
+      "right": 262,
+      "tag": "H2",
+      "text": "Resumo do carrinho",
+      "width": 219
+    },
+    {
+      "clipping": [],
+      "height": 64,
+      "left": 43,
+      "outside": false,
+      "right": 262,
+      "tag": "BUTTON",
+      "text": "Finalizar compra",
+      "width": 219
+    },
+    {
+      "clipping": [],
+      "height": 20,
+      "left": 64.31,
+      "outside": false,
+      "right": 240.69,
+      "tag": "A",
+      "text": "ou continuar comprando",
+      "width": 176.38
+    },
+    {
+      "clipping": [],
+      "height": 36,
+      "left": 43,
+      "outside": false,
+      "right": 262,
+      "tag": "BUTTON",
+      "text": "Esvaziar carrinho",
+      "width": 219
+    }
+  ],
+  "document": 305,
+  "failures": [
+    {
+      "clipping": [],
+      "height": 28,
+      "left": -55,
+      "outside": true,
+      "right": 225,
+      "tag": "H2",
+      "text": "Seu carrinho",
+      "width": 280
+    },
+    {
+      "clipping": [],
+      "height": 64,
+      "left": -55,
+      "outside": true,
+      "right": -9.98,
+      "tag": "IMG",
+      "text": "Collector’s Porcelain Gift Set",
+      "width": 45.02
+    },
+    {
+      "clipping": [],
+      "height": 64,
+      "left": -55,
+      "outside": true,
+      "right": 225,
+      "tag": "BUTTON",
+      "text": "Ver carrinho",
+      "width": 280
+    },
+    {
+      "clipping": [
+        {
+          "left": 18,
+          "overflow": "hidden",
+          "right": 287,
+          "tag": "DIV"
+        }
+      ],
+      "height": 40,
+      "left": 135,
+      "outside": false,
+      "right": 291,
+      "tag": "H3",
+      "text": "Collector’s Porcelain Gift Set",
+      "width": 156
+    },
+    {
+      "clipping": [
+        {
+          "left": 18,
+          "overflow": "hidden",
+          "right": 287,
+          "tag": "DIV"
+        }
+      ],
+      "height": 34,
+      "left": 237,
+      "outside": false,
+      "right": 291,
+      "tag": "BUTTON",
+      "text": "Increase quantity",
+      "width": 54
+    },
+    {
+      "clipping": [
+        {
+          "left": 18,
+          "overflow": "hidden",
+          "right": 287,
+          "tag": "DIV"
+        }
+      ],
+      "height": 36,
+      "left": 309,
+      "outside": true,
+      "right": 365,
+      "tag": "BUTTON",
+      "text": "Remover item",
+      "width": 56
+    }
+  ],
+  "preview": {
+    "left": -75,
+    "right": 245,
+    "width": 320
+  },
+  "viewport": 305
+}

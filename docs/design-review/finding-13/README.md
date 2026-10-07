@@ -20,3 +20,5 @@ Default desktop viewport, cart body typography before and after.
 ![After](after-01.jpg)
 
 The PR review follow-up adds narrow-phone product and checkout fixes, updated validation, and [new before/after evidence](review-followup/README.md).
+
+The second review follow-up resolves phone/tablet cart clipping and preview placement, with [cart before/after screenshots and control-bound measurements](cart-review-followup/README.md).
