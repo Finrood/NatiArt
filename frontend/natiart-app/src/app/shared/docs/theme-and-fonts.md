@@ -35,3 +35,9 @@ CA34 accessibility should preserve these global styles. CA28 shared alert state
 should retain the attached animation CSS; CA32 PIX-only controls remain the
 payment contract when combining its UI change. No production deployment is
 claimed by the local build/computed-style checks.
+
+Readable palette: primary rose is 128/73/59 (white text 7.16:1, cream
+background text 6.61:1); hover rose is 104/54/43. Pale blush remains a surface
+color. Secondary muted text and semantic filled-button colors also meet 4.5:1
+against their intended backgrounds. Computed-style checks measure contrast
+rather than hard-coding the palette; disabled controls are excluded.

@@ -18,19 +18,19 @@
 }
 
 .btn-success {
-  @apply bg-success text-white hover:bg-green-600 focus:ring-green-500;
+  @apply bg-success text-white hover:bg-green-800 focus:ring-success;
 }
 
 .btn-danger {
-  @apply bg-error text-white hover:bg-red-600 focus:ring-red-500;
+  @apply bg-error text-white hover:bg-red-800 focus:ring-error;
 }
 
 .btn-warning {
-  @apply bg-warning text-white hover:bg-yellow-600 focus:ring-yellow-500;
+  @apply bg-warning text-white hover:bg-yellow-900 focus:ring-warning;
 }
 
 .btn-info {
-  @apply bg-info text-white hover:bg-blue-600 focus:ring-blue-500;
+  @apply bg-info text-white hover:bg-blue-800 focus:ring-info;
 }
 
 .btn-light {
