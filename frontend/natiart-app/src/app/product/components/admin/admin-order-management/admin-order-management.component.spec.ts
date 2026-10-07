@@ -54,4 +54,26 @@ describe('Rendered order fulfillment', (): void => {
     expect(patch.request.body.status).toBe('PROCESSING'); patch.flush(order('older-paid', 'PROCESSING'));
     fixture.detectChanges(); expect(older.textContent).toContain('Mark SHIPPED');
   });
+  it('shows purchase snapshots, delivery and protected artwork with failure feedback', (): void => {
+    const fixture = TestBed.createComponent(AdminOrderManagementComponent); fixture.detectChanges();
+    const http: HttpTestingController = TestBed.inject(HttpTestingController);
+    const bought: OrderDto = {...order('paid', 'PAID'), houseNumber: '123', complement: 'Apt 4',
+      items: [{id: 'line-1', productId: 'renamed', productLabel: 'Purchased plate', quantity: 2, price: 5,
+        personalization: {personalizationOptions: {GOLDEN_BORDER: 'true', CUSTOM_IMAGE: 'opaque-upload'}}}]};
+    http.expectOne(request => request.url.endsWith('/admin/orders')).flush([bought]); fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement as HTMLElement;
+    expect(root.textContent).toContain('Purchased plate');
+    expect(root.textContent).toContain('Quantity: 2');
+    expect(root.textContent).toContain('Street, 123');
+    expect(root.textContent).toContain('Gold border');
+    const button: HTMLButtonElement = Array.from(root.querySelectorAll('button'))
+      .find((element: HTMLButtonElement): boolean => element.textContent?.trim() === 'View custom artwork')!;
+    button.click(); fixture.detectChanges();
+    expect(root.textContent).toContain('Loading artwork');
+    http.expectOne(request => request.url.endsWith('/admin/orders/paid/items/line-1/artwork'))
+      .flush(new Blob(['Missing'], {type: 'text/plain'}), {status: 404, statusText: 'Not Found'});
+    fixture.detectChanges(); expect(root.textContent).toContain('Artwork could not be loaded');
+    fixture.destroy();
+  });
+
 });

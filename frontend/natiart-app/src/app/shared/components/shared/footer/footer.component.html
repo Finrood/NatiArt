@@ -1,27 +1,16 @@
-<!-- Footer -->
 <footer class="bg-primary-lighter mt-8 sm:mt-16">
   <div class="container mx-auto px-4 py-8">
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
       <div>
-        <h5 class="text-lg font-semibold mb-4" i18n>About Us</h5>
-        <p class="text-sm" i18n>Handmade pieces for your home.</p>
+        <a routerLink="/dashboard" class="text-lg font-semibold font-serif" i18n>NatiArt</a>
+        <p class="mt-3 text-sm" i18n>Handmade pieces for your home.</p>
       </div>
       <div>
-        <h5 class="text-lg font-semibold mb-4" i18n>Quick Links</h5>
+        <h2 class="text-lg font-semibold mb-4" i18n>Quick Links</h2>
         <ul class="text-sm space-y-2">
-          <li><a class="hover:text-primary" routerLink="/faq" i18n>FAQ</a></li>
-          <li><a class="hover:text-primary" routerLink="/shipping-returns" i18n>Shipping & Returns</a></li>
+          <li><a class="hover:text-primary" routerLink="/products" i18n>Collections</a></li>
           <li><a class="hover:text-primary" routerLink="/care-instructions" i18n>Care Instructions</a></li>
         </ul>
-      </div>
-      <div>
-        <h5 class="text-lg font-semibold mb-4" i18n>Newsletter</h5>
-        <p class="text-sm mb-4" i18n>Subscribe to receive updates and exclusive offers.</p>
-        <input
-          class="w-full px-4 py-2 rounded-full bg-white border border-primary focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-          placeholder="Your email address"
-          type="email"
-         i18n-placeholder/>
       </div>
     </div>
     <div class="mt-8 text-center text-sm text-secondary-light" i18n>© {{ currentYear }} NatiArt. All rights reserved.

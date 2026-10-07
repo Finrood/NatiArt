@@ -1,40 +1,34 @@
-<aside class="bg-surface text-secondary transition-all duration-300 ease-in-out block border-r border-primary-lighter/30" [ngClass]="isOpen ? 'w-64' : 'w-20'">
-  <div class="flex items-center h-20 px-6" [ngClass]="isOpen ? 'justify-between' : 'justify-center'">
-    @if (isOpen) {
-      <span class="text-lg font-semibold font-serif" i18n>Categories</span>
+<aside class="w-full lg:w-64 bg-surface text-secondary border-b lg:border-r border-primary-lighter/30">
+  <div class="px-4 py-3 lg:px-6 lg:py-6">
+    <span class="hidden lg:block text-lg font-semibold font-serif" i18n>Categories</span>
+    <button type="button" aria-controls="category-filters" [attr.aria-expanded]="$filtersOpen()"
+      (click)="toggleMenu()" class="lg:hidden rounded-md border border-primary px-4 py-2 text-primary font-medium" i18n>Filters</button>
+    @if ($selectedCategoryId()) {
+      <a routerLink="/products" [queryParams]="{categoryId: null, page: 0}" queryParamsHandling="merge"
+        aria-label="Clear category filter" i18n-aria-label
+        class="mt-3 flex items-center justify-between gap-3 rounded-full bg-primary-lighter px-4 py-2 text-sm">
+        <span class="min-w-0 break-words">{{ $selectedCategoryLabel() }}</span>
+        <span aria-hidden="true">×</span>
+      </a>
     }
-    <button aria-label="Toggle categories" i18n-aria-label [attr.aria-expanded]="isOpen" (click)="toggleMenu()" class="p-2 rounded-full hover:bg-primary-lighter/50 transition-colors">
-      <svg class="h-6 w-6 transition-transform duration-300" [ngClass]="!isOpen ? 'rotate-180' : ''" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-    </button>
   </div>
-
-  <nav class="mt-4">
+  <nav id="category-filters" [class.hidden]="!$filtersOpen()" class="lg:block pb-4" aria-label="Product categories" i18n-aria-label>
     <ul>
       <li>
-        <a aria-label="All products" routerLink="/products" [queryParams]="{page: 0}" class="flex items-center py-3 px-6 text-secondary hover:bg-primary-lighter/50 hover:text-primary-dark transition-colors duration-200">
-          <svg class="h-6 w-6" [ngClass]="isOpen ? 'mr-4' : 'mx-auto'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
-          @if (isOpen) {
-            <span class="font-medium" i18n>All Products</span>
-          }
-        </a>
+        <a aria-label="All products" routerLink="/products" [queryParams]="{page: 0}"
+          (click)="$filtersOpen.set(false)" class="block py-3 px-6 hover:bg-primary-lighter/50 hover:text-primary-dark" i18n>All Products</a>
       </li>
       @if (pages.$error()) {
-        <li class="px-6 py-3 text-sm text-secondary" role="status" i18n>Categories are temporarily unavailable.
-        </li>
+        <li class="px-6 py-3 text-sm" role="status" i18n>Categories are temporarily unavailable.</li>
       }
-      @for (category of $categories(); track category) {
+      @for (category of $categories(); track category.id) {
         <li>
-          <a [attr.aria-label]="category.label" routerLink="/products" [queryParams]="{categoryId: category.id, page: 0}" class="flex items-center py-3 px-6 text-secondary hover:bg-primary-lighter/50 hover:text-primary-dark transition-colors duration-200">
-            <!-- Placeholder Icon -->
-            <svg class="h-6 w-6" [ngClass]="isOpen ? 'mr-4' : 'mx-auto'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-            @if (isOpen) {
-              <span class="font-medium">{{ category.label }}</span>
-            }
-          </a>
+          <a [attr.aria-label]="category.label" routerLink="/products" [queryParams]="{categoryId: category.id, page: 0}"
+            (click)="$filtersOpen.set(false)" class="block py-3 px-6 break-words hover:bg-primary-lighter/50 hover:text-primary-dark">{{ category.label }}</a>
         </li>
       }
     </ul>
-    @if (isOpen) { <app-page-controls [page]="pages.$page()" [total]="pages.$total()" [hasNext]="pages.$hasNext()"
-      [loading]="pages.$loading()" [error]="pages.$error()" (pageChange)="pages.load($event)"></app-page-controls> }
+    <app-page-controls [page]="pages.$page()" [total]="pages.$total()" [hasNext]="pages.$hasNext()"
+      [loading]="pages.$loading()" [error]="pages.$error()" (pageChange)="pages.load($event)"></app-page-controls>
   </nav>
 </aside>
