@@ -1,7 +1,7 @@
 <div class="min-h-screen bg-background font-sans">
-  <app-top-menu></app-top-menu>
 
-  <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-10 max-w-5xl">
+
+  <main [attr.aria-busy]="loading" class="container mx-auto px-4 sm:px-6 lg:px-8 py-10 max-w-5xl">
     <div class="flex items-center justify-between gap-4 mb-8">
       <div>
         <p class="text-sm uppercase tracking-widest text-secondary-light" i18n>Your account</p>
@@ -10,6 +10,9 @@
       <a routerLink="/dashboard" class="text-primary-dark hover:underline" i18n>Continue shopping</a>
     </div>
 
+    @if ($selectedOrderId()) {
+      <a routerLink="/account" class="inline-block mb-6 text-primary underline" i18n>View all orders</a>
+    }
     @if (loading) {
       <p role="status" class="text-secondary-light" i18n>Loading your orders…</p>
     } @else if (errorMessage) {
@@ -23,7 +26,7 @@
     } @else {
       <div class="space-y-5">
         @for (order of orders; track order.id) {
-          <article class="rounded-2xl bg-surface border border-primary-lighter/30 p-6 shadow-sm">
+          <article class="min-w-0 break-words rounded-2xl bg-surface border border-primary-lighter/30 p-6 shadow-sm">
             <div class="flex flex-wrap items-start justify-between gap-4 mb-5">
               <div>
                 <h2 class="text-lg font-semibold text-secondary" i18n>Order {{ order.id }}</h2>

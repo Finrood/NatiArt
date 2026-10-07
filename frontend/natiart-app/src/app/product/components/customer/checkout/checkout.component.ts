@@ -27,6 +27,7 @@ import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportError} from '../../../../shared/service/error-reporting.service';
 import {ShippingQuote, ShippingQuoteRequest, ShippingService} from '../../../service/shipping.service';
 import {PersonalizationOption} from '../../../models/support/personalization-option';
+import {checkoutAttemptKey} from '../../../service/checkout-attempt-storage';
 
 interface CheckoutAttempt {
   username: string;
@@ -95,12 +96,15 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   private restoredForUsername: string | null = null;
   private attemptStorageFailed = false;
   private destroyed = false;
-  private readonly attemptStoragePrefix = 'natiart-checkout-attempt:';
   private orderIdempotencyKey: string = crypto.randomUUID();
   private paymentIdempotencyKey: string = crypto.randomUUID();
 
   get hasSavedAttempt(): boolean {
     return this.orderRequest !== null;
+  }
+
+  get savedOrder(): OrderDto | null {
+    return this.currentOrder;
   }
 
   private destroy$ = new Subject<void>();
@@ -134,7 +138,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         complement: ['', Validators.maxLength(255)],
       }),
       paymentInfo: this._fb.group({
-        paymentMethod: ['', [Validators.required, Validators.maxLength(255)]],
+        paymentMethod: [PaymentMethod.PIX, [Validators.required, Validators.maxLength(255)]],
       }),
     });
 
@@ -339,7 +343,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
       if (order.status === 'CANCELLED' || ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED'].includes(order.status ?? '')) {
         if (this.clearPersistedAttempt(user.username)) {
-          this.resetAttempt();
+          this.startNewCheckout(paymentUser);
         }
         this.setInfoMessage(order.status === 'CANCELLED'
           ? $localize`The saved order was cancelled. You can start a new checkout.`
@@ -356,7 +360,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         }
         if (payment.status === 'COMPLETED') {
           if (this.clearPersistedAttempt(user.username)) {
-            this.resetAttempt();
+            this.startNewCheckout(paymentUser);
           }
           this.setInfoMessage($localize`Your PIX payment has already completed.`);
           return;
@@ -654,7 +658,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   private storageKey(username: string): string {
-    return this.attemptStoragePrefix + encodeURIComponent(username.trim().toLowerCase());
+    return checkoutAttemptKey(username);
   }
 
   private persistAttempt(username: string): boolean {
@@ -785,6 +789,15 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.checkoutFingerprint = null;
     this.orderIdempotencyKey = crypto.randomUUID();
     this.paymentIdempotencyKey = crypto.randomUUID();
+  }
+
+  private startNewCheckout(user: User): void {
+    this.resetAttempt();
+    this.currentStep = 1;
+    this.shippingQuote = null;
+    this.shippingQuoteFingerprint = null;
+    if (user.profile) this.checkoutForm.get('userInfo.cpf')?.setValue(this.formatCpf(user.profile.cpf));
+    this._cdr.markForCheck();
   }
 
   ngOnDestroy(): void {

@@ -1,5 +1,5 @@
 import {ApplicationConfig, APP_INITIALIZER} from '@angular/core';
-import {provideRouter} from '@angular/router';
+import {provideRouter, withInMemoryScrolling} from '@angular/router';
 
 import {routes} from './app.routes';
 import {provideHttpClient, withInterceptors} from "@angular/common/http";
@@ -10,7 +10,7 @@ import {ErrorReportingService} from './shared/service/error-reporting.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideRouter(routes),
+    provideRouter(routes, withInMemoryScrolling({scrollPositionRestoration: 'disabled', anchorScrolling: 'disabled'})),
     provideHttpClient(
       withInterceptors([jwtInterceptor])
     ),

@@ -6,25 +6,23 @@ import {checkPasswordRequirements, DEFAULT_REQUIREMENTS, PasswordRequirements} f
   selector: 'app-password-requirements',
   imports: [],
   template: `
-    <div class="mt-4 space-y-2" aria-live="polite">
+    <ul class="mt-3 space-y-2 text-sm text-secondary" aria-label="Password requirements" i18n-aria-label aria-live="polite">
       @for (req of requirementsList; track req.text) {
-        <div class="flex items-center gap-2">
-          <svg class="w-4 h-4 shrink-0" [class.text-green-500]="req.valid" [class.text-gray-400]="!req.valid" fill="none"
-            viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-          </svg>
-          <span class="text-sm" [class.text-gray-600]="req.valid" [class.text-gray-400]="!req.valid">{{ req.text }}</span>
-          <div class="relative flex-1">
-            <div class="absolute inset-0 h-0.5 bg-gray-200"></div>
-            <div class="absolute inset-0 h-0.5 transition-all duration-500"
-              [class.bg-green-500]="req.valid"
-              [class.w-0]="!req.valid"
-            [class.w-full]="req.valid"></div>
-          </div>
-        </div>
+        <li class="flex items-center gap-2">
+          @if (req.valid) {
+            <svg aria-hidden="true" class="w-4 h-4 shrink-0 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span class="sr-only" i18n>Met:</span>
+          } @else {
+            <span aria-hidden="true" class="w-4 text-center">•</span>
+            <span class="sr-only" i18n>Needed:</span>
+          }
+          <span>{{ req.text }}</span>
+        </li>
       }
-    </div>
-    `
+    </ul>
+  `
 })
 export class PasswordRequirementsComponent {
   @Input() password = '';
@@ -32,25 +30,24 @@ export class PasswordRequirementsComponent {
 
   get requirementsList(): Array<{text: string; valid: boolean}> {
     const results = checkPasswordRequirements(this.password, this.requirements);
+    const entered: boolean = typeof this.password === 'string' && this.password.length > 0;
     return [
-      {text: $localize`Maximum ${this.requirements.maxUtf8Bytes}:MAX_BYTES: UTF-8 bytes`, valid: results.hasMaxBytes},
       {
         text: $localize`Minimum ${this.requirements.minLength}:MIN_LENGTH: characters`,
-        valid: results.hasMinLength
+        valid: entered && results.hasMinLength
       },
       {
         text: $localize`Contains lowercase letter`,
-        valid: results.hasLower
+        valid: entered && results.hasLower
       },
       {
         text: $localize`Contains uppercase letter`,
-        valid: results.hasUpper
+        valid: entered && results.hasUpper
       },
       {
         text: $localize`Contains number`,
-        valid: results.hasNumber
-      },
-      {text: $localize`Within the supported password length`, valid: results.hasMaxBytes}
+        valid: entered && results.hasNumber
+      }
     ];
   }
 }

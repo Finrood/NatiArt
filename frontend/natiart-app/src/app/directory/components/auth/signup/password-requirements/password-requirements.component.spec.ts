@@ -17,4 +17,20 @@ describe('PasswordRequirementsComponent', () => {
     const fixture = TestBed.createComponent(PasswordRequirementsComponent);
     expect(fixture.componentInstance).toBeTruthy();
   });
+  it('shows neutral requirements for empty/reset values and checks only an entered password', () => {
+    const fixture = TestBed.createComponent(PasswordRequirementsComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('li').length).toBe(4);
+    expect(fixture.nativeElement.querySelectorAll('svg').length).toBe(0);
+    expect(fixture.nativeElement.textContent).not.toContain('UTF-8');
+    fixture.componentRef.setInput('password', 'Abc12345');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.requirementsList.every(requirement => requirement.valid)).toBeTrue();
+    expect(fixture.nativeElement.querySelectorAll('svg').length).toBe(4);
+    fixture.componentRef.setInput('password', null);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('svg').length).toBe(0);
+    fixture.destroy();
+  });
+
 });

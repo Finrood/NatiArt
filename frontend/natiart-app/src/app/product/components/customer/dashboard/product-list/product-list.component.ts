@@ -1,25 +1,26 @@
 import {ImageCollection, ImageLoaderService, EMPTY_PRODUCT_IMAGE} from '../../../../service/image-loader.service';
-import {Component, inject, Input, OnDestroy, OnInit, Renderer2} from '@angular/core';
-import { AsyncPipe, CurrencyPipe } from "@angular/common";
+import {Component, inject, Input, OnDestroy, OnInit, Renderer2, signal} from '@angular/core';
+import { AsyncPipe } from "@angular/common";
 import {BehaviorSubject, Subscription} from "rxjs";
 import {Product} from "../../../../models/product.model";
 import {ProductService} from "../../../../service/product.service";
-import {RouterLink} from "@angular/router";
+import {ProductCardComponent} from "../../../../../shared/components/product-card/product-card.component";
 import {CartService} from "../../../../service/cart.service";
 import {PersonalizationModalComponent} from "../../personalization-modal/personalization-modal.component";
 import {PersonalizationOption} from "../../../../models/support/personalization-option";
-import {AddToCartButtonComponent} from "../../add-to-cart-button/add-to-cart-button.component";
 import {reportError} from '../../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-product-list',
-  imports: [AsyncPipe, CurrencyPipe, RouterLink, PersonalizationModalComponent, AddToCartButtonComponent],
+  host: {'[attr.aria-busy]': '$loading()'},
+  imports: [AsyncPipe, ProductCardComponent, PersonalizationModalComponent],
   templateUrl: './product-list.component.html',
   styleUrls: ['./product-list.component.css']
 })
 export class ProductListComponent implements OnInit, OnDestroy {
   readonly images: ImageCollection = inject(ImageLoaderService).create();
   readonly emptyImage: string = EMPTY_PRODUCT_IMAGE;
+  readonly $loading = signal(true);
   get imageUrls(): Record<string, string> { return this.images.urls(); }
 
   @Input() type: 'featured' | 'new' = 'featured';
@@ -54,8 +55,9 @@ export class ProductListComponent implements OnInit, OnDestroy {
       next: (response) => {
         this.products.next(response);
         this.updateProductImages(response);
+        this.$loading.set(false);
       },
-      error: (error) => reportError('product-loading', error)
+      error: (error) => { this.$loading.set(false); reportError('product-loading', error); }
     });
     this.subscriptions.push(sub);
   }

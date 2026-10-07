@@ -42,13 +42,13 @@ describe('SignupCredentialsComponent', () => {
     expect(error.textContent).toContain('Passwords do not match');
     expect(confirm.getAttribute('aria-describedby')).toBe(error.id);
     expect(confirm.getAttribute('aria-invalid')).toBe('true');
-    expect(fixture.nativeElement.querySelector('button').disabled).toBeTrue();
+    expect(fixture.nativeElement.querySelector('button:not([aria-pressed])').disabled).toBeTrue();
     type('confirmPassword', 'Abc12345');
     expect(fixture.nativeElement.querySelector('#' + error.id)).toBeNull();
-    expect(fixture.nativeElement.querySelector('button').disabled).toBeFalse();
+    expect(fixture.nativeElement.querySelector('button:not([aria-pressed])').disabled).toBeFalse();
     type('password', 'Ab1' + '😀'.repeat(18));
     expect(form.get('password')!.hasError('passwordTooLong')).toBeTrue();
-    expect(fixture.nativeElement.querySelector('#' + fixture.nativeElement.querySelector('input[formControlName="password"]').getAttribute('aria-describedby')).textContent).toContain('maximum 72 UTF-8 bytes');
+    expect(fixture.nativeElement.querySelector('#' + fixture.nativeElement.querySelector('input[formControlName="password"]').getAttribute('aria-describedby')).textContent).toContain('Password is too long. Remove a few characters.');
     form.reset();
     expect(() => fixture.detectChanges()).not.toThrow();
     fixture.destroy();

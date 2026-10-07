@@ -405,6 +405,7 @@ describe('CheckoutComponent', () => {
   });
 
   it('keeps checkout errors visible until dismissed (O3)', async () => {
+    component.checkoutForm.get('paymentInfo.paymentMethod')?.setValue('');
     await component.onSubmit();
 
     expect(component.errorMessage).toContain('Please correct the errors');
@@ -652,6 +653,9 @@ describe('CheckoutComponent', () => {
     expect(localStorage.getItem(attemptKey)).toBeNull();
     expect(createPixPaymentSpy).toHaveBeenCalledTimes(1);
     expect(component.infoMessage).toContain('already completed');
+    expect(component.currentStep).toBe(1);
+    expect(component.shippingQuote).toBeNull();
+    expect(component.checkoutForm.get('userInfo.cpf')?.valid).toBeTrue();
   });
 
   it('keeps one account’s saved attempt separate when another account signs in', async () => {

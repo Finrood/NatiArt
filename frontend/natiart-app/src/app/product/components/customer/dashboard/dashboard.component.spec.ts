@@ -13,16 +13,16 @@ describe('DashboardComponent', () => {
     }).compileComponents();
   });
 
-  it('navigates from the rendered About button', () => {
+  it('navigates to the working collection from the store menu', () => {
     const fixture = TestBed.createComponent(DashboardComponent);
     const router: Router = TestBed.inject(Router);
     const navigate = spyOn(router, 'navigateByUrl').and.resolveTo(true);
     fixture.detectChanges();
-    const button: HTMLButtonElement = fixture.nativeElement.querySelector('app-button[routerLink="/about"] button');
+    const button: HTMLAnchorElement = fixture.nativeElement.querySelector('a[routerLink="/products"]');
     expect(button).toBeTruthy();
     button.click();
     expect(navigate).toHaveBeenCalled();
-    expect(navigate.calls.mostRecent().args[0].toString()).toBe('/about');
+    expect(navigate.calls.mostRecent().args[0].toString().split('?')[0]).toBe('/products');
   });
 
   it('should create' , () => {

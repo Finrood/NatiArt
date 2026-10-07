@@ -69,6 +69,24 @@ describe('PixPaymentConfirmationComponent', () => {
     http.verify();
   }));
 
+  it('announces a successful copy and clears it if the next copy fails', fakeAsync(() => {
+    const {fixture, component} = createAndFlushQr();
+    fixture.detectChanges();
+    const copy: jasmine.Spy = spyOn(document, 'execCommand').and.returnValue(true);
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector('button[aria-label="Copy PIX code"]');
+    button.click();
+    fixture.detectChanges();
+    expect(component.$copied()).toBeTrue();
+    expect(fixture.nativeElement.querySelector('[role="status"]').textContent).toContain('PIX code copied.');
+    copy.and.returnValue(false);
+    button.click();
+    fixture.detectChanges();
+    expect(component.copyFailed).toBeTrue();
+    expect(fixture.nativeElement.querySelector('[role="status"]')).toBeNull();
+    fixture.destroy();
+    http.verify();
+  }));
+
   it('keeps polling through transient status errors', fakeAsync(() => {
     const {component} = createAndFlushQr();
 

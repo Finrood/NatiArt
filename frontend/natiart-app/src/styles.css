@@ -74,10 +74,10 @@
   --color-secondary-dark: rgb(var(--secondary-dark));
   --color-secondary-contrast: rgb(var(--secondary-contrast));
 
-  --color-error: #ef4444;
-  --color-success: #22c55e;
-  --color-warning: #eab308;
-  --color-info: #3b82f6;
+  --color-error: #b91c1c;
+  --color-success: #15803d;
+  --color-warning: #854d0e;
+  --color-info: #1d4ed8;
 
   --color-surface: rgb(var(--surface));
   --color-surface-variant: rgb(var(--surface-variant));
@@ -145,16 +145,16 @@
   --aspect-square: 1 / 1;
 }
 
-/* Root Vars for Custom Colors (unchanged) */
+/* Pale blush surfaces and darker action/text colors. */
 :root {
-  --primary: 212 165 154;
+  --primary: 128 73 59;
   --primary-light: 227 193 184;
   --primary-lighter: 249 235 224;
-  --primary-dark: 200 159 148;
-  --primary-contrast: 0 0 0;
+  --primary-dark: 104 54 43;
+  --primary-contrast: 255 255 255;
 
   --secondary: 74 74 74;
-  --secondary-light: 136 136 136;
+  --secondary-light: 102 102 102;
   --secondary-dark: 34 34 34;
   --secondary-contrast: 255 255 255;
 
@@ -165,7 +165,7 @@
   --surface-variant: 245 245 245;
   --on-surface: 23 23 23;
 
-  --accent: 59 130 246;
+  --accent: 29 78 216;
   --accent-contrast: 255 255 255;
 
   --text-muted: 74 74 74;
@@ -189,6 +189,9 @@ select.form-input {
   @apply pr-8 bg-[url('data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke-width%3D%221.5%22%20stroke%3D%22currentColor%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20d%3D%22M19.5%208.25l-7.5%207.5-7.5-7.5%22%20%2F%3E%3C%2Fsvg%3E')]
   bg-no-repeat bg-[center_right_0.5rem] bg-[length:1.5em];
 }
+
+[data-route-heading]:focus { outline: none; }
+app-natiart-form-field .password-field .form-input { padding-right: 5rem; }
 
 app-natiart-form-field input.form-input,
 app-natiart-form-field select.form-input,
