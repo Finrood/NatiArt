@@ -1,0 +1,317 @@
+[
+  {
+    "label": "en-personal-320",
+    "currentStep": "1Personal",
+    "document": 305,
+    "overflowing": [],
+    "viewport": 305
+  },
+  {
+    "label": "en-personal-360",
+    "currentStep": "1Personal",
+    "document": 345,
+    "overflowing": [],
+    "viewport": 345
+  },
+  {
+    "label": "en-personal-390",
+    "currentStep": "1Personal",
+    "document": 375,
+    "overflowing": [],
+    "viewport": 375
+  },
+  {
+    "label": "en-personal-768",
+    "currentStep": "1Personal",
+    "document": 753,
+    "overflowing": [],
+    "viewport": 753
+  },
+  {
+    "label": "en-personal-1440",
+    "currentStep": "1Personal",
+    "document": 1425,
+    "overflowing": [],
+    "viewport": 1425
+  },
+  {
+    "label": "en-shipping-320",
+    "currentStep": "2Shipping",
+    "document": 305,
+    "overflowing": [],
+    "viewport": 305
+  },
+  {
+    "label": "en-shipping-360",
+    "currentStep": "2Shipping",
+    "document": 345,
+    "overflowing": [],
+    "viewport": 345
+  },
+  {
+    "label": "en-shipping-390",
+    "currentStep": "2Shipping",
+    "document": 375,
+    "overflowing": [],
+    "viewport": 375
+  },
+  {
+    "label": "en-shipping-768",
+    "currentStep": "2Shipping",
+    "document": 753,
+    "overflowing": [],
+    "viewport": 753
+  },
+  {
+    "label": "en-shipping-1440",
+    "currentStep": "2Shipping",
+    "document": 1425,
+    "overflowing": [],
+    "viewport": 1425
+  },
+  {
+    "label": "en-payment-360",
+    "currentStep": "3Payment",
+    "document": 345,
+    "overflowing": [],
+    "viewport": 345
+  },
+  {
+    "label": "en-payment-390",
+    "currentStep": "3Payment",
+    "document": 375,
+    "overflowing": [],
+    "viewport": 375
+  },
+  {
+    "label": "en-payment-768",
+    "currentStep": "3Payment",
+    "document": 753,
+    "overflowing": [],
+    "viewport": 753
+  },
+  {
+    "label": "en-payment-1440",
+    "currentStep": "3Payment",
+    "document": 1425,
+    "overflowing": [],
+    "viewport": 1425
+  },
+  {
+    "label": "en-payment-320",
+    "viewport": 305,
+    "document": 305,
+    "overflowing": [],
+    "currentStep": "3Payment"
+  },
+  {
+    "label": "en-product-320",
+    "viewport": 305,
+    "document": 305,
+    "overflowing": []
+  },
+  {
+    "label": "en-product-360",
+    "viewport": 345,
+    "document": 345,
+    "overflowing": []
+  },
+  {
+    "label": "en-product-390",
+    "viewport": 375,
+    "document": 375,
+    "overflowing": []
+  },
+  {
+    "label": "en-product-768",
+    "viewport": 753,
+    "document": 753,
+    "overflowing": []
+  },
+  {
+    "label": "en-product-1440",
+    "viewport": 1425,
+    "document": 1425,
+    "overflowing": []
+  },
+  {
+    "label": "pt-product-320",
+    "viewport": 305,
+    "document": 305,
+    "overflowing": []
+  },
+  {
+    "label": "pt-product-360",
+    "viewport": 345,
+    "document": 345,
+    "overflowing": []
+  },
+  {
+    "label": "pt-product-390",
+    "viewport": 375,
+    "document": 375,
+    "overflowing": []
+  },
+  {
+    "label": "pt-product-768",
+    "viewport": 753,
+    "document": 753,
+    "overflowing": []
+  },
+  {
+    "label": "pt-product-1440",
+    "viewport": 1425,
+    "document": 1425,
+    "overflowing": []
+  },
+  {
+    "label": "pt-personal-320",
+    "viewport": 305,
+    "document": 305,
+    "overflowing": []
+  },
+  {
+    "label": "pt-personal-360",
+    "viewport": 345,
+    "document": 345,
+    "overflowing": []
+  },
+  {
+    "label": "pt-personal-390",
+    "viewport": 375,
+    "document": 375,
+    "overflowing": []
+  },
+  {
+    "label": "pt-personal-768",
+    "viewport": 753,
+    "document": 753,
+    "overflowing": []
+  },
+  {
+    "label": "pt-personal-1440",
+    "viewport": 1425,
+    "document": 1425,
+    "overflowing": []
+  },
+  {
+    "label": "pt-shipping-320",
+    "viewport": 305,
+    "document": 305,
+    "overflowing": []
+  },
+  {
+    "label": "pt-shipping-360",
+    "viewport": 345,
+    "document": 345,
+    "overflowing": []
+  },
+  {
+    "label": "pt-shipping-390",
+    "viewport": 375,
+    "document": 375,
+    "overflowing": []
+  },
+  {
+    "label": "pt-shipping-768",
+    "viewport": 753,
+    "document": 753,
+    "overflowing": []
+  },
+  {
+    "label": "pt-shipping-1440",
+    "viewport": 1425,
+    "document": 1425,
+    "overflowing": []
+  },
+  {
+    "label": "pt-payment-320",
+    "viewport": 305,
+    "document": 305,
+    "overflowing": []
+  },
+  {
+    "label": "pt-payment-360",
+    "viewport": 345,
+    "document": 345,
+    "overflowing": []
+  },
+  {
+    "label": "pt-payment-390",
+    "viewport": 375,
+    "document": 375,
+    "overflowing": []
+  },
+  {
+    "label": "pt-payment-768",
+    "viewport": 753,
+    "document": 753,
+    "overflowing": []
+  },
+  {
+    "label": "pt-payment-1440",
+    "viewport": 1425,
+    "document": 1425,
+    "overflowing": []
+  },
+  {
+    "label": "en-long-title-320",
+    "viewport": 320,
+    "document": 320,
+    "overflowing": []
+  },
+  {
+    "label": "en-long-title-360",
+    "viewport": 345,
+    "document": 345,
+    "overflowing": []
+  },
+  {
+    "label": "en-long-title-390",
+    "viewport": 375,
+    "document": 375,
+    "overflowing": []
+  },
+  {
+    "label": "en-long-title-768",
+    "viewport": 753,
+    "document": 753,
+    "overflowing": []
+  },
+  {
+    "label": "en-long-title-1440",
+    "viewport": 1425,
+    "document": 1425,
+    "overflowing": []
+  },
+  {
+    "label": "pt-long-title-320",
+    "viewport": 305,
+    "document": 305,
+    "overflowing": []
+  },
+  {
+    "label": "pt-long-title-360",
+    "viewport": 345,
+    "document": 345,
+    "overflowing": []
+  },
+  {
+    "label": "pt-long-title-390",
+    "viewport": 375,
+    "document": 375,
+    "overflowing": []
+  },
+  {
+    "label": "pt-long-title-768",
+    "viewport": 753,
+    "document": 753,
+    "overflowing": []
+  },
+  {
+    "label": "pt-long-title-1440",
+    "viewport": 1425,
+    "document": 1425,
+    "overflowing": []
+  }
+]

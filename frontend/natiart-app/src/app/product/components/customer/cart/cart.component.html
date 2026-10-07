@@ -1,5 +1,5 @@
 <!-- START OF FILE: src/app/product/components/customer/cart/cart.component.html -->
-<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 font-serif text-secondary">
+<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans text-secondary">
   <h1 class="text-3xl lg:text-4xl font-light mb-8" i18n>Your Shopping Cart</h1>
 
   <!-- Error Message Display -->
@@ -30,17 +30,24 @@
   <!-- Cart Content -->
   @if (cartState$ | async; as cartState) {
     @if (!cartState.isEmpty) {
-      <div class="bg-surface rounded-lg shadow-elevated overflow-hidden border border-primary-lighter/30">
-        <!-- Cart Table - Hidden on small screens, shown md and up -->
-        <div class="hidden md:block">
-          <table class="min-w-full divide-y divide-primary-lighter/50">
+      <div class="bg-surface rounded-lg shadow-elevated border border-primary-lighter/30">
+        <!-- Desktop table; phones and tablets use cards. -->
+        <div class="hidden lg:block">
+          <table class="w-full table-fixed divide-y divide-primary-lighter/50">
+            <colgroup>
+              <col class="w-[35%]">
+              <col class="w-[15%]">
+              <col class="w-[23%]">
+              <col class="w-[15%]">
+              <col class="w-[12%]">
+            </colgroup>
             <thead class="bg-primary-lighter/30">
               <tr>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider" i18n>Product</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider" i18n>Price</th>
-                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-secondary uppercase tracking-wider" i18n>Quantity</th>
-                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-secondary uppercase tracking-wider" i18n>Total</th>
-                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-secondary uppercase tracking-wider" i18n>Remove</th>
+                <th scope="col" class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider" i18n>Product</th>
+                <th scope="col" class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider" i18n>Price</th>
+                <th scope="col" class="px-4 xl:px-6 py-3 text-center text-xs font-medium text-secondary uppercase tracking-wider" i18n>Quantity</th>
+                <th scope="col" class="px-4 xl:px-6 py-3 text-right text-xs font-medium text-secondary uppercase tracking-wider" i18n>Total</th>
+                <th scope="col" class="px-4 xl:px-6 py-3 text-center text-xs font-medium text-secondary uppercase tracking-wider" i18n>Remove</th>
               </tr>
             </thead>
             <tbody class="bg-surface divide-y divide-primary-lighter/50">
@@ -48,8 +55,8 @@
               @for (item of cartState.items; track trackByCartItem($index, item)) {
                 <tr class="hover:bg-primary-lighter/20 transition-colors duration-150">
                   <!-- Product Details -->
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center">
+                  <td class="px-4 xl:px-6 py-4 [overflow-wrap:anywhere]">
+                    <div class="flex min-w-0 items-center">
                       <div class="shrink-0 h-16 w-16 relative group">
                         <!-- *** USE item.cartItemId for image key *** -->
                         <img (error)="images.failed(item.cartItemId)" class="h-16 w-16 rounded-md object-cover border border-primary-lighter/30"
@@ -57,7 +64,7 @@
                           [alt]="item.product.label">
                         <!-- *** Custom Image Indicator *** -->
                       </div>
-                      <div class="ml-4">
+                      <div class="ml-4 min-w-0">
                         <div class="text-sm font-medium text-secondary-dark">{{ item.product.label }}</div>
                         @if (item.goldBorder) {
                           <div class="text-xs text-yellow-600 mt-1" i18n>Gold Border</div>
@@ -68,7 +75,7 @@
                   }
                   @if (item.requiresArtworkReselection) {
                     <label class="block text-sm" data-artwork-reselection><span i18n>Select artwork again for {{item.product.label}}</span>
-                      <input type="file" accept="image/*" (change)="reselectArtwork(item, $event)">
+                      <input class="block w-full min-w-0" type="file" accept="image/*" (change)="reselectArtwork(item, $event)">
                     </label>
                   }
 
@@ -76,19 +83,19 @@
                     </div>
                   </td>
                   <!-- Price -->
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-secondary">
+                  <td class="px-4 xl:px-6 py-4 text-sm text-secondary [overflow-wrap:anywhere]">
                     {{ item.product.markedPrice | currency:'BRL' }}
                   </td>
                   <!-- Quantity -->
-                  <td class="px-6 py-4 whitespace-nowrap text-center">
+                  <td class="px-4 xl:px-6 py-4 text-center">
                     <div class="flex items-center justify-center">
                       <!-- *** Pass item to updateQuantity (contains cartItemId) *** -->
-                      <app-button (click)="updateQuantity(item, -1)" [disabled]="item.quantity <= 1" aria-label="Decrease quantity" color="light" size="sm" i18n-aria-label>
+                      <app-button (click)="updateQuantity(item, -1)" [disabled]="item.quantity <= 1" aria-label="Decrease quantity" color="light" size="sm" customClass="min-h-11" i18n-aria-label>
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path></svg>
                       </app-button>
                       <span class="mx-3 text-sm font-medium tabular-nums">{{ item.quantity }}</span>
                       <!-- *** Pass item to updateQuantity *** -->
-                      <app-button (click)="updateQuantity(item, 1)" [disabled]="item.quantity >= item.product.stockQuantity" aria-label="Increase quantity" color="light" size="sm">
+                      <app-button (click)="updateQuantity(item, 1)" [disabled]="item.quantity >= item.product.stockQuantity" aria-label="Increase quantity" color="light" size="sm" customClass="min-h-11" i18n-aria-label>
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                       </app-button>
                     </div>
@@ -97,13 +104,13 @@
                     }
                   </td>
                   <!-- Total Price -->
-                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-secondary-dark">
+                  <td data-cart-item-total class="px-4 xl:px-6 py-4 text-right text-sm font-medium text-secondary-dark [overflow-wrap:anywhere]">
                     {{ (item.product.markedPrice * item.quantity) | currency:'BRL' }}
                   </td>
                   <!-- Remove Button -->
-                  <td class="px-6 py-4 whitespace-nowrap text-center">
+                  <td class="px-4 xl:px-6 py-4 text-center">
                     <!-- *** Pass item to askRemoveItem (contains cartItemId) *** -->
-                    <app-button (click)="askRemoveItem(item)" aria-label="Remove item" color="link" size="sm" i18n-aria-label>
+                    <app-button (click)="askRemoveItem(item)" aria-label="Remove item" color="link" size="sm" customClass="min-h-11" i18n-aria-label>
                       <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </app-button>
                   </td>
@@ -112,12 +119,12 @@
             </tbody>
           </table>
         </div>
-        <!-- Cart Items - Cards for small screens (hidden md and up) -->
-        <div class="md:hidden divide-y divide-primary-lighter/50">
+        <!-- Cart cards retain every action through tablet widths. -->
+        <div class="lg:hidden divide-y divide-primary-lighter/50">
           <!-- *** USE cartItemId for trackBy *** -->
           @for (item of cartState.items; track trackByCartItem($index, item)) {
-            <div class="p-4">
-              <div class="flex items-start space-x-4">
+            <article class="p-4">
+              <div class="flex items-start gap-4">
                 <!-- Image -->
                 <div class="h-20 w-20 rounded-md border border-primary-lighter/30 shrink-0 relative group">
                   <!-- *** USE item.cartItemId for image key *** -->
@@ -132,7 +139,7 @@
                   }
                 </div>
                 <!-- Details -->
-                <div class="grow">
+                <div class="min-w-0 flex-1 [overflow-wrap:anywhere]">
                   <h3 class="text-sm font-medium text-secondary-dark mb-1">{{ item.product.label }}</h3>
                   @if (item.goldBorder) {
                     <div class="text-xs text-yellow-600" i18n>Gold Border</div>
@@ -144,50 +151,51 @@
                   }
                   @if (item.requiresArtworkReselection) {
                     <label class="block text-sm" data-artwork-reselection><span i18n>Select artwork again for {{item.product.label}}</span>
-                      <input type="file" accept="image/*" (change)="reselectArtwork(item, $event)">
+                      <input class="block w-full min-w-0" type="file" accept="image/*" (change)="reselectArtwork(item, $event)">
                     </label>
                   }
 
-                  <!-- Quantity Controls -->
-                  <div class="flex items-center space-x-2 mb-2">
-                    <!-- *** Pass item to updateQuantity *** -->
-                    <app-button (click)="updateQuantity(item, -1)" [disabled]="item.quantity <= 1" aria-label="Decrease quantity"
-                      color="light" size="sm" i18n-aria-label>
-                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path></svg>
-                    </app-button>
-                    <span class="text-sm font-medium tabular-nums w-8 text-center">{{ item.quantity }}</span>
-                    <!-- *** Pass item to updateQuantity *** -->
-                    <app-button (click)="updateQuantity(item, 1)" [disabled]="item.quantity >= item.product.stockQuantity" aria-label="Increase quantity"
-                      color="light" size="sm">
-                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                    </app-button>
-                  </div>
-                  @if (item.quantity >= item.product.stockQuantity) {
-                    <div class="text-xs text-red-500" i18n>Max stock</div>
-                  }
+                </div>
+              </div>
+              <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex shrink-0 items-center gap-2">
+                  <!-- *** Pass item to updateQuantity *** -->
+                  <app-button (click)="updateQuantity(item, -1)" [disabled]="item.quantity <= 1" aria-label="Decrease quantity"
+                    color="light" size="sm" customClass="min-h-11" i18n-aria-label>
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path></svg>
+                  </app-button>
+                  <span class="text-sm font-medium tabular-nums w-8 text-center">{{ item.quantity }}</span>
+                  <!-- *** Pass item to updateQuantity *** -->
+                  <app-button (click)="updateQuantity(item, 1)" [disabled]="item.quantity >= item.product.stockQuantity" aria-label="Increase quantity"
+                    color="light" size="sm" customClass="min-h-11" i18n-aria-label>
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                  </app-button>
                 </div>
                 <!-- Remove Button -->
                 <!-- *** Pass item to askRemoveItem *** -->
-                <app-button (click)="askRemoveItem(item)" aria-label="Remove item" color="link" size="sm" i18n-aria-label>
+                <app-button (click)="askRemoveItem(item)" aria-label="Remove item" color="link" size="sm" customClass="min-h-11" i18n-aria-label>
                   <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                 </app-button>
               </div>
+              @if (item.quantity >= item.product.stockQuantity) {
+                <div class="mt-2 text-xs text-red-500" i18n>Max stock</div>
+              }
               <!-- Item Total (Small Screen) -->
-              <div class="mt-2 pt-2 border-t border-primary-lighter/30 text-right text-sm font-medium" i18n>
+              <div data-cart-item-total class="mt-2 pt-2 border-t border-primary-lighter/30 text-right text-sm font-medium [overflow-wrap:anywhere]" i18n>
                 Item Total: {{ (item.product.markedPrice * item.quantity) | currency:'BRL' }}
               </div>
-            </div>
+            </article>
           }
         </div>
       </div> <!-- End of cart table/cards container -->
       <!-- Cart Summary & Actions (Rest remains the same) -->
-      <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="md:col-span-2">
+      <div class="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="min-w-0 lg:col-span-2">
           <app-shipping-estimation></app-shipping-estimation>
         </div>
-        <div class="bg-surface p-6 rounded-lg shadow-elevated border border-primary-lighter/30 md:col-span-1">
+        <div class="min-w-0 bg-surface p-4 sm:p-6 rounded-lg shadow-elevated border border-primary-lighter/30 lg:col-span-1">
           <h2 class="text-xl font-semibold text-secondary-dark mb-4" i18n>Cart Summary</h2>
-          <div class="flex justify-between items-center mb-6 pb-4 border-b border-primary-lighter/50">
+          <div class="flex flex-wrap justify-between items-center gap-2 mb-6 pb-4 border-b border-primary-lighter/50">
             <span class="text-lg text-secondary" i18n>Subtotal:</span>
             <span class="text-lg font-semibold text-secondary-dark">{{ cartState.total | currency:'BRL' }}</span>
           </div>

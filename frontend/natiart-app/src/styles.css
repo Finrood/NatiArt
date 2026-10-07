@@ -48,6 +48,9 @@
 
 /* v3-Compatible Base Styles for ring/border */
 @layer base {
+  body { font-family: var(--font-sans); }
+  h1, h2, h3 { font-family: var(--font-serif); }
+
   *,
   ::after,
   ::before,
@@ -189,3 +192,9 @@ select.form-input {
 
 [data-route-heading]:focus { outline: none; }
 app-natiart-form-field .password-field .form-input { padding-right: 5rem; }
+
+app-natiart-form-field input.form-input,
+app-natiart-form-field select.form-input,
+#catalog-search {
+  min-height: 2.75rem;
+}

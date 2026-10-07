@@ -95,8 +95,10 @@ export class CartComponent implements OnInit, OnDestroy {
       $localize`Failed to remove item. Please try again.`
     );
     this.confirmationModal.title = $localize`Remove Item`;
-    this.confirmationModal.message = `Are you sure you want to remove this instance of "${item.product.label}"${item.image || item.customImageUploadId ? ' (with custom image)' : ''} from your cart?`;
-    this.confirmationModal.confirmText = 'Remove';
+    this.confirmationModal.message = item.image || item.customImageUploadId
+      ? $localize`:@@cartRemoveArtworkMessage:Remove "${item.product.label}:productName:" and its custom artwork from your cart?`
+      : $localize`:@@cartRemoveMessage:Remove "${item.product.label}:productName:" from your cart?`;
+    this.confirmationModal.confirmText = $localize`Remove`;
     this.confirmationModal.cancelText = $localize`Cancel`;
     this.confirmationModal.isOpen = true;
   }

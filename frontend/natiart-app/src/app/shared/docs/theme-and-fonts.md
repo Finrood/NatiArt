@@ -41,3 +41,10 @@ background text 6.61:1); hover rose is 104/54/43. Pale blush remains a surface
 color. Secondary muted text and semantic filled-button colors also meet 4.5:1
 against their intended backgrounds. Computed-style checks measure contrast
 rather than hard-coding the palette; disabled controls are excluded.
+
+Body copy, prices, forms and actions use Poppins consistently. Playfair Display
+is reserved for headings and explicit display text. Search and pagination use
+the shared button; projected inputs share a minimum 44px height. Quantity
+controls use SVG paths so their shape is independent of the active font.
+
+Responsive detail and checkout layouts must also accommodate Poppins at a 320 px viewport. Product columns allow shrinking, quantity controls retain 44 px heights, and stock text wraps below them when needed. Checkout progress uses three equal, shrinkable columns with centered labels; decorative connectors run between circle centers without reserving label width. Keep content visible rather than masking document overflow. Verify both production locales through all three checkout steps and the product detail at phone, tablet, and desktop widths.

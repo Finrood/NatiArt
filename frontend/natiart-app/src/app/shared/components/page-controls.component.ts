@@ -1,14 +1,15 @@
 import {Component, input, output} from '@angular/core';
+import {ButtonComponent} from './button.component';
 
-@Component({selector: 'app-page-controls', template: `
+@Component({selector: 'app-page-controls', imports: [ButtonComponent], template: `
   <nav aria-label="Pagination" i18n-aria-label [attr.aria-busy]="$loading()" class="flex flex-wrap items-center gap-4 my-6">
-    <button type="button" class="px-4 py-2 border rounded" [disabled]="$loading() || $page() === 0"
-      (click)="pageChange.emit($page() - 1)" i18n>Previous page</button>
+    <app-button type="button" color="secondary" size="sm" [disabled]="$loading() || $page() === 0"
+      (click)="pageChange.emit($page() - 1)" i18n>Previous page</app-button>
     <span aria-live="polite" i18n>Page {{ $page() + 1 }} · {{ $total() }} items</span>
-    <button type="button" class="px-4 py-2 border rounded" [disabled]="$loading() || !$hasNext()"
-      (click)="pageChange.emit($page() + 1)" i18n>Next page</button>
+    <app-button type="button" color="secondary" size="sm" [disabled]="$loading() || !$hasNext()"
+      (click)="pageChange.emit($page() + 1)" i18n>Next page</app-button>
     @if ($error()) { <p role="alert">{{ $error() }}</p>
-      <button type="button" (click)="pageChange.emit($page())" i18n>Retry page</button> }
+      <app-button type="button" color="secondary" size="sm" (click)="pageChange.emit($page())" i18n>Retry page</app-button> }
   </nav>`})
 export class PageControlsComponent {
   readonly $page = input(0, {alias: 'page'});
