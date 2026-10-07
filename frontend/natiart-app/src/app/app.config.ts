@@ -10,7 +10,7 @@ import {ErrorReportingService} from './shared/service/error-reporting.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideRouter(routes, withInMemoryScrolling({scrollPositionRestoration: 'enabled', anchorScrolling: 'enabled'})),
+    provideRouter(routes, withInMemoryScrolling({scrollPositionRestoration: 'disabled', anchorScrolling: 'disabled'})),
     provideHttpClient(
       withInterceptors([jwtInterceptor])
     ),

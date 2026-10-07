@@ -1,7 +1,7 @@
 <div class="min-h-screen bg-background font-sans">
 
 
-  <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-10 max-w-5xl">
+  <main [attr.aria-busy]="loading" class="container mx-auto px-4 sm:px-6 lg:px-8 py-10 max-w-5xl">
     <div class="flex items-center justify-between gap-4 mb-8">
       <div>
         <p class="text-sm uppercase tracking-widest text-secondary-light" i18n>Your account</p>
