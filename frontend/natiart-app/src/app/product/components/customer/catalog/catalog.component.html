@@ -13,16 +13,7 @@
     @else if (!pages.$error() && $items().length === 0) { <p i18n>No products match this selection.</p> }
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
       @for (product of $items(); track product.id) {
-        <article class="bg-surface rounded-lg shadow p-4">
-          <a [routerLink]="['/product', product.id]">
-            @if (product.images.length) { <img [src]="imageUrl(product.images[0])" [alt]="product.label"
-              class="w-full h-56 object-cover rounded" loading="lazy" /> }
-            <h2 class="text-lg mt-3">{{ product.label }}</h2>
-          </a>
-          <p>{{ product.markedPrice | currency:'BRL' }}</p>
-          <p>{{ product.description }}</p>
-          <a [routerLink]="['/product', product.id]" class="underline" i18n>View product</a>
-        </article>
+        <app-product-card [product]="product" [imageUrl]="product.images[0] ? imageUrl(product.images[0]) : emptyImage"></app-product-card>
       }
     </div>
     <app-page-controls [page]="pages.$page()" [total]="pages.$total()" [hasNext]="pages.$hasNext()"
