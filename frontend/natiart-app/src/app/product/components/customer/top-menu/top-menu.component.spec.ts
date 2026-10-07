@@ -46,7 +46,7 @@ describe('TopMenuComponent', () => {
     nav.click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('nav.flex-col')).toBeNull();
-    expect(fixture.nativeElement.querySelector('input[type="search"]').disabled).toBeTrue();
+    expect(fixture.nativeElement.querySelector('input[type="search"]')).toBeNull();
     fixture.destroy();
   });
 

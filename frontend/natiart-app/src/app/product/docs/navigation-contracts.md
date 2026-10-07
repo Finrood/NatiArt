@@ -8,9 +8,8 @@ CA23 backend before releasing this route. The identical catalog/shared helper
 files in CA23/CA27 should be retained once when resolving their route overlap;
 preserve CA27 informational/404 routes and CA23 admin/sidebar pagination.
 
-Desktop and mobile account navigation expose logout. Optional Google sign-in,
-wishlist and header search remain explicitly unavailable; the catalog search
-form is implemented. CA61 provides actual order history and should retain its
+Desktop and mobile account navigation expose logout. Unfinished Google sign-in, wishlist, header search and newsletter controls are
+omitted; the catalog search form is implemented. CA61 provides actual order history and should retain its
 account page when combined. No contact address or shipping policy is fabricated.
 Unknown URLs retain the explicit not-found view.
 
@@ -18,3 +17,7 @@ Regression tests use the actual catalog and HTTP client with real router categor
 clicks, Back and Forward navigation, request cancellation and same-page retry.
 The combined CA23/CA24/CA27 check verifies production compilation plus backend
 filtering/security and the merged UI. This PR alone requires the CA23 page API.
+
+Unpublished About, Contact, FAQ and Shipping & Returns links are omitted. Their
+legacy URLs redirect to Collections. Care instructions and the explicit unknown
+page remain available. Reintroduce business pages only with verified content.
