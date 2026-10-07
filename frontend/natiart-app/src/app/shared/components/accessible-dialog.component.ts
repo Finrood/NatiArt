@@ -5,7 +5,7 @@ import {DOCUMENT} from '@angular/common';
   <dialog #dialog aria-modal="true" [attr.aria-label]="label" (cancel)="cancel($event)" (click)="backdrop($event)">
     <ng-content></ng-content>
   </dialog>`, styles: `
-  dialog { padding: 0; border: 0; border-radius: .75rem; background: transparent;
+  dialog { margin: auto; inset: 0; width: max-content; padding: 0; border: 0; border-radius: .75rem; background: transparent;
     max-width: calc(100vw - 2rem); max-height: calc(100vh - 2rem); overflow: auto; }
   dialog::backdrop { background: rgb(0 0 0 / .5); }
   dialog:focus-visible { outline: 2px solid rgb(var(--primary)); outline-offset: 2px; }

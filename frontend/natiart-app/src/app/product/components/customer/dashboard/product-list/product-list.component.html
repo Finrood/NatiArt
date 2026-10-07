@@ -4,31 +4,10 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
       <!-- Track stable ids; id-less cards fall back to object identity (no duplicate-key throw). -->
       @for (product of products | async; track (product.id ?? product)) {
-        <div class="bg-surface rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 ease-in-out group product-card">
-          <!-- Product Image -->
-          <div class="relative h-64 overflow-hidden">
-            <a [routerLink]="product.id ? ['/product', product.id] : null">
-              <img [src]="imageUrls[product.id ?? 'card-' + $index] || emptyImage" [alt]="product.label"
-                (error)="images.failed(product.id ?? 'card-' + $index)" [attr.aria-busy]="images.states()[product.id ?? 'card-' + $index] === 'loading'"
-                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">
-            </a>
-            <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/50 to-transparent">
-              <div class="flex justify-between items-center">
-                <span class="text-xl font-bold text-white">{{ product.markedPrice | currency:'BRL' }}</span>
-                @if (product.originalPrice > product.markedPrice) {
-                  <span class="text-sm text-gray-300 line-through">{{ product.originalPrice | currency:'BRL' }}</span>
-                }
-              </div>
-            </div>
-          </div>
-
-          <!-- Product Details -->
-          <div class="p-5">
-            <h3 class="text-lg font-semibold font-sans text-secondary-dark truncate" [title]="product.label">{{ product.label }}</h3>
-            <p class="text-sm text-text-muted mt-1 mb-4 line-clamp-2">{{ product.description }}</p>
-            <app-add-to-cart-button [product]="product" (itemAdded)="triggerFlyAnimation($event)"></app-add-to-cart-button>
-          </div>
-        </div>
+        <app-product-card [product]="product" [imageUrl]="imageUrls[product.id ?? 'card-' + $index] || emptyImage"
+          [imageLoading]="images.states()[product.id ?? 'card-' + $index] === 'loading'"
+          [quickAdd]="true" (imageFailed)="images.failed(product.id ?? 'card-' + $index)"
+          (itemAdded)="triggerFlyAnimation($event)"></app-product-card>
       }
     </div>
   </div>

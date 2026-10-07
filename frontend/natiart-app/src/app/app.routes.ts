@@ -4,7 +4,6 @@ import {adminGuard} from "./directory/guards/admin.guard";
 import {productGuard} from "./product/guards/product-guard.guard";
 
 export const routes: Routes = [
-  {path: 'products', loadComponent: () => import('./product/components/customer/catalog/catalog.component').then(m => m.CatalogComponent)},
   {
     path: 'login',
     loadComponent: () => import('./directory/components/auth/login/login.component').then(m => m.LoginComponent)
@@ -29,7 +28,6 @@ export const routes: Routes = [
   },
   {
     path: 'dashboard',
-    canActivate: [authGuard],
     loadComponent: () => import('./product/components/customer/dashboard/dashboard.component').then(m => m.DashboardComponent)
   },
   {
@@ -58,13 +56,11 @@ export const routes: Routes = [
   },
   {
     path: 'product/:id',
-    canActivate: [authGuard],
     canDeactivate: [productGuard],
     loadComponent: () => import('./product/components/customer/product-detail/product-detail.component').then(m => m.ProductDetailComponent)
   },
   {
     path: 'cart',
-    canActivate: [authGuard],
     loadComponent: () => import('./product/components/customer/cart/cart.component').then(m => m.CartComponent)
   },
   {
