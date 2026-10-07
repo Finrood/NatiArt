@@ -18,3 +18,8 @@ Regression tests use the actual catalog and HTTP client with real router categor
 clicks, Back and Forward navigation, request cancellation and same-page retry.
 The combined CA23/CA24/CA27 check verifies production compilation plus backend
 filtering/security and the merged UI. This PR alone requires the CA23 page API.
+
+Home, product details and the browser-local cart are public. Authentication is
+required when proceeding to checkout, viewing orders or using administration.
+The checkout guard preserves its destination for sign-in; guest cart contents
+remain in browser storage and are validated by the server at checkout.
