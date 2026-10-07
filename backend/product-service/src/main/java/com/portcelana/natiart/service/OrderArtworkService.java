@@ -33,12 +33,15 @@ public class OrderArtworkService {
         final CustomerOrder order = orderManager.getOrderById(orderId);
         final CustomerOrderItem item = order.getItems().stream()
                 .filter(line -> line.getId().equals(itemId))
-                .findFirst().orElseThrow(OrderArtworkService::notFound);
+                .findFirst()
+                .orElseThrow(OrderArtworkService::notFound);
         if (item.getPersonalization() == null) throw notFound();
-        final String uploadId = item.getPersonalization().getPersonalizationOptions().get(PersonalizationOption.CUSTOM_IMAGE);
+        final String uploadId =
+                item.getPersonalization().getPersonalizationOptions().get(PersonalizationOption.CUSTOM_IMAGE);
         if (uploadId == null) throw notFound();
         final CustomerUpload upload = uploads.findById(uploadId).orElseThrow(OrderArtworkService::notFound);
-        if (upload.getReadyAt() == null || upload.getConsumedAt() == null
+        if (upload.getReadyAt() == null
+                || upload.getConsumedAt() == null
                 || !Objects.equals(order.getOwnerExternalId(), upload.getOwnerExternalId())) throw notFound();
         return storage.openFile(URI.create(upload.getStorageUri()));
     }

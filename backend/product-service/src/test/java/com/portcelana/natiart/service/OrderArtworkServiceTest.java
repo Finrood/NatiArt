@@ -31,16 +31,20 @@ import com.portcelana.natiart.storage.StorageService;
 class OrderArtworkServiceTest {
     @Mock
     private OrderManager orderManager;
+
     @Mock
     private CustomerUploadRepository uploads;
+
     @Mock
     private StorageService storage;
+
     @InjectMocks
     private OrderArtworkService service;
 
     private CustomerOrderItem item() {
-        return new CustomerOrderItem().setPersonalization(new Personalization()
-                .setPersonalizationOptions(Map.of(PersonalizationOption.CUSTOM_IMAGE, "upload-1")));
+        return new CustomerOrderItem()
+                .setPersonalization(new Personalization()
+                        .setPersonalizationOptions(Map.of(PersonalizationOption.CUSTOM_IMAGE, "upload-1")));
     }
 
     private void order(CustomerOrderItem item) {
@@ -71,8 +75,8 @@ class OrderArtworkServiceTest {
     void openArtwork_rejectsForeignUploadEvenIfReferencedByLine() {
         final CustomerOrderItem item = item();
         order(item);
-        when(uploads.findById("upload-1")).thenReturn(Optional.of(
-                new CustomerUpload("other", "file:customer-uploads/art.webp", "image/webp", 3)
+        when(uploads.findById("upload-1"))
+                .thenReturn(Optional.of(new CustomerUpload("other", "file:customer-uploads/art.webp", "image/webp", 3)
                         .setConsumedAt(Instant.now())));
         assertThrows(ResourceNotFoundException.class, () -> service.openArtworkOrDie("order-1", item.getId()));
         verifyNoInteractions(storage);
@@ -82,8 +86,9 @@ class OrderArtworkServiceTest {
     void openArtwork_rejectsUnclaimedOrPendingUpload() {
         final CustomerOrderItem item = item();
         order(item);
-        when(uploads.findById("upload-1")).thenReturn(Optional.of(
-                CustomerUpload.pending("upload-1", "owner", "file:customer-uploads/art.webp", 3)));
+        when(uploads.findById("upload-1"))
+                .thenReturn(
+                        Optional.of(CustomerUpload.pending("upload-1", "owner", "file:customer-uploads/art.webp", 3)));
         assertThrows(ResourceNotFoundException.class, () -> service.openArtworkOrDie("order-1", item.getId()));
         verifyNoInteractions(storage);
     }
