@@ -18,3 +18,9 @@ Regression tests use the actual catalog and HTTP client with real router categor
 clicks, Back and Forward navigation, request cancellation and same-page retry.
 The combined CA23/CA24/CA27 check verifies production compilation plus backend
 filtering/security and the merged UI. This PR alone requires the CA23 page API.
+
+The app shell owns one shared store header across shopping, cart, checkout,
+account, informational and admin screens. New routes scroll to the top; Back
+restores the stored position. After the routed heading renders, focus moves to
+it without changing scroll. Query changes and asynchronous product loading
+retain this behavior; a visible page-heading marker takes precedence over branding.
