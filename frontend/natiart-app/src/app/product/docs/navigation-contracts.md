@@ -18,3 +18,7 @@ Regression tests use the actual catalog and HTTP client with real router categor
 clicks, Back and Forward navigation, request cancellation and same-page retry.
 The combined CA23/CA24/CA27 check verifies production compilation plus backend
 filtering/security and the merged UI. This PR alone requires the CA23 page API.
+
+Categories are collapsed behind Filters on phones and remain visible on desktop.
+Selecting a category closes the phone panel. A removable category chip reflects
+the router filter, including a fallback label for a category outside the loaded page.

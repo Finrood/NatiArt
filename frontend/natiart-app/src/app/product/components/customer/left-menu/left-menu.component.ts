@@ -1,15 +1,14 @@
 
-import {Component, DestroyRef, inject, OnInit, signal} from '@angular/core';
+import {Component, computed, DestroyRef, inject, input, OnInit, signal} from '@angular/core';
 import {Category} from '../../../models/category.model';
 import {CategoryService} from '../../../service/category.service';
 import {RouterLink} from '@angular/router';
 import {PagedList} from '../../../../shared/service/paged-list';
 import {PageControlsComponent} from '../../../../shared/components/page-controls.component';
-import {NgClass} from "@angular/common";
 
 @Component({
     selector: 'app-left-menu',
-    imports: [NgClass, RouterLink, PageControlsComponent],
+    imports: [RouterLink, PageControlsComponent],
     templateUrl: './left-menu.component.html',
     styles: [] // Empty styles array as we're using only Tailwind classes
 })
@@ -20,7 +19,11 @@ export class LeftMenuComponent implements OnInit {
   readonly $categoryLoadFailed = signal(false);
   get categoryLoadFailed(): boolean { return this.$categoryLoadFailed(); }
   set categoryLoadFailed(value: boolean) { this.$categoryLoadFailed.set(value); }
-  isOpen = true;
+  readonly $filtersOpen = signal(false);
+  readonly $selectedCategoryId = input<string | undefined>(undefined, {alias: 'selectedCategoryId'});
+  readonly $selectedCategoryLabel = computed((): string =>
+    this.$categories().find(category => category.id === this.$selectedCategoryId())?.label
+      || $localize`Selected category`);
 
   private readonly _categoryService = inject(CategoryService);
   readonly pages = new PagedList<Category>((page: number) => this._categoryService.getCategoriesPage(page),
@@ -31,7 +34,7 @@ export class LeftMenuComponent implements OnInit {
   }
 
   toggleMenu(): void {
-    this.isOpen = !this.isOpen;
+    this.$filtersOpen.update((open: boolean): boolean => !open);
   }
 
   private loadCategories(): void { this.pages.load(0); }
