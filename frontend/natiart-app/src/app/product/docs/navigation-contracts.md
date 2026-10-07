@@ -8,9 +8,8 @@ CA23 backend before releasing this route. The identical catalog/shared helper
 files in CA23/CA27 should be retained once when resolving their route overlap;
 preserve CA27 informational/404 routes and CA23 admin/sidebar pagination.
 
-Desktop and mobile account navigation expose logout. Optional Google sign-in,
-wishlist and header search remain explicitly unavailable; the catalog search
-form is implemented. CA61 provides actual order history and should retain its
+Desktop and mobile account navigation expose logout. Unfinished Google sign-in, wishlist, header search and newsletter controls are
+omitted; the catalog search form is implemented. CA61 provides actual order history and should retain its
 account page when combined. No contact address or shipping policy is fabricated.
 Unknown URLs retain the explicit not-found view.
 
@@ -31,3 +30,7 @@ remain in browser storage and are validated by the server at checkout.
 Categories are collapsed behind Filters on phones and remain visible on desktop.
 Selecting a category closes the phone panel. A removable category chip reflects
 the router filter, including a fallback label for a category outside the loaded page.
+
+Unpublished About, Contact, FAQ and Shipping & Returns links are omitted. Their
+legacy URLs redirect to Collections. Care instructions and the explicit unknown
+page remain available. Reintroduce business pages only with verified content.
