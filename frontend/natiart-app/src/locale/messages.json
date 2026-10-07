@@ -374,9 +374,7 @@
     "1193681772570480447": "Rotation off (reduced motion)",
     "1872560845362468217": "Resume rotation",
     "733436353599016708": "Pause rotation",
-    "2694863478781493427": "Toggle categories",
     "278266759822845170": "All Products",
-    "3292578609614535500": "Categories are temporarily unavailable. ",
     "4073760267688290583": "Your account",
     "2325667911362356597": "Order history",
     "6703953321803564304": "Continue shopping",
@@ -480,6 +478,11 @@
     "4876879933381167729": "Could not load this page. Please retry.",
     "5293697079227535093": " (inactive)",
     "7028348166399246247": "Current category",
-    "3173294121133768693": "Current package"
+    "3173294121133768693": "Current package",
+    "8037080490641101519": "Categories are temporarily unavailable.",
+    "4163272119298020373": "Filters",
+    "2198973927933977848": "Selected category",
+    "3021271265919001640": "Clear category filter",
+    "6965861083539148257": "Product categories"
   }
 }
