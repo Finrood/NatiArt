@@ -1,5 +1,5 @@
 import {AccessibleDialogComponent} from '../../../../shared/components/accessible-dialog.component';
-import {ChangeDetectorRef, DestroyRef, AfterViewInit, Component, HostListener, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
+import {ChangeDetectorRef, DestroyRef, AfterViewInit, Component, HostListener, inject, signal, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {ProductService} from '../../../service/product.service';
@@ -37,6 +37,8 @@ interface ImagePreview {
 export class ProductManagementComponent implements OnInit, AfterViewInit, OnDestroy {
   private _products$ = new BehaviorSubject<Product[]>([]);
   products$ = this._products$.asObservable();
+  readonly $editingProduct = signal<Product | null>(null);
+  readonly inactiveReference: string = $localize` (inactive)`;
   categories = new BehaviorSubject<Category[]>([]);
   packages = new BehaviorSubject<Package[]>([]);
 
@@ -158,6 +160,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
     this.releasePreviews();
     const sessionGeneration = ++this.imageSessionGeneration;
     this.isEditingProduct = !!product;
+    this.$editingProduct.set(product ?? null);
     if (product) {
       this.productForm.patchValue(product);
 
@@ -192,10 +195,23 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
     this.modalVisible = true;
   }
 
+  get selectedCategory(): {id: string; label: string} | null {
+    const product: Product | null = this.$editingProduct();
+    if (!product?.categoryId || this.categories.value.some((category: Category): boolean => category.id === product.categoryId)) return null;
+    return {id: product.categoryId, label: product.categoryLabel || $localize`Current category`};
+  }
+
+  get selectedPackage(): {id: string; label: string} | null {
+    const product: Product | null = this.$editingProduct();
+    if (!product?.packageId || this.packages.value.some((pack: Package): boolean => pack.id === product.packageId)) return null;
+    return {id: product.packageId, label: product.packageLabel || $localize`Current package`};
+  }
+
   closeModal(): void {
     this.releasePreviews();
     this.imageSessionGeneration++;
     this.modalVisible = false;
+    this.$editingProduct.set(null);
     this.productForm.reset();
     this.imageFiles = [];
     this.imagePreviews = [];
