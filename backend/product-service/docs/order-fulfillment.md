@@ -21,3 +21,10 @@ transition. Rendered Angular tests exercise the matching page requests/buttons
 and scoped failure feedback. Carrier/creation tests reject unsupported options
 and foreign artwork and verify server-priced custom artwork, quote equality,
 and idempotent replay without another stock reservation or upload claim.
+
+The admin list expands immutable item snapshots and delivery details. Custom artwork
+is streamed only through the ADMIN-protected order/item endpoint, with no-store
+caching. The reader verifies line membership, upload readiness/claim and matching
+order ownership before opening the database-recorded storage URI. Public product
+image routes never expose this namespace. Preview requests and object URLs are
+cancelled/released on replacement, refresh and component destruction.

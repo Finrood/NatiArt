@@ -42,4 +42,11 @@ export class OrderService {
       {status},
     );
   }
+
+  getFulfillmentArtwork(orderId: string, itemId: string): Observable<Blob> {
+    return this._http.get(
+      `${environment.api.product.url}/admin/orders/${encodeURIComponent(orderId)}/items/${encodeURIComponent(itemId)}/artwork`,
+      {responseType: 'blob'},
+    );
+  }
 }
