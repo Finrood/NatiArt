@@ -502,6 +502,18 @@
     "7165914974585479787": " As categorias estão temporariamente indisponíveis. ",
     "266278446577017463": "Busca (em breve)",
     "6574397219210744302": "NATIART",
-    "1280852166797771550": "Voltar à loja"
+    "1280852166797771550": "Voltar à loja",
+    "2603537217950907235": "Detalhes do pedido",
+    "7157424463647158303": "Itens comprados",
+    "8121541100768866697": "Quantidade: {$INTERPOLATION}",
+    "72148866348186892": "Preço unitário: {$INTERPOLATION}",
+    "3663181686742750967": "Borda dourada",
+    "6275280525775961022": "Ver arte personalizada",
+    "5328879477260300961": "Carregando arte…",
+    "4070592305593561000": "Não foi possível carregar a arte. Tente novamente.",
+    "6989070431439193753": "Arte personalizada deste pedido",
+    "5111262320269078425": "Fechar prévia",
+    "2549580183500873689": "Endereço de entrega",
+    "879921794373942479": "Frete: {$INTERPOLATION}"
   }
 }
