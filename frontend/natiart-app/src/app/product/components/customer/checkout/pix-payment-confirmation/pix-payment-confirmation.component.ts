@@ -3,7 +3,7 @@ import {ChangeDetectorRef, Component, inject, signal, OnDestroy, OnInit} from '@
 import {exhaustMap, map} from "rxjs/operators";
 import {catchError, interval, of, Subscription, take, takeUntil, throwError, timeout, timer} from "rxjs";
 import {PaymentService} from "../../../../service/payment.service";
-import {ActivatedRoute, ParamMap, Router} from "@angular/router";
+import {ActivatedRoute, ParamMap, Router, RouterLink} from "@angular/router";
 import { DatePipe, NgClass } from "@angular/common";
 import * as confetti from 'canvas-confetti';
 import {CartService} from '../../../../service/cart.service';
@@ -13,6 +13,7 @@ import {ButtonComponent} from "../../../../../shared/components/button.component
 @Component({
   selector: 'app-pix-payment-confirmation',
   imports: [
+    RouterLink,
     DatePipe,
     NgClass,
     ButtonComponent
@@ -24,6 +25,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   qrCodeData: { encodedImage: string; payload: string; expirationDate: Date } | undefined;
   paymentStatus: string = 'PENDING';
   copyFailed: boolean = false;
+  readonly $copied = signal(false);
   readonly $orderId = signal<string | null>(null);
   readonly $cartUpdateFailed = signal(false);
   readonly $checkoutUpdateFailed = signal(false);
@@ -61,6 +63,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
       this.$checkoutUpdateFailed.set(false);
       this.stopFireworks();
       this.copyFailed = false;
+      this.$copied.set(false);
       if (routedId) {
         this.paymentId = routedId;
         this.paymentStatus = 'PENDING';
@@ -250,9 +253,11 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
 
   copyToClipboard(inputElement: HTMLInputElement): void {
     this.copyFailed = false;
+    this.$copied.set(false);
     inputElement.select();
     try {
       this.copyFailed = !document.execCommand('copy');
+      this.$copied.set(!this.copyFailed);
     } catch {
       this.copyFailed = true;
     } finally {

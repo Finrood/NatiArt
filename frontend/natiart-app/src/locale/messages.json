@@ -222,7 +222,6 @@
     "4786019191110650567": " Item Total: {$INTERPOLATION} ",
     "995846852963976106": "Cart Summary",
     "7082307239537007949": "Subtotal:",
-    "2946816545204931113": "Shipping & taxes calculated at checkout.",
     "6153844263376471914": "Proceed to Checkout",
     "4428081059558168074": "Processing...",
     "4595177025770565622": "or Continue Shopping",
@@ -316,8 +315,6 @@
     "7708270344948043036": " {$INTERPOLATION} ",
     "8675069805856813663": "Service:",
     "406640486538076509": "Quote valid until {$INTERPOLATION}. Review this total before placing payment.",
-    "7461178426457765034": "Taxes:",
-    "3777068406670728525": "Calculated at checkout",
     "1421934893322153868": "Calculated after shipping address",
     "5815412745800320040": "Payment Method",
     "5556325116983117676": "Select payment method",
@@ -335,7 +332,6 @@
     "1787930912107286300": "Or use the code below:",
     "5579247557565303098": "Payment Status: ",
     "2842667621494816089": "{VAR_SELECT, select, PENDING {Pending} COMPLETED {Confirmed} ERROR {Could not confirm payment} other {Awaiting confirmation}}",
-    "846250138425111785": "Expires in: ",
     "5178116813176299129": "Refresh payment",
     "5294817874887705414": "Loading payment details...",
     "3923879805129934576": "This PIX code has expired.",
@@ -467,6 +463,13 @@
     "3222015692410349830": "In stock",
     "5280218112746407598": "New",
     "2765811755265161003": "Sale",
-    "6703947649972852818": "Featured"
+    "6703947649972852818": "Featured",
+    "7448231850015323392": "PIX code",
+    "5880948026329004402": "PIX code copied.",
+    "210908825388917246": "Copy PIX code",
+    "3181577562698613288": "Shipping calculated at checkout.",
+    "3133350788051547242": "View order",
+    "6605933970484846606": "Expires at: ",
+    "8155728303931286172": "View all orders"
   }
 }

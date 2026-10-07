@@ -405,6 +405,7 @@ describe('CheckoutComponent', () => {
   });
 
   it('keeps checkout errors visible until dismissed (O3)', async () => {
+    component.checkoutForm.get('paymentInfo.paymentMethod')?.setValue('');
     await component.onSubmit();
 
     expect(component.errorMessage).toContain('Please correct the errors');
