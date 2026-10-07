@@ -34,6 +34,7 @@ export class AppComponent {
           .find((element: HTMLElement): boolean => element.getClientRects().length > 0);
       if (!heading) return;
       heading.setAttribute('tabindex', '-1');
+      heading.setAttribute('data-route-heading', '');
       heading.focus({preventScroll: true});
       this.$headingFocusPending.set(false);
     });
