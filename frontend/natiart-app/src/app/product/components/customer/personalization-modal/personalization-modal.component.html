@@ -1,6 +1,6 @@
 @if (show) {
   <app-accessible-dialog label="Personalize your product" i18n-label (dismiss)="onCancel()">
-    <div class="bg-white p-5 rounded-lg shadow-xl max-w-md w-full m-4">
+    <div class="bg-white p-5 rounded-lg shadow-xl max-w-md w-full">
       <h2 class="text-xl font-bold mb-4" i18n>Personalize Your Product</h2>
       <p class="mb-4 text-gray-700">{{ product?.label }}</p>
       <!-- Personalization Options -->
@@ -37,7 +37,7 @@
         }
       </div>
       <!-- Action Buttons -->
-      <div class="flex justify-end space-x-2">
+      <div class="flex flex-wrap justify-end gap-2">
         <app-button (click)="onCancel()" type="button" color="secondary" size="md" i18n>Cancel
         </app-button>
         <app-button (click)="onSubmit()" [disabled]="!isValid()" type="button" color="primary" size="md" i18n>Add to Cart with Options
