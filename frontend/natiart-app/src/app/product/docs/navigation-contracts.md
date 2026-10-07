@@ -34,3 +34,15 @@ the router filter, including a fallback label for a category outside the loaded 
 Unpublished About, Contact, FAQ and Shipping & Returns links are omitted. Their
 legacy URLs redirect to Collections. Care instructions and the explicit unknown
 page remain available. Reintroduce business pages only with verified content.
+
+The app shell owns one shared store header across shopping, cart, checkout,
+account, informational and admin screens. New routes scroll to the top; Back
+restores the stored position. After the routed heading renders, focus moves to
+it without changing scroll. Query changes and asynchronous product loading
+retain this behavior; a visible page-heading marker takes precedence over branding.
+
+The router records positions and emits Scroll events; the shell applies them after
+rendering rather than letting the router scroll before HTTP content exists. Async
+lists expose `aria-busy` until their data renders. Restoration waits for those lists
+and the routed heading, so Back returns to the saved position instead of clamping
+against the loading screen's height. A new navigation discards any pending restore.

@@ -6,11 +6,10 @@ import {catchError, map, of, Subscription, switchMap, tap} from 'rxjs';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {OrderDto} from '../../../models/order.model';
 import {OrderService} from '../../../service/order.service';
-import {TopMenuComponent} from '../top-menu/top-menu.component';
 
 @Component({
   selector: 'app-order-history',
-  imports: [CurrencyPipe, DatePipe, RouterLink, TopMenuComponent],
+  imports: [CurrencyPipe, DatePipe, RouterLink],
   templateUrl: './order-history.component.html'
 })
 export class OrderHistoryComponent implements OnInit {
