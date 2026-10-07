@@ -163,4 +163,26 @@ describe('LoginComponent', () => {
     httpTesting.verify();
     TestBed.inject(AuthenticationService).ngOnDestroy();
   }));
+  it('reveals and hides the password without changing its value or submitting login', () => {
+    const {fixture, httpTesting} = setup();
+    fixture.componentInstance.credentialsForm.get('password')!.setValue('Example123');
+    fixture.detectChanges();
+    const input: HTMLInputElement = fixture.nativeElement.querySelector('input[formControlName="password"]');
+    const toggle: HTMLButtonElement = fixture.nativeElement.querySelector('button[aria-label="Show password"]');
+    expect(input.type).toBe('password');
+    toggle.click();
+    fixture.detectChanges();
+    expect(input.type).toBe('text');
+    expect(toggle.getAttribute('aria-label')).toBe('Hide password');
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+    toggle.click();
+    fixture.detectChanges();
+    expect(input.type).toBe('password');
+    expect(fixture.componentInstance.credentialsForm.get('password')!.value).toBe('Example123');
+    expect(fixture.componentInstance.isSubmitting).toBeFalse();
+    httpTesting.verify();
+    fixture.destroy();
+    TestBed.inject(AuthenticationService).ngOnDestroy();
+  });
+
 });

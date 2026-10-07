@@ -188,3 +188,4 @@ select.form-input {
 }
 
 [data-route-heading]:focus { outline: none; }
+app-natiart-form-field .password-field .form-input { padding-right: 5rem; }

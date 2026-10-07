@@ -41,12 +41,10 @@
     "1835887313684191415": " Continue to sign in ",
     "6356240938650241428": "This reset link is missing or invalid. Please request a new one.",
     "5844694184388980138": "This reset link is invalid or expired. Please request a new one.",
-    "5806884108640249370": "Maximum {$MAX_BYTES} UTF-8 bytes",
     "7582992521298733458": "Minimum {$MIN_LENGTH} characters",
     "2906410868475606371": "Contains lowercase letter",
     "6924835790027201669": "Contains uppercase letter",
     "7609506931065763540": "Contains number",
-    "8060495316686949681": "Within the supported password length",
     "3241357959735682038": "Confirm Password",
     "9142835286675705412": "Next Step → ",
     "6028371114637047813": "First Name",
@@ -433,7 +431,6 @@
     "1287620171103254824": "CEP must be 8 digits",
     "2858237364883968257": "CEP not found",
     "2928026326602817637": "Error fetching address",
-    "104946851934946044": "Password is too long (maximum {$INTERPOLATION} UTF-8 bytes). Use fewer characters.",
     "2331885672079688363": "Password must have at least {$INTERPOLATION} characters, an uppercase letter, a lowercase letter and a number.",
     "6451269955734195952": "Passwords do not match",
     "1446670643492611810": "Hide password",
@@ -470,6 +467,10 @@
     "3181577562698613288": "Shipping calculated at checkout.",
     "3133350788051547242": "View order",
     "6605933970484846606": "Expires at: ",
-    "8155728303931286172": "View all orders"
+    "8155728303931286172": "View all orders",
+    "8511105445145416331": "Met:",
+    "4648973955400069112": "Password is too long. Remove a few characters.",
+    "6366162016786007919": "Needed:",
+    "3875670943507671418": "Password requirements"
   }
 }

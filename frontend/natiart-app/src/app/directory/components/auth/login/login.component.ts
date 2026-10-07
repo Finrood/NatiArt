@@ -28,7 +28,6 @@ import {finalize} from "rxjs/operators";
   styles: []
 })
 export class LoginComponent implements OnInit {
-  showPassword = false;
   loginForm: FormGroup;
   errorMessage: string = '';
   isSubmitting: boolean = false;
@@ -60,10 +59,6 @@ export class LoginComponent implements OnInit {
           },
         });
     }
-  }
-
-  togglePasswordVisibility() {
-    this.showPassword = !this.showPassword;
   }
 
   doLoginUser() {

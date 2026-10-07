@@ -18,3 +18,11 @@ unchanged. A matching confirmation clears the mismatch and enables Next.
 CA34 should retain these validation messages and group subscriptions when adding
 its unique control/error IDs and projected-input accessibility. CA29 address
 forms use the same normalized CEP and must retain their manual fallback.
+
+Password guidance displays four readable complexity requirements, with neutral
+bullets for an empty value and checks only when met. The 72-byte server/client
+limit is unchanged; an over-limit value shows a plain-language shortening
+message. Login and signup use the shared named Show/Hide control. Projected
+field-hint content sits outside the input/toggle container, avoiding a toggle
+that stretches across the requirement list. Revealing a password changes only
+the native input type; it does not alter the control value or submit the form.
