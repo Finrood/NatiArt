@@ -18,3 +18,16 @@ Regression tests use the actual catalog and HTTP client with real router categor
 clicks, Back and Forward navigation, request cancellation and same-page retry.
 The combined CA23/CA24/CA27 check verifies production compilation plus backend
 filtering/security and the merged UI. This PR alone requires the CA23 page API.
+
+The language selector observes completed router navigation, including redirects. Its
+native links therefore follow the current route/query/fragment without a page reload;
+the existing dirty-form confirmation still protects unsaved entries.
+
+Home, product details and the browser-local cart are public. Authentication is
+required when proceeding to checkout, viewing orders or using administration.
+The checkout guard preserves its destination for sign-in; guest cart contents
+remain in browser storage and are validated by the server at checkout.
+
+Categories are collapsed behind Filters on phones and remain visible on desktop.
+Selecting a category closes the phone panel. A removable category chip reflects
+the router filter, including a fallback label for a category outside the loaded page.

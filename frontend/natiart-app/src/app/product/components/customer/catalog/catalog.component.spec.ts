@@ -41,10 +41,18 @@ describe('Catalog URL-backed pagination', () => {
     first.flush({items: [product('21', 'A')], page: 1, size: 20, total: 21, hasNext: false});
     harness.detectChanges();
     expect(harness.routeNativeElement!.textContent).toContain('Print 21');
+    const filters: HTMLButtonElement = harness.routeNativeElement!.querySelector('button[aria-controls="category-filters"]')!;
+    expect(filters.getAttribute('aria-expanded')).toBe('false');
+    filters.click();
+    harness.detectChanges();
+    expect(filters.getAttribute('aria-expanded')).toBe('true');
     const category: HTMLAnchorElement = Array.from(harness.routeNativeElement!.querySelectorAll('a'))
       .find((a: HTMLAnchorElement) => a.textContent?.includes('Category B'))!;
     category.click();
     await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(filters.getAttribute('aria-expanded')).toBe('false');
+    expect(harness.routeNativeElement!.querySelector('a[aria-label="Clear category filter"]')!.textContent).toContain('Category B');
     const second = http.expectOne((r) => r.url === `${api}/products/page`);
     expect(second.request.params.get('categoryId')).toBe('B');
     expect(second.request.params.get('page')).toBe('0');
