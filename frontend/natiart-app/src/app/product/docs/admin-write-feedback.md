@@ -17,3 +17,8 @@ Rendered HTTP regressions cover delayed double submit, visible error/retry and
 input retention, close/reopen with a pending response, and named delete cancel
 for both resources. These checks caught an alert component that held new errors
 in memory while its rendered view stayed unchanged.
+
+Product editors retain an option for each original category/package outside the loaded
+page, using the product response's reference label. Loading that reference's page
+replaces the retained option without duplication; loaded inactive references are
+identified explicitly. Closing/reopening resets the selected reference snapshot.
