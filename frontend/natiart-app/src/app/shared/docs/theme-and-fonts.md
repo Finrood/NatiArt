@@ -59,7 +59,7 @@ color. Secondary muted text and semantic filled-button colors also meet 4.5:1
 against their intended backgrounds. Computed-style checks measure contrast
 rather than hard-coding the palette; disabled controls are excluded.
 
-The current production build and 386-spec ChromeHeadless suite passed on
+The current production build and 390-spec ChromeHeadless suite passed on
 October 8, 2026. Earlier CA-number verification describes historical integration;
 current browser and performance evidence is recorded in the atelier review.
 

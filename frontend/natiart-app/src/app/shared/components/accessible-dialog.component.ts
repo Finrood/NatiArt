@@ -2,7 +2,7 @@ import {AfterViewInit, Component, ElementRef, EventEmitter, inject, input, Input
 import {DOCUMENT} from '@angular/common';
 
 @Component({selector: 'app-accessible-dialog', template: `
-  <dialog #dialog aria-modal="true" [attr.aria-label]="label" (cancel)="cancel($event)" (click)="backdrop($event)">
+  <dialog #dialog aria-modal="true" [class.drawer]="$appearance() === 'drawer'" [attr.aria-label]="label" (cancel)="cancel($event)" (click)="backdrop($event)">
     @if ($showClose()) {
       <button type="button" class="dialog-close" aria-label="Close" i18n-aria-label (click)="dismiss.emit()">
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m6 6 12 12M6 18 18 6" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -16,6 +16,12 @@ import {DOCUMENT} from '@angular/common';
   dialog:focus-visible { outline: 2px solid rgb(var(--primary)); outline-offset: 2px; }
   .dialog-close { position: sticky; top: .5rem; float: right; z-index: 20; display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin: .5rem .5rem -3.25rem 0; color: rgb(var(--primary)); background: rgb(var(--surface)); border: 1px solid rgb(var(--primary-light) / .5); border-radius: .375rem; }
   .dialog-close svg { width: 1.25rem; height: 1.25rem; }
+  dialog.drawer { inset: 0 0 0 auto; margin: 0; width: min(29rem, 100vw); height: 100dvh; max-width: 100vw; max-height: 100dvh;
+    border-radius: 0; overflow: hidden; background: rgb(var(--background)); box-shadow: -1rem 0 4rem rgb(var(--secondary-dark) / .12); }
+  dialog.drawer::backdrop { background: rgb(var(--secondary-dark) / .32); }
+  dialog.drawer[open] { animation: drawer-enter .2s ease-out; }
+  @keyframes drawer-enter { from { opacity: 0; transform: translateX(1rem); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { dialog.drawer[open] { animation: none; } }
 `})
 export class AccessibleDialogComponent implements AfterViewInit, OnDestroy {
   private static openCount: number = 0;
@@ -25,6 +31,7 @@ export class AccessibleDialogComponent implements AfterViewInit, OnDestroy {
   private opened: boolean = false;
   @Input({required: true}) label!: string;
   readonly $showClose = input<boolean>(false, {alias: 'showClose'});
+  readonly $appearance = input<'modal' | 'drawer'>('modal', {alias: 'appearance'});
   @Output() dismiss = new EventEmitter<void>();
   @ViewChild('dialog') dialog!: ElementRef<HTMLDialogElement>;
 

@@ -15,17 +15,18 @@
       <!-- Icons & Actions -->
       <div class="flex items-center gap-2 sm:gap-4">
         <!-- Cart -->
-        <div (mouseenter)="showCartModal()" (mouseleave)="hideCartModal()" class="lg:relative cart-container">
-          <a #cartLink aria-label="Shopping cart" i18n-aria-label routerLink="/cart" class="relative flex h-11 w-11 items-center justify-center text-secondary hover:text-primary transition-colors">
-            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+        <div class="cart-container">
+          <button type="button" aria-label="Shopping cart" i18n-aria-label aria-haspopup="dialog" [attr.aria-expanded]="$isCartOpen()"
+            [attr.aria-controls]="$isCartOpen() ? 'cart-preview' : null" (click)="toggleCartPreview()" class="relative flex h-11 w-11 items-center justify-center text-secondary hover:text-primary transition-colors">
+            <svg aria-hidden="true" class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
             @if ((cartItemCount$ | async); as count) {
               @if (count > 0) {
                 <span class="absolute top-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white text-xs font-medium">{{ count }}</span>
               }
             }
-          </a>
-          @if (isCartHovered) {
-            <app-cart-modal></app-cart-modal>
+          </button>
+          @if ($isCartOpen()) {
+            <app-cart-modal (dismiss)="closeCartPreview()" (navigate)="closeCartPreview()"></app-cart-modal>
           }
         </div>
 
@@ -41,7 +42,7 @@
 
         <!-- Mobile Menu Button -->
         <div class="lg:hidden">
-          <button aria-label="Toggle navigation" i18n-aria-label [attr.aria-expanded]="isMobileMenuOpen" (click)="toggleMobileMenu()" class="flex h-11 w-11 items-center justify-center text-secondary hover:text-primary">
+          <button type="button" aria-label="Toggle navigation" i18n-aria-label [attr.aria-expanded]="$isMobileMenuOpen()" (click)="toggleMobileMenu()" class="flex h-11 w-11 items-center justify-center text-secondary hover:text-primary">
             <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg>
           </button>
         </div>
@@ -51,7 +52,7 @@
   </div>
 
   <!-- Mobile Menu Overlay -->
-  @if (isMobileMenuOpen) {
+  @if ($isMobileMenuOpen()) {
     <app-accessible-dialog label="Navigation menu" i18n-label (dismiss)="closeMobileMenu()">
       <div class="bg-background w-80 max-w-full p-6">
       <div class="flex items-center justify-between mb-6 gap-4"><h2 class="text-2xl" i18n>Navigation menu</h2><button type="button" class="art-link px-2" (click)="closeMobileMenu()" i18n>Close</button></div>

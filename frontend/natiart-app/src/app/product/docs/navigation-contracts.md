@@ -56,10 +56,14 @@ against the loading screen's height. A new navigation discards any pending resto
 
 Product categories and cart product names link to their real catalog/detail
 routes. Desktop active navigation uses `aria-current` as well as a visual rule.
-The mini-cart's delayed pointer dismissal cancels on re-entry; Escape closes it
-and destruction clears its timer. Escape from inside the preview restores the
-cart link; Escape elsewhere does not steal focus. Invalid quantities cannot mutate the cart's
-stored item before CartService validates an update.
+The cart icon is a button that explicitly opens a native cart drawer; pointer
+hover does not open it or navigate. Close, Continue shopping, Escape and backdrop
+dismissal restore the cart opener and release the body scroll lock. Cart/product
+links dismiss before navigation, and the header additionally closes its overlays
+on NavigationStart or NavigationSkipped, including Back and same-URL actions.
+The destination keeps the shell's heading focus contract. Mobile navigation and
+the cart drawer cannot remain open together. Invalid quantities cannot mutate the
+cart's stored item before CartService validates an update.
 
 Checkout step changes focus the newly rendered, programmatically focusable
 step heading and scroll it below the sticky header. Initial rendering leaves

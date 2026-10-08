@@ -7,11 +7,17 @@ The desktop table has bounded columns and wrapping product details. Its outer
 container must not hide overflow to conceal actions or totals. Shipping and
 summary stay stacked through tablet sizes.
 
-On phones and tablets the preview is positioned against the full-width sticky
-header with side gutters. Only at `lg` does the cart container establish the
-positioning anchor for its 320 px desktop preview. Preview item details can
-shrink, and quantity, price and removal occupy a separate bounded grid. A
-viewport-based height limit permits vertical scrolling for a longer cart.
+The cart preview uses the shared native dialog's drawer appearance: up to 29rem
+wide on the right and full viewport width on smaller screens, with 100dvh height.
+The visible Close button starts focus; the background is inert while it is open.
+The body scrolls independently while the subtotal and navigation actions remain
+visible. On viewports shorter than 520px the whole panel scrolls with its header
+sticky, allowing every action to remain reachable when a keyboard opens.
+Artwork thumbnails, wrapping titles, variant badges and line totals share one
+product link. Quantity steppers and removal sit in a separate wrapping row with
+44px actions and a 48px input. Custom-artwork draft/reselection guidance remains
+visible. The subtotal is explicitly estimated; the server confirms the final
+price and shipping before payment. No checkout or pricing contract is changed.
 
 Check both locales at 320, 360, 390, 768 and 1440 px, plus the desktop breakpoint.
 Measure every visible quantity/remove control, item total and preview against

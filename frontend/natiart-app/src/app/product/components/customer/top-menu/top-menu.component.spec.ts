@@ -1,4 +1,4 @@
-import { fakeAsync, TestBed, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
@@ -17,7 +17,7 @@ describe('TopMenuComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
-        { provide: CartService, useValue: { getCartCount: (): Observable<number> => of(0) } },
+        { provide: CartService, useValue: { getCartCount: (): Observable<number> => of(0), getCartItems: (): Observable<CartItem[]> => of([]), getCartTotal: (): Observable<number> => of(0) } },
         {
           provide: AuthenticationService,
           useValue: { isLoggedIn$: new BehaviorSubject<boolean>(false).asObservable() },
@@ -51,38 +51,58 @@ describe('TopMenuComponent', () => {
     fixture.destroy();
   });
 
-  it('cancels the pending hover-close timer on destroy (P2)', () => {
-    const fixture = TestBed.createComponent(TopMenuComponent);
-    const component = fixture.componentInstance;
+  it('opens a contained drawer only after cart activation and leaves the current page in place', async () => {
+    const fixture: ComponentFixture<TopMenuComponent> = TestBed.createComponent(TopMenuComponent);
     fixture.detectChanges();
-    const clearSpy: jasmine.Spy = spyOn(window, 'clearTimeout').and.callThrough();
+    const host: HTMLElement = fixture.nativeElement;
+    host.querySelector('.cart-container')!.dispatchEvent(new MouseEvent('mouseenter'));
+    fixture.detectChanges();
+    expect(host.querySelector('dialog')).toBeNull();
 
-    component.showCartModal();
-    component.hideCartModal();
-    const internals = component as unknown as {
-      cartHoverCloseTimer: ReturnType<typeof setTimeout> | undefined;
-    };
-    expect(internals.cartHoverCloseTimer).toBeDefined();
-
+    const opener: HTMLButtonElement = host.querySelector('button[aria-label="Shopping cart"]')!;
+    opener.focus();
+    opener.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const dialog: HTMLDialogElement = host.querySelector('dialog')!;
+    expect(dialog.matches(':modal')).toBeTrue();
+    expect(dialog.classList.contains('drawer')).toBeTrue();
+    expect(opener.getAttribute('aria-expanded')).toBe('true');
+    expect(opener.getAttribute('aria-controls')).toBe('cart-preview');
+    expect(document.body.style.overflow).toBe('hidden');
+    host.querySelector<HTMLAnchorElement>('a[href="/dashboard"]')!.focus();
+    expect(dialog.contains(document.activeElement)).toBeTrue();
     fixture.destroy();
-    expect(clearSpy).toHaveBeenCalled();
-    expect(internals.cartHoverCloseTimer).toBeUndefined();
   });
 
-  it('closes the preview after pointer exit and cancels exit when the pointer returns', fakeAsync(() => {
-    const fixture = TestBed.createComponent(TopMenuComponent);
-    const component: TopMenuComponent = fixture.componentInstance;
-    component.showCartModal(); component.hideCartModal(); tick(201);
-    expect(component.isCartHovered).toBeFalse();
-    component.showCartModal(); component.hideCartModal(); tick(100);
-    component.showCartModal(); tick(201);
-    expect(component.isCartHovered).toBeTrue();
-    component.closeCartPreview();
-    expect(component.isCartHovered).toBeFalse();
+  it('dismisses the drawer with its backdrop or Close button and releases scrolling', async () => {
+    const fixture: ComponentFixture<TopMenuComponent> = TestBed.createComponent(TopMenuComponent);
+    fixture.detectChanges();
+    const host: HTMLElement = fixture.nativeElement;
+    const opener: HTMLButtonElement = host.querySelector('button[aria-label="Shopping cart"]')!;
+    const previousOverflow: string = document.body.style.overflow;
+    for (const action of ['backdrop', 'close']) {
+      opener.focus();
+      opener.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const dialog: HTMLDialogElement = host.querySelector('dialog')!;
+      if (action === 'backdrop') {
+        const rect: DOMRect = dialog.getBoundingClientRect();
+        dialog.dispatchEvent(new MouseEvent('click', {clientX: rect.left - 1, clientY: rect.top + 1}));
+      } else {
+        dialog.querySelector<HTMLButtonElement>('button[aria-label="Close"]')!.click();
+      }
+      fixture.detectChanges();
+      expect(host.querySelector('dialog')).toBeNull();
+      expect(opener.getAttribute('aria-expanded')).toBe('false');
+      expect(document.activeElement).toBe(opener);
+      expect(document.body.style.overflow).toBe(previousOverflow);
+    }
     fixture.destroy();
-  }));
+  });
 
-  it('restores the cart link after Escape inside the preview without stealing outside focus', async () => {
+  it('restores the cart opener on Escape and Continue shopping without changing cart contents', async () => {
     const item: CartItem = {cartItemId: 'line-1', quantity: 1, product: {
       id: 'vase', label: 'Vase', originalPrice: 20, markedPrice: 20, stockQuantity: 10,
       categoryId: 'ceramics', availablePersonalizations: [], tags: [], images: [],
@@ -92,32 +112,27 @@ describe('TopMenuComponent', () => {
       getCartItems: (): Observable<CartItem[]> => of([item]),
       getCartTotal: (): Observable<number> => of(20),
     }});
-    const fixture = TestBed.createComponent(TopMenuComponent);
-    const host: HTMLElement = fixture.nativeElement as HTMLElement;
-    document.body.appendChild(host);
-    try {
-      fixture.detectChanges();
-      host.querySelector('.cart-container')?.dispatchEvent(new MouseEvent('mouseenter'));
+    const fixture: ComponentFixture<TopMenuComponent> = TestBed.createComponent(TopMenuComponent);
+    fixture.detectChanges();
+    const host: HTMLElement = fixture.nativeElement;
+    const opener: HTMLButtonElement = host.querySelector('button[aria-label="Shopping cart"]')!;
+    for (const action of ['escape', 'continue']) {
+      opener.focus();
+      opener.click();
       fixture.detectChanges();
       await fixture.whenStable();
-      const input: HTMLInputElement | null = host.querySelector('app-cart-modal input');
-      expect(input).not.toBeNull();
-      input?.focus();
-      document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+      const dialog: HTMLDialogElement = host.querySelector('dialog')!;
+      if (action === 'escape') dialog.dispatchEvent(new Event('cancel', {cancelable: true}));
+      else dialog.querySelector<HTMLButtonElement>('.cart-continue')!.click();
       fixture.detectChanges();
-      expect(host.querySelector('app-cart-modal')).toBeNull();
-      expect(document.activeElement).toBe(host.querySelector('a[aria-label="Shopping cart"]'));
-
-      const home: HTMLAnchorElement = host.querySelector('a[href="/dashboard"]') as HTMLAnchorElement;
-      home.focus();
-      host.querySelector('.cart-container')?.dispatchEvent(new MouseEvent('mouseenter'));
-      fixture.detectChanges();
-      document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
-      fixture.detectChanges();
-      expect(document.activeElement).toBe(home);
-    } finally {
-      fixture.destroy();
-      host.remove();
+      expect(host.querySelector('dialog')).toBeNull();
+      expect(document.activeElement).toBe(opener);
+      expect(item.quantity).toBe(1);
     }
+    const home: HTMLAnchorElement = host.querySelector('a[href="/dashboard"]')!;
+    home.focus();
+    document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+    expect(document.activeElement).toBe(home);
+    fixture.destroy();
   });
 });

@@ -95,6 +95,8 @@ describe('Shared image ownership at HTTP and rendered boundaries', (): void => {
     const items: BehaviorSubject<CartItem[]> = cartItems;
     const cart: ComponentFixture<CartModalComponent> = TestBed.createComponent(CartModalComponent);
     const summary: ComponentFixture<OrderSummaryComponent> = TestBed.createComponent(OrderSummaryComponent);
+    // Creating the second fixture detaches the first root; native dialogs require a connected host.
+    document.body.append(cart.nativeElement);
     summary.componentRef.setInput('cartItems', [line('shared')]); cart.autoDetectChanges(); summary.autoDetectChanges();
     items.next([{...line('shared'), quantity: 2}]); items.next([line('shared')]);
     http.expectOne((request): boolean => request.params.get('path') === 'shared').flush(image());
