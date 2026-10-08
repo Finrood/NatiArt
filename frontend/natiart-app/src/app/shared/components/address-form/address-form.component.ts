@@ -1,7 +1,7 @@
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component, input, Input, OnDestroy, OnInit, inject} from '@angular/core';
 import {FormGroup, ReactiveFormsModule} from '@angular/forms';
 
-import {debounceTime, distinctUntilChanged, finalize, Subject, Subscription, takeUntil, tap} from 'rxjs';
+import {debounceTime, finalize, Subject, Subscription, takeUntil, tap} from 'rxjs';
 import {SignupService} from "../../../directory/service/signup.service";
 import {ViaCEPResponse} from "../../../directory/models/viaCEPResponse.model";
 import {
@@ -56,7 +56,6 @@ export class AddressFormComponent implements OnInit, OnDestroy {
               [field, this.addressFormGroup.get(field)!.value]));
           }),
           debounceTime(this.CEP_DEBOUNCE_MS),
-          distinctUntilChanged(),
           takeUntil(this.destroy$)
         )
         .subscribe(zip => this.onZipCodeChange(zip));

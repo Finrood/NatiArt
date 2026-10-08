@@ -24,6 +24,9 @@ export const environment = {
         order: '/orders',
       }
     },
+    brasilApiCep: {
+      url: 'https://brasilapi.com.br/api/cep/v1',
+    },
     viaCep: {
       url: 'https://viacep.com.br/ws',
     },

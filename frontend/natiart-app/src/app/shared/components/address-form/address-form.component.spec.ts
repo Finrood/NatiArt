@@ -160,4 +160,20 @@ describe('AddressFormComponent', () => {
     expect(form.get('street')!.value).toBe('Rua Nova');
     fixture.destroy();
   }));
+  it('restarts a cancelled lookup when a customer returns to the same CEP during debounce', fakeAsync(() => {
+    const pending: Subject<ViaCEPResponse> = new Subject<ViaCEPResponse>();
+    const lookup = spyOn(TestBed.inject(SignupService), 'getAddressFromZipCode')
+      .and.returnValues(pending, of(viaCepResponse('Praça da Sé')));
+    const fixture = TestBed.createComponent(AddressFormComponent);
+    const form: FormGroup = makeAddressForm(TestBed.inject(FormBuilder));
+    fixture.componentInstance.addressFormGroup = form; fixture.detectChanges();
+    form.get('zipCode')!.setValue('01001000'); tick(400);
+    form.get('zipCode')!.setValue('0100100'); tick(100);
+    form.get('zipCode')!.setValue('01001000'); tick(400);
+    expect(lookup).toHaveBeenCalledTimes(2);
+    expect(form.get('street')!.value).toBe('Praça da Sé');
+    expect(fixture.componentInstance.isLoadingAddress).toBeFalse();
+    fixture.destroy();
+  }));
+
 });

@@ -1,4 +1,4 @@
-import {Injectable} from '@angular/core';
+import {inject, Injectable} from '@angular/core';
 import {HttpClient} from "@angular/common/http";
 import {Observable} from "rxjs";
 import {environment} from "../../../environments/environment";
@@ -35,6 +35,7 @@ export interface ShippingQuote {
   destinationPostalCode: string;
   serviceId: string;
   serviceName: string;
+  estimatedDeliveryDays?: number | null;
   expiresAt: string;
   itemAmount: number;
   shippingAmount: number;
@@ -51,20 +52,28 @@ export interface ShippingEstimateRequest {
   quantity: number;
 }
 
+export interface ShippingBasketEstimateRequest {
+  zipCode: string;
+  items: {productId: string; quantity: number; personalized: boolean}[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class ShippingService {
   private readonly apiUrl: string = `${environment.api.product.url}/shipping`;
 
-  constructor(private http: HttpClient) {
-  }
+  private readonly _http: HttpClient = inject(HttpClient);
 
   calculateShipping(request: ShippingEstimateRequest): Observable<ShippingEstimate[]> {
-    return this.http.post<ShippingEstimate[]>(`${this.apiUrl}/estimate`, request);
+    return this._http.post<ShippingEstimate[]>(`${this.apiUrl}/estimate`, request);
   }
 
   createQuote(request: ShippingQuoteRequest): Observable<ShippingQuote> {
-    return this.http.post<ShippingQuote>(`${this.apiUrl}/quote`, request);
+    return this._http.post<ShippingQuote>(`${this.apiUrl}/quote`, request);
+  }
+
+  estimateBasket(request: ShippingBasketEstimateRequest): Observable<ShippingEstimate[]> {
+    return this._http.post<ShippingEstimate[]>(`${this.apiUrl}/basket-estimate`, request);
   }
 }
