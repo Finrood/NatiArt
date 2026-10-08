@@ -7,7 +7,7 @@ import {EMPTY_PRODUCT_IMAGE} from '../../../product/service/image-loader.service
 import {AddToCartButtonComponent} from '../../../product/components/customer/add-to-cart-button/add-to-cart-button.component';
 
 @Component({selector: 'app-product-card', imports: [CurrencyPipe, RouterLink, AddToCartButtonComponent],
-  templateUrl: './product-card.component.html', host: {class: 'block h-full min-w-0'}})
+  templateUrl: './product-card.component.html', styleUrl: './product-card.component.css', host: {class: 'block h-full min-w-0'}})
 export class ProductCardComponent {
   readonly $product = input.required<Product>({alias: 'product'});
   readonly $imageUrl = input<string>(EMPTY_PRODUCT_IMAGE, {alias: 'imageUrl'});

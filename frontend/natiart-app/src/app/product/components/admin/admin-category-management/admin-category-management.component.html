@@ -1,28 +1,27 @@
-<div class="container mx-auto p-4">
-  <!-- Alert Messages Component -->
+<div class="min-w-0">
+
   <app-alert-messages #alertMessages></app-alert-messages>
 
-  <!-- Header with "Add New Category" Button -->
-  <div class="flex justify-between items-center mb-4">
+  <div class="flex flex-wrap gap-3 justify-between items-center mb-6">
     <h2 class="text-2xl sm:text-3xl font-light" i18n>Categories</h2>
     <app-button (click)="openModal()" color="primary" size="md" i18n>Add New Category
     </app-button>
   </div>
 
-  <!-- Categories Grid -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
     @for (category of categories$ | async; track category) {
       <div
-        [ngClass]="{'opacity-50': !category.active}"
-        class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+        [class.admin-hidden]="!category.active"
+        class="bg-white p-6 art-panel">
         <h3 class="text-xl font-semibold mb-2">{{ category.label }}</h3>
+        @if (!category.active) { <p class="admin-hidden-label" i18n>Hidden from the shop</p> }
         <p class="text-gray-600 mb-4">{{ category.description }}</p>
         <div class="flex flex-wrap justify-between gap-2">
           <app-button (click)="openModal(category)" color="primary" size="sm" i18n>Edit
           </app-button>
-          <app-button (click)="deleteCategory(category.id!)" color="danger" size="sm" i18n>Delete
+          <app-button (click)="deleteCategory(category.id!)" color="link" customClass="text-error" size="sm" i18n>Delete
           </app-button>
-          <app-button [disabled]="isVisibilityPending(category.id)" (click)="toggleCategoryVisibility(category)" color="primary" size="sm">
+          <app-button [disabled]="isVisibilityPending(category.id)" (click)="toggleCategoryVisibility(category)" color="light" size="sm">
             <span i18n>{category.active, select, true {Hide} other {Show}}</span>
             <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
               @if (category.active) {
@@ -49,20 +48,19 @@
     }
   </div>
 
-  <!-- Modal (shown when modalVisible) -->
 <app-page-controls [page]="pages.$page()" [total]="pages.$total()" [hasNext]="pages.$hasNext()"
     [loading]="pages.$loading()" [error]="pages.$error()" (pageChange)="pages.load($event)"></app-page-controls>
   @if (modalVisible) {
-    <app-accessible-dialog label="Category editor" i18n-label (dismiss)="closeModal()">
-      <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md transform transition-transform duration-300 ease-in-out">
-        <h3 class="text-2xl mb-4 font-light" i18n>{isEditingCategory, select, true {Edit Category} other {Add Category}}</h3>
+    <app-accessible-dialog label="Category editor" i18n-label [showClose]="true" (dismiss)="closeModal()">
+      <div class="bg-white p-6 art-panel w-full max-w-md transform transition-transform duration-300 ease-in-out">
+        <h3 class="text-2xl mb-4 font-light pr-10" i18n>{isEditingCategory, select, true {Edit Category} other {Add Category}}</h3>
         <form (ngSubmit)="submitForm()" [formGroup]="categoryForm">
-          <!-- Custom Input for Label -->
+
           <app-natiart-form-field label="Label" controlName="label" [form]="categoryForm" i18n-label>
             <input type="text" formControlName="label" placeholder="Category label"
               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm" i18n-placeholder>
           </app-natiart-form-field>
-          <!-- Custom Input for Description -->
+
           <app-natiart-form-field label="Description" controlName="description" [form]="categoryForm" i18n-label>
             <textarea formControlName="description" rows="3" placeholder="Category description"
             class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm" i18n-placeholder></textarea>

@@ -1,0 +1,55 @@
+{
+  "kind": "local lab, single cold mobile run",
+  "lighthouseVersion": "13.5.0",
+  "fetchTime": "2026-10-07T23:54:13.399Z",
+  "configuration": {
+    "formFactor": "mobile",
+    "throttlingMethod": "simulate",
+    "throttling": {
+      "rttMs": 150,
+      "throughputKbps": 1638.4,
+      "requestLatencyMs": 562.5,
+      "downloadThroughputKbps": 1474.5600000000002,
+      "uploadThroughputKbps": 675,
+      "cpuSlowdownMultiplier": 4
+    },
+    "screenEmulation": {
+      "mobile": true,
+      "width": 412,
+      "height": 823,
+      "deviceScaleFactor": 1.75,
+      "disabled": false
+    }
+  },
+  "scores": {
+    "performance": 0.8,
+    "accessibility": 1
+  },
+  "metrics": {
+    "largest-contentful-paint": {
+      "value": 4791.5289999999995,
+      "unit": "millisecond",
+      "display": "4.8\u00a0s"
+    },
+    "cumulative-layout-shift": {
+      "value": 0,
+      "unit": "unitless",
+      "display": "0"
+    },
+    "total-blocking-time": {
+      "value": 36,
+      "unit": "millisecond",
+      "display": "40\u00a0ms"
+    },
+    "speed-index": {
+      "value": 2321.5173999999997,
+      "unit": "millisecond",
+      "display": "2.3\u00a0s"
+    },
+    "first-contentful-paint": {
+      "value": 2321.5173999999997,
+      "unit": "millisecond",
+      "display": "2.3\u00a0s"
+    }
+  }
+}

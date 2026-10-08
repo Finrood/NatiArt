@@ -1,0 +1,1139 @@
+[
+  {
+    "controls": [
+      {
+        "height": 44,
+        "label": "Diminuir quantidade",
+        "left": 33,
+        "right": 77,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Aumentar quantidade",
+        "left": 125,
+        "right": 169,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Remover item",
+        "left": 228,
+        "right": 272,
+        "width": 44
+      },
+      {
+        "height": 29,
+        "label": "Total do item: R$ 91,96",
+        "left": 33,
+        "right": 272,
+        "width": 239
+      },
+      {
+        "height": 60,
+        "label": "Finalizar compra",
+        "left": 33,
+        "right": 272,
+        "width": 239
+      },
+      {
+        "height": 44,
+        "label": "Esvaziar carrinho",
+        "left": 33,
+        "right": 272,
+        "width": 239
+      }
+    ],
+    "documentWidth": 305,
+    "route": "/pt-BR/cart",
+    "width": 320
+  },
+  {
+    "controls": [
+      {
+        "height": 44,
+        "label": "Diminuir quantidade",
+        "left": 33,
+        "right": 77,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Aumentar quantidade",
+        "left": 125,
+        "right": 169,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Remover item",
+        "left": 268,
+        "right": 312,
+        "width": 44
+      },
+      {
+        "height": 29,
+        "label": "Total do item: R$ 91,96",
+        "left": 33,
+        "right": 312,
+        "width": 279
+      },
+      {
+        "height": 60,
+        "label": "Finalizar compra",
+        "left": 33,
+        "right": 312,
+        "width": 279
+      },
+      {
+        "height": 44,
+        "label": "Esvaziar carrinho",
+        "left": 33,
+        "right": 312,
+        "width": 279
+      }
+    ],
+    "documentWidth": 345,
+    "route": "/pt-BR/cart",
+    "width": 360
+  },
+  {
+    "controls": [
+      {
+        "height": 44,
+        "label": "Diminuir quantidade",
+        "left": 33,
+        "right": 77,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Aumentar quantidade",
+        "left": 125,
+        "right": 169,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Remover item",
+        "left": 298,
+        "right": 342,
+        "width": 44
+      },
+      {
+        "height": 29,
+        "label": "Total do item: R$ 91,96",
+        "left": 33,
+        "right": 342,
+        "width": 309
+      },
+      {
+        "height": 60,
+        "label": "Finalizar compra",
+        "left": 33,
+        "right": 342,
+        "width": 309
+      },
+      {
+        "height": 44,
+        "label": "Esvaziar carrinho",
+        "left": 33,
+        "right": 342,
+        "width": 309
+      }
+    ],
+    "documentWidth": 375,
+    "route": "/pt-BR/cart",
+    "width": 390
+  },
+  {
+    "controls": [
+      {
+        "height": 44,
+        "label": "Diminuir quantidade",
+        "left": 40.03125,
+        "right": 84.03125,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Aumentar quantidade",
+        "left": 132.03125,
+        "right": 176.03125,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Remover item",
+        "left": 668.96875,
+        "right": 712.96875,
+        "width": 44
+      },
+      {
+        "height": 29,
+        "label": "Total do item: R$ 91,96",
+        "left": 40.03125,
+        "right": 712.96875,
+        "width": 672.9375
+      },
+      {
+        "height": 60,
+        "label": "Finalizar compra",
+        "left": 48.03125,
+        "right": 704.96875,
+        "width": 656.9375
+      },
+      {
+        "height": 44,
+        "label": "Esvaziar carrinho",
+        "left": 48.03125,
+        "right": 704.96875,
+        "width": 656.9375
+      }
+    ],
+    "documentWidth": 753,
+    "route": "/pt-BR/cart",
+    "width": 768
+  },
+  {
+    "controls": [
+      {
+        "height": 44,
+        "label": "Diminuir quantidade",
+        "left": 552.703125,
+        "right": 596.703125,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Aumentar quantidade",
+        "left": 629.765625,
+        "right": 673.765625,
+        "width": 44
+      },
+      {
+        "height": 129,
+        "label": "R$ 91,96",
+        "left": 721.96875,
+        "right": 863.796875,
+        "width": 141.828125
+      },
+      {
+        "height": 44,
+        "label": "Remover item",
+        "left": 898.53125,
+        "right": 942.53125,
+        "width": 44
+      },
+      {
+        "height": 60,
+        "label": "Finalizar compra",
+        "left": 703.421875,
+        "right": 953.265625,
+        "width": 249.84375
+      },
+      {
+        "height": 44,
+        "label": "Esvaziar carrinho",
+        "left": 703.421875,
+        "right": 953.265625,
+        "width": 249.84375
+      }
+    ],
+    "documentWidth": 1009,
+    "route": "/pt-BR/cart",
+    "width": 1024
+  },
+  {
+    "controls": [
+      {
+        "height": 44,
+        "label": "Diminuir quantidade",
+        "left": 789.734375,
+        "right": 833.734375,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Aumentar quantidade",
+        "left": 866.796875,
+        "right": 910.796875,
+        "width": 44
+      },
+      {
+        "height": 129,
+        "label": "R$ 91,96",
+        "left": 988.03125,
+        "right": 1167.71875,
+        "width": 179.6875
+      },
+      {
+        "height": 44,
+        "label": "Remover item",
+        "left": 1217.609375,
+        "right": 1261.609375,
+        "width": 44
+      },
+      {
+        "height": 60,
+        "label": "Finalizar compra",
+        "left": 953.5,
+        "right": 1287.5,
+        "width": 334
+      },
+      {
+        "height": 44,
+        "label": "Esvaziar carrinho",
+        "left": 953.5,
+        "right": 1287.5,
+        "width": 334
+      }
+    ],
+    "documentWidth": 1425,
+    "route": "/pt-BR/cart",
+    "width": 1440
+  },
+  {
+    "controls": [
+      {
+        "height": 44,
+        "label": "Decrease quantity",
+        "left": 33,
+        "right": 77,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Increase quantity",
+        "left": 125,
+        "right": 169,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Remove item",
+        "left": 228,
+        "right": 272,
+        "width": 44
+      },
+      {
+        "height": 29,
+        "label": "Item Total: R$91.96",
+        "left": 33,
+        "right": 272,
+        "width": 239
+      },
+      {
+        "height": 88,
+        "label": "Proceed to Checkout",
+        "left": 33,
+        "right": 272,
+        "width": 239
+      },
+      {
+        "height": 44,
+        "label": "Clear Shopping Cart",
+        "left": 33,
+        "right": 272,
+        "width": 239
+      }
+    ],
+    "documentWidth": 305,
+    "route": "/en/cart",
+    "width": 320
+  },
+  {
+    "controls": [
+      {
+        "height": 44,
+        "label": "Decrease quantity",
+        "left": 33,
+        "right": 77,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Increase quantity",
+        "left": 125,
+        "right": 169,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Remove item",
+        "left": 268,
+        "right": 312,
+        "width": 44
+      },
+      {
+        "height": 29,
+        "label": "Item Total: R$91.96",
+        "left": 33,
+        "right": 312,
+        "width": 279
+      },
+      {
+        "height": 60,
+        "label": "Proceed to Checkout",
+        "left": 33,
+        "right": 312,
+        "width": 279
+      },
+      {
+        "height": 44,
+        "label": "Clear Shopping Cart",
+        "left": 33,
+        "right": 312,
+        "width": 279
+      }
+    ],
+    "documentWidth": 345,
+    "route": "/en/cart",
+    "width": 360
+  },
+  {
+    "controls": [
+      {
+        "height": 44,
+        "label": "Decrease quantity",
+        "left": 33,
+        "right": 77,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Increase quantity",
+        "left": 125,
+        "right": 169,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Remove item",
+        "left": 298,
+        "right": 342,
+        "width": 44
+      },
+      {
+        "height": 29,
+        "label": "Item Total: R$91.96",
+        "left": 33,
+        "right": 342,
+        "width": 309
+      },
+      {
+        "height": 60,
+        "label": "Proceed to Checkout",
+        "left": 33,
+        "right": 342,
+        "width": 309
+      },
+      {
+        "height": 44,
+        "label": "Clear Shopping Cart",
+        "left": 33,
+        "right": 342,
+        "width": 309
+      }
+    ],
+    "documentWidth": 375,
+    "route": "/en/cart",
+    "width": 390
+  },
+  {
+    "controls": [
+      {
+        "height": 44,
+        "label": "Decrease quantity",
+        "left": 40.03125,
+        "right": 84.03125,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Increase quantity",
+        "left": 132.03125,
+        "right": 176.03125,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Remove item",
+        "left": 668.96875,
+        "right": 712.96875,
+        "width": 44
+      },
+      {
+        "height": 29,
+        "label": "Item Total: R$91.96",
+        "left": 40.03125,
+        "right": 712.96875,
+        "width": 672.9375
+      },
+      {
+        "height": 60,
+        "label": "Proceed to Checkout",
+        "left": 48.03125,
+        "right": 704.96875,
+        "width": 656.9375
+      },
+      {
+        "height": 44,
+        "label": "Clear Shopping Cart",
+        "left": 48.03125,
+        "right": 704.96875,
+        "width": 656.9375
+      }
+    ],
+    "documentWidth": 753,
+    "route": "/en/cart",
+    "width": 768
+  },
+  {
+    "controls": [
+      {
+        "height": 44,
+        "label": "Decrease quantity",
+        "left": 552.703125,
+        "right": 596.703125,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Increase quantity",
+        "left": 629.765625,
+        "right": 673.765625,
+        "width": 44
+      },
+      {
+        "height": 129,
+        "label": "R$91.96",
+        "left": 721.96875,
+        "right": 863.796875,
+        "width": 141.828125
+      },
+      {
+        "height": 44,
+        "label": "Remove item",
+        "left": 898.53125,
+        "right": 942.53125,
+        "width": 44
+      },
+      {
+        "height": 88,
+        "label": "Proceed to Checkout",
+        "left": 703.421875,
+        "right": 953.265625,
+        "width": 249.84375
+      },
+      {
+        "height": 44,
+        "label": "Clear Shopping Cart",
+        "left": 703.421875,
+        "right": 953.265625,
+        "width": 249.84375
+      }
+    ],
+    "documentWidth": 1009,
+    "route": "/en/cart",
+    "width": 1024
+  },
+  {
+    "controls": [
+      {
+        "height": 44,
+        "label": "Decrease quantity",
+        "left": 789.734375,
+        "right": 833.734375,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Increase quantity",
+        "left": 866.796875,
+        "right": 910.796875,
+        "width": 44
+      },
+      {
+        "height": 129,
+        "label": "R$91.96",
+        "left": 988.03125,
+        "right": 1167.71875,
+        "width": 179.6875
+      },
+      {
+        "height": 44,
+        "label": "Remove item",
+        "left": 1217.609375,
+        "right": 1261.609375,
+        "width": 44
+      },
+      {
+        "height": 60,
+        "label": "Proceed to Checkout",
+        "left": 953.5,
+        "right": 1287.5,
+        "width": 334
+      },
+      {
+        "height": 44,
+        "label": "Clear Shopping Cart",
+        "left": 953.5,
+        "right": 1287.5,
+        "width": 334
+      }
+    ],
+    "documentWidth": 1425,
+    "route": "/en/cart",
+    "width": 1440
+  },
+  {
+    "controls": [
+      {
+        "height": 346.78125,
+        "label": "Seu carrinhoDecorative Porcelain VaseQuantidadeR$ 91,96Total:R$ 91,96Ver carrinho",
+        "left": 16,
+        "right": 289,
+        "width": 273
+      },
+      {
+        "height": 44,
+        "label": "Quantidade de Decorative Porcelain Vase",
+        "left": 33,
+        "right": 97,
+        "width": 64
+      },
+      {
+        "height": 44,
+        "label": "Remover item",
+        "left": 228,
+        "right": 272,
+        "width": 44
+      },
+      {
+        "height": 60,
+        "label": "Ver carrinho",
+        "left": 33,
+        "right": 272,
+        "width": 239
+      }
+    ],
+    "documentWidth": 305,
+    "route": "/pt-BR/cart",
+    "state": "preview",
+    "width": 320
+  },
+  {
+    "controls": [
+      {
+        "height": 346.78125,
+        "label": "Seu carrinhoDecorative Porcelain VaseQuantidadeR$ 91,96Total:R$ 91,96Ver carrinho",
+        "left": 16,
+        "right": 359,
+        "width": 343
+      },
+      {
+        "height": 44,
+        "label": "Quantidade de Decorative Porcelain Vase",
+        "left": 33,
+        "right": 97,
+        "width": 64
+      },
+      {
+        "height": 44,
+        "label": "Remover item",
+        "left": 298,
+        "right": 342,
+        "width": 44
+      },
+      {
+        "height": 60,
+        "label": "Ver carrinho",
+        "left": 33,
+        "right": 342,
+        "width": 309
+      }
+    ],
+    "documentWidth": 375,
+    "route": "/pt-BR/cart",
+    "state": "preview",
+    "width": 390
+  },
+  {
+    "controls": [],
+    "documentWidth": 753,
+    "route": "/pt-BR/cart",
+    "state": "preview",
+    "width": 768
+  },
+  {
+    "controls": [],
+    "documentWidth": 1425,
+    "route": "/pt-BR/cart",
+    "state": "preview",
+    "width": 1440
+  },
+  {
+    "controls": [
+      {
+        "height": 346.78125,
+        "label": "Your CartDecorative Porcelain VaseQuantityR$91.96Total:R$91.96Go to Cart",
+        "left": 16,
+        "right": 289,
+        "width": 273
+      },
+      {
+        "height": 44,
+        "label": "Quantity for Decorative Porcelain Vase",
+        "left": 33,
+        "right": 97,
+        "width": 64
+      },
+      {
+        "height": 44,
+        "label": "Remove item",
+        "left": 228,
+        "right": 272,
+        "width": 44
+      },
+      {
+        "height": 60,
+        "label": "Go to Cart",
+        "left": 33,
+        "right": 272,
+        "width": 239
+      }
+    ],
+    "documentWidth": 305,
+    "route": "/en/cart",
+    "state": "preview",
+    "width": 320
+  },
+  {
+    "controls": [],
+    "documentWidth": 375,
+    "route": "/en/cart",
+    "state": "preview",
+    "width": 390
+  },
+  {
+    "controls": [],
+    "documentWidth": 753,
+    "route": "/en/cart",
+    "state": "preview",
+    "width": 768
+  },
+  {
+    "controls": [],
+    "documentWidth": 1425,
+    "route": "/en/cart",
+    "state": "preview",
+    "width": 1440
+  },
+  {
+    "documentWidth": 305,
+    "focused": "Finalizar compra",
+    "progress": [
+      {
+        "left": 33,
+        "right": 112.65625,
+        "text": "1Dados pessoais"
+      },
+      {
+        "left": 112.65625,
+        "right": 192.328125,
+        "text": "2Entrega"
+      },
+      {
+        "left": 192.328125,
+        "right": 271.984375,
+        "text": "3Pagamento"
+      }
+    ],
+    "route": "/pt-BR/checkout",
+    "state": "personal",
+    "width": 320
+  },
+  {
+    "documentWidth": 305,
+    "focused": "Endereço de entrega",
+    "progress": [
+      {
+        "left": 33,
+        "right": 112.65625,
+        "text": "1Dados pessoais"
+      },
+      {
+        "left": 112.65625,
+        "right": 192.328125,
+        "text": "2Entrega"
+      },
+      {
+        "left": 192.328125,
+        "right": 271.984375,
+        "text": "3Pagamento"
+      }
+    ],
+    "route": "/pt-BR/checkout",
+    "state": "shipping",
+    "width": 320
+  },
+  {
+    "documentWidth": 305,
+    "focused": "Dados do pagamento",
+    "progress": [
+      {
+        "left": 33,
+        "right": 112.65625,
+        "text": "1Dados pessoais"
+      },
+      {
+        "left": 112.65625,
+        "right": 192.328125,
+        "text": "2Entrega"
+      },
+      {
+        "left": 192.328125,
+        "right": 271.984375,
+        "text": "3Pagamento"
+      }
+    ],
+    "route": "/pt-BR/checkout",
+    "state": "payment",
+    "submit": [
+      "Confirmar pedido"
+    ],
+    "width": 320
+  },
+  {
+    "documentWidth": 305,
+    "focused": "Checkout",
+    "progress": [
+      {
+        "left": 33,
+        "right": 112.65625,
+        "text": "1Personal"
+      },
+      {
+        "left": 112.65625,
+        "right": 192.328125,
+        "text": "2Shipping"
+      },
+      {
+        "left": 192.328125,
+        "right": 271.984375,
+        "text": "3Payment"
+      }
+    ],
+    "route": "/en/checkout",
+    "state": "personal",
+    "width": 320
+  },
+  {
+    "documentWidth": 305,
+    "focused": "Shipping Address",
+    "progress": [
+      {
+        "left": 33,
+        "right": 112.65625,
+        "text": "1Personal"
+      },
+      {
+        "left": 112.65625,
+        "right": 192.328125,
+        "text": "2Shipping"
+      },
+      {
+        "left": 192.328125,
+        "right": 271.984375,
+        "text": "3Payment"
+      }
+    ],
+    "route": "/en/checkout",
+    "state": "shipping",
+    "width": 320
+  },
+  {
+    "documentWidth": 305,
+    "focused": "Payment Details",
+    "progress": [
+      {
+        "left": 33,
+        "right": 112.65625,
+        "text": "1Personal"
+      },
+      {
+        "left": 112.65625,
+        "right": 192.328125,
+        "text": "2Shipping"
+      },
+      {
+        "left": 192.328125,
+        "right": 271.984375,
+        "text": "3Payment"
+      }
+    ],
+    "route": "/en/checkout",
+    "state": "payment",
+    "submit": [
+      "Place Order"
+    ],
+    "width": 320
+  },
+  {
+    "documentWidth": 753,
+    "progress": [
+      {
+        "left": 40.03125,
+        "right": 264.34375,
+        "text": "1Personal"
+      },
+      {
+        "left": 264.34375,
+        "right": 488.65625,
+        "text": "2Shipping"
+      },
+      {
+        "left": 488.65625,
+        "right": 712.96875,
+        "text": "3Payment"
+      }
+    ],
+    "route": "/en/checkout",
+    "state": "payment",
+    "width": 768
+  },
+  {
+    "documentWidth": 1425,
+    "progress": [
+      {
+        "left": 129.5,
+        "right": 379.5,
+        "text": "1Personal"
+      },
+      {
+        "left": 379.5,
+        "right": 629.5,
+        "text": "2Shipping"
+      },
+      {
+        "left": 629.5,
+        "right": 879.5,
+        "text": "3Payment"
+      }
+    ],
+    "route": "/en/checkout",
+    "state": "payment",
+    "width": 1440
+  },
+  {
+    "controls": [
+      {
+        "height": 44,
+        "label": "Diminuir quantidade",
+        "left": 17,
+        "right": 61,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Quantidade atual",
+        "left": 61,
+        "right": 125,
+        "width": 64
+      },
+      {
+        "height": 44,
+        "label": "Aumentar quantidade",
+        "left": 125,
+        "right": 169,
+        "width": 44
+      },
+      {
+        "height": 50.390625,
+        "label": "Adicionar ao carrinho",
+        "left": 16,
+        "right": 289,
+        "width": 273
+      }
+    ],
+    "documentWidth": 305,
+    "route": "/pt-BR/product/4d5e6f7g-8h9i-0j1k-2l3m-4n5o6p7q8r9s",
+    "width": 320
+  },
+  {
+    "controls": [
+      {
+        "height": 44,
+        "label": "Diminuir quantidade",
+        "left": 393.5,
+        "right": 437.5,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Quantidade atual",
+        "left": 437.5,
+        "right": 501.5,
+        "width": 64
+      },
+      {
+        "height": 44,
+        "label": "Aumentar quantidade",
+        "left": 501.5,
+        "right": 545.5,
+        "width": 44
+      },
+      {
+        "height": 50.390625,
+        "label": "Adicionar ao carrinho",
+        "left": 392.5,
+        "right": 729.96875,
+        "width": 337.46875
+      }
+    ],
+    "documentWidth": 753,
+    "route": "/pt-BR/product/4d5e6f7g-8h9i-0j1k-2l3m-4n5o6p7q8r9s",
+    "width": 768
+  },
+  {
+    "controls": [
+      {
+        "height": 44,
+        "label": "Diminuir quantidade",
+        "left": 741.5,
+        "right": 785.5,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Quantidade atual",
+        "left": 785.5,
+        "right": 849.5,
+        "width": 64
+      },
+      {
+        "height": 44,
+        "label": "Aumentar quantidade",
+        "left": 849.5,
+        "right": 893.5,
+        "width": 44
+      },
+      {
+        "height": 50.390625,
+        "label": "Adicionar ao carrinho",
+        "left": 740.5,
+        "right": 1312.5,
+        "width": 572
+      }
+    ],
+    "documentWidth": 1425,
+    "route": "/pt-BR/product/4d5e6f7g-8h9i-0j1k-2l3m-4n5o6p7q8r9s",
+    "width": 1440
+  },
+  {
+    "controls": [
+      {
+        "height": 44,
+        "label": "Decrease quantity",
+        "left": 17,
+        "right": 61,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Current quantity",
+        "left": 61,
+        "right": 125,
+        "width": 64
+      },
+      {
+        "height": 44,
+        "label": "Increase quantity",
+        "left": 125,
+        "right": 169,
+        "width": 44
+      },
+      {
+        "height": 50.390625,
+        "label": "Add to Cart",
+        "left": 16,
+        "right": 289,
+        "width": 273
+      }
+    ],
+    "documentWidth": 305,
+    "route": "/en/product/4d5e6f7g-8h9i-0j1k-2l3m-4n5o6p7q8r9s",
+    "width": 320
+  },
+  {
+    "controls": [
+      {
+        "height": 44,
+        "label": "Decrease quantity",
+        "left": 393.5,
+        "right": 437.5,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Current quantity",
+        "left": 437.5,
+        "right": 501.5,
+        "width": 64
+      },
+      {
+        "height": 44,
+        "label": "Increase quantity",
+        "left": 501.5,
+        "right": 545.5,
+        "width": 44
+      },
+      {
+        "height": 50.390625,
+        "label": "Add to Cart",
+        "left": 392.5,
+        "right": 729.96875,
+        "width": 337.46875
+      }
+    ],
+    "documentWidth": 753,
+    "route": "/en/product/4d5e6f7g-8h9i-0j1k-2l3m-4n5o6p7q8r9s",
+    "width": 768
+  },
+  {
+    "controls": [
+      {
+        "height": 44,
+        "label": "Decrease quantity",
+        "left": 741.5,
+        "right": 785.5,
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Current quantity",
+        "left": 785.5,
+        "right": 849.5,
+        "width": 64
+      },
+      {
+        "height": 44,
+        "label": "Increase quantity",
+        "left": 849.5,
+        "right": 893.5,
+        "width": 44
+      },
+      {
+        "height": 50.390625,
+        "label": "Add to Cart",
+        "left": 740.5,
+        "right": 1312.5,
+        "width": 572
+      }
+    ],
+    "documentWidth": 1425,
+    "route": "/en/product/4d5e6f7g-8h9i-0j1k-2l3m-4n5o6p7q8r9s",
+    "width": 1440
+  }
+]

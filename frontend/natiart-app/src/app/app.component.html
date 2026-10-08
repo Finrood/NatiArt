@@ -1,8 +1,8 @@
-<div class="bg-background min-h-screen font-sans text-secondary">
-
-  <app-language-selector></app-language-selector>
+<div class="bg-background min-h-screen font-sans text-secondary-dark">
+  <a href="#store-content" class="skip-link" i18n>Skip to content</a>
   <app-top-menu class="sticky top-0 z-50 block"></app-top-menu>
-  <router-outlet></router-outlet>
+  <div id="store-content" tabindex="-1" class="min-h-[calc(100svh-5.5rem)]">
+    <router-outlet></router-outlet>
+  </div>
   <app-footer></app-footer>
-
 </div>

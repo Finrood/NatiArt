@@ -30,6 +30,7 @@ test -s "$html/index.html"
 # without replacing content already used by tabs from another release.
 find "$html" -type f | while IFS= read -r source; do
     relative=${source#"$html"/}
+    case "$relative" in fonts/*|*/fonts/*) continue ;; esac
     printf '%s\n' "$relative" | grep -Eq '^([a-zA-Z0-9_-]+/)*[a-zA-Z0-9_-]+-[a-zA-Z0-9]{8,}\.(js|css|woff2?|png|jpe?g|webp|svg|ico)$' || continue
     target="$archive/$relative"
     mkdir -p "$(dirname "$target")"

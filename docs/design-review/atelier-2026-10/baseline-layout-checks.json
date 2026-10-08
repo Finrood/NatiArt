@@ -1,0 +1,882 @@
+[
+  {
+    "screen": "home",
+    "locale": "en",
+    "documentWidth": 305,
+    "visibleImages": [
+      {
+        "alt": "Banner Image 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 320,
+    "requestedWidth": 320
+  },
+  {
+    "screen": "catalog",
+    "locale": "en",
+    "documentWidth": 305,
+    "visibleImages": [
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 320,
+    "requestedWidth": 320
+  },
+  {
+    "screen": "detail",
+    "locale": "en",
+    "documentWidth": 325,
+    "visibleImages": [
+      {
+        "alt": "Collector’s Porcelain Gift Set - Main Image",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Thumbnail 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Thumbnail 2",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Thumbnail 3",
+        "busy": null,
+        "ready": true
+      }
+    ],
+    "width": 320,
+    "requestedWidth": 320
+  },
+  {
+    "screen": "home",
+    "locale": "pt-BR",
+    "documentWidth": 305,
+    "visibleImages": [
+      {
+        "alt": "Imagem do banner 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 320,
+    "requestedWidth": 320
+  },
+  {
+    "screen": "catalog",
+    "locale": "pt-BR",
+    "documentWidth": 305,
+    "visibleImages": [
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 320,
+    "requestedWidth": 320
+  },
+  {
+    "screen": "detail",
+    "locale": "pt-BR",
+    "documentWidth": 359,
+    "visibleImages": [
+      {
+        "alt": "Collector’s Porcelain Gift Set - Imagem principal",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Miniatura 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Miniatura 2",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Miniatura 3",
+        "busy": null,
+        "ready": true
+      }
+    ],
+    "width": 320,
+    "requestedWidth": 320
+  },
+  {
+    "screen": "home",
+    "locale": "en",
+    "documentWidth": 375,
+    "visibleImages": [
+      {
+        "alt": "Banner Image 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 390,
+    "requestedWidth": 390
+  },
+  {
+    "screen": "catalog",
+    "locale": "en",
+    "documentWidth": 375,
+    "visibleImages": [
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 390,
+    "requestedWidth": 390
+  },
+  {
+    "screen": "detail",
+    "locale": "en",
+    "documentWidth": 375,
+    "visibleImages": [
+      {
+        "alt": "Collector’s Porcelain Gift Set - Main Image",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Thumbnail 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Thumbnail 2",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Thumbnail 3",
+        "busy": null,
+        "ready": true
+      }
+    ],
+    "width": 390,
+    "requestedWidth": 390
+  },
+  {
+    "screen": "home",
+    "locale": "pt-BR",
+    "documentWidth": 375,
+    "visibleImages": [
+      {
+        "alt": "Imagem do banner 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 390,
+    "requestedWidth": 390
+  },
+  {
+    "screen": "catalog",
+    "locale": "pt-BR",
+    "documentWidth": 375,
+    "visibleImages": [
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 390,
+    "requestedWidth": 390
+  },
+  {
+    "screen": "detail",
+    "locale": "pt-BR",
+    "documentWidth": 375,
+    "visibleImages": [
+      {
+        "alt": "Collector’s Porcelain Gift Set - Imagem principal",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Miniatura 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Miniatura 2",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Miniatura 3",
+        "busy": null,
+        "ready": true
+      }
+    ],
+    "width": 390,
+    "requestedWidth": 390
+  },
+  {
+    "screen": "home",
+    "locale": "en",
+    "documentWidth": 753,
+    "visibleImages": [
+      {
+        "alt": "Banner Image 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Wedding Keepsake Plate",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 768,
+    "requestedWidth": 768
+  },
+  {
+    "screen": "catalog",
+    "locale": "en",
+    "documentWidth": 753,
+    "visibleImages": [
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Guest Bathroom Dish",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 768,
+    "requestedWidth": 768
+  },
+  {
+    "screen": "detail",
+    "locale": "en",
+    "documentWidth": 753,
+    "visibleImages": [
+      {
+        "alt": "Collector’s Porcelain Gift Set - Main Image",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Thumbnail 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Thumbnail 2",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Thumbnail 3",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Lavender Tea Set — Limited Edition",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Tropical Gallery Plate",
+        "busy": null,
+        "ready": true
+      }
+    ],
+    "width": 768,
+    "requestedWidth": 768
+  },
+  {
+    "screen": "home",
+    "locale": "pt-BR",
+    "documentWidth": 753,
+    "visibleImages": [
+      {
+        "alt": "Imagem do banner 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Wedding Keepsake Plate",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 768,
+    "requestedWidth": 768
+  },
+  {
+    "screen": "catalog",
+    "locale": "pt-BR",
+    "documentWidth": 753,
+    "visibleImages": [
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Guest Bathroom Dish",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 768,
+    "requestedWidth": 768
+  },
+  {
+    "screen": "detail",
+    "locale": "pt-BR",
+    "documentWidth": 753,
+    "visibleImages": [
+      {
+        "alt": "Collector’s Porcelain Gift Set - Imagem principal",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Miniatura 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Miniatura 2",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Miniatura 3",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Lavender Tea Set — Limited Edition",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Tropical Gallery Plate",
+        "busy": null,
+        "ready": true
+      }
+    ],
+    "width": 768,
+    "requestedWidth": 768
+  },
+  {
+    "screen": "home",
+    "locale": "en",
+    "documentWidth": 1265,
+    "visibleImages": [
+      {
+        "alt": "Banner Image 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Wedding Keepsake Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Decorative Porcelain Vase",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Porcelain Dinner Plate",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 1280,
+    "requestedWidth": 1280
+  },
+  {
+    "screen": "catalog",
+    "locale": "en",
+    "documentWidth": 1265,
+    "visibleImages": [
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Guest Bathroom Dish",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Scalloped Soap Dish",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Wedding Keepsake Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Botanical Plate — Made to Order",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Decorative Porcelain Vase",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Indigo Bloom Vase",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 1280,
+    "requestedWidth": 1280
+  },
+  {
+    "screen": "detail",
+    "locale": "en",
+    "documentWidth": 1265,
+    "visibleImages": [
+      {
+        "alt": "Collector’s Porcelain Gift Set - Main Image",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Thumbnail 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Thumbnail 2",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Thumbnail 3",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Lavender Tea Set — Limited Edition",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Tropical Gallery Plate",
+        "busy": null,
+        "ready": true
+      }
+    ],
+    "width": 1280,
+    "requestedWidth": 1280
+  },
+  {
+    "screen": "home",
+    "locale": "pt-BR",
+    "documentWidth": 1265,
+    "visibleImages": [
+      {
+        "alt": "Imagem do banner 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Wedding Keepsake Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Decorative Porcelain Vase",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Porcelain Dinner Plate",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 1280,
+    "requestedWidth": 1280
+  },
+  {
+    "screen": "catalog",
+    "locale": "pt-BR",
+    "documentWidth": 1265,
+    "visibleImages": [
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Guest Bathroom Dish",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Scalloped Soap Dish",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Wedding Keepsake Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Botanical Plate — Made to Order",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Decorative Porcelain Vase",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Indigo Bloom Vase",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 1280,
+    "requestedWidth": 1280
+  },
+  {
+    "screen": "detail",
+    "locale": "pt-BR",
+    "documentWidth": 1265,
+    "visibleImages": [
+      {
+        "alt": "Collector’s Porcelain Gift Set - Imagem principal",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Miniatura 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Miniatura 2",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Miniatura 3",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Lavender Tea Set — Limited Edition",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Tropical Gallery Plate",
+        "busy": null,
+        "ready": true
+      }
+    ],
+    "width": 1280,
+    "requestedWidth": 1280
+  },
+  {
+    "screen": "home",
+    "locale": "en",
+    "documentWidth": 1425,
+    "visibleImages": [
+      {
+        "alt": "Banner Image 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Wedding Keepsake Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Decorative Porcelain Vase",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Porcelain Dinner Plate",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 1440,
+    "requestedWidth": 1440
+  },
+  {
+    "screen": "catalog",
+    "locale": "en",
+    "documentWidth": 1425,
+    "visibleImages": [
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Guest Bathroom Dish",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Scalloped Soap Dish",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Wedding Keepsake Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Botanical Plate — Made to Order",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Decorative Porcelain Vase",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Indigo Bloom Vase",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 1440,
+    "requestedWidth": 1440
+  },
+  {
+    "screen": "detail",
+    "locale": "en",
+    "documentWidth": 1425,
+    "visibleImages": [
+      {
+        "alt": "Collector’s Porcelain Gift Set - Main Image",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Thumbnail 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Thumbnail 2",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Thumbnail 3",
+        "busy": null,
+        "ready": true
+      }
+    ],
+    "width": 1440,
+    "requestedWidth": 1440
+  },
+  {
+    "screen": "home",
+    "locale": "pt-BR",
+    "documentWidth": 1425,
+    "visibleImages": [
+      {
+        "alt": "Imagem do banner 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Wedding Keepsake Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Decorative Porcelain Vase",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Porcelain Dinner Plate",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 1440,
+    "requestedWidth": 1440
+  },
+  {
+    "screen": "catalog",
+    "locale": "pt-BR",
+    "documentWidth": 1425,
+    "visibleImages": [
+      {
+        "alt": "Blush Botanical Dinner Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Guest Bathroom Dish",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Scalloped Soap Dish",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Blush Wedding Keepsake Plate",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Botanical Plate — Made to Order",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Decorative Porcelain Vase",
+        "busy": "false",
+        "ready": true
+      },
+      {
+        "alt": "Indigo Bloom Vase",
+        "busy": "false",
+        "ready": true
+      }
+    ],
+    "width": 1440,
+    "requestedWidth": 1440
+  },
+  {
+    "screen": "detail",
+    "locale": "pt-BR",
+    "documentWidth": 1425,
+    "visibleImages": [
+      {
+        "alt": "Collector’s Porcelain Gift Set - Imagem principal",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Miniatura 1",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Miniatura 2",
+        "busy": null,
+        "ready": true
+      },
+      {
+        "alt": "Collector’s Porcelain Gift Set Miniatura 3",
+        "busy": null,
+        "ready": true
+      }
+    ],
+    "width": 1440,
+    "requestedWidth": 1440
+  }
+]

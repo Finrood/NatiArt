@@ -222,6 +222,36 @@ describe('CheckoutComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('focuses and reveals the newly rendered step in both directions without stealing initial focus', async () => {
+    const host: HTMLElement = fixture.nativeElement as HTMLElement;
+    document.body.appendChild(host);
+    const scrollSpy: jasmine.Spy = spyOn(HTMLElement.prototype, 'scrollIntoView').and.stub();
+    try {
+      expect(document.activeElement).not.toBe(host.querySelector('h2'));
+
+      await component.nextStep();
+      fixture.detectChanges();
+      const shippingHeading: HTMLElement = host.querySelector('form h2') as HTMLElement;
+      expect(shippingHeading.textContent).toContain('Shipping Address');
+      expect(document.activeElement).toBe(shippingHeading);
+      expect(scrollSpy).toHaveBeenCalledWith({block: 'start'});
+
+      await component.nextStep();
+      fixture.detectChanges();
+      const paymentHeading: HTMLElement = host.querySelector('form h2') as HTMLElement;
+      expect(paymentHeading.textContent).toContain('Payment Details');
+      expect(document.activeElement).toBe(paymentHeading);
+
+      component.prevStep();
+      fixture.detectChanges();
+      expect(document.activeElement).toBe(host.querySelector('form h2'));
+      expect(document.activeElement?.textContent).toContain('Shipping Address');
+      expect(scrollSpy).toHaveBeenCalledTimes(3);
+    } finally {
+      host.remove();
+    }
+  });
+
   it('preserves a buyer-edited address and house number across user refreshes', () => {
     const shipping = component.checkoutForm.get('shippingInfo')!;
     shipping.get('street')!.setValue('Rua Escolhida');

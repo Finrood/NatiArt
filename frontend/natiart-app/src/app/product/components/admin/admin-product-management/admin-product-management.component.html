@@ -1,39 +1,37 @@
-<div class="container mx-auto p-4">
-  <!-- Alert Messages Component -->
+<div class="min-w-0">
+
   <app-alert-messages #alertMessages></app-alert-messages>
 
-  <!-- Header -->
-  <div class="flex justify-between items-center mb-4">
+  <div class="flex flex-wrap gap-3 justify-between items-center mb-6">
     <h2 class="text-2xl sm:text-3xl font-light" i18n>Products</h2>
     <app-button (click)="openModal()" color="primary" size="md" i18n>Add New Product
     </app-button>
   </div>
 
-  <!-- Products Grid -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
     @for (product of products$ | async; track product) {
       <div
-        [ngClass]="{'opacity-50': !product.active}"
-        class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+        [class.admin-hidden]="!product.active"
+        class="bg-white p-6 art-panel">
         <div class="bg-primary-lighter h-48 sm:h-64 mb-4 rounded-md overflow-hidden relative">
           @if (imageUrls[product.id!]) {
             <img [alt]="product.label" [src]="imageUrls[product.id!]"
-              class="w-full h-full object-cover">
+              class="w-full h-full object-contain">
           }
           <div class="absolute top-2 right-2 flex space-x-2">
-            <!-- Fixed Golden Border Icon (Badge Check) -->
+
             @if (product.hasFixedGoldenBorder) {
               <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-500" viewBox="0 0 20 20" fill="currentColor" title="Fixed Golden Border" i18n-title>
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-10.293a1 1 0 00-1.414-1.414L9 9.586 7.707 8.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
               </svg>
             }
-            <!-- Custom Golden Border Icon (Dashed Rectangle) -->
+
             @if (product.availablePersonalizations.includes(PersonalizationOption.GOLDEN_BORDER)) {
               <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" title="Custom Golden Border" i18n-title>
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke-width="2" stroke-dasharray="4 2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             }
-            <!-- Custom Images Icon (Photograph) -->
+
             @if (product.availablePersonalizations.includes(PersonalizationOption.CUSTOM_IMAGE)) {
               <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" title="Custom Images" i18n-title>
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -43,17 +41,18 @@
           </div>
         </div>
         <h3 class="text-xl font-semibold mb-2">{{ product.label }}</h3>
+        @if (!product.active) { <p class="admin-hidden-label" i18n>Hidden from the shop</p> }
         <p class="text-gray-600 mb-4">{{ product.description }}</p>
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex flex-wrap gap-3 justify-between items-center mb-6">
           <span class="text-lg font-bold text-primary">{{ product.markedPrice | currency:'BRL' }}</span>
-          <span class="text-sm text-gray-500 line-through">{{ product.originalPrice | currency:'BRL' }}</span>
+          @if (product.originalPrice > product.markedPrice) { <span class="text-sm text-gray-500 line-through">{{ product.originalPrice | currency:'BRL' }}</span> }
         </div>
         <div class="flex flex-wrap justify-between gap-2">
           <app-button (click)="openModal(product)" color="primary" size="sm" i18n>Edit
           </app-button>
-          <app-button (click)="deleteProduct(product.id!)" color="danger" size="sm" i18n>Delete
+          <app-button (click)="deleteProduct(product.id!)" color="link" customClass="text-error" size="sm" i18n>Delete
           </app-button>
-          <app-button (click)="toggleProductVisibility(product)" color="primary" size="sm">
+          <app-button (click)="toggleProductVisibility(product)" color="light" size="sm">
             <span i18n>{product.active, select, true {Hide} other {Show}}</span>
             <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
               @if (product.active) {
@@ -80,23 +79,22 @@
     }
   </div>
 
-  <!-- Product Modal -->
 <app-page-controls [page]="pages.$page()" [total]="pages.$total()" [hasNext]="pages.$hasNext()"
     [loading]="pages.$loading()" [error]="pages.$error()" (pageChange)="pages.load($event)"></app-page-controls>
   @if (modalVisible) {
-    <app-accessible-dialog label="Product editor" i18n-label (dismiss)="closeModal()">
+    <app-accessible-dialog label="Product editor" i18n-label [showClose]="true" (dismiss)="closeModal()">
       <div
-        class="relative bg-white p-6 rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto transform transition-transform duration-300 ease-in-out">
-        <!-- Loading overlay -->
+        class="relative bg-white p-6 art-panel w-full max-w-md max-h-[90vh] overflow-y-auto transform transition-transform duration-300 ease-in-out">
+
         @if (isSubmitting) {
           <div
             class="absolute inset-0 bg-white/75 flex items-center justify-center z-10">
             <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div>
           </div>
         }
-        <h3 class="text-2xl mb-4 font-light" i18n>{isEditingProduct, select, true {Edit Product} other {Add Product}}</h3>
+        <h3 class="text-2xl mb-4 font-light pr-10" i18n>{isEditingProduct, select, true {Edit Product} other {Add Product}}</h3>
         <form (ngSubmit)="submitForm()" [formGroup]="productForm">
-          <!-- Label -->
+
           <div class="mb-4">
             <label for="productLabel" class="block text-sm font-medium text-gray-700 mb-1" i18n>Label</label>
             <input id="productLabel" name="productLabel" type="text" formControlName="label" maxlength="255"
@@ -108,7 +106,7 @@
               </div>
             }
           </div>
-          <!-- Description -->
+
           <div class="mb-4">
             <label for="productDescription" class="block text-sm font-medium text-gray-700 mb-1" i18n>Description</label>
             <textarea id="productDescription" name="productDescription" formControlName="description" rows="3" maxlength="255"
@@ -117,7 +115,7 @@
               <div class="text-red-600 text-sm mt-1" i18n>Description must be at most 255 characters.</div>
             }
           </div>
-          <!-- Original Price -->
+
           <div class="mb-4">
             <label for="productOriginalPrice" class="block text-sm font-medium text-gray-700 mb-1" i18n>Original Price</label>
             <input id="productOriginalPrice" name="productOriginalPrice" type="number" formControlName="originalPrice" min="0.01" max="99999999.99" step="0.01"
@@ -126,7 +124,7 @@
               <div class="text-red-600 text-sm mt-1" i18n>Enter a price from R$0.01 to R$99,999,999.99 with at most two decimal places.</div>
             }
           </div>
-          <!-- Marked Price -->
+
           <div class="mb-4">
             <label for="productMarkedPrice" class="block text-sm font-medium text-gray-700 mb-1" i18n>Marked Price</label>
             <input id="productMarkedPrice" name="productMarkedPrice" type="number" formControlName="markedPrice" min="0.01" max="99999999.99" step="0.01"
@@ -135,7 +133,7 @@
               <div class="text-red-600 text-sm mt-1" i18n>Leave this blank or enter a price from R$0.01 to R$99,999,999.99 with at most two decimal places.</div>
             }
           </div>
-          <!-- Stock Quantity -->
+
           <div class="mb-4">
             <label for="productStockQuantity" class="block text-sm font-medium text-gray-700 mb-1" i18n>Stock Quantity</label>
             <input id="productStockQuantity" name="productStockQuantity" type="number" formControlName="stockQuantity" min="0" step="1"
@@ -144,13 +142,13 @@
               <div class="text-red-600 text-sm mt-1" i18n>Enter a whole number of items, zero or greater.</div>
             }
           </div>
-          <!-- Shipping Weight -->
+
           <div class="mb-4">
-            <label for="productWeightKg" class="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
+            <label for="productWeightKg" class="block text-sm font-medium text-gray-700 mb-1" i18n>Weight (kg)</label>
             <input id="productWeightKg" name="productWeightKg" type="number" step="0.001" min="0.01" max="100" formControlName="weightKg"
               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
           </div>
-          <!-- Category Select -->
+
           <div class="mb-4">
             <label for="productCategory" class="block text-sm font-medium text-gray-700 mb-1" i18n>Category</label>
             <select id="productCategory" name="productCategory" formControlName="categoryId"
@@ -169,7 +167,7 @@
                 @if (categoryOptions.$error()) { <p role="alert">{{ categoryOptions.$error() }}</p> }
               }
           </div>
-          <!-- Package Select -->
+
           <div class="mb-4">
             <label for="productPackage" class="block text-sm font-medium text-gray-700 mb-1" i18n>Package</label>
             <select id="productPackage" name="productPackage" formControlName="packageId"
@@ -188,7 +186,7 @@
                 @if (packageOptions.$error()) { <p role="alert">{{ packageOptions.$error() }}</p> }
               }
           </div>
-          <!-- Fixed Golden Border Checkbox -->
+
           <div class="mb-4">
             <label class="flex items-center space-x-2">
               <input type="checkbox" formControlName="hasFixedGoldenBorder" id="hasFixedGoldenBorder"
@@ -197,21 +195,21 @@
               <span class="text-sm font-medium text-gray-700" i18n>Has fixed golden borders</span>
             </label>
           </div>
-          <!-- Merchandising flags -->
+
           <fieldset class="mb-4 space-y-2">
-            <legend class="block text-sm font-medium text-gray-700 mb-1">Merchandising</legend>
+            <legend class="block text-sm font-medium text-gray-700 mb-1" i18n>Merchandising</legend>
             <label class="flex items-center space-x-2">
               <input type="checkbox" formControlName="newProduct" id="newProduct"
                 class="form-checkbox h-5 w-5 text-primary focus:ring-primary focus:ring-opacity-50">
-              <span class="text-sm font-medium text-gray-700">Show in New Arrivals</span>
+              <span class="text-sm font-medium text-gray-700" i18n>Show in New Arrivals</span>
             </label>
             <label class="flex items-center space-x-2">
               <input type="checkbox" formControlName="featuredProduct" id="featuredProduct"
                 class="form-checkbox h-5 w-5 text-primary focus:ring-primary focus:ring-opacity-50">
-              <span class="text-sm font-medium text-gray-700">Show in Featured Products</span>
+              <span class="text-sm font-medium text-gray-700" i18n>Show in Featured Products</span>
             </label>
           </fieldset>
-          <!-- Personalization Options Checkboxes -->
+
           @for (option of availablePersonalizationOptions; track option) {
             <div class="mb-4">
               <label class="flex items-center space-x-2">
@@ -223,20 +221,20 @@
               </label>
             </div>
           }
-          <!-- Images File Input -->
+
           <div class="mb-4">
             <label for="productImages" class="block text-sm font-medium text-gray-700 mb-1" i18n>Images</label>
             <input id="productImages" type="file" multiple accept="image/*" (change)="onFileSelected($event)"
               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
           </div>
-          <!-- Loading Overlay for Images -->
+
           @if (isLoadingImages) {
             <div
               class="absolute inset-0 bg-white/75 flex items-center justify-center z-10">
               <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div>
             </div>
           }
-          <!-- Image Previews with Drag-and-Drop -->
+
           <div class="mb-4">
             <label class="block text-sm font-medium text-gray-700 mb-1" i18n>Image Previews (Drag to reorder)</label>
             <div cdkDropList (cdkDropListDropped)="onImageDrop($event)" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -255,7 +253,7 @@
               }
             </div>
           </div>
-          <!-- Form Actions -->
+
           <div class="flex flex-wrap justify-end gap-2">
             <app-button type="button" (click)="closeModal()" color="secondary" size="md" i18n>Cancel
             </app-button>

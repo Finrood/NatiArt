@@ -14,12 +14,12 @@ export function languageUrl(language: ShopLanguage, pathname: string, search: st
 @Component({
   selector: 'app-language-selector',
   template: `
-    <nav class="flex flex-wrap justify-end items-center gap-3 px-4 py-2 text-sm" aria-label="Shop language" i18n-aria-label>
-      <span i18n>Language</span>
+    <nav class="flex flex-wrap items-center gap-3 text-xs font-sans" aria-label="Shop language" i18n-aria-label>
+      <span class="sr-only" i18n>Language</span>
       <a [href]="url('en')" lang="en" hreflang="en" [attr.aria-current]="language === 'en' ? 'true' : null"
-         (click)="beforeSwitch($event, 'en')" class="underline underline-offset-4 focus-visible:outline-2">English</a>
+         (click)="beforeSwitch($event, 'en')" class="inline-flex min-h-11 items-center underline underline-offset-4 focus-visible:outline-2">English</a>
       <a [href]="url('pt-BR')" lang="pt-BR" hreflang="pt-BR" [attr.aria-current]="language === 'pt-BR' ? 'true' : null"
-         (click)="beforeSwitch($event, 'pt-BR')" class="underline underline-offset-4 focus-visible:outline-2">Português</a>
+         (click)="beforeSwitch($event, 'pt-BR')" class="inline-flex min-h-11 items-center underline underline-offset-4 focus-visible:outline-2">Português</a>
     </nav>
   `
 })

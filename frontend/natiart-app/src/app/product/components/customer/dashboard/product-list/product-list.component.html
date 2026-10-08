@@ -1,16 +1,17 @@
-<section class="py-12 bg-background">
-  <div class="container mx-auto px-4 sm:px-6 lg:px-8">
-    <h2 class="text-3xl md:text-4xl font-serif font-light text-secondary text-center mb-10">{{ title }}</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-      <!-- Track stable ids; id-less cards fall back to object identity (no duplicate-key throw). -->
+<section class="home-products">
+  <div class="section-heading"><h2>{{ title }}</h2><a routerLink="/products" class="art-link"><span i18n>All Products</span><span aria-hidden="true">↗</span></a></div>
+  @if ($loading()) {
+    <p class="mb-4 text-sm" role="status" i18n>Loading products...</p>
+    <div class="art-grid" aria-hidden="true">@for (slot of [1,2,3,4]; track slot) { <div class="loading-card"><div class="aspect-square art-skeleton"></div><div class="art-skeleton h-6 mt-4 w-3/4"></div><div class="art-skeleton h-4 mt-3 w-1/2"></div></div> }</div>
+  } @else if ($loadError()) {
+    <div class="art-empty"><p role="alert" class="mb-4" i18n>Products could not be loaded. Please try again.</p><button type="button" (click)="retryLoad()" class="art-action" i18n>Retry page</button></div>
+  } @else {
+    <div class="art-grid">
       @for (product of products | async; track (product.id ?? product)) {
         <app-product-card [product]="product" [imageUrl]="imageUrls[product.id ?? 'card-' + $index] || emptyImage"
           [imageLoading]="images.states()[product.id ?? 'card-' + $index] === 'loading'"
-          [quickAdd]="true" (imageFailed)="images.failed(product.id ?? 'card-' + $index)"
-          (itemAdded)="triggerFlyAnimation($event)"></app-product-card>
-      }
+          (imageFailed)="images.failed(product.id ?? 'card-' + $index)"></app-product-card>
+      } @empty { <p class="text-text-muted" i18n>No products match this selection.</p> }
     </div>
-  </div>
+  }
 </section>
-
-<app-personalization-modal (close)="closePersonalizationModal()" (personalize)="onPersonalizationComplete($event)" [product]="selectedProduct" [show]="showPersonalizationModal"></app-personalization-modal>

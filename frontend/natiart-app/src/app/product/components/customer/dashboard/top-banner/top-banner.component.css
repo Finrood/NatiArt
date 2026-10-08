@@ -1,1 +1,18 @@
-/* No custom CSS needed for top-banner as all styles are handled by Tailwind utility classes in the HTML. */
+:host { display: block; background: #f4e8e2; border-bottom: 1px solid rgb(var(--primary-light) / .5); }
+.atelier-hero { display: grid; grid-template-columns: 1.05fr 1fr; align-items: center; gap: 3rem; max-width: 80rem; margin: auto; padding: 3rem clamp(1.25rem, 5vw, 4rem); }
+.hero-copy { padding-block: 1rem; }
+.art-eyebrow { letter-spacing: .12em; text-transform: uppercase; font-size: .6875rem; }
+h1 { font: 400 clamp(3rem, 5.8vw, 5.5rem)/1.02 var(--font-serif); letter-spacing: -.045em; color: rgb(var(--secondary-dark)); max-width: 8em; }
+.hero-description { max-width: 27rem; margin: 1.75rem 0 2rem; color: rgb(var(--secondary)); font-size: 1rem; }
+.art-action { gap: 1.5rem; }
+.art-action svg { width: 1.25rem; height: 1.25rem; }
+.hero-art { position: relative; justify-self: center; width: min(100%, 27rem); aspect-ratio: .92; overflow: hidden; border-radius: 14rem 14rem .5rem .5rem; background: #f6ebe7; }
+.hero-art img { position: absolute; height: 100%; width: auto; max-width: none; right: 0; }
+@media (max-width: 767px) {
+  .atelier-hero { grid-template-columns: 1fr; gap: 1.75rem; padding: 1.75rem 1rem; }
+  .hero-copy { padding: 0; }
+  h1 { max-width: 10em; font-size: clamp(2.35rem, 9vw, 3.5rem); line-height: 1.1; }
+  .art-eyebrow { letter-spacing: .08em; margin-bottom: .625rem; }
+  .hero-description { margin: .875rem 0 1.25rem; font-size: .875rem; max-width: 24rem; }
+  .hero-art { width: min(100%, 15rem); }
+}

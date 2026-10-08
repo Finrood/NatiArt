@@ -9,3 +9,13 @@ Missing/failed images use a small inline SVG with accessible alt text. Decode er
 Verification: HTTP tests cover concurrent owners/repeated emissions, last-owner cancellation, same-key path/File replacement, unchanged-path product mutation invalidation, one-shot fallback and 100 browsing replacements with matching create/revoke counts. Real mini-cart plus summary components share a delayed GET and render through signals without an extra click; a removed delayed cart line cancels its request. Summary replacement/removal uses real rendered inputs. Full ChromeHeadless suite after current-master integration: 253 specs. Explicit production build is required.
 
 When combining CA13/CA21, use the persisted custom-art reference through its authorized API rather than falling back to public product art; extend the source contract with an authorized resolver if required. Preserve CA26 server image ordering, CA34 keyboard controls, CA36 route/zoom recovery, and CA23 catalog pagination. Keep existing admin preview upload lifetimes independent; these collections own only storefront image URLs.
+
+Home selects four featured products and four new products excluding the
+featured IDs, retaining API order. ProductList's default limit remains unlimited
+for other callers. It retains the response so changed limits/exclusions can
+reselect without another request; its image collection owns only selected
+products. Home's new-product images activate when their section approaches the
+viewport (200px root margin), fall back to eager loading without
+IntersectionObserver, and disconnect the observer on activation/destruction.
+Retry/destruction cancel pending list requests. Home-only Nginx responses preload
+the existing approved hero asset; other routes do not preload that photograph.

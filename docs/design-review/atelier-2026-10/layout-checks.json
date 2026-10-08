@@ -1,0 +1,212 @@
+[
+  {
+    "screen": "home",
+    "locale": "en",
+    "requestedWidth": 1440,
+    "documentWidth": 1425,
+    "width": 1440
+  },
+  {
+    "screen": "home",
+    "locale": "en",
+    "requestedWidth": 1280,
+    "documentWidth": 1265,
+    "width": 1280
+  },
+  {
+    "screen": "home",
+    "locale": "en",
+    "requestedWidth": 768,
+    "documentWidth": 753,
+    "width": 768
+  },
+  {
+    "screen": "home",
+    "locale": "en",
+    "requestedWidth": 390,
+    "documentWidth": 375,
+    "width": 390
+  },
+  {
+    "screen": "home",
+    "locale": "en",
+    "requestedWidth": 320,
+    "documentWidth": 305,
+    "width": 320
+  },
+  {
+    "screen": "home",
+    "locale": "pt-BR",
+    "requestedWidth": 1440,
+    "documentWidth": 1425,
+    "width": 1440
+  },
+  {
+    "screen": "home",
+    "locale": "pt-BR",
+    "requestedWidth": 1280,
+    "documentWidth": 1265,
+    "width": 1280
+  },
+  {
+    "screen": "home",
+    "locale": "pt-BR",
+    "requestedWidth": 768,
+    "documentWidth": 753,
+    "width": 768
+  },
+  {
+    "screen": "home",
+    "locale": "pt-BR",
+    "requestedWidth": 390,
+    "documentWidth": 375,
+    "width": 390
+  },
+  {
+    "screen": "home",
+    "locale": "pt-BR",
+    "requestedWidth": 320,
+    "documentWidth": 305,
+    "width": 320
+  },
+  {
+    "screen": "catalog",
+    "locale": "en",
+    "requestedWidth": 1440,
+    "documentWidth": 1425,
+    "width": 1440
+  },
+  {
+    "screen": "catalog",
+    "locale": "en",
+    "requestedWidth": 1280,
+    "documentWidth": 1265,
+    "width": 1280
+  },
+  {
+    "screen": "catalog",
+    "locale": "en",
+    "requestedWidth": 768,
+    "documentWidth": 753,
+    "width": 768
+  },
+  {
+    "screen": "catalog",
+    "locale": "en",
+    "requestedWidth": 390,
+    "documentWidth": 375,
+    "width": 390
+  },
+  {
+    "screen": "catalog",
+    "locale": "en",
+    "requestedWidth": 320,
+    "documentWidth": 305,
+    "width": 320
+  },
+  {
+    "screen": "catalog",
+    "locale": "pt-BR",
+    "requestedWidth": 1440,
+    "documentWidth": 1425,
+    "width": 1440
+  },
+  {
+    "screen": "catalog",
+    "locale": "pt-BR",
+    "requestedWidth": 1280,
+    "documentWidth": 1265,
+    "width": 1280
+  },
+  {
+    "screen": "catalog",
+    "locale": "pt-BR",
+    "requestedWidth": 768,
+    "documentWidth": 753,
+    "width": 768
+  },
+  {
+    "screen": "catalog",
+    "locale": "pt-BR",
+    "requestedWidth": 390,
+    "documentWidth": 375,
+    "width": 390
+  },
+  {
+    "screen": "catalog",
+    "locale": "pt-BR",
+    "requestedWidth": 320,
+    "documentWidth": 305,
+    "width": 320
+  },
+  {
+    "screen": "detail",
+    "locale": "en",
+    "requestedWidth": 1440,
+    "documentWidth": 1425,
+    "width": 1440
+  },
+  {
+    "screen": "detail",
+    "locale": "en",
+    "requestedWidth": 1280,
+    "documentWidth": 1265,
+    "width": 1280
+  },
+  {
+    "screen": "detail",
+    "locale": "en",
+    "requestedWidth": 768,
+    "documentWidth": 753,
+    "width": 768
+  },
+  {
+    "screen": "detail",
+    "locale": "en",
+    "requestedWidth": 390,
+    "documentWidth": 375,
+    "width": 390
+  },
+  {
+    "screen": "detail",
+    "locale": "en",
+    "requestedWidth": 320,
+    "documentWidth": 305,
+    "width": 320
+  },
+  {
+    "screen": "detail",
+    "locale": "pt-BR",
+    "requestedWidth": 1440,
+    "documentWidth": 1425,
+    "width": 1440
+  },
+  {
+    "screen": "detail",
+    "locale": "pt-BR",
+    "requestedWidth": 1280,
+    "documentWidth": 1265,
+    "width": 1280
+  },
+  {
+    "screen": "detail",
+    "locale": "pt-BR",
+    "requestedWidth": 768,
+    "documentWidth": 753,
+    "width": 768
+  },
+  {
+    "screen": "detail",
+    "locale": "pt-BR",
+    "requestedWidth": 390,
+    "documentWidth": 375,
+    "width": 390
+  },
+  {
+    "screen": "detail",
+    "locale": "pt-BR",
+    "requestedWidth": 320,
+    "documentWidth": 305,
+    "width": 320
+  }
+]

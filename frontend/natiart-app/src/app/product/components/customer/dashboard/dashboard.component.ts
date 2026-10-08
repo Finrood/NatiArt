@@ -1,18 +1,18 @@
-import {Component} from '@angular/core';
-import {LeftMenuComponent} from "../left-menu/left-menu.component";
+import {Component, signal} from '@angular/core';
+import {RouterLink} from '@angular/router';
 import {ProductListComponent} from "./product-list/product-list.component";
 import {TopBannerComponent} from "./top-banner/top-banner.component";
 
 @Component({
   selector: 'app-dashboard',
   imports: [
-    LeftMenuComponent,
     ProductListComponent,
-    TopBannerComponent
+    TopBannerComponent,
+    RouterLink
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
 export class DashboardComponent {
-
+  readonly $featuredIds = signal<string[]>([]);
 }

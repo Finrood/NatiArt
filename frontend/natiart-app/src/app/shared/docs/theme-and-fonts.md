@@ -8,6 +8,23 @@ system fallbacks. Assets, SHA-256 hashes, upstream Google Fonts commit and OFL
 licenses are versioned together in `public/fonts/manifest.json`. No runtime font
 CDN is required and fonts are outside component CSS budgets.
 
+The October 2026 atelier update delivers those five faces as full-glyph WOFF2,
+without subsetting or changing their weights. The manifest retains original TTF
+hashes/provenance and identifies the converted output hashes. Font files total
+about 311KB instead of 933KB. Poppins 400 and the display face are preloaded;
+all faces retain `font-display: swap` and Portuguese coverage.
+
+The real metadata HTTP smoke test fetches every font listed in the production
+manifest, checks exact binary content and requires revalidation headers. It
+supports the shipped WOFF2 format without depending on a legacy TTF file.
+
+Poppins owns body, controls, prices, feedback and admin; Playfair Display owns
+display headings and brand. Shared `.art-*` foundations provide warm ivory
+surfaces, bounded pages, responsive product grids and restrained rose actions.
+Common actions are at least 44px high and `.form-input` is at least 48px with
+16px text. Preserve projected-field error ownership and local delivery when
+adding screens. See the [design system](../../../../../../docs/design-review/atelier-2026-10/design-system.md).
+
 `.form-input` styling is global because projected input nodes belong to their
 caller under Angular emulated encapsulation. Error styling is scoped to the
 shared field's `.has-error` container. Form events mark that field for rendering;
@@ -37,14 +54,18 @@ payment contract when combining its UI change. No production deployment is
 claimed by the local build/computed-style checks.
 
 Readable palette: primary rose is 128/73/59 (white text 7.16:1, cream
-background text 6.61:1); hover rose is 104/54/43. Pale blush remains a surface
+ivory background text 6.70:1); hover rose is 104/54/43. Pale blush remains a surface
 color. Secondary muted text and semantic filled-button colors also meet 4.5:1
 against their intended backgrounds. Computed-style checks measure contrast
 rather than hard-coding the palette; disabled controls are excluded.
 
-Body copy, prices, forms and actions use Poppins consistently. Playfair Display
-is reserved for headings and explicit display text. Search and pagination use
-the shared button; projected inputs share a minimum 44px height. Quantity
-controls use SVG paths so their shape is independent of the active font.
+The current production build and 382-spec ChromeHeadless suite passed on
+October 8, 2026. Earlier CA-number verification describes historical integration;
+current browser and performance evidence is recorded in the atelier review.
+
+The refinement reuses the same fonts/tokens with an arched approved artwork
+frame, stronger display scale, quiet ruled product cards, semantic order pills
+and explicit readable inactive admin states. Its portrait crop keeps the
+porcelain subject visible in both locales without source-asset lettering.
 
 Responsive detail and checkout layouts must also accommodate Poppins at a 320 px viewport. Product columns allow shrinking, quantity controls retain 44 px heights, and stock text wraps below them when needed. Checkout progress uses three equal, shrinkable columns with centered labels; decorative connectors run between circle centers without reserving label width. Keep content visible rather than masking document overflow. Verify both production locales through all three checkout steps and the product detail at phone, tablet, and desktop widths.

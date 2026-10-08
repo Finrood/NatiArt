@@ -79,8 +79,11 @@ HTTPServer(('0.0.0.0',8080),Handler).serve_forever()
                 (context / 'html/index.html').write_text(f'''<!doctype html><html><body><h1>Release {release}</h1><button id="lazy">Load older tab module</button><output id="result"></output><script src="/runtime-config.js"></script><script type="module">document.querySelector('#lazy').onclick=async()=>{{try{{const value=await import('/chunk-{hash_value}.js');document.querySelector('#result').textContent=value.release+' / '+window.__NATIART_CONFIG__.release;}}catch(error){{document.querySelector('#result').textContent='FAILED';}}}};</script></body></html>''')
                 (context / f'html/chunk-{hash_value}.js').write_text(f'export const release = "{release}";')
                 (context / 'html/runtime-config.js').write_text('window.__NATIART_CONFIG__ = {release:"image-default"};')
+                (context / 'html/fonts').mkdir()
+                (context / 'html/fonts/playfair-display-variable.woff2').write_text(f'font-{release}')
                 for language in ['en', 'pt-BR']:
                     (context / 'html' / language).mkdir()
+                    shutil.copytree(context / 'html/fonts', context / 'html' / language / 'fonts')
                     shutil.copy(context / 'html/index.html', context / 'html' / language / 'index.html')
                     shutil.copy(context / f'html/chunk-{hash_value}.js', context / 'html' / language / f'chunk-{hash_value}.js')
                 (context / 'Dockerfile').write_text('''FROM nginx:1.27-alpine
@@ -107,6 +110,9 @@ COPY html /usr/share/nginx/html
             assert request(port, '/chunk-AAAAAAAA.js')[0] == 200
             assert 'immutable' in request(port, '/chunk-AAAAAAAA.js')[1]['Cache-Control']
             assert 'no-store' in request(port, '/runtime-config.js')[1]['Cache-Control']
+            for font_prefix in ['', '/en', '/pt-BR']:
+                assert request(port, f'{font_prefix}/fonts/playfair-display-variable.woff2')[1]['Cache-Control'] == 'no-cache'
+                assert request(port, f'{font_prefix}/fonts/playfair-display-variable.woff2')[2] == 'font-A'
             if args.interactive:
                 input(f'Release A ready at http://127.0.0.1:{port}/products/deep/link . Open the old tab, then press Enter to replace A: ')
             docker('rm', '-f', prefix + '-a')
@@ -117,6 +123,20 @@ COPY html /usr/share/nginx/html
                 assert headers['Cache-Control'] == 'no-store', path
             assert 'release:"B"' in request(port, '/runtime-config.js')[2]
             assert request(port, '/runtime-config.js')[1]['Cache-Control'] == 'no-store'
+            for font_prefix in ['', '/en', '/pt-BR']:
+                assert request(port, f'{font_prefix}/fonts/playfair-display-variable.woff2')[1]['Cache-Control'] == 'no-cache'
+                assert request(port, f'{font_prefix}/fonts/playfair-display-variable.woff2')[2] == 'font-B'
+            assert request(port, '/fonts/missing.woff2')[0] == 404
+            assert docker('run', '--rm', '--entrypoint', 'find', '-v', f'{volume}:/var/lib/natiart-assets',
+                          prefix + ':b', '/var/lib/natiart-assets', '-type', 'f', '-path', '*/fonts/*') == ''
+            for language in ['en', 'pt-BR']:
+                for path in [f'/{language}/', f'/{language}/dashboard', f'/{language}/dashboard/?preview=1']:
+                    status, headers, body = request(port, path)
+                    assert status == 200 and 'Release B' in body, path
+                    assert headers['Cache-Control'] == 'no-store', path
+                    assert f'</{language}/assets/img/a1.webp>; rel=preload; as=image' in headers['Link'], path
+                for path in [f'/{language}/login', f'/{language}/checkout', f'/{language}/products']:
+                    assert 'Link' not in request(port, path)[1], path
             # A had never requested its lazy chunk before the switch. B still serves it.
             assert '"A"' in request(port, '/chunk-AAAAAAAA.js')[2]
             assert '"B"' in request(port, '/chunk-BBBBBBBB.js')[2]
@@ -162,6 +182,9 @@ COPY html /usr/share/nginx/html
             assert 'Release A' in request(rollback_port, '/products/rollback')[2]
             assert request(rollback_port, '/chunk-BBBBBBBB.js')[0] == 200
             assert request(rollback_port, '/runtime-config.js')[1]['Cache-Control'] == 'no-store'
+            for font_prefix in ['', '/en', '/pt-BR']:
+                assert request(rollback_port, f'{font_prefix}/fonts/playfair-display-variable.woff2')[1]['Cache-Control'] == 'no-cache'
+                assert request(rollback_port, f'{font_prefix}/fonts/playfair-display-variable.woff2')[2] == 'font-A'
             if args.interactive:
                 input('Release B is ready. Click the old-tab button and check A / A, then open a new tab and check B / B. Press Enter to clean up: ')
             for suffix, extra_env, expected in [

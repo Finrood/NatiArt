@@ -1,7 +1,7 @@
 <div
   data-cart-preview
-  class="absolute top-full inset-x-4 lg:inset-x-auto lg:right-0 lg:w-80 mt-2 max-h-[calc(100dvh-8rem)] overflow-y-auto bg-primary-lighter border-2 border-primary-light p-4 rounded-lg shadow-lg shadow-primary-dark z-50">
-  <h2 class="text-xl font-bold mb-4" i18n>Your Cart</h2>
+  class="cart-preview absolute top-full inset-x-4 lg:inset-x-auto lg:right-0 lg:w-80 mt-2 max-h-[calc(100dvh-8rem)] overflow-y-auto bg-surface art-panel p-4 z-50">
+  <h2 class="text-2xl font-normal mb-4" i18n>Your Cart</h2>
 
   @if ((cartItems$ | async); as cartItems) {
     @if (cartItems.length) {
@@ -11,18 +11,18 @@
             <div class="flex items-start gap-3">
               <div class="w-16 h-16 shrink-0 overflow-hidden rounded">
                 <img (error)="images.failed(item.cartItemId)" [alt]="item.product.label"
-                  [src]="imageUrls[item.cartItemId] || emptyImage" class="w-full h-full object-cover">
+                  [src]="imageUrls[item.cartItemId] || emptyImage" class="w-full h-full object-contain">
               </div>
               <div class="min-w-0 flex-1 [overflow-wrap:anywhere]">
-                <p class="text-sm font-semibold">{{ item.product.label }}</p>
+                <a [routerLink]="['/product', item.product.id]" class="text-sm font-medium hover:underline">{{ item.product.label }}</a>
                 @if (item.goldBorder) {
-                  <p class="mt-1 text-sm font-medium text-yellow-600" i18n>With Gold Border</p>
+                  <p class="mt-1 text-xs text-warning" i18n>With Gold Border</p>
                 }
               </div>
             </div>
             <div class="grid grid-cols-[4rem_minmax(0,1fr)_auto] items-center gap-2">
               <label [for]="'preview-quantity-' + item.cartItemId" class="sr-only" i18n>Quantity</label>
-              <input (change)="updateQuantity(item, item.quantity)" [(ngModel)]="item.quantity"
+              <input (change)="changeQuantity(item, $event)" [value]="item.quantity" [disabled]="item.product.stockQuantity <= 0" [attr.aria-label]="quantityLabel(item)"
                 [id]="'preview-quantity-' + item.cartItemId"
                 [max]="item.product.stockQuantity"
                 [min]="1" class="w-16 min-h-11 p-1 border rounded focus:ring-2 focus:ring-primary" type="number">

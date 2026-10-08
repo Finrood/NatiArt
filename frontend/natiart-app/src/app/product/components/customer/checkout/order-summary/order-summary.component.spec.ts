@@ -23,6 +23,26 @@ describe('OrderSummaryComponent', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
+  it('labels the basket subtotal as an estimate until the authoritative quote replaces it', () => {
+    const fixture = TestBed.createComponent(OrderSummaryComponent);
+    const component: OrderSummaryComponent = fixture.componentInstance;
+    component.cartItems = [{cartItemId: 'line', quantity: 2, product: {
+      id: 'p1', label: 'Plate', originalPrice: 100, markedPrice: 90, stockQuantity: 3,
+      categoryId: 'category', availablePersonalizations: [], tags: [], images: []
+    }}];
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Estimated subtotal:');
+    expect(fixture.nativeElement.textContent).toContain('R$180.00');
+    expect(fixture.nativeElement.textContent).toContain('Final prices and shipping are confirmed before payment.');
+    const quote: ShippingQuote = {quoteId: 'quote', destinationPostalCode: '01001000', serviceId: 'pac', serviceName: 'PAC',
+      expiresAt: '2099-01-01T00:00:00Z', itemAmount: 160, shippingAmount: 10, totalAmount: 170,
+      items: [{productId: 'p1', quantity: 2, unitPrice: 80, lineAmount: 160}]};
+    fixture.componentRef.setInput('shippingQuote', quote); fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Estimated subtotal:');
+    expect(fixture.nativeElement.textContent).toContain('R$160.00');
+    expect(fixture.nativeElement.textContent).toContain('R$170.00');
+  });
+
   it('displays server item, shipping, and total amounts when a quote is present', () => {
     const fixture = TestBed.createComponent(OrderSummaryComponent);
     const component = fixture.componentInstance;

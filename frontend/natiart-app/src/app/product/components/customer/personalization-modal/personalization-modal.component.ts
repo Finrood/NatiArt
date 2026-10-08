@@ -1,21 +1,28 @@
 import {AccessibleDialogComponent} from '../../../../shared/components/accessible-dialog.component';
-import {Component, EventEmitter, Input, Output} from '@angular/core';
+import {Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, signal} from '@angular/core';
 
 import {FormsModule} from '@angular/forms';
 import {Product} from '../../../models/product.model';
 import {PersonalizationOption} from "../../../models/support/personalization-option";
-import {ButtonComponent} from "../../../../shared/components/button.component"; // Ensure this path is correct
+import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportWarning} from '../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-personalization-modal',
-  standalone: true, // Add standalone: true
   imports: [FormsModule, ButtonComponent, AccessibleDialogComponent],
   templateUrl: './personalization-modal.component.html',
   styleUrl: './personalization-modal.component.css'
 })
-export class PersonalizationModalComponent {
-  @Input() show = false;
+export class PersonalizationModalComponent implements OnChanges {
+  @Input() show: boolean = false;
+  @Input() closeOnSubmit: boolean = true;
+  @Input() pending: boolean = false;
+  @Input() errorMessage: string = '';
+  readonly $fileError = signal('');
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['show'] && !this.show) this.resetForm();
+  }
   @Input() product: Product | null = null;
   @Output() close = new EventEmitter<void>();
   @Output() personalize = new EventEmitter<{ goldBorder?: boolean, customImage?: File }>();
@@ -33,9 +40,14 @@ export class PersonalizationModalComponent {
     return !!this.product?.availablePersonalizations?.includes(PersonalizationOption.CUSTOM_IMAGE);
   }
 
-  onFileSelected(event: Event) {
-    const file = (event.target as HTMLInputElement).files?.[0];
-    if (file) {
+  onFileSelected(event: Event): void {
+    this.$fileError.set('');
+    const file: File | undefined = (event.target as HTMLInputElement).files?.[0];
+    if (file && (!file.type.startsWith('image/') || file.size === 0 || file.size > 5_000_000)) {
+      this.customImage = null;
+      this.$fileError.set($localize`Choose an image file up to 5 MB.`);
+      (event.target as HTMLInputElement).value = '';
+    } else if (file) {
       this.customImage = file;
     } else {
       // Handle case where user cancels file selection
@@ -43,13 +55,13 @@ export class PersonalizationModalComponent {
     }
   }
 
-  onCancel() {
+  onCancel(): void {
     this.resetForm();
     this.close.emit();
   }
 
-  onSubmit() {
-    if (!this.isValid()) {
+  onSubmit(): void {
+    if (this.pending || !this.isValid()) {
       // Optional: Add some user feedback if they somehow click submit when invalid
       reportWarning('invalid-input');
       return;
@@ -59,12 +71,14 @@ export class PersonalizationModalComponent {
       goldBorder: this.canAddGoldBorder ? this.goldBorder : undefined,
       customImage: this.canAddCustomImage ? this.customImage ?? undefined : undefined // Use nullish coalescing for clarity
     });
-    // Important: Close the modal after submitting
-    this.close.emit();
-    this.resetForm(); // Reset form for next time it opens
+    if (this.closeOnSubmit) {
+      this.close.emit();
+      this.resetForm();
+    }
   }
 
   isValid(): boolean {
+    if (this.$fileError()) return false;
     // If custom image is an available personalization for this product,
     // then the customImage file MUST be selected.
     if (this.canAddCustomImage) {
@@ -74,7 +88,8 @@ export class PersonalizationModalComponent {
     return true;
   }
 
-  private resetForm() {
+  private resetForm(): void {
+    this.$fileError.set('');
     this.goldBorder = false;
     this.customImage = null;
     // Reset file input visually if needed (more complex, often not necessary if modal is destroyed/recreated)

@@ -1,18 +1,21 @@
+import {LanguageSelectorComponent} from "../../../../shared/components/language-selector/language-selector.component";
 import {AccessibleDialogComponent} from '../../../../shared/components/accessible-dialog.component';
-import {Component, inject, signal, HostListener, OnDestroy, OnInit} from '@angular/core';
-import { AsyncPipe } from "@angular/common";
+import {Component, ElementRef, inject, signal, HostListener, OnDestroy, OnInit, Signal, viewChild} from '@angular/core';
+import { AsyncPipe, DOCUMENT } from "@angular/common";
 import {CartService} from "../../../service/cart.service";
 import {Observable, Subscription} from "rxjs";
 import {CartModalComponent} from "../cart-modal/cart-modal.component";
 import {AuthenticationService} from "../../../../directory/service/authentication.service";
-import {RouterLink} from "@angular/router";
+import {RouterLink, RouterLinkActive} from "@angular/router";
 
 @Component({
     selector: 'app-top-menu',
     imports: [
     CartModalComponent,
+    LanguageSelectorComponent,
     AsyncPipe,
     RouterLink,
+    RouterLinkActive,
     AccessibleDialogComponent
 ],
     templateUrl: './top-menu.component.html',
@@ -31,6 +34,8 @@ export class TopMenuComponent implements OnInit, OnDestroy {
 
   private readonly _cartService = inject(CartService);
   private readonly _authService = inject(AuthenticationService);
+  private readonly _document: Document = inject(DOCUMENT);
+  readonly $cartLink: Signal<ElementRef<HTMLAnchorElement> | undefined> = viewChild<ElementRef<HTMLAnchorElement>>('cartLink');
 
   constructor() {
     this.cartItemCount$ = this._cartService.getCartCount();
@@ -56,11 +61,21 @@ export class TopMenuComponent implements OnInit, OnDestroy {
 
   closeMobileMenu(): void { this.isMobileMenuOpen = false; }
 
+  @HostListener('document:keydown.escape')
+  closeCartPreview(): void {
+    const link: HTMLAnchorElement | undefined = this.$cartLink()?.nativeElement;
+    const previewHadFocus: boolean = link?.parentElement?.querySelector('app-cart-modal')?.contains(this._document.activeElement) === true;
+    this.clearCartHoverCloseTimer();
+    this.isCartHovered = false;
+    if (previewHadFocus) link?.focus({preventScroll: true});
+  }
+
   toggleMobileMenu(): void {
     this.isMobileMenuOpen = !this.isMobileMenuOpen;
   }
 
   showCartModal() {
+    this.clearCartHoverCloseTimer();
     this.isCartHovered = true;
   }
 
@@ -68,9 +83,8 @@ export class TopMenuComponent implements OnInit, OnDestroy {
     // Using setTimeout to allow clicking inside the modal before it closes
     this.clearCartHoverCloseTimer();
     this.cartHoverCloseTimer = setTimeout(() => {
-      if (!this.isCartHovered) {
-        this.isCartHovered = false;
-      }
+      this.isCartHovered = false;
+      this.cartHoverCloseTimer = undefined;
     }, 200);
   }
 

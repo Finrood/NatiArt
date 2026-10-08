@@ -3,13 +3,12 @@ import {Event, NavigationEnd, Router, RouterOutlet, Scroll} from '@angular/route
 import {ViewportScroller} from '@angular/common';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {TopMenuComponent} from './product/components/customer/top-menu/top-menu.component';
-import {LanguageSelectorComponent} from './shared/components/language-selector/language-selector.component';
 import {FooterComponent} from "./shared/components/shared/footer/footer.component";
 import {AuthenticationService} from "./directory/service/authentication.service";
 
 @Component({
     selector: 'app-root',
-  imports: [RouterOutlet, FooterComponent, LanguageSelectorComponent, TopMenuComponent],
+  imports: [RouterOutlet, FooterComponent, TopMenuComponent],
     templateUrl: './app.component.html',
     styleUrl: './app.component.css'
 })

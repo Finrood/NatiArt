@@ -4,7 +4,6 @@ import { AsyncPipe, CurrencyPipe } from "@angular/common";
 import {CartItem} from "../../../models/CartItem.model";
 import {Observable, Subscription} from "rxjs";
 import {CartService} from "../../../service/cart.service";
-import {FormsModule} from "@angular/forms";
 import {RouterLink} from "@angular/router";
 import {ButtonComponent} from "../../../../shared/components/button.component";
 
@@ -13,7 +12,6 @@ import {ButtonComponent} from "../../../../shared/components/button.component";
     imports: [
     AsyncPipe,
     CurrencyPipe,
-    FormsModule,
     RouterLink,
     ButtonComponent
 ],
@@ -45,6 +43,7 @@ export class CartModalComponent implements OnInit, OnDestroy {
   }
 
   updateQuantity(item: CartItem, newQuantity: number): void {
+    if (!Number.isSafeInteger(newQuantity)) return;
     if (newQuantity < 1) {
       newQuantity = 1;
     } else if (newQuantity > item.product.stockQuantity) {
@@ -52,6 +51,14 @@ export class CartModalComponent implements OnInit, OnDestroy {
     }
     this._cartService.updateItemQuantity(item.cartItemId, newQuantity);
   }
+
+  changeQuantity(item: CartItem, event: Event): void {
+    const input: HTMLInputElement = event.target as HTMLInputElement;
+    this.updateQuantity(item, input.valueAsNumber);
+    input.value = String(item.quantity);
+  }
+
+  quantityLabel(item: CartItem): string { return $localize`Quantity for ${item.product.label}:INTERPOLATION:`; }
 
   removeItem(item: CartItem, event: Event): void {
     event.stopPropagation()

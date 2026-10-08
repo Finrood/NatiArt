@@ -1,5 +1,5 @@
 import {HttpErrorResponse} from '@angular/common/http';
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, inject, OnDestroy, OnInit} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, inject, OnDestroy, OnInit, signal, ViewChild, WritableSignal} from '@angular/core';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
 import {EmptyError, firstValueFrom, map, Observable, Subject, throwError} from 'rxjs';
@@ -42,7 +42,6 @@ interface CheckoutAttempt {
 
 @Component({
   selector: 'app-checkout',
-  standalone: true,
   imports: [
     AsyncPipe,
     CommonModule,
@@ -68,6 +67,15 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   private readonly _paymentService: PaymentService = inject(PaymentService);
   private readonly _router: Router = inject(Router);
   private readonly _cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
+  private readonly $focusChangedStep: WritableSignal<boolean> = signal<boolean>(false);
+
+  @ViewChild('stepHeading')
+  set stepHeading(heading: ElementRef<HTMLElement> | undefined) {
+    if (!heading || !this.$focusChangedStep()) return;
+    this.$focusChangedStep.set(false);
+    heading.nativeElement.focus({preventScroll: true});
+    heading.nativeElement.scrollIntoView({block: 'start'});
+  }
 
   checkoutForm: FormGroup;
   errorMessage = '';
@@ -166,15 +174,21 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     }
 
     if (this.currentStep < 3) {
-      this.currentStep++;
-      this._cdr.markForCheck();
+      this.changeStep(this.currentStep + 1);
     }
   }
 
-  prevStep() {
+  prevStep(): void {
     if (this.currentStep > 1) {
-      this.currentStep--;
+      this.changeStep(this.currentStep - 1);
     }
+  }
+
+  private changeStep(step: number): void {
+    if (step === this.currentStep) return;
+    this.$focusChangedStep.set(true);
+    this.currentStep = step;
+    this._cdr.markForCheck();
   }
 
   private formatCpf(cpf: string): string {
@@ -431,7 +445,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.resetAttempt();
     this.shippingQuote = null;
     this.shippingQuoteFingerprint = null;
-    this.currentStep = 2;
+    this.changeStep(2);
     this.clearInfoMessage();
     this.setErrorMessage($localize`No order was created. Review your cart and artwork, then confirm shipping again.`);
     return true;
@@ -793,7 +807,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   private startNewCheckout(user: User): void {
     this.resetAttempt();
-    this.currentStep = 1;
+    this.changeStep(1);
     this.shippingQuote = null;
     this.shippingQuoteFingerprint = null;
     if (user.profile) this.checkoutForm.get('userInfo.cpf')?.setValue(this.formatCpf(user.profile.cpf));

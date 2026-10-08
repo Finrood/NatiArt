@@ -52,4 +52,37 @@ describe('Customer order history pages', (): void => {
     harness.fixture.destroy();
   });
 
+  it('retains loaded orders after a failed next page and retries that page', (): void => {
+    const fixture = TestBed.createComponent(OrderHistoryComponent); fixture.detectChanges();
+    const http: HttpTestingController = TestBed.inject(HttpTestingController);
+    const entry: OrderDto = {firstname: 'Buyer', lastname: 'Customer', email: 'buyer@example.test', country: 'Brazil',
+      state: 'SP', city: 'City', neighborhood: 'Area', zipCode: '01001000', street: 'Street', items: [], totalAmount: 10, status: 'PAID'};
+    http.expectOne(request => request.url.endsWith('/orders') && request.params.get('page') === '0')
+      .flush(Array.from({length: 20}, (_, index: number) => ({...entry, id: 'recent-' + index})));
+    fixture.detectChanges(); fixture.componentInstance.loadMore();
+    http.expectOne(request => request.params.get('page') === '1').flush(null, {status: 503, statusText: 'Unavailable'});
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('article').length).toBe(20);
+    const retry: HTMLButtonElement | undefined = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('button'))
+      .find((button: HTMLButtonElement): boolean => button.textContent?.includes('Retry page') ?? false);
+    retry!.click();
+    http.expectOne(request => request.params.get('page') === '1').flush([{...entry, id: 'older-21'}]); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('article').length).toBe(21);
+    expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull();
+    fixture.destroy();
+  });
+
+  it('retries a single owned order while preserving its query parameter', async (): Promise<void> => {
+    const http: HttpTestingController = TestBed.inject(HttpTestingController);
+    const harness: RouterTestingHarness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/account?orderId=owned', OrderHistoryComponent);
+    http.expectOne(request => request.url.endsWith('/orders/owned')).flush(null, {status: 503, statusText: 'Unavailable'});
+    harness.detectChanges(); harness.routeNativeElement!.querySelector<HTMLButtonElement>('button')!.click();
+    http.expectOne(request => request.url.endsWith('/orders/owned')).flush({id: 'owned', items: [], totalAmount: 10, status: 'PAID'});
+    harness.detectChanges();
+    expect(harness.routeNativeElement!.textContent).toContain('owned');
+    expect(harness.routeNativeElement!.querySelector('[role="alert"]')).toBeNull();
+    harness.fixture.destroy();
+  });
+
 });

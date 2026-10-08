@@ -1,3 +1,7 @@
-:host {
-  display: block; /* Ensure the host element is displayed */
-}
+:host { display: block; }
+.personalization-dialog h2 { letter-spacing: -.025em; }
+.personalization-dialog .art-eyebrow { font-size: .6875rem; text-transform: uppercase; letter-spacing: .12em; }
+.product-name { padding-bottom: 1.25rem; border-bottom: 1px solid rgb(var(--primary-light) / .5); }
+.gold-option { padding: .75rem 1rem; background: rgb(var(--background-variant)); border: 1px solid rgb(var(--primary-light) / .5); border-radius: .375rem; }
+.gold-option label { flex: 1; padding-block: .25rem; cursor: pointer; }
+input[type=file] { padding: .75rem; background: rgb(var(--background-variant)); }

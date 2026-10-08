@@ -1,26 +1,26 @@
-<header class="sticky top-0 bg-background/80 backdrop-blur-lg z-50 shadow-sm border-b border-primary-lighter/30 font-sans">
-  <div class="container mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex items-center justify-between h-20">
+<header class="bg-background border-b border-primary-light/40 font-sans">
+  <div class="max-w-[86rem] mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16 lg:h-22">
       <!-- Logo -->
       <div class="flex-shrink-0">
-        <a routerLink="/dashboard" class="text-2xl font-semibold font-serif text-primary-dark tracking-wider" i18n>NatiArt</a>
+        <a routerLink="/dashboard" class="text-3xl font-medium font-serif text-primary-dark tracking-wider" i18n>NatiArt</a>
       </div>
 
       <!-- Desktop Navigation -->
       <nav class="hidden lg:flex items-center space-x-8">
-        <a routerLink="/dashboard" class="text-secondary hover:text-primary transition-colors duration-200" i18n>Home</a>
-        <a routerLink="/products" class="text-secondary hover:text-primary transition-colors duration-200" i18n>Collections</a>
+        <a routerLink="/dashboard" routerLinkActive="current" ariaCurrentWhenActive="page" class="text-secondary hover:text-primary transition-colors duration-200" i18n>Home</a>
+        <a routerLink="/products" routerLinkActive="current" ariaCurrentWhenActive="page" class="text-secondary hover:text-primary transition-colors duration-200" i18n>Collections</a>
       </nav>
 
       <!-- Icons & Actions -->
-      <div class="flex items-center space-x-4">
+      <div class="flex items-center gap-2 sm:gap-4">
         <!-- Cart -->
         <div (mouseenter)="showCartModal()" (mouseleave)="hideCartModal()" class="lg:relative cart-container">
-          <a aria-label="Shopping cart" routerLink="/cart" class="relative block text-secondary hover:text-primary transition-colors">
+          <a #cartLink aria-label="Shopping cart" i18n-aria-label routerLink="/cart" class="relative flex h-11 w-11 items-center justify-center text-secondary hover:text-primary transition-colors">
             <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
             @if ((cartItemCount$ | async); as count) {
               @if (count > 0) {
-                <span class="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-error text-white text-xs font-bold">{{ count }}</span>
+                <span class="absolute top-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white text-xs font-medium">{{ count }}</span>
               }
             }
           </a>
@@ -41,10 +41,11 @@
 
         <!-- Mobile Menu Button -->
         <div class="lg:hidden">
-          <button aria-label="Toggle navigation" [attr.aria-expanded]="isMobileMenuOpen" (click)="toggleMobileMenu()" class="text-secondary hover:text-primary">
+          <button aria-label="Toggle navigation" i18n-aria-label [attr.aria-expanded]="isMobileMenuOpen" (click)="toggleMobileMenu()" class="flex h-11 w-11 items-center justify-center text-secondary hover:text-primary">
             <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg>
           </button>
         </div>
+        <app-language-selector class="hidden lg:block border-l border-primary-light/40 pl-4"></app-language-selector>
       </div>
     </div>
   </div>
@@ -52,7 +53,8 @@
   <!-- Mobile Menu Overlay -->
   @if (isMobileMenuOpen) {
     <app-accessible-dialog label="Navigation menu" i18n-label (dismiss)="closeMobileMenu()">
-      <div class="bg-background w-72 max-w-full p-6">
+      <div class="bg-background w-80 max-w-full p-6">
+      <div class="flex items-center justify-between mb-6 gap-4"><h2 class="text-2xl" i18n>Navigation menu</h2><button type="button" class="art-link px-2" (click)="closeMobileMenu()" i18n>Close</button></div>
       <nav class="flex flex-col space-y-6 text-lg" (click)="closeMobileMenu()">
         <a routerLink="/dashboard" class="text-secondary hover:text-primary transition-colors duration-200" i18n>Home</a>
         <a routerLink="/products" class="text-secondary hover:text-primary transition-colors duration-200" i18n>Collections</a>
@@ -64,6 +66,7 @@
           <a routerLink="/login" class="text-secondary hover:text-primary transition-colors" i18n>Login</a>
         }
       </nav>
+      <app-language-selector class="block border-t border-primary-light/40 mt-6 pt-4"></app-language-selector>
       </div>
     </app-accessible-dialog>
   }

@@ -27,6 +27,15 @@ routing remains on the storefront origin.
 The shell, including Angular deep links, uses `no-store`. Only content-hashed
 build filenames receive immutable caching. Other static files revalidate;
 missing static files return 404. A missing runtime config never becomes HTML.
+The stable public `/fonts/` files and their locale copies always revalidate and
+are excluded from the immutable archive. Descriptive names such as `playfair-display-variable.woff2`
+must not be mistaken for content-hashed filenames. Replacement and rollback
+serve the fonts from their respective image, without immutable collisions.
+Text/static responses use gzip with `Vary: Accept-Encoding` and a 1024-byte
+threshold. The additional types cover CSS, JavaScript and SVG, not JSON/API data.
+This changes transfer size without changing auth, proxy, no-store or retained
+asset behavior. The October 2026 container replacement/rollback fixture passes
+with this configuration.
 `NATIART_PUBLIC_SCHEME` supplies the trusted external scheme forwarded to the
 backend (defaults to `https` in the image). Set `http` only for a direct local
 HTTP deployment. nginx does not trust a client-supplied forwarded scheme. The

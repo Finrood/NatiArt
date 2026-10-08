@@ -1,18 +1,18 @@
 import {Component, DestroyRef, inject, OnInit, signal} from '@angular/core';
 import {FormsModule} from '@angular/forms';
-import {ActivatedRoute, Router} from '@angular/router';
+import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {ProductService} from '../../../service/product.service';
 import {EMPTY_PRODUCT_IMAGE} from '../../../service/image-loader.service';
 import {Product} from '../../../models/product.model';
 import {PagedList} from '../../../../shared/service/paged-list';
+import {ButtonComponent} from '../../../../shared/components/button.component';
 import {PageControlsComponent} from '../../../../shared/components/page-controls.component';
 import {LeftMenuComponent} from '../left-menu/left-menu.component';
-import {ButtonComponent} from '../../../../shared/components/button.component';
 import {ProductCardComponent} from '../../../../shared/components/product-card/product-card.component';
 
-@Component({selector: 'app-catalog', imports: [ButtonComponent, ProductCardComponent, FormsModule, PageControlsComponent,
-  LeftMenuComponent], templateUrl: './catalog.component.html'})
+@Component({selector: 'app-catalog', imports: [ProductCardComponent, RouterLink, FormsModule, PageControlsComponent,
+  LeftMenuComponent, ButtonComponent], templateUrl: './catalog.component.html'})
 export class CatalogComponent implements OnInit {
   private readonly _products = inject(ProductService);
   private readonly _route = inject(ActivatedRoute);

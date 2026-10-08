@@ -39,6 +39,11 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
       ?? item.product.markedPrice * item.quantity;
   }
 
+  getEstimatedSubtotal(): number {
+    return (this.cartItems ?? []).reduce((total: number, item: CartItem): number =>
+      total + item.product.markedPrice * item.quantity, 0);
+  }
+
   getDisplayedItemUnitPrice(item: CartItem): number {
     return this.quoteItemFor(item)?.unitPrice
       ?? item.product.markedPrice;

@@ -1,16 +1,11 @@
-<div class="bg-background font-sans">
-
+<div class="bg-background">
   <app-top-banner></app-top-banner>
-
-  <div class="flex flex-col lg:flex-row">
-    <app-left-menu></app-left-menu>
-    <main class="flex-1">
-      <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <app-product-list type="featured" title="Featured Products" i18n-title></app-product-list>
-        <app-product-list type="new" title="New Arrivals" i18n-title></app-product-list>
-
-
-      </div>
-    </main>
-  </div>
+  <main class="art-page">
+    <app-product-list type="featured" title="Featured Products" i18n-title [limit]="4" (visibleProductIds)="$featuredIds.set($event)"></app-product-list>
+    <section class="personalization-story">
+      <div><p class="art-eyebrow" i18n>Personalization</p><h2 i18n>A piece of you.</h2></div>
+      <div><p i18n>Discover pieces with gold borders and your own artwork.</p><p class="story-note" i18n>Available options are shown on each product.</p><a routerLink="/products" class="story-link"><span i18n>Explore Collections</span><span aria-hidden="true">↗</span></a></div>
+    </section>
+    <app-product-list type="new" title="New Arrivals" i18n-title [limit]="4" [excludeProductIds]="$featuredIds()" [deferImages]="true"></app-product-list>
+  </main>
 </div>

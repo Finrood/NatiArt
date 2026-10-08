@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -175,6 +177,47 @@ class JwtAuthFilterTest {
                         .map(GrantedAuthority::getAuthority)
                         .anyMatch("ROLE_USER"::equals),
                 "authorities from validate-token must be mapped onto the authenticated token");
+    }
+
+    @Test
+    void retriesConcurrentCacheInsertWithoutValidatingTheTokenTwice() throws Exception {
+        final List<String> validations = new CopyOnWriteArrayList<>();
+        startCapturingValidationService(validations);
+        final TokenValidationCache cache = emptyCache();
+        doThrow(new DataIntegrityViolationException("Concurrent digest insert"))
+                .doNothing()
+                .when(cache)
+                .put(eq("test-token"), any(AuthenticationResponseDto.class));
+        final JwtAuthFilter filter = new JwtAuthFilter(WebClient.builder(), "http://localhost:" + port, cache);
+        final MockHttpServletResponse response = new MockHttpServletResponse();
+        final MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(requestWithToken("GET", "/orders"), response, chain);
+
+        assertEquals(200, response.getStatus());
+        assertNotNull(chain.getRequest());
+        assertTrue(SecurityContextHolder.getContext().getAuthentication().isAuthenticated());
+        assertEquals(1, validations.size());
+        verify(cache, times(2)).put(eq("test-token"), any(AuthenticationResponseDto.class));
+    }
+
+    @Test
+    void persistentCacheWriteFailureStillFailsClosedAfterBoundedRetries() throws Exception {
+        startCapturingValidationService(new CopyOnWriteArrayList<>());
+        final TokenValidationCache cache = emptyCache();
+        doThrow(new DataIntegrityViolationException("Store unavailable"))
+                .when(cache)
+                .put(eq("test-token"), any(AuthenticationResponseDto.class));
+        final JwtAuthFilter filter = new JwtAuthFilter(WebClient.builder(), "http://localhost:" + port, cache);
+        final MockHttpServletResponse response = new MockHttpServletResponse();
+        final MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(requestWithToken("GET", "/orders"), response, chain);
+
+        assertEquals(503, response.getStatus());
+        assertNull(chain.getRequest());
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        verify(cache, times(3)).put(eq("test-token"), any(AuthenticationResponseDto.class));
     }
 
     @Test

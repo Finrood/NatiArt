@@ -1,61 +1,58 @@
-<!-- Alert Messages Component -->
 <app-alert-messages #alertMessages></app-alert-messages>
 
-<!-- Header with "Add New Package" Button -->
-<div class="flex justify-between items-center mb-4">
+<div class="flex flex-wrap gap-3 justify-between items-center mb-6">
   <h2 class="text-2xl sm:text-3xl font-light" i18n>Packages</h2>
   <app-button (click)="openModal()" color="primary" size="md" i18n>Add New Package
   </app-button>
 </div>
 
-<!-- Packages Grid -->
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
   @for (pack of packages | async; track pack) {
     <div
-      [ngClass]="{'opacity-50': !pack.active}"
-      class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+      [class.admin-hidden]="!pack.active"
+      class="bg-white p-6 art-panel">
       <h3 class="text-xl font-semibold mb-2">{{ pack.label }}</h3>
+      @if (!pack.active) { <p class="admin-hidden-label" i18n>Inactive</p> }
       <p class="text-gray-600 mb-4" i18n>{{ pack.height }}cm x {{ pack.width }}cm x {{ pack.depth }}cm
       </p>
       <div class="flex flex-wrap justify-between gap-2">
         <app-button (click)="openModal(pack)" color="primary" size="sm" i18n>Edit
         </app-button>
-        <app-button (click)="deletePackage(pack.id!)" color="danger" size="sm" i18n>Delete
+        <app-button (click)="deletePackage(pack.id!)" color="link" customClass="text-error" size="sm" i18n>Delete
         </app-button>
       </div>
     </div>
   }
 </div>
 
-<!-- Modal -->
 <app-page-controls [page]="pages.$page()" [total]="pages.$total()" [hasNext]="pages.$hasNext()"
     [loading]="pages.$loading()" [error]="pages.$error()" (pageChange)="pages.load($event)"></app-page-controls>
 @if (modalVisible) {
-  <app-accessible-dialog label="Package editor" i18n-label (dismiss)="closeModal()">
-    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md transform transition-transform duration-300 ease-in-out">
-      <h3 class="text-2xl mb-4 font-light" i18n>{isEditingPackage.value, select, true {Edit Package} other {Add Package}}</h3>
+  <app-accessible-dialog label="Package editor" i18n-label [showClose]="true" (dismiss)="closeModal()">
+    <div class="bg-white p-6 art-panel w-full max-w-md transform transition-transform duration-300 ease-in-out">
+      <h3 class="text-2xl mb-4 font-light pr-10" i18n>{isEditingPackage.value, select, true {Edit Package} other {Add Package}}</h3>
       <form (ngSubmit)="submitForm()" [formGroup]="packageForm">
-        <!-- Label Field -->
+
         <app-natiart-form-field label="Label" controlName="label" [form]="packageForm" i18n-label>
           <input type="text" formControlName="label" placeholder="Package label" maxlength="255"
             class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm" i18n-placeholder>
         </app-natiart-form-field>
-        <!-- Height Field -->
+
         <app-natiart-form-field label="Height (cm)" controlName="height" [form]="packageForm" i18n-label>
           <input type="number" formControlName="height" placeholder="Height" min="0.01" max="200" step="0.01"
             class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm" i18n-placeholder>
         </app-natiart-form-field>
-        <!-- Width Field -->
+
         <app-natiart-form-field label="Width (cm)" controlName="width" [form]="packageForm" i18n-label>
           <input type="number" formControlName="width" placeholder="Width" min="0.01" max="200" step="0.01"
             class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm" i18n-placeholder>
         </app-natiart-form-field>
-        <!-- Depth Field -->
+
         <app-natiart-form-field label="Depth (cm)" controlName="depth" [form]="packageForm" i18n-label>
           <input type="number" formControlName="depth" placeholder="Depth" min="0.01" max="200" step="0.01"
             class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm" i18n-placeholder>
         </app-natiart-form-field>
-        <!-- Form Actions -->
+
         <div class="flex flex-wrap justify-end gap-2">
           <app-button type="button" (click)="closeModal()" color="secondary" size="md" i18n>Cancel
           </app-button>

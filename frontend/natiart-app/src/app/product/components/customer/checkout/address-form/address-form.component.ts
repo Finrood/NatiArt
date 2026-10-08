@@ -1,4 +1,4 @@
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy, OnInit, inject} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, input, Input, OnDestroy, OnInit, inject} from '@angular/core';
 import {FormGroup, ReactiveFormsModule} from '@angular/forms';
 
 import {debounceTime, distinctUntilChanged, finalize, Subject, Subscription, takeUntil, tap} from 'rxjs';
@@ -26,6 +26,7 @@ import {CepFormatDirective} from "../../../../../directory/directive/cep-format-
 export class AddressFormComponent implements OnInit, OnDestroy {
   @Input({ required: true }) addressFormGroup!: FormGroup;
   @Input() title: string = $localize`Address`;
+  readonly $showTitle = input<boolean>(true, {alias: 'showTitle'});
 
   get zipCodeLabel(): string {
     return this.isBillingAddress ? $localize`Billing Zip Code` : $localize`Zip Code`;
