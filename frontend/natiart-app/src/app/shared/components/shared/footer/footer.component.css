@@ -1,2 +1,4 @@
 .footer-statement { max-width: 17rem; font: 400 1.5rem/1.4 var(--font-serif); }
-footer .art-page { padding-block: 3rem; }
+.footer-wordmark { display: inline-block; font: 400 clamp(3.5rem, 8vw, 7rem)/1 var(--font-serif); letter-spacing: -.06em; color: rgb(var(--primary-dark)); }
+footer .art-page { padding-block: 3.5rem 2rem; }
+footer nav { padding-top: .5rem; }

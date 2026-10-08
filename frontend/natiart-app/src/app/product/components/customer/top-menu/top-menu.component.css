@@ -1,2 +1,5 @@
+header { box-shadow: 0 1px 0 rgb(var(--primary-light) / .2); }
+.store-wordmark { display: inline-flex; align-items: center; min-height: 2.75rem; font: 400 2.25rem/1 var(--font-serif); letter-spacing: -.045em; color: rgb(var(--primary-dark)); }
 nav a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 nav a.current { color: rgb(var(--primary)); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .6em; }
+@media (min-width: 1024px) { .store-wordmark { font-size: 2.75rem; } }

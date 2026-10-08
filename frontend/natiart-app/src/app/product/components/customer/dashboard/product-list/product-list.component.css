@@ -1,6 +1,9 @@
-.home-products { padding-block: 1rem 2.5rem; }
+.home-products { padding-block: 1rem 3.5rem; }
+.home-products .art-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem 1.5rem; }
 .section-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem 1rem; margin-bottom: 1.5rem; }
-.section-heading h2 { flex: 1 1 14rem; font-size: clamp(1.75rem, 3vw, 2.5rem); font-weight: 400; letter-spacing: -.025em; }
+.section-heading h2 { flex: 1 1 14rem; font-size: clamp(1.875rem, 3.5vw, 3rem); font-weight: 400; letter-spacing: -.035em; }
 .section-heading a { flex-shrink: 0; display: inline-flex; gap: .5rem; align-items: center; min-height: 2.75rem; margin-left: auto; font-size: .8125rem; }
 .section-heading a span:last-child { font-size: 1.25rem; }
 .loading-card { min-height: 0; }
+@media (min-width: 1024px) { .home-products .art-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 379px) { .home-products .art-grid { grid-template-columns: 1fr; } }

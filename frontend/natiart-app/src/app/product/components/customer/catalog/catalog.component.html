@@ -1,24 +1,40 @@
-<div class="art-catalog flex flex-col lg:flex-row">
-  <app-left-menu [selectedCategoryId]="$categoryId()"></app-left-menu>
-  <main class="flex-1 min-w-0" [attr.aria-busy]="pages.$loading()">
-    <div class="catalog-intro"><p class="art-eyebrow" i18n>Handmade art &amp; porcelain</p><h1 class="art-title" i18n>Collections</h1></div>
-    <form (ngSubmit)="searchProducts()" class="art-search">
-      <label for="catalog-search" class="sr-only" i18n>Search products</label>
-      <input id="catalog-search" name="search" type="search" [(ngModel)]="search" maxlength="200" placeholder="Search products" i18n-placeholder class="form-input" />
-      <app-button type="submit" color="primary" size="sm" i18n>Search</app-button>
-    </form>
-    @if (pages.$loading()) {
-      <p role="status" class="mb-4 text-sm" i18n>Loading products...</p>
-      <div class="art-grid" aria-hidden="true">@for (slot of [1,2,3,4]; track slot) { <div><div class="aspect-square art-skeleton"></div><div class="art-skeleton h-6 mt-4 w-3/4"></div></div> }</div>
-    } @else if (!pages.$error() && $items().length === 0) {
-      <div class="art-empty"><p class="mb-4" role="status" i18n>No products match this selection.</p><a routerLink="/products" class="art-link" i18n>All Products</a></div>
-    } @else {
-      <div class="art-grid">
-        @for (product of $items(); track product.id) {
-          <app-product-card [product]="product" [imageUrl]="product.images[0] ? imageUrl(product.images[0]) : emptyImage"></app-product-card>
+<main class="art-catalog catalog-page" [attr.aria-busy]="pages.$loading()">
+  <header class="catalog-intro">
+    <div><p class="art-eyebrow" i18n>Handmade art &amp; porcelain</p><h1 class="art-title" i18n>Collections</h1></div>
+    <p class="catalog-description" i18n>For your table, your home, or someone you love. Find a piece that feels like you.</p>
+  </header>
+  <div class="catalog-layout">
+    <app-left-menu [selectedCategoryId]="$categoryId()"></app-left-menu>
+    <section class="catalog-results" aria-label="Products" i18n-aria-label>
+      <form #searchForm="ngForm" (ngSubmit)="searchProducts()" class="art-search">
+        <label for="catalog-search" class="sr-only" i18n>Search products</label>
+        <div class="search-field">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>
+          <input #catalogSearch id="catalog-search" name="search" type="search" [(ngModel)]="search" maxlength="200" placeholder="Search products" i18n-placeholder class="form-input" />
+        </div>
+        <app-button type="submit" color="primary" size="sm" i18n>Search</app-button>
+      </form>
+      <div class="results-context">
+        @if (!pages.$loading() && !pages.$error()) { <p role="status" i18n>Products found: {{ pages.$total() }}</p> }
+        @if ($query()) {
+          <div class="search-chip"><span i18n>Search: {{ $query() }}</span><button type="button" (click)="clearSearch()" aria-label="Clear search" i18n-aria-label><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
         }
       </div>
-    }
-    <app-page-controls [page]="pages.$page()" [total]="pages.$total()" [hasNext]="pages.$hasNext()" [loading]="pages.$loading()" [error]="pages.$error()" (pageChange)="changePage($event)"></app-page-controls>
-  </main>
-</div>
+      @if (pages.$loading()) {
+        <p role="status" class="mb-4 text-sm" i18n>Loading products...</p>
+        <div class="art-grid" aria-hidden="true">@for (slot of [1,2,3,4]; track slot) { <div><div class="aspect-square art-skeleton"></div><div class="art-skeleton h-6 mt-4 w-3/4"></div></div> }</div>
+      } @else if (!pages.$error() && $items().length === 0) {
+        <div class="art-empty"><p class="mb-4" role="status" i18n>No products match this selection.</p><a routerLink="/products" class="art-link" i18n>All Products</a></div>
+      } @else {
+        <div class="art-grid">
+          @for (product of $items(); track product.id) {
+            <app-product-card [product]="product" [imageUrl]="product.images[0] ? imageUrl(product.images[0]) : emptyImage"></app-product-card>
+          }
+        </div>
+      }
+      @if (pages.$hasNext() || pages.$page() > 0 || pages.$loading() || pages.$error()) {
+        <app-page-controls [page]="pages.$page()" [total]="pages.$total()" [hasNext]="pages.$hasNext()" [loading]="pages.$loading()" [error]="pages.$error()" (pageChange)="changePage($event)"></app-page-controls>
+      }
+    </section>
+  </div>
+</main>

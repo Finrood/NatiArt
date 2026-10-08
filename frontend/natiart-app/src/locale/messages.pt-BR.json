@@ -592,6 +592,15 @@
     "6010332631657686779": "Marcar como entregue",
     "1859131936150262113": "Inativo",
     "2544536389542873188": "Subtotal estimado:",
-    "533623679948747546": "Os preços finais e o frete são confirmados antes do pagamento."
+    "533623679948747546": "Os preços finais e o frete são confirmados antes do pagamento.",
+    "1978409909024217479": "Para sua mesa, sua casa ou alguém que você ama. Encontre uma peça que tenha a sua cara.",
+    "7539266469445406612": "Produtos encontrados: {$INTERPOLATION}",
+    "5257477089066424574": "Busca: {$INTERPOLATION}",
+    "3643866539136239218": "Limpar busca",
+    "5850325899828427742": "Bordas douradas",
+    "9131023588591875802": "Sua arte",
+    "8095852233413005347": "A arte da {$START_TAG_SPAN}porcelana{$CLOSE_TAG_SPAN}",
+    "6902581486181747976": "Arte com a sua história.",
+    "4828734142233953553": "Opções de compra"
   }
 }

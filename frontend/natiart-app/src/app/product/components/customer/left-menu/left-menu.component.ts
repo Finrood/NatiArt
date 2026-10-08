@@ -10,7 +10,7 @@ import {PageControlsComponent} from '../../../../shared/components/page-controls
     selector: 'app-left-menu',
     imports: [RouterLink, PageControlsComponent],
     templateUrl: './left-menu.component.html',
-    styles: [] // Empty styles array as we're using only Tailwind classes
+    styleUrl: './left-menu.component.css'
 })
 export class LeftMenuComponent implements OnInit {
   readonly $categories = signal<Category[]>([]);

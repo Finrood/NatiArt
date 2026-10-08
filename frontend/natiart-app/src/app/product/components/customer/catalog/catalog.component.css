@@ -1,0 +1,27 @@
+.catalog-page { padding: clamp(1.75rem, 4vw, 3.5rem) clamp(1rem, 3vw, 2.5rem); }
+.catalog-intro { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 1.5rem 3rem; padding-bottom: 2rem; margin-bottom: 2rem; }
+.catalog-intro h1 { font-size: clamp(3rem, 6.5vw, 6rem); line-height: 1; }
+.catalog-description { max-width: 24rem; font-size: .9375rem; line-height: 1.8; color: rgb(var(--text-muted)); }
+.catalog-layout { display: flex; align-items: start; gap: 2.5rem; }
+.catalog-results { flex: 1; min-width: 0; }
+.art-search { max-width: none; margin: 0 0 1rem; align-items: stretch; }
+.search-field { flex: 1; min-width: 0; position: relative; }
+.search-field svg { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 1.25rem; height: 1.25rem; color: rgb(var(--text-muted)); pointer-events: none; }
+.search-field input { padding-left: 3rem; background: rgb(var(--surface)); border-color: rgb(var(--primary-light) / .65); }
+.results-context { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-block: 1.25rem 1.75rem; font-size: .8125rem; color: rgb(var(--text-muted)); }
+.search-chip { display: inline-flex; align-items: center; gap: .75rem; min-width: 0; max-width: 100%; padding-left: 1rem; background: rgb(var(--background-variant)); border: 1px solid rgb(var(--primary-light) / .6); border-radius: .25rem; }
+.search-chip span { min-width: 0; overflow-wrap: anywhere; }
+.search-chip button { display: grid; place-items: center; width: 2.75rem; flex-shrink: 0; color: rgb(var(--primary)); }
+.search-chip svg { width: 1rem; height: 1rem; }
+@media (max-width: 1023px) {
+  .catalog-layout { flex-direction: column; gap: 1.5rem; }
+  app-left-menu { width: 100%; }
+  .catalog-results { width: 100%; }
+}
+@media (max-width: 639px) {
+  .catalog-intro { padding-bottom: 1.5rem; margin-bottom: 1rem; gap: 1rem; }
+  .catalog-description { font-size: .875rem; }
+  .catalog-layout { gap: 1.25rem; }
+  .search-field svg { left: .75rem; width: 1rem; }
+  .search-field input { padding-left: 2.25rem; }
+}

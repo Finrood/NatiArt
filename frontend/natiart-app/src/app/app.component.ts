@@ -20,6 +20,7 @@ export class AppComponent {
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _scroller = inject(ViewportScroller);
   private readonly $headingFocusPending = signal(false);
+  private readonly $catalogSearchFocusPending = signal(false);
   private readonly $scrollPending = signal<Scroll | null>(null);
 
   constructor() {
@@ -28,6 +29,7 @@ export class AppComponent {
     ).subscribe((event: Event): void => {
       if (event instanceof NavigationEnd) {
         this.$headingFocusPending.set(true);
+        this.$catalogSearchFocusPending.set(this._router.currentNavigation()?.extras.info === 'catalog-search');
         this.$scrollPending.set(null);
       } else if (event instanceof Scroll) {
         this.$scrollPending.set(event);
@@ -41,9 +43,15 @@ export class AppComponent {
           .find((element: HTMLElement): boolean => element.getClientRects().length > 0);
       if (!heading) return;
       if (this.$headingFocusPending()) {
-        heading.setAttribute('tabindex', '-1');
-        heading.setAttribute('data-route-heading', '');
-        heading.focus({preventScroll: true});
+        const search: HTMLInputElement | null = this.$catalogSearchFocusPending()
+          ? page?.querySelector<HTMLInputElement>('#catalog-search') ?? null : null;
+        if (search) search.focus({preventScroll: true});
+        else {
+          heading.setAttribute('tabindex', '-1');
+          heading.setAttribute('data-route-heading', '');
+          heading.focus({preventScroll: true});
+        }
+        this.$catalogSearchFocusPending.set(false);
         this.$headingFocusPending.set(false);
       }
       const scroll: Scroll | null = this.$scrollPending();

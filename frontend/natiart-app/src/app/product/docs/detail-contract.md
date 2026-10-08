@@ -20,3 +20,9 @@ cross-route cancellation covered when changing this pipeline.
 The earlier 199-spec integration check included real HTTP and rendered first-click lens/origin, failed/missing→valid route recovery, JSON tags/reference labels, out-of-order images, empty/failed/decoded-error fallbacks, and rapid route cancellation. A JPA fetch/clear followed by actual HTTP serialization verified labels and tag array outside the persistence context. The October 2026 frontend build and complete 375-spec suite pass, including same-route retry. Run full product-service check under Java 25 for backend changes and an explicit frontend production build.
 
 When resolving CA35 overlap, retain its shared URL loader but key the ordered detail selection by image path and retain immediate route/related cancellation. Keep CA34 keyboard targets and CA37 styling/local fonts. Preserve CA26 image ordering and CA23 page APIs. Do not restore the microtask lens assumption or Set.size template.
+
+The bold gallery refinement groups the server price, quantity, purchase action
+and available personalization in one labelled Purchase options section. Product
+facts remain below it. The always-visible corner zoom icon is decorative inside
+the existing keyboard-operable gallery button; it adds no nested control or
+change to the lens dimensions. Sold-out and large-price states fit at 320px.
