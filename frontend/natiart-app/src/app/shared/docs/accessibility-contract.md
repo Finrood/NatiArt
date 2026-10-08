@@ -12,13 +12,17 @@ reduced-motion styles apply across shopping and administration.
 
 ## Verification
 
-The October 2026 suite has 384 passing ChromeHeadless specs, including native
+The October 2026 suite has 386 passing ChromeHeadless specs, including native
 modal/background focus, nested scroll restoration, rendered journeys, projected
 labels/errors, password state, static-hero behavior and recovery. Real browser
 checks verified menu Enter/Escape, personalization dismissal, cancel-first cart
 removal, gallery Space zoom and opener restoration. Both locales were rendered
 at 320/390/768/1280/1440px. Home's Lighthouse accessibility score was 100; this
 does not establish whole-app WCAG conformance or a screen-reader audit.
+
+Login's localized rejection alert and retry button update after an HTTP error
+without another input event. The rendered regression test explicitly uses the
+application's zoneless change detection and covers consecutive rejected attempts.
 
 An earlier CA34 browser probe verified signup tab order, admin editor containment,
 billing-label focus and the then-existing carousel. Those historical carousel
