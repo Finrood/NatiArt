@@ -12,6 +12,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -120,8 +122,21 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (authenticationResponse == null) {
             throw new IllegalStateException("Authentication service returned an empty validation response");
         }
-        validationCache.put(token, authenticationResponse);
+        cacheValidatedResponse(token, authenticationResponse);
         return authenticationResponse;
+    }
+
+    private void cacheValidatedResponse(String token, AuthenticationResponseDto response) {
+        // Cold parallel requests can both insert the same digest. Retry through
+        // the cache proxy so each attempt starts after the failed transaction rolls back.
+        for (int attempt = 0; attempt < 3; attempt++) {
+            try {
+                validationCache.put(token, response);
+                return;
+            } catch (DataIntegrityViolationException | ObjectOptimisticLockingFailureException exception) {
+                if (attempt == 2) throw exception;
+            }
+        }
     }
 
     private String extractToken(HttpServletRequest request) {
