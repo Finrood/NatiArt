@@ -2,7 +2,7 @@ import {CurrencyPipe, DatePipe} from '@angular/common';
 import {ChangeDetectorRef, Component, DestroyRef, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, ParamMap, RouterLink} from '@angular/router';
 
-import {catchError, map, of, Subscription, switchMap, tap} from 'rxjs';
+import {catchError, map, merge, Observable, of, Subject, Subscription, switchMap, tap} from 'rxjs';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {OrderDto} from '../../../models/order.model';
 import {OrderService} from '../../../service/order.service';
@@ -30,8 +30,16 @@ export class OrderHistoryComponent implements OnInit {
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _cdr = inject(ChangeDetectorRef);
 
+  private readonly _retry: Subject<void> = new Subject<void>();
+
+  retryOrders(): void {
+    if (this.orders.length > 0 && this.hasMore) this.loadMore();
+    else this._retry.next();
+  }
+
   ngOnInit(): void {
     this._route.queryParamMap.pipe(
+      switchMap((params: ParamMap): Observable<ParamMap> => merge(of(params), this._retry.pipe(map((): ParamMap => params)))),
       tap((params: ParamMap): void => {
         this.loadMoreSubscription?.unsubscribe();
         this.loadingMore = false;
@@ -71,6 +79,7 @@ export class OrderHistoryComponent implements OnInit {
       return;
     }
     this.loadingMore = true;
+    this.errorMessage = '';
     this.loadMoreSubscription = this._orderService.getMyOrders(this.page + 1, this.pageSize).pipe(takeUntilDestroyed(this._destroyRef)).subscribe({
       next: orders => {
         this.page += 1;

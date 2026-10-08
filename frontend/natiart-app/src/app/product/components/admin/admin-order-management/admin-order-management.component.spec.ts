@@ -22,7 +22,7 @@ describe('Rendered order fulfillment', (): void => {
       .flush([order('pending', 'PENDING'), order('paid', 'PAID'), order('processing', 'PROCESSING'), order('shipped', 'SHIPPED')]);
     fixture.detectChanges();
     const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('article button'));
-    expect(buttons.map(button => button.textContent!.trim())).toEqual(['Mark PROCESSING', 'Mark SHIPPED', 'Mark DELIVERED']);
+    expect(buttons.map(button => button.textContent!.trim())).toEqual(['Mark as processing', 'Mark as shipped', 'Mark as delivered']);
     buttons[0].click();
     const patch = http.expectOne(request => request.method === 'PATCH' && request.url.endsWith('/admin/orders/paid/status'));
     expect(patch.request.body).toEqual({status: 'PROCESSING'});
@@ -34,7 +34,7 @@ describe('Rendered order fulfillment', (): void => {
     buttons[1].click();
     http.expectOne(request => request.url.endsWith('/admin/orders/processing/status'))
       .flush(order('processing', 'SHIPPED')); fixture.detectChanges();
-    expect(rows[2].textContent).toContain('Mark DELIVERED');
+    expect(rows[2].textContent).toContain('Mark as delivered');
   });
   it('loads an older actionable 21st order on page two and fulfills it through the real service', (): void => {
     const fixture = TestBed.createComponent(AdminOrderManagementComponent); fixture.detectChanges();
@@ -52,7 +52,7 @@ describe('Rendered order fulfillment', (): void => {
     older.querySelector<HTMLButtonElement>('button')!.click();
     const patch = http.expectOne(request => request.method === 'PATCH' && request.url.endsWith('/admin/orders/older-paid/status'));
     expect(patch.request.body.status).toBe('PROCESSING'); patch.flush(order('older-paid', 'PROCESSING'));
-    fixture.detectChanges(); expect(older.textContent).toContain('Mark SHIPPED');
+    fixture.detectChanges(); expect(older.textContent).toContain('Mark as shipped');
   });
   it('shows purchase snapshots, delivery and protected artwork with failure feedback', (): void => {
     const fixture = TestBed.createComponent(AdminOrderManagementComponent); fixture.detectChanges();

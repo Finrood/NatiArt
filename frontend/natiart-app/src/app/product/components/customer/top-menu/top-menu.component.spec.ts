@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
@@ -7,6 +7,7 @@ import { BehaviorSubject, Observable, of } from 'rxjs';
 import { TopMenuComponent } from './top-menu.component';
 import { CartService } from '../../../service/cart.service';
 import { AuthenticationService } from '../../../../directory/service/authentication.service';
+import {CartItem} from '../../../models/CartItem.model';
 
 describe('TopMenuComponent', () => {
   beforeEach(async () => {
@@ -66,5 +67,57 @@ describe('TopMenuComponent', () => {
     fixture.destroy();
     expect(clearSpy).toHaveBeenCalled();
     expect(internals.cartHoverCloseTimer).toBeUndefined();
+  });
+
+  it('closes the preview after pointer exit and cancels exit when the pointer returns', fakeAsync(() => {
+    const fixture = TestBed.createComponent(TopMenuComponent);
+    const component: TopMenuComponent = fixture.componentInstance;
+    component.showCartModal(); component.hideCartModal(); tick(201);
+    expect(component.isCartHovered).toBeFalse();
+    component.showCartModal(); component.hideCartModal(); tick(100);
+    component.showCartModal(); tick(201);
+    expect(component.isCartHovered).toBeTrue();
+    component.closeCartPreview();
+    expect(component.isCartHovered).toBeFalse();
+    fixture.destroy();
+  }));
+
+  it('restores the cart link after Escape inside the preview without stealing outside focus', async () => {
+    const item: CartItem = {cartItemId: 'line-1', quantity: 1, product: {
+      id: 'vase', label: 'Vase', originalPrice: 20, markedPrice: 20, stockQuantity: 10,
+      categoryId: 'ceramics', availablePersonalizations: [], tags: [], images: [],
+    }};
+    TestBed.overrideProvider(CartService, {useValue: {
+      getCartCount: (): Observable<number> => of(1),
+      getCartItems: (): Observable<CartItem[]> => of([item]),
+      getCartTotal: (): Observable<number> => of(20),
+    }});
+    const fixture = TestBed.createComponent(TopMenuComponent);
+    const host: HTMLElement = fixture.nativeElement as HTMLElement;
+    document.body.appendChild(host);
+    try {
+      fixture.detectChanges();
+      host.querySelector('.cart-container')?.dispatchEvent(new MouseEvent('mouseenter'));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const input: HTMLInputElement | null = host.querySelector('app-cart-modal input');
+      expect(input).not.toBeNull();
+      input?.focus();
+      document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+      fixture.detectChanges();
+      expect(host.querySelector('app-cart-modal')).toBeNull();
+      expect(document.activeElement).toBe(host.querySelector('a[aria-label="Shopping cart"]'));
+
+      const home: HTMLAnchorElement = host.querySelector('a[href="/dashboard"]') as HTMLAnchorElement;
+      home.focus();
+      host.querySelector('.cart-container')?.dispatchEvent(new MouseEvent('mouseenter'));
+      fixture.detectChanges();
+      document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+      fixture.detectChanges();
+      expect(document.activeElement).toBe(home);
+    } finally {
+      fixture.destroy();
+      host.remove();
+    }
   });
 });

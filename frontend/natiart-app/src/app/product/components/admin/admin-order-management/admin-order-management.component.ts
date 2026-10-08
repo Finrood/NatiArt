@@ -112,9 +112,15 @@ export class AdminOrderManagementComponent implements OnInit {
   }
 
   statusLabel(status?: string): string {
-    const labels: Record<string, string> = {PENDING: $localize`PENDING`, PAID: $localize`PAID`,
-      PROCESSING: $localize`PROCESSING`, SHIPPED: $localize`SHIPPED`, DELIVERED: $localize`DELIVERED`, CANCELLED: $localize`CANCELLED`};
+    const labels: Record<string, string> = {PENDING: $localize`pending`, PAID: $localize`paid`,
+      PROCESSING: $localize`processing`, SHIPPED: $localize`shipped`, DELIVERED: $localize`delivered`, CANCELLED: $localize`cancelled`};
     return labels[status ?? 'PENDING'] ?? labels['PENDING'];
+  }
+
+  transitionLabel(status: string): string {
+    const labels: Record<string, string> = {PROCESSING: $localize`Mark as processing`,
+      SHIPPED: $localize`Mark as shipped`, DELIVERED: $localize`Mark as delivered`};
+    return labels[status] ?? '';
   }
 
   availableStatuses(order: OrderDto): string[] {

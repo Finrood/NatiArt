@@ -31,3 +31,10 @@ Confirmed PIX completion clears only the matching account/order attempt. A delay
 confirmation cannot remove a newer checkout. Terminal-order reconciliation returns
 to Personal and invalidates the old shipping quote. Resume displays the stored order
 summary, never the current basket; an unconfirmed request waits for server details.
+
+Before a shipping quote exists, the summary labels the basket subtotal as an
+estimate and explains that prices and shipping are confirmed before payment.
+Once received, the server quote replaces every displayed line price and total.
+The estimate never supplies an order/payment amount. Shipping uses one visible
+step heading; a separate billing form retains its own title. Changing steps
+focuses and reveals the new heading after it renders, including Back/recovery.

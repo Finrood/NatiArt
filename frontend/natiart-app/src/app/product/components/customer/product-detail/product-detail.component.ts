@@ -2,13 +2,13 @@ import {ImageCollection, ImageLoaderService, EMPTY_PRODUCT_IMAGE, ImageState} fr
 import {inject, signal, computed, Signal, WritableSignal, Component, ElementRef, OnDestroy, OnInit, Renderer2, ViewChild} from '@angular/core';
 import { AsyncPipe, CurrencyPipe, NgStyle } from "@angular/common";
 import {FormsModule} from "@angular/forms";
-import {BehaviorSubject, Subscription, of} from "rxjs";
-import {catchError, switchMap, tap} from "rxjs/operators";
+import {BehaviorSubject, Subscription, Observable, Subject, merge, of} from "rxjs";
+import {catchError, map, switchMap, tap} from "rxjs/operators";
 import {Product} from "../../../models/product.model";
 import {ActivatedRoute, ParamMap, RouterLink} from "@angular/router";
 import {ProductService} from "../../../service/product.service";
 import {Meta, Title} from '@angular/platform-browser';
-import {LeftMenuComponent} from "../left-menu/left-menu.component";
+import {ProductCardComponent} from "../../../../shared/components/product-card/product-card.component";
 import {CartService} from "../../../service/cart.service";
 import {PersonalizationOption} from "../../../models/support/personalization-option";
 import {PersonalizationModalComponent} from "../personalization-modal/personalization-modal.component";
@@ -24,7 +24,7 @@ interface DetailImage { key: string; url: string | null; state: ImageState; }
     AsyncPipe,
     FormsModule,
     CurrencyPipe,
-    LeftMenuComponent,
+    ProductCardComponent,
     NgStyle,
     PersonalizationModalComponent,
     RouterLink,
@@ -38,6 +38,9 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   imageLabel(index: number): string {
     return $localize`View product image ${index}:IMAGE_NUMBER:`;
   }
+
+  private readonly _retry: Subject<void> = new Subject<void>();
+  retryProduct(): void { this._retry.next(); }
 
   product$ = new BehaviorSubject<Product | null>(null);
   quantity: number = 1;
@@ -96,6 +99,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     // switchMap cancels any in-flight product fetch so stale responses cannot
     // overwrite the current view.
     const subscription = this._route.paramMap.pipe(
+      switchMap((params: ParamMap): Observable<ParamMap> => merge(of(params), this._retry.pipe(map((): ParamMap => params)))),
       tap((): void => {
         this.setStorefrontMetadata();
         this.isLoading = true;

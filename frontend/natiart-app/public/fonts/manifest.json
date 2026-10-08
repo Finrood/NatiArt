@@ -2,29 +2,39 @@
   "upstreamCommit": "23e54b51ddffbc7713c583748e3bd86f62b1fa4a",
   "files": [
     {
-      "file": "poppins-400.ttf",
+      "file": "poppins-400.woff2",
       "source": "https://raw.githubusercontent.com/google/fonts/23e54b51ddffbc7713c583748e3bd86f62b1fa4a/ofl/poppins/Poppins-Regular.ttf",
-      "sha256": "7e65201e9b79159e2300267cc885e16c8dcef2424cdfa09a29bfb0980a94a7ba"
+      "sha256": "8a60e26c092e01ecb1af5c608e59769146de3eae7d83591ed8e93642f9ac99f4",
+      "sourceSha256": "7e65201e9b79159e2300267cc885e16c8dcef2424cdfa09a29bfb0980a94a7ba",
+      "transformation": "Lossless WOFF2 compression of the pinned upstream TTF; all glyphs and weights retained."
     },
     {
-      "file": "poppins-500.ttf",
+      "file": "poppins-500.woff2",
       "source": "https://raw.githubusercontent.com/google/fonts/23e54b51ddffbc7713c583748e3bd86f62b1fa4a/ofl/poppins/Poppins-Medium.ttf",
-      "sha256": "90373e7d838d32468438fc3e152dca0bdb12edcab99ea639f158790b1ba1fd05"
+      "sha256": "a487d74e11448664fee874f10730e67f580111c64527028a27f8edeac2113692",
+      "sourceSha256": "90373e7d838d32468438fc3e152dca0bdb12edcab99ea639f158790b1ba1fd05",
+      "transformation": "Lossless WOFF2 compression of the pinned upstream TTF; all glyphs and weights retained."
     },
     {
-      "file": "poppins-600.ttf",
+      "file": "poppins-600.woff2",
       "source": "https://raw.githubusercontent.com/google/fonts/23e54b51ddffbc7713c583748e3bd86f62b1fa4a/ofl/poppins/Poppins-SemiBold.ttf",
-      "sha256": "d3bf1bdaf0550e83da9ac0b1d1d9fe6db086835a83aa28578e609a394b9a0286"
+      "sha256": "4bc3fd85378bb461f091548a65c2be0d4ae1cbb6c8b42c4cbace6fa0c46b9546",
+      "sourceSha256": "d3bf1bdaf0550e83da9ac0b1d1d9fe6db086835a83aa28578e609a394b9a0286",
+      "transformation": "Lossless WOFF2 compression of the pinned upstream TTF; all glyphs and weights retained."
     },
     {
-      "file": "poppins-700.ttf",
+      "file": "poppins-700.woff2",
       "source": "https://raw.githubusercontent.com/google/fonts/23e54b51ddffbc7713c583748e3bd86f62b1fa4a/ofl/poppins/Poppins-Bold.ttf",
-      "sha256": "983676516167748b74de6f4771fb384c664fd913acb8b471122ecacf5da5ea6c"
+      "sha256": "015396afd98a40623cd66267ed2b03e193c2f9e1b3fa11ccdb2fbc3a3bda8806",
+      "sourceSha256": "983676516167748b74de6f4771fb384c664fd913acb8b471122ecacf5da5ea6c",
+      "transformation": "Lossless WOFF2 compression of the pinned upstream TTF; all glyphs and weights retained."
     },
     {
-      "file": "playfair-display-variable.ttf",
+      "file": "playfair-display-variable.woff2",
       "source": "https://raw.githubusercontent.com/google/fonts/23e54b51ddffbc7713c583748e3bd86f62b1fa4a/ofl/playfairdisplay/PlayfairDisplay%5Bwght%5D.ttf",
-      "sha256": "c40f2293766a503bc70cce9e512ef844a4ccb7cbcde792fe2ea31d191917d8d6"
+      "sha256": "2315154e5f513efd82c01527d50fbaa015cbdc564ee514ce271157a426a34930",
+      "sourceSha256": "c40f2293766a503bc70cce9e512ef844a4ccb7cbcde792fe2ea31d191917d8d6",
+      "transformation": "Lossless WOFF2 compression of the pinned upstream TTF; all glyphs and weights retained."
     },
     {
       "file": "poppins-OFL.txt",

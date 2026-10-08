@@ -7,7 +7,7 @@ import {BehaviorSubject} from 'rxjs';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {finalize} from 'rxjs/operators';
 import {Package} from '../../../models/package.model';
-import { AsyncPipe, NgClass } from '@angular/common';
+import { AsyncPipe } from '@angular/common';
 import {AlertMessageComponent} from "../../../../shared/components/alert-message/alert-message.component";
 import {NatiartFormFieldComponent} from "../../../../shared/components/natiart-form-field/natiart-form-field.component";
 import {PagedList} from '../../../../shared/service/paged-list';
@@ -20,7 +20,6 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
   imports: [
     AsyncPipe,
     ReactiveFormsModule,
-    NgClass,
     AlertMessageComponent,
     NatiartFormFieldComponent,
     ButtonComponent,

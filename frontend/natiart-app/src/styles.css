@@ -7,7 +7,7 @@
 
 @font-face {
   font-family: "Poppins";
-  src: url("/fonts/poppins-400.ttf") format("truetype");
+  src: url("/fonts/poppins-400.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -15,7 +15,7 @@
 
 @font-face {
   font-family: "Poppins";
-  src: url("/fonts/poppins-500.ttf") format("truetype");
+  src: url("/fonts/poppins-500.woff2") format("woff2");
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -23,7 +23,7 @@
 
 @font-face {
   font-family: "Poppins";
-  src: url("/fonts/poppins-600.ttf") format("truetype");
+  src: url("/fonts/poppins-600.woff2") format("woff2");
   font-weight: 600;
   font-style: normal;
   font-display: swap;
@@ -31,7 +31,7 @@
 
 @font-face {
   font-family: "Poppins";
-  src: url("/fonts/poppins-700.ttf") format("truetype");
+  src: url("/fonts/poppins-700.woff2") format("woff2");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -39,7 +39,7 @@
 
 @font-face {
   font-family: "Playfair Display";
-  src: url("/fonts/playfair-display-variable.ttf") format("truetype");
+  src: url("/fonts/playfair-display-variable.woff2") format("woff2");
   font-weight: 400 900;
   font-style: normal;
   font-display: swap;
@@ -104,7 +104,7 @@
   --text-5xl: 3rem;
   --text-6xl: 4rem;
 
-  --spacing-4: 1.125rem;
+  --spacing-4: 1rem;
   --spacing-18: 4.5rem;
   --spacing-22: 5.5rem;
   --spacing-30: 7.5rem;
@@ -150,22 +150,22 @@
   --primary-dark: 104 54 43;
   --primary-contrast: 255 255 255;
 
-  --secondary: 74 74 74;
+  --secondary: 68 62 59;
   --secondary-light: 102 102 102;
-  --secondary-dark: 34 34 34;
+  --secondary-dark: 45 39 36;
   --secondary-contrast: 255 255 255;
 
-  --background: 253 245 230;
-  --background-variant: 255 251 245;
+  --background: 250 247 242;
+  --background-variant: 246 240 234;
 
   --surface: 255 255 255;
-  --surface-variant: 245 245 245;
+  --surface-variant: 244 240 235;
   --on-surface: 23 23 23;
 
   --accent: 29 78 216;
   --accent-contrast: 255 255 255;
 
-  --text-muted: 74 74 74;
+  --text-muted: 98 87 80;
 }
 
 /* Projected controls belong to their declaring component, so reusable input styles are global. */
@@ -175,7 +175,9 @@
   focus:outline-none transition-all duration-200 text-surface-contrast/85;
 
   padding: 0.675rem 1rem;
-  font-size: 0.9375rem;
+  font-size: 1rem;
+  min-height: 3rem;
+  box-shadow: none;
 }
 
 app-natiart-form-field .has-error .form-input {
@@ -189,3 +191,90 @@ select.form-input {
 
 [data-route-heading]:focus { outline: none; }
 app-natiart-form-field .password-field .form-input { padding-right: 5rem; }
+
+/* Atelier foundations: display type belongs to headings, interface type to actions and data. */
+@layer base {
+  html { scroll-padding-top: 6rem; }
+  body { margin: 0; background: rgb(var(--background)); color: rgb(var(--secondary-dark)); font-family: var(--font-sans); line-height: 1.65; }
+  h1, h2 { font-family: var(--font-serif); line-height: 1.2; text-wrap: balance; }
+  h3, h4 { line-height: 1.35; }
+  button, input, select, textarea { font: inherit; }
+  button, summary { min-height: 2.75rem; }
+  button:not(:disabled), summary { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea { min-width: 0; max-width: 100%; }
+  input[type="checkbox"], input[type="radio"] { accent-color: rgb(var(--primary)); }
+}
+:where(a, button, input, select, textarea, summary, [tabindex="0"]):focus-visible {
+  outline: 2px solid rgb(var(--primary)); outline-offset: 4px;
+}
+.art-page { width: min(100%, 80rem); margin-inline: auto; padding: 2.5rem clamp(1rem, 3vw, 2.5rem); }
+.art-eyebrow { font-family: var(--font-sans); color: rgb(var(--primary)); font-size: .8125rem; font-weight: 500; margin-bottom: .75rem; }
+.art-title { font-size: clamp(2rem, 4vw, 3.25rem); font-weight: 400; color: rgb(var(--secondary-dark)); }
+.art-title { letter-spacing: -.035em; }
+.art-link { color: rgb(var(--primary)); text-decoration: underline; text-underline-offset: .3em; }
+.art-action { display: inline-flex; align-items: center; justify-content: center; min-height: 3rem; padding: .75rem 1.5rem; background: rgb(var(--primary)); color: white; border: 1px solid rgb(var(--primary)); border-radius: .375rem; font-family: var(--font-sans); font-size: .875rem; font-weight: 500; text-align: center; transition: background-color 150ms; }
+.art-action:hover { background: rgb(var(--primary-dark)); }
+.art-panel { background: rgb(var(--surface)); border: 1px solid rgb(var(--primary-light) / .5); border-radius: .5rem; box-shadow: none; }
+.art-empty { padding: 3rem 1rem; text-align: center; background: rgb(var(--surface)); border-block: 1px solid rgb(var(--primary-light) / .5); }
+.art-skeleton { background: rgb(var(--surface-variant)); border-radius: .375rem; }
+.art-catalog { width: min(100%, 86rem); margin-inline: auto; }
+.art-catalog main { padding: 2rem clamp(1rem, 3vw, 2.5rem); }
+.art-search { display: flex; gap: .75rem; margin-block: 1.5rem 2rem; max-width: 42rem; }
+.catalog-intro { padding-bottom: 1.5rem; border-bottom: 1px solid rgb(var(--primary-light) / .5); }
+.catalog-intro .art-eyebrow { letter-spacing: .1em; text-transform: uppercase; font-size: .6875rem; }
+app-left-menu a[aria-current="page"] { background: rgb(var(--background-variant)); color: rgb(var(--primary-dark)); border-left: 2px solid rgb(var(--primary)); font-weight: 500; }
+.cart-preview { box-shadow: 0 12px 32px rgb(var(--secondary-dark) / .12); }
+.order-status { background: rgb(var(--background-variant)); color: rgb(var(--text-muted)); border: 1px solid rgb(var(--primary-light) / .5); }
+.order-status[data-status="PAID"], .order-status[data-status="DELIVERED"] { background: #edf4e9; color: #305536; border-color: #b6ceb0; }
+.order-status[data-status="PROCESSING"], .order-status[data-status="SHIPPED"] { background: #edf1f4; color: #3c5366; border-color: #bdcbd5; }
+.order-status[data-status="CANCELLED"] { background: #f8eae7; color: #803f34; border-color: #e1bab2; }
+app-order-history > .min-h-screen, app-checkout > .min-h-screen { min-height: calc(100svh - 5.5rem); }
+.art-search button { background: rgb(var(--primary)); color: white; padding: .75rem 1.25rem; border-radius: .375rem; }
+.art-search input { flex: 1; min-width: 0; }
+.art-grid { display: grid; grid-template-columns: 1fr; gap: 2rem 1.25rem; }
+@media (min-width: 380px) { .art-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (min-width: 1100px) { .art-grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+@media (min-width: 1400px) { .art-grid { grid-template-columns: repeat(4, minmax(0,1fr)); } }
+@media (max-width: 639px) { .art-page { padding-block: 1.75rem; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+.auth-page { min-height: calc(100svh - 5.5rem); }
+.auth-grid { max-width: 76rem; margin-inline: auto; min-height: calc(100svh - 5.5rem); }
+app-cart .art-panel, app-checkout .art-panel, app-order-history .art-panel { border-color: rgb(var(--primary-light) / .5); }
+app-admin-dashboard input:not([type="checkbox"]):not([type="radio"]), app-admin-dashboard select, app-admin-dashboard textarea { border-color: rgb(var(--primary-light)); background: rgb(var(--surface)); font-family: var(--font-sans); border-radius: .375rem; min-height: 3rem; font-size: 1rem; box-shadow: none; }
+app-admin-dashboard summary { display: list-item; padding-block: .5rem; }
+app-admin-dashboard .art-panel > h3 { font: 400 1.375rem/1.35 var(--font-serif); }
+app-admin-dashboard .admin-hidden { border-style: dashed; background: rgb(var(--background-variant)); }
+.admin-hidden-label { display: inline-block; color: rgb(var(--text-muted)); background: rgb(var(--surface)); border: 1px solid rgb(var(--primary-light)); border-radius: .25rem; padding: .25rem .5rem; margin-bottom: .75rem; font-size: .75rem; }
+app-admin-dashboard [data-load-more] { display: inline-flex; align-items: center; min-height: 2.75rem; margin-top: 1.5rem; padding: .5rem 1rem; border: 1px solid rgb(var(--primary)); color: rgb(var(--primary)); border-radius: .375rem; }
+@media (max-width: 639px) { .auth-grid { min-height: 0; padding-block: 1.5rem; } }
+
+app-checkout .step-icon { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border: 1px solid rgb(var(--primary-light)); border-radius: 50%; color: rgb(var(--text-muted)); }
+app-checkout .step.active .step-icon, app-checkout .step.completed .step-icon { background: rgb(var(--primary)); color: white; border-color: rgb(var(--primary)); }
+
+/* Artwork frames and open forms give account entry the same proportions as the shop. */
+.auth-art { flex-direction: column; justify-content: center; align-items: center; gap: 1.5rem; padding: 3rem; background: #f4e8e2; }
+.auth-artwork { position: relative; overflow: hidden; width: min(100%, 25rem); aspect-ratio: .92; border-radius: 14rem 14rem .375rem .375rem; }
+.auth-artwork img { position: absolute; height: 100%; width: auto; max-width: none; right: 0; }
+.auth-art-caption { max-width: 20rem; color: rgb(var(--primary-dark)); font: 400 1.5rem/1.4 var(--font-serif); text-align: center; }
+.auth-grid .art-panel { background: transparent; border-color: transparent; }
+.auth-grid h1 { text-align: left; font-size: clamp(2rem, 3.5vw, 2.75rem); letter-spacing: -.035em; }
+.auth-grid h1 + p { text-align: left; font-size: .875rem; }
+.auth-recovery { min-height: calc(100svh - 5.5rem); padding-block: 3rem; }
+.auth-recovery .art-panel { border-top: 3px solid rgb(var(--primary)); }
+.auth-recovery h1 { letter-spacing: -.025em; text-align: left; }
+.auth-recovery h1 + p { text-align: left; font-size: .875rem; }
+.cart-product-name { display: inline-flex; align-items: center; min-height: 2.75rem; font: 400 1.125rem/1.35 var(--font-serif); text-wrap: pretty; }
+.cart-product-name:hover { color: rgb(var(--primary)); text-decoration: underline; text-underline-offset: .3em; }
+app-cart table { table-layout: fixed; }
+app-cart table th:first-child { width: 42%; }
+app-cart table td:first-child { white-space: normal; overflow-wrap: anywhere; }
+app-cart table td:first-child > div > div:last-child { min-width: 0; }
+@media (max-width: 1023px) and (min-width: 768px) {
+  app-cart table th, app-cart table td { padding-inline: .75rem; }
+  app-cart table td:first-child img, app-cart table td:first-child .shrink-0 { width: 4rem; height: 4rem; }
+}
+@media (max-width: 639px) { .auth-recovery .art-panel { padding: 1.5rem; } .cart-product-name { font-size: 1rem; } }

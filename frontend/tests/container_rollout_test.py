@@ -117,6 +117,14 @@ COPY html /usr/share/nginx/html
                 assert headers['Cache-Control'] == 'no-store', path
             assert 'release:"B"' in request(port, '/runtime-config.js')[2]
             assert request(port, '/runtime-config.js')[1]['Cache-Control'] == 'no-store'
+            for language in ['en', 'pt-BR']:
+                for path in [f'/{language}/', f'/{language}/dashboard', f'/{language}/dashboard/?preview=1']:
+                    status, headers, body = request(port, path)
+                    assert status == 200 and 'Release B' in body, path
+                    assert headers['Cache-Control'] == 'no-store', path
+                    assert f'</{language}/assets/img/a1.webp>; rel=preload; as=image' in headers['Link'], path
+                for path in [f'/{language}/login', f'/{language}/checkout', f'/{language}/products']:
+                    assert 'Link' not in request(port, path)[1], path
             # A had never requested its lazy chunk before the switch. B still serves it.
             assert '"A"' in request(port, '/chunk-AAAAAAAA.js')[2]
             assert '"B"' in request(port, '/chunk-BBBBBBBB.js')[2]

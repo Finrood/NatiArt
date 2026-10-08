@@ -2,16 +2,30 @@
 
 Projected form inputs, selects and textareas receive unique IDs, required and invalid state, and the current error description from `app-natiart-form-field`. Existing external hint descriptions are retained. Explicit IDs remain available for address forms. Form events refresh errors without replacing the form object. Password buttons expose their current Show/Hide name and pressed state.
 
-Use `app-accessible-dialog` for modal content. Native `showModal()` provides focus containment and inert background content; Escape and backdrop dismissal emit `dismiss` to the owner. Closing restores the connected opener and restores body scrolling after the last dialog closes. Confirmation starts at Cancel. Every owner must handle dismissal and destroy the component when closed.
+Use `app-accessible-dialog` for modal content. Native `showModal()` provides focus containment and inert background content; Escape and backdrop dismissal emit `dismiss` to the owner. Closing restores the connected opener and restores body scrolling after the last dialog closes. Confirmation starts at Cancel. Every owner must handle dismissal and destroy the component when closed. Personalization and long admin editors opt into `showClose`, a sticky, named 44px Close button; confirmation dialogs retain their cancel-first behavior without this extra control.
 
-The carousel has visible keyboard controls and explicit pause/resume. Focus and pointer presence pause automatic rotation. Reduced motion disables rotation and slide transitions; manual selection remains available. Explore Collections uses the public `/products` route supplied by CA23/CA27.
+Home now has one static approved hero image with a real Explore Collections
+link to public `/products`. It has no rotation, slide or pause controls. The
+shared header includes desktop locale links and a native phone navigation dialog
+with Close, Escape dismissal and opener restoration. Global focus-visible and
+reduced-motion styles apply across shopping and administration.
 
 ## Verification
 
-256 ChromeHeadless specs cover native modal/background focus, nested scroll restoration, rendered category/package/product/personalization/cart journeys, projected labels and errors, password state, and pause/reduced-motion carousel behavior.
+The October 2026 suite has 382 passing ChromeHeadless specs, including native
+modal/background focus, nested scroll restoration, rendered journeys, projected
+labels/errors, password state, static-hero behavior and recovery. Real browser
+checks verified menu Enter/Escape, personalization dismissal, cancel-first cart
+removal, gallery Space zoom and opener restoration. Both locales were rendered
+at 320/390/768/1280/1440px. Home's Lighthouse accessibility score was 100; this
+does not establish whole-app WCAG conformance or a screen-reader audit.
 
-A separate local browser probe used the real components and disposable HTTP fixtures. Keyboard checks confirmed signup Email → Password tab order; Enter opened all three admin editors; Escape restored each Add button; reverse tab remained within the category modal; personalization Escape restored its opener; cart removal started on Cancel and Escape preserved the line and restored Remove. Clicking Billing Zip Code focused `billingZipCode`. End selected carousel slide 4 and Enter changed Pause to Resume. This is browser keyboard and accessibility-tree evidence, not a claim of a dedicated screen-reader audit.
+An earlier CA34 browser probe verified signup tab order, admin editor containment,
+billing-label focus and the then-existing carousel. Those historical carousel
+checks no longer describe Home. Current coverage and tooling limitations are in
+the atelier verification record; full assistive-technology and actual browser
+400% zoom checks remain open.
 
 ## Integration
 
-Retain CA33 group/password errors and normalized input behavior, CA37 global projected-input styling/local fonts, CA29 address lookup behavior, CA23 pagination and CA28 write guards when resolving overlapping component files. Shared control IDs/errors should be owned by this wrapper; remove obsolete caller error IDs rather than retain broken descriptions. Keep CA26 product image ordering/upload cancellation and CA13 personalization ownership behavior inside the dialog wrapper. Deploy the public catalog route before exposing the carousel link.
+Retain CA33 group/password errors and normalized input behavior, CA37 global projected-input styling/local fonts, CA29 address lookup behavior, CA23 pagination and CA28 write guards when resolving overlapping component files. Shared control IDs/errors should be owned by this wrapper; remove obsolete caller error IDs rather than retain broken descriptions. Keep CA26 product image ordering/upload cancellation and CA13 personalization ownership behavior inside the dialog wrapper. Preserve the public catalog link.

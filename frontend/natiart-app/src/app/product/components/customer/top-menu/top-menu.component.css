@@ -1,1 +1,2 @@
-/* No custom CSS needed for top-menu as all styles are handled by Tailwind utility classes in the HTML. */
+nav a { display: inline-flex; align-items: center; min-height: 2.75rem; }
+nav a.current { color: rgb(var(--primary)); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .6em; }

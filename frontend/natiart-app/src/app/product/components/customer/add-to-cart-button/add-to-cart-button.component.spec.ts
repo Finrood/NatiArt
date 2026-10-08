@@ -1,6 +1,8 @@
+import {By} from '@angular/platform-browser';
+import {PersonalizationModalComponent} from '../personalization-modal/personalization-modal.component';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 
@@ -42,5 +44,79 @@ describe('AddToCartButtonComponent', () => {
 
     expect(getProductSpy).toHaveBeenCalledWith('p1');
     expect(addToCartSpy).toHaveBeenCalledWith(currentProduct, 1, true, undefined);
+  });
+});
+
+describe('Personalization request recovery', () => {
+  let http: HttpTestingController;
+  let savedCart: string | null;
+  const product: Product = {id: 'atelier-recovery', label: 'Portrait plate', originalPrice: 100, markedPrice: 90,
+    stockQuantity: 3, categoryId: 'c', tags: [], images: [],
+    availablePersonalizations: [PersonalizationOption.GOLDEN_BORDER, PersonalizationOption.CUSTOM_IMAGE]};
+
+  beforeEach(async () => {
+    savedCart = localStorage.getItem('natiart-cart');
+    await TestBed.configureTestingModule({imports: [AddToCartButtonComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])]}).compileComponents();
+    http = TestBed.inject(HttpTestingController);
+    TestBed.inject(CartService).clearCart();
+  });
+  afterEach(() => {
+    http.verify();
+    if (savedCart === null) localStorage.removeItem('natiart-cart');
+    else localStorage.setItem('natiart-cart', savedCart);
+  });
+
+  it('retains artwork and options after failure, prevents duplicate requests and announces only an accepted line', () => {
+    const fixture = TestBed.createComponent(AddToCartButtonComponent);
+    fixture.componentInstance.product = product;
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    expect(root.querySelector('button')!.textContent).toContain('Choose options');
+    root.querySelector('button')!.click(); fixture.detectChanges();
+    const modal: PersonalizationModalComponent = fixture.debugElement.query(By.directive(PersonalizationModalComponent)).componentInstance;
+    const artwork: File = new File(['local-artwork'], 'portrait.png', {type: 'image/png'});
+    modal.goldBorder = true; modal.customImage = artwork;
+    modal.onSubmit(); modal.onSubmit(); fixture.detectChanges();
+    const first = http.expectOne((request): boolean => request.url.endsWith('/products/atelier-recovery'));
+    const adding: HTMLButtonElement | undefined = Array.from(root.querySelectorAll<HTMLButtonElement>('dialog button')).find((button: HTMLButtonElement): boolean => button.textContent?.includes('Adding...') ?? false);
+    expect(adding?.disabled).toBeTrue();
+    first.flush(null, {status: 503, statusText: 'Unavailable'}); fixture.detectChanges();
+    expect(root.textContent).toContain('Your options are kept');
+    expect(modal.customImage).toBe(artwork); expect(modal.goldBorder).toBeTrue();
+    expect(root.querySelector('dialog')).not.toBeNull();
+    modal.onSubmit(); fixture.detectChanges();
+    http.expectOne((request): boolean => request.url.endsWith('/products/atelier-recovery')).flush({...product, markedPrice: 95});
+    fixture.detectChanges();
+    expect(root.querySelector('dialog')).toBeNull();
+    expect(root.querySelector('[role="status"]')!.textContent).toContain('Added to cart');
+    expect(root.querySelector('a[href="/cart"]')).not.toBeNull();
+    const item = TestBed.inject(CartService).getCartItemsSnapshot()[0];
+    expect(item.image).toBe(artwork); expect(item.goldBorder).toBeTrue(); expect(item.product.markedPrice).toBe(95);
+    fixture.destroy();
+  });
+
+  it('cancels a pending refresh on dismissal and does not add a line afterward', () => {
+    const fixture = TestBed.createComponent(AddToCartButtonComponent);
+    fixture.componentInstance.product = product; fixture.detectChanges();
+    fixture.componentInstance.openPersonalizationModal(product); fixture.detectChanges();
+    fixture.componentInstance.onPersonalizationComplete({});
+    const pending = http.expectOne((request): boolean => request.url.endsWith('/products/atelier-recovery'));
+    fixture.componentInstance.closePersonalizationModal(); fixture.detectChanges();
+    expect(pending.cancelled).toBeTrue(); expect(fixture.componentInstance.isAdding).toBeFalse();
+    expect(TestBed.inject(CartService).getCartItemsSnapshot()).toEqual([]);
+    fixture.destroy();
+  });
+
+  it('does not show a success message when all available stock is already in the cart', () => {
+    const fixture = TestBed.createComponent(AddToCartButtonComponent);
+    const plain: Product = {...product, availablePersonalizations: []};
+    fixture.componentInstance.product = plain;
+    TestBed.inject(CartService).addToCart(plain, 3);
+    fixture.detectChanges(); (fixture.nativeElement as HTMLElement).querySelector('button')!.click(); fixture.detectChanges();
+    expect(fixture.componentInstance.$added()).toBeFalse();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Review your cart');
+    expect(TestBed.inject(CartService).getCartItemsSnapshot()[0].quantity).toBe(3);
+    fixture.destroy();
   });
 });

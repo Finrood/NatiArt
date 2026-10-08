@@ -31,6 +31,51 @@ describe('ProductListComponent', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
+  it('limits the home edit and replaces excluded pieces without requesting hidden artwork', () => {
+    const fixture = TestBed.createComponent(ProductListComponent);
+    fixture.componentRef.setInput('limit', 2);
+    fixture.componentRef.setInput('excludeProductIds', ['p-1']);
+    const service: ProductService = TestBed.inject(ProductService);
+    const imageSpy: jasmine.Spy = spyOn(service, 'getImage').and.returnValue(of(new Blob(['image'])));
+    const products: Product[] = [1, 2, 3, 4].map((id: number): Product => ({
+      id: 'p-' + id, label: 'Piece ' + id, originalPrice: 10, markedPrice: 10,
+      stockQuantity: 2, categoryId: 'category', availablePersonalizations: [], tags: [], images: ['image-' + id]
+    }));
+    fixture.detectChanges();
+    httpMock.expectOne((req: HttpRequest<unknown>): boolean => req.url.includes('/featured')).flush(products);
+    expect(fixture.componentInstance.products.value.map((product: Product): string | undefined => product.id)).toEqual(['p-2', 'p-3']);
+    expect(imageSpy.calls.allArgs()).toEqual([['image-2'], ['image-3']]);
+    fixture.componentRef.setInput('excludeProductIds', ['p-2']);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.products.value.map((product: Product): string | undefined => product.id)).toEqual(['p-1', 'p-3']);
+    expect(fixture.componentInstance.imageUrls['p-2']).toBeUndefined();
+    expect(imageSpy).toHaveBeenCalledTimes(3);
+    fixture.destroy();
+  });
+
+  it('defers lower-page image bytes until the section approaches the viewport and disconnects on destroy', () => {
+    let intersect: IntersectionObserverCallback | undefined;
+    const disconnect: jasmine.Spy = jasmine.createSpy('disconnect');
+    const observer: IntersectionObserver = {observe: jasmine.createSpy('observe'), disconnect} as unknown as IntersectionObserver;
+    spyOn(window, 'IntersectionObserver').and.callFake(function(callback: IntersectionObserverCallback): IntersectionObserver {
+      intersect = callback; return observer;
+    });
+    const fixture = TestBed.createComponent(ProductListComponent);
+    fixture.componentRef.setInput('deferImages', true);
+    const service: ProductService = TestBed.inject(ProductService);
+    const imageSpy: jasmine.Spy = spyOn(service, 'getImage').and.returnValue(of(new Blob(['image'])));
+    fixture.detectChanges();
+    httpMock.expectOne((req: HttpRequest<unknown>): boolean => req.url.includes('/featured')).flush([{
+      id: 'p-1', label: 'Piece', originalPrice: 10, markedPrice: 10, stockQuantity: 2,
+      categoryId: 'category', availablePersonalizations: [], tags: [], images: ['image-1']
+    }]);
+    expect(imageSpy).not.toHaveBeenCalled();
+    intersect?.([{isIntersecting: true} as IntersectionObserverEntry], observer);
+    expect(imageSpy).toHaveBeenCalledOnceWith('image-1');
+    fixture.destroy();
+    expect(disconnect).toHaveBeenCalled();
+  });
+
   it('skips image fetch and direct-adds id-less products without throwing (AA1)', () => {
     const fixture = TestBed.createComponent(ProductListComponent);
     const component: ProductListComponent = fixture.componentInstance;

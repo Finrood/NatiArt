@@ -33,14 +33,14 @@ describe('Guest shopping routes', () => {
     const api: string = environment.api.product.url;
     const harness: RouterTestingHarness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/dashboard', DashboardComponent);
-    http.expectOne(request => request.url === api + '/categories/page').flush({items: [], page: 0, size: 20, total: 0, hasNext: false});
+    http.expectNone(api + '/categories/page');
     http.expectOne(api + '/products/featured').flush([]);
     http.expectOne(api + '/products/new').flush([]);
 
     await harness.navigateByUrl('/product/guest-product', ProductDetailComponent);
     const product: Product = {id: 'guest-product', label: 'Guest porcelain', categoryId: 'cat',
       markedPrice: 20, originalPrice: 25, stockQuantity: 3, images: [], tags: [], availablePersonalizations: []};
-    http.expectOne(request => request.url === api + '/categories/page').flush({items: [], page: 0, size: 20, total: 0, hasNext: false});
+    http.expectNone(api + '/categories/page');
     http.expectOne(api + '/products/guest-product').flush(product);
     http.expectOne(request => request.url === api + '/products' && request.params.get('categoryId') === 'cat').flush([]);
     harness.detectChanges();

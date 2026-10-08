@@ -1,33 +1,42 @@
 import {ImageCollection, ImageLoaderService, EMPTY_PRODUCT_IMAGE} from '../../../../service/image-loader.service';
-import {Component, inject, Input, OnDestroy, OnInit, Renderer2, signal} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, inject, Input, OnChanges, OnDestroy, OnInit, output, Renderer2, signal, SimpleChanges} from '@angular/core';
+import {RouterLink} from "@angular/router";
 import { AsyncPipe } from "@angular/common";
 import {BehaviorSubject, Subscription} from "rxjs";
 import {Product} from "../../../../models/product.model";
 import {ProductService} from "../../../../service/product.service";
 import {ProductCardComponent} from "../../../../../shared/components/product-card/product-card.component";
 import {CartService} from "../../../../service/cart.service";
-import {PersonalizationModalComponent} from "../../personalization-modal/personalization-modal.component";
 import {PersonalizationOption} from "../../../../models/support/personalization-option";
 import {reportError} from '../../../../../shared/service/error-reporting.service';
 
 @Component({
   selector: 'app-product-list',
   host: {'[attr.aria-busy]': '$loading()'},
-  imports: [AsyncPipe, ProductCardComponent, PersonalizationModalComponent],
+  imports: [AsyncPipe, ProductCardComponent, RouterLink],
   templateUrl: './product-list.component.html',
   styleUrls: ['./product-list.component.css']
 })
-export class ProductListComponent implements OnInit, OnDestroy {
+export class ProductListComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
   readonly images: ImageCollection = inject(ImageLoaderService).create();
   readonly emptyImage: string = EMPTY_PRODUCT_IMAGE;
   readonly $loading = signal(true);
+  readonly $loadError = signal(false);
   get imageUrls(): Record<string, string> { return this.images.urls(); }
 
   @Input() type: 'featured' | 'new' = 'featured';
   @Input() title: string = '';
+  @Input() limit: number = Infinity;
+  @Input() excludeProductIds: string[] = [];
+  @Input() deferImages: boolean = false;
+  readonly visibleProductIds = output<string[]>();
 
   products = new BehaviorSubject<Product[]>([]);
-  private subscriptions: Subscription[] = [];
+  private loadSubscription: Subscription | null = null;
+  private allProducts: Product[] = [];
+  private imageObserver: IntersectionObserver | null = null;
+  private imagesActivated: boolean = false;
+  private readonly _element = inject<ElementRef<HTMLElement>>(ElementRef);
 
   // Personalization modal
   showPersonalizationModal = false;
@@ -42,27 +51,60 @@ export class ProductListComponent implements OnInit, OnDestroy {
     this.getProducts();
   }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['excludeProductIds'] || changes['limit']) this.publishProducts();
+  }
+
+  ngAfterViewInit(): void {
+    if (!this.deferImages) return;
+    if (typeof IntersectionObserver === 'undefined') { this.activateImages(); return; }
+    this.imageObserver = new IntersectionObserver((entries: IntersectionObserverEntry[]): void => {
+      if (entries.some((entry: IntersectionObserverEntry): boolean => entry.isIntersecting)) this.activateImages();
+    }, {rootMargin: '200px'});
+    this.imageObserver.observe(this._element.nativeElement);
+  }
+
+  private activateImages(): void {
+    this.imagesActivated = true;
+    this.imageObserver?.disconnect();
+    this.updateProductImages(this.products.value);
+  }
+
+  private publishProducts(): void {
+    const selected: Product[] = this.allProducts.filter((product: Product): boolean =>
+      !product.id || !this.excludeProductIds.includes(product.id)).slice(0, this.limit);
+    this.products.next(selected);
+    this.updateProductImages(selected);
+    this.visibleProductIds.emit(selected.flatMap((product: Product): string[] => product.id ? [product.id] : []));
+  }
+
   ngOnDestroy(): void {
-    this.subscriptions.forEach(sub => sub.unsubscribe());
+    this.loadSubscription?.unsubscribe();
+    this.imageObserver?.disconnect();
     this.images.destroy();
   }
 
+  retryLoad(): void { this.getProducts(); }
+
   private getProducts(): void {
+    this.loadSubscription?.unsubscribe();
+    this.$loading.set(true);
+    this.$loadError.set(false);
     const productObservable = this.type === 'featured'
       ? this._productService.getFeaturedProducts()
       : this._productService.getNewProducts();
-    const sub = productObservable.subscribe({
-      next: (response) => {
-        this.products.next(response);
-        this.updateProductImages(response);
+    this.loadSubscription = productObservable.subscribe({
+      next: (response: Product[]): void => {
+        this.allProducts = response;
+        this.publishProducts();
         this.$loading.set(false);
       },
-      error: (error) => { this.$loading.set(false); reportError('product-loading', error); }
+      error: (error: unknown): void => { this.$loadError.set(true); this.$loading.set(false); reportError('product-loading', error); }
     });
-    this.subscriptions.push(sub);
   }
 
   private updateProductImages(products: Product[]): void {
+    if (this.deferImages && !this.imagesActivated) return;
     this.images.update(products.map((product: Product, index: number) => ({key: product.id ?? 'card-' + index, source: product.id ? product.images?.[0] : undefined})));
   }
 

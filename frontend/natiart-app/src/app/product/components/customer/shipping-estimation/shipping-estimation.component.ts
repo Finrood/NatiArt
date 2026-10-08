@@ -1,5 +1,5 @@
 import {ChangeDetectionStrategy, Component, inject, OnDestroy, OnInit} from '@angular/core';
-import { AsyncPipe } from '@angular/common';
+import { AsyncPipe, CurrencyPipe } from '@angular/common';
 import {HttpErrorResponse} from '@angular/common/http';
 import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {BehaviorSubject, Observable, Subject} from 'rxjs';
@@ -27,7 +27,7 @@ interface ShippingState {
 
 @Component({
     selector: 'app-shipping-estimation',
-    imports: [AsyncPipe, ReactiveFormsModule, CepFormatDirective, LoadingSpinnerComponent],
+    imports: [AsyncPipe, CurrencyPipe, ReactiveFormsModule, CepFormatDirective, LoadingSpinnerComponent],
     templateUrl: './shipping-estimation.component.html',
     styleUrls: ['./shipping-estimation.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush

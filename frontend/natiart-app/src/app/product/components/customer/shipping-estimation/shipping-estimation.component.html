@@ -1,13 +1,17 @@
-<section aria-labelledby="shipping-estimation-title" class="bg-white rounded-lg shadow-md p-6 mt-8 relative">
-  <h2 class="text-2xl font-semibold mb-4 text-gray-800" id="shipping-estimation-title" i18n>Shipping Estimation</h2>
+<section aria-labelledby="shipping-estimation-title" class="art-panel p-4 sm:p-6 relative">
+  <h2 class="text-2xl font-normal mb-4 text-secondary-dark" id="shipping-estimation-title" i18n>Shipping Estimation</h2>
+
+  <p class="text-sm text-secondary-light mb-4" i18n>This is an estimate. Checkout calculates the final shipping charge for your basket.</p>
 
   <form [formGroup]="shippingForm" class="space-y-4">
     <div>
       <label class="block text-sm font-medium text-gray-700" for="cep" i18n>CEP (Postal Code)</label>
       <input
-        aria-describedby="cep-error"
+        [attr.aria-describedby]="shippingForm.get('cep')?.invalid && (shippingForm.get('cep')?.dirty || shippingForm.get('cep')?.touched) ? 'cep-error' : null"
+        [attr.aria-invalid]="shippingForm.get('cep')?.invalid && (shippingForm.get('cep')?.dirty || shippingForm.get('cep')?.touched) ? 'true' : null"
+        inputmode="numeric" autocomplete="postal-code" required
         cepFormat
-        class="appearance-none rounded-none relative block w-full px-3 py-2 sm:py-3 border border-primary placeholder-secondary-light text-secondary rounded-t-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 text-sm sm:text-base"
+        class="form-input"
         formControlName="cep"
         id="cep"
         placeholder="00000-000"
@@ -27,7 +31,7 @@
     <div class="mt-4">
       @switch (state.status) {
         @case ('idle') {
-          <div class="text-gray-600">
+          <div class="text-secondary-light text-sm" i18n>
             Enter a CEP above to estimate shipping costs.
           </div>
         }
@@ -36,7 +40,7 @@
             class="absolute inset-0 bg-gray-500/75 flex justify-center items-center">
             <div class="bg-white p-4 rounded-lg shadow-md text-center">
               <app-loading-spinner></app-loading-spinner>
-              <span class="text-gray-800 font-medium mt-2 block">Estimating shipping...</span>
+              <span class="text-gray-800 font-medium mt-2 block" i18n>Estimating shipping...</span>
             </div>
           </div>
         }
@@ -52,11 +56,11 @@
                 </svg>
               </div>
               <div class="ml-3">
-                <h3 class="text-sm font-medium text-green-800">Cheapest Shipping Option</h3>
+                <h3 class="text-sm font-medium text-green-800" i18n>Cheapest Shipping Option</h3>
                 <div class="mt-2 text-sm text-green-700">
-                  <p><strong>Service:</strong> {{ state.cheapestOption?.service }}</p>
-                  <p><strong>Price:</strong> R$ {{ state.cheapestOption?.price!.toFixed(2) }}</p>
-                  <p><strong>Estimated Delivery:</strong> {{ state.cheapestOption?.estimatedDeliveryDays }} days</p>
+                  <p i18n><strong>Service:</strong> {{ state.cheapestOption?.service }}</p>
+                  <p i18n><strong>Price:</strong> {{ state.cheapestOption?.price | currency:'BRL' }}</p>
+                  <p i18n><strong>Estimated Delivery:</strong> {{ state.cheapestOption?.estimatedDeliveryDays }} days</p>
                 </div>
               </div>
             </div>
@@ -74,9 +78,9 @@
                 </svg>
               </div>
               <div class="ml-3">
-                <h3 class="text-sm font-medium text-yellow-800">No Shipping Options</h3>
+                <h3 class="text-sm font-medium text-yellow-800" i18n>No Shipping Options</h3>
                 <div class="mt-2 text-sm text-yellow-700">
-                  <p>No shipping options are available for the provided CEP.</p>
+                  <p i18n>No shipping options are available for the provided CEP.</p>
                 </div>
               </div>
             </div>
@@ -94,7 +98,7 @@
                 </svg>
               </div>
               <div class="ml-3">
-                <h3 class="text-sm font-medium text-red-800">Error</h3>
+                <h3 class="text-sm font-medium text-red-800" i18n>Error</h3>
                 <div class="mt-2 text-sm text-red-700">
                   <p>{{ state.error }}</p>
                 </div>

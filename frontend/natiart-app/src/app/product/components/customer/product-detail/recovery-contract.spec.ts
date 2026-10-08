@@ -56,10 +56,20 @@ describe('Product detail rendered HTTP recovery contract', (): void => {
     params.next(convertToParamMap({})); await fixture.whenStable(); http.expectNone((request): boolean => request.url.includes('/products/null'));
     params.next(convertToParamMap({id: 'valid'})); reply('valid'); await fixture.whenStable();
     const text: string = (fixture.nativeElement as HTMLElement).textContent!;
-    expect(text).toContain('Hand painted'); expect(text).toContain('Porcelain artwork'); expect(text).toContain('Gift box');
+    expect(text).toContain('Hand painted'); expect(text).toContain('Porcelain artwork'); expect(text).not.toContain('Gift box');
     expect(text).not.toContain('category-uuid'); expect(text).not.toContain('package-uuid');
     expect((fixture.nativeElement as HTMLElement).querySelector('img')!.src.startsWith('data:image/svg+xml')).toBeTrue();
     expect((fixture.nativeElement as HTMLElement).querySelector('.animate-pulse')).toBeNull();
+  });
+
+  it('retries a failed detail request on the same route without losing the route identity', async (): Promise<void> => {
+    http.expectOne((request): boolean => request.url.endsWith('/products/first')).flush(null, {status: 503, statusText: 'Unavailable'});
+    await fixture.whenStable();
+    const retry: HTMLButtonElement = fixture.nativeElement.querySelector('button');
+    expect(retry.textContent).toContain('Retry page');
+    retry.click(); reply('first'); await fixture.whenStable();
+    expect(fixture.componentInstance.product$.value?.id).toBe('first');
+    expect(fixture.componentInstance.loadError).toBeNull();
   });
 
   it('keeps server image order and selects the clicked identity after out-of-order responses', async (): Promise<void> => {

@@ -1,8 +1,8 @@
-<div [formGroup]="addressFormGroup" class="space-y-4 p-4 border border-surface-variant rounded-lg shadow-sm">
-  <h3 class="text-lg font-medium text-secondary mb-3">{{ title }}</h3>
+<div [formGroup]="addressFormGroup" class="space-y-4">
+  @if ($showTitle()) { <h3 class="text-lg font-medium text-secondary mb-3">{{ title }}</h3> }
 
   <app-natiart-form-field [label]="zipCodeLabel" controlName="zipCode" [inputId]="isBillingAddress ? 'billingZipCode' : 'shippingZipCode'" [form]="addressFormGroup">
-    <input [id]="isBillingAddress ? 'billingZipCode' : 'shippingZipCode'" formControlName="zipCode" cepFormat
+    <input [id]="isBillingAddress ? 'billingZipCode' : 'shippingZipCode'" formControlName="zipCode" inputmode="numeric" [attr.autocomplete]="isBillingAddress ? 'billing postal-code' : 'shipping postal-code'" cepFormat
       placeholder="XXXXX-XXX"
       class="form-input" i18n-placeholder maxlength="9">
   </app-natiart-form-field>
@@ -20,17 +20,17 @@
 
   <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
     <app-natiart-form-field label="Country" controlName="country" [inputId]="isBillingAddress ? 'billingCountry' : 'shippingCountry'" [form]="addressFormGroup" i18n-label>
-      <input [id]="isBillingAddress ? 'billingCountry' : 'shippingCountry'" formControlName="country" readonly
+      <input [id]="isBillingAddress ? 'billingCountry' : 'shippingCountry'" formControlName="country" [attr.autocomplete]="isBillingAddress ? 'billing country-name' : 'shipping country-name'" readonly
         class="form-input bg-surface-variant/30 cursor-not-allowed" maxlength="255">
       </app-natiart-form-field>
 
       <app-natiart-form-field label="State" controlName="state" [inputId]="isBillingAddress ? 'billingState' : 'shippingState'" [form]="addressFormGroup" i18n-label>
-        <input [id]="isBillingAddress ? 'billingState' : 'shippingState'" formControlName="state" placeholder="State"
+        <input [id]="isBillingAddress ? 'billingState' : 'shippingState'" formControlName="state" [attr.autocomplete]="isBillingAddress ? 'billing address-level1' : 'shipping address-level1'" placeholder="State"
           class="form-input" i18n-placeholder maxlength="255">
       </app-natiart-form-field>
 
       <app-natiart-form-field label="City" controlName="city" [inputId]="isBillingAddress ? 'billingCity' : 'shippingCity'" [form]="addressFormGroup" i18n-label>
-        <input [id]="isBillingAddress ? 'billingCity' : 'shippingCity'" formControlName="city" placeholder="City"
+        <input [id]="isBillingAddress ? 'billingCity' : 'shippingCity'" formControlName="city" [attr.autocomplete]="isBillingAddress ? 'billing address-level2' : 'shipping address-level2'" placeholder="City"
           class="form-input" i18n-placeholder maxlength="255">
       </app-natiart-form-field>
 
@@ -41,7 +41,7 @@
     </div>
 
     <app-natiart-form-field label="Street" controlName="street" [inputId]="isBillingAddress ? 'billingStreet' : 'shippingStreet'" [form]="addressFormGroup" i18n-label>
-      <input [id]="isBillingAddress ? 'billingStreet' : 'shippingStreet'" formControlName="street" placeholder="123 Main St"
+      <input [id]="isBillingAddress ? 'billingStreet' : 'shippingStreet'" formControlName="street" [attr.autocomplete]="isBillingAddress ? 'billing address-line1' : 'shipping address-line1'" placeholder="123 Main St"
         class="form-input" i18n-placeholder maxlength="255">
     </app-natiart-form-field>
 

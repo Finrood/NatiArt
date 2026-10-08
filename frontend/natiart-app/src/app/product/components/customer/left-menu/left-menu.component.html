@@ -1,4 +1,4 @@
-<aside class="w-full lg:w-64 bg-surface text-secondary border-b lg:border-r border-primary-lighter/30">
+<aside class="w-full lg:w-56 bg-background text-secondary border-b lg:border-0 border-primary-light/40">
   <div class="px-4 py-3 lg:px-6 lg:py-6">
     <span class="hidden lg:block text-lg font-semibold font-serif" i18n>Categories</span>
     <button type="button" aria-controls="category-filters" [attr.aria-expanded]="$filtersOpen()"
@@ -16,7 +16,7 @@
     <ul>
       <li>
         <a aria-label="All products" routerLink="/products" [queryParams]="{page: 0}"
-          (click)="$filtersOpen.set(false)" class="block py-3 px-6 hover:bg-primary-lighter/50 hover:text-primary-dark" i18n>All Products</a>
+          (click)="$filtersOpen.set(false)" [attr.aria-current]="!$selectedCategoryId() ? 'page' : null" class="block py-3 px-6 text-sm hover:bg-primary-lighter/50 hover:text-primary-dark" i18n>All Products</a>
       </li>
       @if (pages.$error()) {
         <li class="px-6 py-3 text-sm" role="status" i18n>Categories are temporarily unavailable.</li>
@@ -24,7 +24,7 @@
       @for (category of $categories(); track category.id) {
         <li>
           <a [attr.aria-label]="category.label" routerLink="/products" [queryParams]="{categoryId: category.id, page: 0}"
-            (click)="$filtersOpen.set(false)" class="block py-3 px-6 break-words hover:bg-primary-lighter/50 hover:text-primary-dark">{{ category.label }}</a>
+            (click)="$filtersOpen.set(false)" [attr.aria-current]="$selectedCategoryId() === category.id ? 'page' : null" class="block py-3 px-6 text-sm break-words hover:bg-primary-lighter/50 hover:text-primary-dark">{{ category.label }}</a>
         </li>
       }
     </ul>

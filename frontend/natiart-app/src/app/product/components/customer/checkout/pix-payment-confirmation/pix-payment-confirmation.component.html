@@ -1,15 +1,14 @@
-<div class="max-w-md mx-auto my-10 p-4 sm:p-8 bg-white rounded-2xl shadow-lg text-center">
+<div class="max-w-md mx-auto my-10 p-4 sm:p-8 bg-white art-panel text-center">
 
   @if (copyFailed) {
     <p class="mb-4 text-sm text-red-600" role="alert" i18n>Could not copy the PIX code. Please select and copy it manually.
     </p>
   }
 
-  <!-- Payment Success State -->
   @if (paymentStatus === 'COMPLETED') {
     <div>
       <div class="mb-4">
-        <!-- Simple and clean green checkmark SVG -->
+
         <svg class="w-24 h-24 mx-auto text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
@@ -38,9 +37,9 @@
         <p class="text-sm text-gray-500 mb-4" i18n>Or use the code below:</p>
         <div class="relative mb-6">
           <input type="text" [value]="qrCodeData.payload" readonly #pixCodeInput aria-label="PIX code" i18n-aria-label
-            class="w-full bg-gray-100 border border-gray-300 text-gray-700 text-sm rounded-lg p-3 pr-12 truncate">
+            class="w-full bg-background border border-gray-300 text-gray-700 text-sm rounded-lg p-3 pr-12 truncate">
           <app-button aria-label="Copy PIX code" i18n-aria-label (click)="copyToClipboard(pixCodeInput)" color="link" size="sm" customClass="absolute top-1/2 right-2 -translate-y-1/2 text-gray-500 hover:text-blue-500">
-            <!-- Heroicons: clipboard-document -->
+
             <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a2.25 2.25 0 01-2.25 2.25h-1.5a2.25 2.25 0 01-2.25-2.25V4.5A2.25 2.25 0 019 2.25h1.5a2.25 2.25 0 012.25 2.25v.75" />
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6M9 15h6M9 18h6" />
@@ -65,15 +64,11 @@
       </div>
     } @else {
       <div class="flex items-center justify-center">
-        <!-- Simple spinner -->
+
         <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
         <p class="ml-4 text-gray-600" i18n>Loading payment details...</p>
       </div>
     }
   }
-
-  <!-- Payment Pending State -->
-
-  <!-- Loading State -->
 
 </div>

@@ -1,80 +1,78 @@
-<!-- src/app/product/components/customer/product-detail/product-detail.component.html.txt -->
-
-
-
-<div class="flex">
-  <app-left-menu class="w-64 min-h-screen hidden lg:block"></app-left-menu>
-  <main class="grow">
+<div class="art-page product-detail">
+  <a routerLink="/products" class="art-link inline-flex min-h-11 items-center mb-4 text-sm" i18n>Collections</a>
+  <main class="min-w-0" [attr.aria-busy]="isLoading">
     @if (product$ | async; as product) {
-      <div class="container mx-auto px-4 py-8">
-        <div class="flex flex-wrap -mx-4">
-          <!-- Product Images -->
-          <div class="w-full md:w-1/2 px-4 mb-8 md:mb-0">
-            <!-- Image Zoom Container -->
+      <div class="product-content">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-14">
+
+          <div class="min-w-0">
+
             <div #imageContainer
-              class="relative overflow-hidden border border-gray-200 rounded-lg mb-4"
+              class="product-gallery relative aspect-square overflow-hidden rounded-md mb-4"
               [class.cursor-zoom-in]="!isZoomed"
               [class.cursor-zoom-out]="isZoomed"
               (mousemove)="updateZoomPosition($event)"
               (mouseleave)="isZoomed = false"
-              (click)="toggleZoom($event)" tabindex="0" role="button" aria-label="Toggle image zoom" (keydown.enter)="zoomKey($event)">
+              (click)="toggleZoom($event)" tabindex="0" role="button" aria-label="Toggle image zoom" i18n-aria-label [attr.aria-pressed]="isZoomed" (keydown.space)="$event.preventDefault(); zoomKey($event)" (keydown.enter)="zoomKey($event)">
               <img (error)="imageFailed($productImages()[selectedImageIndex]?.key || '')" #mainImage
                 [src]="imageUrls[selectedImageIndex] || emptyImage"
-                alt="{{product.label}} - Main Image" i18n-alt
-                class="w-full h-auto object-contain transition-transform duration-200 ease-in-out block"
+                width="800" height="800" alt="{{product.label}} - Main Image" i18n-alt
+                class="w-full h-full object-contain transition-transform duration-200 ease-in-out block"
                  [ngStyle]="{
                          'transform': isZoomed ? transformScale : 'scale(1)',
                          'transform-origin': isZoomed ? $zoomOrigin() : 'center center'
                      }">
-              <!-- Zoom Lens (visible only when zoomed) -->
+
                 <div #zoomLens [hidden]="!isZoomed"
                   class="absolute border-2 border-primary rounded-md pointer-events-none"
                   [style.width.px]="lensSize"
                   [style.height.px]="lensSize">
                 </div>
-              <!-- Zoom Icon Overlay (visible only when not zoomed) -->
+
               @if (!isZoomed) {
                 <div
-                  class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                  class="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                   <svg class="h-12 w-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
                   </svg>
                 </div>
               }
             </div>
-            <!-- Thumbnails -->
-            <div class="flex mt-4 space-x-2 overflow-x-auto pb-2">
+
+            @if ($productImages().length > 1) {
+            <div class="gallery-thumbnails">
               @for (imgEntry of $productImages(); track imgEntry.key; let i = $index) {
-                <img (error)="imageFailed(imgEntry.key)" (click)="selectImage(imgEntry.key)" tabindex="0" role="button" (keydown.enter)="selectImage(imgEntry.key)" (keydown.space)="$event.preventDefault(); selectImage(imgEntry.key)" [attr.aria-label]="imageLabel(i + 1)"
+                <button type="button" (click)="selectImage(imgEntry.key)" [attr.aria-label]="imageLabel(i + 1)" [attr.aria-pressed]="selectedImageIndex === i" class="gallery-thumbnail" [class.selected]="selectedImageIndex === i">
+                <img (error)="imageFailed(imgEntry.key)"
                   [src]="imgEntry.url || emptyImage"
                   alt="{{product.label}} Thumbnail {{ i + 1 }}" i18n-alt
-                  class="w-20 h-20 object-contain border-2 cursor-pointer transition-colors duration-200 rounded"
-                  [class.border-primary]="selectedImageIndex === i"
-                  [class.border-transparent]="selectedImageIndex !== i"
-                  [class.hover:border-primary-light]="selectedImageIndex !== i">
+                  class="w-20 h-20 object-contain cursor-pointer">
+                </button>
               }
             </div>
+            }
+            <p class="gallery-hint" i18n>Select the image to zoom.</p>
           </div>
-          <!-- Product Info -->
-          <div class="w-full md:w-1/2 px-4">
-            <h1 class="text-3xl font-bold mb-4 text-[#333333]">{{ product.label }}</h1>
-            <p class="text-gray-700 mb-4 whitespace-pre-line">{{ product.description }}</p> <!-- Added whitespace-pre-line -->
-            <!-- Price -->
+
+          <div class="product-information min-w-0">
+            <a routerLink="/products" [queryParams]="{categoryId: product.categoryId}" class="art-eyebrow category-link">{{ product.categoryLabel || categoryUnavailable }}</a>
+            <h1 class="art-title mb-4">{{ product.label }}</h1>
+
             <div class="mb-6">
-              <span class="text-2xl font-bold text-primary">{{ product.markedPrice | currency:'BRL' }}</span>
+              <span class="text-2xl font-medium text-primary tabular-nums">{{ product.markedPrice | currency:'BRL' }}</span>
               @if (product.originalPrice > product.markedPrice) {
                 <span class="ml-2 text-gray-500 line-through">
                   {{ product.originalPrice | currency:'BRL' }}
                 </span>
               }
             </div>
-            <!-- Quantity -->
-            <div class="flex items-center mb-6">
+
+            <div class="flex flex-wrap items-center gap-y-3 mb-6">
               <label for="quantityInput" class="block text-sm font-medium text-gray-700 mr-4" i18n>Quantity</label>
               <div class="flex items-center border border-gray-300 rounded">
                 <app-button (click)="decrementQuantity()" [disabled]="quantity <= 1" aria-label="Decrease quantity" color="light" size="sm" i18n-aria-label>
-                  －
-                </app-button> <!-- Changed from hyphen to minus sign -->
+                  <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 12h14" stroke-width="1.5" stroke-linecap="round" /></svg>
+                </app-button>
                 <input
                   id="quantityInput"
                   [(ngModel)]="quantity"
@@ -85,25 +83,37 @@
                   class="w-16 text-center border-l border-r border-gray-300 py-1 focus:outline-none focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                    i18n-aria-label>
                 <app-button (click)="incrementQuantity(product)" [disabled]="quantity >= maxSelectableQuantity(product)" aria-label="Increase quantity" color="light" size="sm" i18n-aria-label>
-                  ＋
-                </app-button> <!-- Changed from plus sign -->
+                  <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 12h14M12 5v14" stroke-width="1.5" stroke-linecap="round" /></svg>
+                </app-button>
               </div>
               <span class="ml-4 text-sm text-gray-500" i18n>({{ product.stockQuantity }} in stock)</span>
             </div>
-            <!-- Add to Cart -->
+
             <app-add-to-cart-button
               [product]="product"
               [quantity]="quantity"
               (itemAdded)="triggerFlyAnimation($event)">
             </app-add-to-cart-button>
-            <!-- Additional Info -->
+
+            @if (product.availablePersonalizations.length > 0) {
+              <div class="personalization-preview">
+                <p class="font-medium text-sm" i18n>Personalization Options:</p>
+                <p class="text-sm">
+                  @if (product.availablePersonalizations.includes(PersonalizationOption.GOLDEN_BORDER)) { <span i18n>Add Golden Border</span> }
+                  @if (product.availablePersonalizations.includes(PersonalizationOption.GOLDEN_BORDER) && product.availablePersonalizations.includes(PersonalizationOption.CUSTOM_IMAGE)) { <span aria-hidden="true"> · </span> }
+                  @if (product.availablePersonalizations.includes(PersonalizationOption.CUSTOM_IMAGE)) { <span i18n>Upload Custom Image</span> }
+                </p>
+              </div>
+            }
+
             <div class="mt-8 border-t pt-6">
-              <h2 class="text-xl font-semibold mb-4 text-[#333333]" i18n>Product Details</h2>
+              <h2 class="text-2xl font-normal mb-4" i18n>Product Details</h2>
+              <p class="text-secondary mb-5 whitespace-pre-line leading-relaxed">{{ product.description }}</p>
               <ul class="space-y-2 text-gray-600">
-                <!-- Display Category Label if available -->
+
                 <li><strong class="font-medium" i18n>Category:</strong> {{ product.categoryLabel || categoryUnavailable }}</li>
                 <li><strong class="font-medium" i18n>Stock:</strong> <ng-container i18n>{{ product.stockQuantity }} available</ng-container></li>
-                <!-- Display Tags if available -->
+
                 @if (product.tags && product.tags.length > 0) {
                   <li>
                     <strong class="font-medium" i18n>Tags:</strong>
@@ -114,72 +124,40 @@
                     }
                   </li>
                 }
-                <!-- Display Package Label if available -->
-                @if (product.packageId) {
-                  <li><strong class="font-medium" i18n>Package:</strong> {{ product.packageLabel || packageUnavailable }}</li>
-                  }
-                  <!-- Display personalization info -->
+
                   @if (product.hasFixedGoldenBorder) {
                     <li>
-                      <strong class="font-medium text-yellow-600" i18n>Includes Golden Border</strong>
-                    </li>
-                  }
-                  @if (product.availablePersonalizations.length > 0) {
-                    <li>
-                      <strong class="font-medium" i18n>Personalization Options:</strong>
-                      <ul class="list-disc list-inside ml-4">
-                        @if (product.availablePersonalizations.includes(PersonalizationOption.GOLDEN_BORDER)) {
-                          <li i18n>Add Golden Border</li>
-                        }
-                        @if (product.availablePersonalizations.includes(PersonalizationOption.CUSTOM_IMAGE)) {
-                          <li i18n>Upload Custom Image</li>
-                        }
-                      </ul>
+                      <strong class="font-medium text-warning" i18n>Includes Golden Border</strong>
                     </li>
                   }
                 </ul>
               </div>
             </div>
           </div>
-          <!-- Related Products -->
+
           @if ((relatedProducts$ | async)?.length) {
-            <div class="mt-16 border-t pt-8">
-              <h2 class="text-2xl font-semibold mb-6 text-[#333333]" i18n>You May Also Like</h2>
-              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-                <!-- Use relatedImageUrls map for src -->
+            <section class="mt-12 border-t border-primary-light/40 pt-8">
+              <h2 class="text-3xl font-normal mb-6" i18n>You May Also Like</h2>
+              <div class="art-grid">
                 @for (relatedProduct of relatedProducts$ | async; track (relatedProduct.id ?? relatedProduct)) {
-                  <div class="group border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
-                    <a [routerLink]="['/product', relatedProduct.id]" class="block">
-                      <div class="relative aspect-square bg-gray-100"> <!-- Use aspect-square for consistent shape -->
-                        <img (error)="relatedImageFailed(relatedProduct.id!)" [alt]="relatedProduct.label"
-                          [src]="relatedImageUrls[relatedProduct.id!] || emptyImage"
-                          class="absolute top-0 left-0 w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 p-2"> <!-- Added padding -->
-                        </div>
-                        <div class="p-4">
-                          <h3 class="text-md font-medium text-gray-800 truncate mb-1" [title]="relatedProduct.label">{{ relatedProduct.label }}</h3>
-                          <p class="text-lg font-semibold text-primary">{{ relatedProduct.markedPrice | currency:'BRL' }}</p>
-                          @if (relatedProduct.originalPrice > relatedProduct.markedPrice) {
-                            <span class="ml-2 text-sm text-gray-500 line-through">
-                              {{ relatedProduct.originalPrice | currency:'BRL' }}
-                            </span>
-                          }
-                        </div>
-                      </a>
-                    </div>
-                  }
-                </div>
+                  <app-product-card [product]="relatedProduct"
+                    [imageUrl]="relatedImageUrls[relatedProduct.id!] || emptyImage"
+                    [imageLoading]="relatedImages.states()[relatedProduct.id!] === 'loading'"
+                    (imageFailed)="relatedImageFailed(relatedProduct.id!)"></app-product-card>
+                }
               </div>
-            }
-          </div>
-        }
-        <!-- Show loading, error, or not-found states -->
+            </section>
+          }
+        </div>
+      }
         @if (isLoading) {
           <div class="text-center py-16" role="status" aria-live="polite">
             <p i18n>Loading product details...</p>
           </div>
         } @else if (loadError) {
           <div class="text-center py-16" role="alert">
-            <p class="text-red-600 font-medium">{{ loadError }}</p>
+            <p class="text-error font-medium mb-4">{{ loadError }}</p>
+            <button type="button" (click)="retryProduct()" class="art-action" i18n>Retry page</button>
           </div>
         } @else if (!(product$ | async)) {
           <div class="text-center py-16" role="alert">
@@ -189,11 +167,9 @@
       </main>
     </div>
 
-    <!-- **** ADDED Personalization Modal **** -->
     <app-personalization-modal
       (close)="closePersonalizationModal()"
       (personalize)="onPersonalizationComplete($event)"
       [product]="selectedProductForModal"
       [show]="showPersonalizationModal">
   </app-personalization-modal>
-  <!-- **** END ADDED **** -->

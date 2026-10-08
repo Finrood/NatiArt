@@ -41,6 +41,22 @@ describe('CartModalComponent', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
+  it('rejects invalid mini-cart quantities without mutating the displayed cart item', () => {
+    const fixture = TestBed.createComponent(CartModalComponent);
+    const service: CartService = TestBed.inject(CartService);
+    const update: jasmine.Spy = spyOn(service, 'updateItemQuantity').and.returnValue(of(undefined));
+    const item: CartItem = makeItem('line-1');
+    const input: HTMLInputElement = document.createElement('input'); input.type = 'number'; input.value = '1.5';
+    fixture.componentInstance.changeQuantity(item, {target: input} as unknown as Event);
+    expect(update).not.toHaveBeenCalled(); expect(item.quantity).toBe(1); expect(input.value).toBe('1');
+    input.value = '';
+    fixture.componentInstance.changeQuantity(item, {target: input} as unknown as Event);
+    expect(update).not.toHaveBeenCalled(); expect(input.value).toBe('1');
+    input.value = '3';
+    fixture.componentInstance.changeQuantity(item, {target: input} as unknown as Event);
+    expect(update).toHaveBeenCalledOnceWith('line-1', 3); expect(item.quantity).toBe(1);
+  });
+
   it('updates the quantity of the targeted cart line when two lines share a product', () => {
     const fixture = TestBed.createComponent(CartModalComponent);
     const cartService: CartService = TestBed.inject(CartService);
