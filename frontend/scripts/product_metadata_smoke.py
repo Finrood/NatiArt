@@ -2,6 +2,7 @@
 """Fetch real product HTML through nginx and the application, without JavaScript."""
 import socket
 import re
+import json
 import subprocess
 import tempfile
 import time
@@ -119,11 +120,15 @@ VALUES('public-one',0,'Cup "<script>" & café','Actual & public description',10,
                             assert asset_headers['Cache-Control'] == 'no-store'
                         else:
                             assert 'immutable' in asset_headers['Cache-Control']
-                if (ASSETS / 'fonts').exists():
-                    font = next((ASSETS / 'fonts').glob('*.ttf'))
-                    request = urllib.request.urlopen(f'http://127.0.0.1:{edge_port}/fonts/{font.name}', timeout=4)
-                    assert request.status == 200 and request.headers['Cache-Control'] == 'no-cache'
-                    request.close()
+                font_manifest = json.loads((ASSETS / 'fonts/manifest.json').read_text())
+                fonts = [entry['file'] for entry in font_manifest['files']
+                         if Path(entry['file']).suffix in {'.ttf', '.woff', '.woff2'}]
+                assert fonts, 'The production font manifest must contain font assets'
+                for filename in fonts:
+                    with urllib.request.urlopen(f'http://127.0.0.1:{edge_port}/fonts/{filename}', timeout=4) as response:
+                        assert response.status == 200 and response.headers['Cache-Control'] == 'no-cache'
+                        assert response.read() == (ASSETS / 'fonts' / filename).read_bytes(), filename
+                print(f'ok: all {len(fonts)} manifest fonts are served intact with revalidation')
                 fetch(app_port, '/products/public-one/metadata?language=unsupported', status=400)
                 legacy, _ = fetch(edge_port, '/product/public-two?tracking=inert')
                 assert '<base href="/en/">' in legacy

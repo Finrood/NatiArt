@@ -14,6 +14,10 @@ hashes/provenance and identifies the converted output hashes. Font files total
 about 311KB instead of 933KB. Poppins 400 and the display face are preloaded;
 all faces retain `font-display: swap` and Portuguese coverage.
 
+The real metadata HTTP smoke test fetches every font listed in the production
+manifest, checks exact binary content and requires revalidation headers. It
+supports the shipped WOFF2 format without depending on a legacy TTF file.
+
 Poppins owns body, controls, prices, feedback and admin; Playfair Display owns
 display headings and brand. Shared `.art-*` foundations provide warm ivory
 surfaces, bounded pages, responsive product grids and restrained rose actions.

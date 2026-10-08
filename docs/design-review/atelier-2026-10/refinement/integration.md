@@ -20,6 +20,12 @@ The three original work commits remain in the integration history:
   product 503 tests and directory 161 tests, zero failures/errors/skips.
   Required executed boundary suites passed their report validator.
 - Production artifact verification and its five regression tests passed.
+- CI exposed an old metadata smoke check tied to TTF files. It now verifies exact
+  HTTP bytes and revalidation for all five manifest fonts. That check also found
+  the descriptive “variable” filename being classified as immutable. Global
+  and locale font routes now revalidate; the publisher excludes them from its
+  retained archive. Real metadata HTTP and replacement/rollback tests pass,
+  including changed fonts, absent archive copies and missing-font 404s.
 - [34 additional browser checks](integration-layout-checks.json) cover the cart
   in both locales at 320/360/390/768/1024/1440px, preview at 320/390/768/1440px,
   all three checkout steps in both locales at 320px, English payment at tablet
