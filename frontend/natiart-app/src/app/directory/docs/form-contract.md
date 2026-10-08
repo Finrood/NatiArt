@@ -57,3 +57,9 @@ CPF is read-only and links to the account editor because payment uses the stored
 customer identity. PIX checkout has one delivery address; the former separate
 billing form was never included in the server order contract and has been removed.
 Password changes clear tokens and show a new-sign-in action only after 204.
+
+Browser address-line2 autofill belongs to apartment/complement. House number has
+autocomplete off because browsers have no standard standalone house-number
+token; mapping apartment autofill to that required field risks a wrong delivery
+number. Street and number remain separate, and CEP lookup never fills the number
+or apartment field.

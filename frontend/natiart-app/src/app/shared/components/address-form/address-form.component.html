@@ -49,14 +49,14 @@
     @if (addressFormGroup.get('houseNumber')) {
       <app-natiart-form-field label="House number" controlName="houseNumber" [inputId]="isBillingAddress ? 'billingHouseNumber' : 'shippingHouseNumber'" [form]="addressFormGroup" i18n-label>
         <input [id]="isBillingAddress ? 'billingHouseNumber' : 'shippingHouseNumber'" formControlName="houseNumber"
-          maxlength="255" placeholder="Number or N/A" i18n-placeholder class="form-input" [attr.autocomplete]="isBillingAddress ? 'billing address-line2' : 'shipping address-line2'">
+          maxlength="255" placeholder="Number or N/A" i18n-placeholder class="form-input" autocomplete="off">
         <p class="mt-1 text-xs text-secondary-light" i18n>Enter N/A when the address has no house number.</p>
       </app-natiart-form-field>
     }
 
     <app-natiart-form-field label="Apartment, suite or complement" i18n-label="@@addressUnitLabel" controlName="complement" [inputId]="isBillingAddress ? 'billingComplement' : 'shippingComplement'" [form]="addressFormGroup" [isOptional]="true">
       <input [id]="isBillingAddress ? 'billingComplement' : 'shippingComplement'" formControlName="complement"
-        [attr.autocomplete]="isBillingAddress ? 'billing address-line3' : 'shipping address-line3'" placeholder="Apt, suite, etc. (Optional)"
+        [attr.autocomplete]="isBillingAddress ? 'billing address-line2' : 'shipping address-line2'" placeholder="Apt, suite, etc. (Optional)"
         class="form-input" i18n-placeholder maxlength="255">
     </app-natiart-form-field>
     </div>
