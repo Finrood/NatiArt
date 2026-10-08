@@ -1,11 +1,11 @@
-import {Component, OnInit, inject} from '@angular/core';
+import {Component, DestroyRef, OnInit, inject, signal, WritableSignal} from '@angular/core';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {HttpErrorResponse} from '@angular/common/http';
 import {Router} from "@angular/router";
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from "@angular/forms";
 
 import {RedirectService} from "../../../service/redirect.service";
 import {AuthenticationService} from "../../../service/authentication.service";
-import {User} from "../../../models/user.model";
 import {NatiartFormFieldComponent} from "../../../../shared/components/natiart-form-field/natiart-form-field.component";
 import {ButtonComponent} from "../../../../shared/components/button.component";
 import {Credentials} from "../../../models/credentials.model";
@@ -29,14 +29,15 @@ import {finalize} from "rxjs/operators";
 })
 export class LoginComponent implements OnInit {
   loginForm: FormGroup;
-  errorMessage: string = '';
-  isSubmitting: boolean = false;
+  readonly $errorMessage: WritableSignal<string> = signal('');
+  readonly $isSubmitting: WritableSignal<boolean> = signal(false);
 
   private readonly _fb: FormBuilder = inject(FormBuilder);
   private readonly _router: Router = inject(Router);
   private readonly _authenticationService: AuthenticationService = inject(AuthenticationService);
   private readonly _tokenService: TokenService = inject(TokenService);
   private readonly _redirectService: RedirectService = inject(RedirectService);
+  private readonly _destroyRef: DestroyRef = inject(DestroyRef);
 
   constructor() {
     this.loginForm = this.initForm();
@@ -49,6 +50,7 @@ export class LoginComponent implements OnInit {
   ngOnInit(): void {
     if (this._tokenService.accessToken) {
       this._authenticationService.fetchCurrentUser()
+        .pipe(takeUntilDestroyed(this._destroyRef))
         .subscribe({
           next: () => this.redirectToSavedUrlOrDashboard(),
           error: () => {
@@ -61,8 +63,8 @@ export class LoginComponent implements OnInit {
     }
   }
 
-  doLoginUser() {
-    if (this.isSubmitting) {
+  doLoginUser(): void {
+    if (this.$isSubmitting()) {
       return;
     }
     if (this.loginForm.invalid) {
@@ -71,13 +73,17 @@ export class LoginComponent implements OnInit {
       return;
     }
 
-    const credentials = this.credentialsForm.value;
-    this.isSubmitting = true;
+    const credentials: Credentials = this.credentialsForm.value;
+    this.clearErrorMessage();
+    this.$isSubmitting.set(true);
 
     this._authenticationService.login(credentials)
-      .pipe(finalize(() => this.isSubmitting = false))
+      .pipe(
+        takeUntilDestroyed(this._destroyRef),
+        finalize((): void => this.$isSubmitting.set(false))
+      )
       .subscribe({
-        next: (user: User) => {
+        next: (): void => {
           this.clearErrorMessage();
           this.redirectToSavedUrlOrDashboard();
         },
@@ -88,7 +94,7 @@ export class LoginComponent implements OnInit {
       });
   }
 
-  private redirectToSavedUrlOrDashboard() {
+  private redirectToSavedUrlOrDashboard(): void {
     const redirectUrl = this._redirectService.getRedirectUrl();
     if (redirectUrl) {
       this._router.navigateByUrl(redirectUrl)
@@ -102,11 +108,11 @@ export class LoginComponent implements OnInit {
   }
 
   private setErrorMessage(message: string): void {
-    this.errorMessage = message;
+    this.$errorMessage.set(message);
   }
 
   private clearErrorMessage(): void {
-    this.errorMessage = '';
+    this.$errorMessage.set('');
   }
 
   private initForm(): FormGroup {

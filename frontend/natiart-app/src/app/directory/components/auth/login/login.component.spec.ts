@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@a
 import { Router } from '@angular/router';
 import { provideRouter } from '@angular/router';
 import { ComponentFixture, fakeAsync, tick } from '@angular/core/testing';
+import { NgZone, provideZonelessChangeDetection } from '@angular/core';
 
 import { LoginComponent } from './login.component';
 import { AuthenticationService } from '../../../service/authentication.service';
@@ -31,7 +32,7 @@ describe('LoginComponent', () => {
     return `header.${payload}.signature`;
   }
 
-  function setup(): {
+  function setup(zoneless: boolean = false): {
     fixture: ComponentFixture<LoginComponent>;
     httpTesting: HttpTestingController;
     tokenService: TokenService;
@@ -39,7 +40,10 @@ describe('LoginComponent', () => {
   } {
     TestBed.configureTestingModule({
       imports: [LoginComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      providers: [
+        provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
+        ...(zoneless ? [provideZonelessChangeDetection()] : [])
+      ],
     });
     const httpTesting: HttpTestingController = TestBed.inject(HttpTestingController);
     const tokenService: TokenService = TestBed.inject(TokenService);
@@ -147,7 +151,7 @@ describe('LoginComponent', () => {
     const loginRequest: TestRequest = httpTesting.expectOne(LOGIN_URL);
     component.doLoginUser();
     expect(httpTesting.match(LOGIN_URL)).toHaveSize(0);
-    expect(component.isSubmitting).toBeTrue();
+    expect(component.$isSubmitting()).toBeTrue();
 
     const accessExpiration: number = Math.floor(Date.now() / 1000) + 3600;
     const refreshExpiration: number = Math.floor(Date.now() / 1000) + 8 * 24 * 3600;
@@ -159,10 +163,55 @@ describe('LoginComponent', () => {
     currentUserRequest.flush(mockUser);
     tick();
 
-    expect(component.isSubmitting).toBeFalse();
+    expect(component.$isSubmitting()).toBeFalse();
     httpTesting.verify();
     TestBed.inject(AuthenticationService).ngOnDestroy();
   }));
+
+  it('renders a rejected login and enables retries without another input event or manual change detection', async () => {
+    const {fixture, httpTesting, navigateSpy} = setup(true);
+    const component: LoginComponent = fixture.componentInstance;
+    component.loginForm.setValue({credentials: {username: 'user@natiart.test', password: 'incorrect-password'}});
+    fixture.detectChanges();
+    const submitButton: HTMLButtonElement = fixture.nativeElement.querySelector('button[type="submit"]');
+
+    for (let attempt: number = 0; attempt < 2; attempt++) {
+      submitButton.click();
+      await fixture.whenStable();
+      expect(submitButton.disabled).toBeTrue();
+      expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull();
+
+      const loginRequest: TestRequest = httpTesting.expectOne(LOGIN_URL);
+      TestBed.inject(NgZone).runOutsideAngular((): void => {
+        loginRequest.flush('', {status: 401, statusText: 'Unauthorized'});
+      });
+      await fixture.whenStable();
+
+      const alert: HTMLElement | null = fixture.nativeElement.querySelector('[role="alert"]');
+      expect(alert?.textContent).toContain('Invalid email or password. Please try again.');
+      expect(submitButton.disabled).toBeFalse();
+      expect(navigateSpy).not.toHaveBeenCalled();
+    }
+
+    httpTesting.verify();
+    fixture.destroy();
+    TestBed.inject(AuthenticationService).ngOnDestroy();
+  });
+
+  it('cancels a pending login when the shopper leaves the form', () => {
+    const {fixture, httpTesting, navigateSpy} = setup();
+    fixture.componentInstance.loginForm.setValue({credentials: {username: 'user@natiart.test', password: 'password'}});
+    fixture.componentInstance.doLoginUser();
+    const loginRequest: TestRequest = httpTesting.expectOne(LOGIN_URL);
+
+    fixture.destroy();
+
+    expect(loginRequest.cancelled).toBeTrue();
+    expect(navigateSpy).not.toHaveBeenCalled();
+    httpTesting.verify();
+    TestBed.inject(AuthenticationService).ngOnDestroy();
+  });
+
   it('reveals and hides the password without changing its value or submitting login', () => {
     const {fixture, httpTesting} = setup();
     fixture.componentInstance.credentialsForm.get('password')!.setValue('Example123');
@@ -179,7 +228,7 @@ describe('LoginComponent', () => {
     fixture.detectChanges();
     expect(input.type).toBe('password');
     expect(fixture.componentInstance.credentialsForm.get('password')!.value).toBe('Example123');
-    expect(fixture.componentInstance.isSubmitting).toBeFalse();
+    expect(fixture.componentInstance.$isSubmitting()).toBeFalse();
     httpTesting.verify();
     fixture.destroy();
     TestBed.inject(AuthenticationService).ngOnDestroy();
