@@ -1,0 +1,21 @@
+{
+  "scope": "Loopback Nginx + Java 25 + local H2 + synthetic provider; read-only measured phase",
+  "accounts": 20,
+  "requests": 1000,
+  "concurrency": 25,
+  "outcomes": {
+    "200": 1000
+  },
+  "seconds": 2.128,
+  "requestsPerSecond": 469.95,
+  "p50Milliseconds": 32.18,
+  "p95Milliseconds": 104.43,
+  "p99Milliseconds": 650.93,
+  "maxMilliseconds": 698.8,
+  "routes": {
+    "/server/directory/users/current": 400,
+    "/server/product/orders": 400,
+    "/server/product/products/page?size=12": 200
+  },
+  "limitations": "Excludes browser rendering, registration/login timings, payments and real providers. Uses elevated local authentication limits. Does not certify 1000 production users."
+}
