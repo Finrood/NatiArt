@@ -42,7 +42,7 @@ public class AuthenticationManagerTest {
     // Unknown users and wrong passwords must be indistinguishable
     @Test
     public void login_with_unknown_user_is_generic() {
-        when(userManager.getUser("ghost@attacker.com")).thenReturn(java.util.Optional.empty());
+        when(userManager.getUserForUpdate("ghost@attacker.com")).thenReturn(java.util.Optional.empty());
 
         final ResourceNotFoundException exception = assertThrows(
                 ResourceNotFoundException.class,
@@ -55,7 +55,7 @@ public class AuthenticationManagerTest {
     public void login_with_wrong_password_is_generic_and_matches_unknown_user_error() {
         final String username = "testUser";
         final User user = new User(username, "testPassword");
-        when(userManager.getUser(username)).thenReturn(java.util.Optional.of(user));
+        when(userManager.getUserForUpdate(username)).thenReturn(java.util.Optional.of(user));
         when(passwordEncoder.matches(any(), eq(user.getPasswordHash()))).thenReturn(false);
 
         final ResourceNotFoundException exception = assertThrows(
@@ -69,7 +69,7 @@ public class AuthenticationManagerTest {
         final String username = "testUser";
         final User user = new User(username, "testPassword")
                 .setRole(new com.saas.directory.model.Role(com.saas.directory.model.RoleName.USER));
-        when(userManager.getUser(username)).thenReturn(java.util.Optional.of(user));
+        when(userManager.getUserForUpdate(username)).thenReturn(java.util.Optional.of(user));
         when(passwordEncoder.matches(eq("testPassword"), any())).thenReturn(true);
         when(userAuthenticationProvider.createAccessToken(any())).thenReturn("access");
         when(userAuthenticationProvider.createRefreshToken(any())).thenReturn("refresh");
@@ -87,8 +87,8 @@ public class AuthenticationManagerTest {
                 .setActive(false);
         final com.saas.directory.model.Role inactiveRole = mock(com.saas.directory.model.Role.class);
         final User inactiveRoleUser = new User("role@example.test", "password").setRole(inactiveRole);
-        when(userManager.getUser("inactive@example.test")).thenReturn(java.util.Optional.of(inactiveUser));
-        when(userManager.getUser("role@example.test")).thenReturn(java.util.Optional.of(inactiveRoleUser));
+        when(userManager.getUserForUpdate("inactive@example.test")).thenReturn(java.util.Optional.of(inactiveUser));
+        when(userManager.getUserForUpdate("role@example.test")).thenReturn(java.util.Optional.of(inactiveRoleUser));
 
         for (final String username : java.util.List.of("inactive@example.test", "role@example.test")) {
             final ResourceNotFoundException error = assertThrows(

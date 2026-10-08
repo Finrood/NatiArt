@@ -2,15 +2,15 @@ import {ChangeDetectionStrategy, ChangeDetectorRef, Component, input, Input, OnD
 import {FormGroup, ReactiveFormsModule} from '@angular/forms';
 
 import {debounceTime, distinctUntilChanged, finalize, Subject, Subscription, takeUntil, tap} from 'rxjs';
-import {SignupService} from "../../../../../directory/service/signup.service";
-import {ViaCEPResponse} from "../../../../../directory/models/viaCEPResponse.model";
+import {SignupService} from "../../../directory/service/signup.service";
+import {ViaCEPResponse} from "../../../directory/models/viaCEPResponse.model";
 import {
   NatiartFormFieldComponent
-} from "../../../../../shared/components/natiart-form-field/natiart-form-field.component";
+} from "../natiart-form-field/natiart-form-field.component";
 import {
   LoadingSpinnerComponent
-} from "../../../../../shared/components/shared/loading-spinner/loading-spinner.component";
-import {CepFormatDirective} from "../../../../../directory/directive/cep-format-directive.directive";
+} from "../shared/loading-spinner/loading-spinner.component";
+import {CepFormatDirective} from "../../../directory/directive/cep-format-directive.directive";
 
 @Component({
   selector: 'app-address-form',
@@ -39,6 +39,8 @@ export class AddressFormComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
   private lookupSubscription: Subscription | null = null;
+  private addressAtZipChange: Record<string, string> = {};
+  private readonly addressFields: string[] = ['street', 'city', 'neighborhood', 'state'];
   private readonly CEP_DEBOUNCE_MS: number = 400;
 
   private readonly _signupService: SignupService = inject(SignupService);
@@ -48,7 +50,11 @@ export class AddressFormComponent implements OnInit, OnDestroy {
     if (this.zipCodeLookupEnabled) {
       this.addressFormGroup.get('zipCode')?.valueChanges
         .pipe(
-          tap(() => this.stopLookup()),
+          tap((): void => {
+            this.stopLookup();
+            this.addressAtZipChange = Object.fromEntries(this.addressFields.map((field: string): [string, string] =>
+              [field, this.addressFormGroup.get(field)!.value]));
+          }),
           debounceTime(this.CEP_DEBOUNCE_MS),
           distinctUntilChanged(),
           takeUntil(this.destroy$)
@@ -65,9 +71,6 @@ export class AddressFormComponent implements OnInit, OnDestroy {
     if (!cleanZipCode || cleanZipCode.length !== 8) {
       // A failed lookup is still a valid manual-entry flow. Keep the country
       // value because it is intentionally read-only in this form.
-      this.addressFormGroup.patchValue({
-        street: '', city: '', neighborhood: '', state: '', country: 'Brazil'
-      });
       // CEP syntax belongs to the control validators, independently of lookup availability.
       zipCodeControl?.updateValueAndValidity({emitEvent: false});
       this.addressFormGroup.updateValueAndValidity(); // Update parent form group validity
@@ -90,18 +93,16 @@ export class AddressFormComponent implements OnInit, OnDestroy {
         next: (data: ViaCEPResponse) => {
           if (data.erro) {
             this.setErrorMessage($localize`CEP not found. Please enter address manually.`);
-            this.addressFormGroup.patchValue({
-              street: '', city: '', neighborhood: '', state: '', country: 'Brazil'
-            });
             zipCodeControl?.updateValueAndValidity({emitEvent: false});
           } else {
-            this.addressFormGroup.patchValue({
-              street: data.logradouro,
-              city: data.localidade,
-              neighborhood: data.bairro,
-              state: data.uf,
-              country: "Brazil", // Assuming Brazil is default
-            });
+            const suggested: Record<string, string> = {
+              street: data.logradouro, city: data.localidade, neighborhood: data.bairro, state: data.uf
+            };
+            for (const field of this.addressFields) {
+              const control = this.addressFormGroup.get(field)!;
+              // Preserve corrections typed while the lookup was waiting or in flight.
+              if (control.value === this.addressAtZipChange[field]) control.setValue(suggested[field] || control.value);
+            }
             zipCodeControl?.updateValueAndValidity({emitEvent: false});
           }
           // Mark all relevant controls as touched and dirty to show validation messages
@@ -115,9 +116,6 @@ export class AddressFormComponent implements OnInit, OnDestroy {
         },
         error: () => {
           this.setErrorMessage($localize`Error fetching address. Please enter manually.`);
-          this.addressFormGroup.patchValue({
-            street: '', city: '', neighborhood: '', state: '', country: 'Brazil'
-          });
           zipCodeControl?.updateValueAndValidity({emitEvent: false});
           // Mark all relevant controls as touched and dirty to show validation messages
           ['street', 'city', 'neighborhood', 'state', 'country'].forEach(controlName => {

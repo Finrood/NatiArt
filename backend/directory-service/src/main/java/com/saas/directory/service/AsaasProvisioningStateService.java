@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.saas.directory.controller.helper.ResourceNotFoundException;
 import com.saas.directory.dto.UserDto;
 import com.saas.directory.model.AsaasProvisioningJob;
 import com.saas.directory.model.AsaasProvisioningStatus;
@@ -44,7 +45,9 @@ public class AsaasProvisioningStateService {
 
     @Transactional
     public Claim claimForUsername(String username) {
-        final User user = userManager.getUserOrDie(username);
+        final User user = userManager
+                .getUserForUpdate(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
         final AsaasProvisioningJob job = jobRepository
                 .findByUserAndPaymentProcessor(user, PaymentProcessor.ASAAS)
                 .orElseGet(() -> jobRepository.saveAndFlush(
@@ -76,6 +79,10 @@ public class AsaasProvisioningStateService {
 
     @Transactional
     public void succeeded(Claim claim, String customerId) {
+        // Account edits take the user lock before the job lock; keep the same order for FK writes.
+        userManager
+                .getUserForUpdate(claim.username())
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
         final AsaasProvisioningJob job =
                 jobRepository.findByIdForUpdate(claim.jobId()).orElse(null);
         if (!ownsClaim(job, claim)) {

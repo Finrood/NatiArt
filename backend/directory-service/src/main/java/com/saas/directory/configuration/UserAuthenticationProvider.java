@@ -117,6 +117,9 @@ public class UserAuthenticationProvider {
             throw new IllegalAccessException("Malformed Authorization header on refresh-token request.");
         }
         final String refreshToken = authElements[1];
+        userManager
+                .getUserForUpdate(username)
+                .orElseThrow(() -> new IllegalAccessException("Authentication token is not valid"));
         final Authentication currentAuth = authenticateWithToken(refreshToken, TokenType.AUTH_REFRESH);
         if (currentAuth == null) {
             throw new IllegalAccessException("Authentication token is not valid");

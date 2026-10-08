@@ -11,9 +11,7 @@ import {Profile} from "../../../models/profile.model";
 import {SignupProfileComponent} from "./signup-profile/signup-profile.component";
 import {SignupCredentialsComponent} from "./signup-credentials/signup-credentials.component";
 import {StepIndicatorComponent} from "./step-indicator/step-indicator.component";
-import {CustomPhoneValidators} from "../../../validator/CustomPhoneValidators";
-import {CustomCpfValidators} from "../../../validator/CustomCpfValidators";
-import {CustomCepValidators} from "../../../validator/CustomCepValidators";
+import {createProfileForm} from '../../../../shared/forms/profile-form';
 import {reportError} from '../../../../shared/service/error-reporting.service';
 import {finalize} from 'rxjs/operators';
 
@@ -111,23 +109,11 @@ export class SignupComponent implements OnInit {
   private initForm(): FormGroup {
     return this._fb.group({
       credentials: this._fb.group({
-        username: ['', [Validators.required, Validators.email]],
+        username: ['', [Validators.required, Validators.email, Validators.maxLength(255)]],
         password: ['', [Validators.required, CustomPasswordValidators.passwordComplexity()]],
         confirmPassword: ['', Validators.required],
       }, {validators: CustomPasswordValidators.passwordMatchValidator}),
-      profile: this._fb.group({
-        firstname: ['', Validators.required],
-        lastname: ['', Validators.required],
-        cpf: ['', [Validators.required, CustomCpfValidators.validCpf()]],
-        phone: ['', [CustomPhoneValidators.validPhone()]],
-        country: ['Brazil', Validators.required],
-        state: ['', [Validators.required, Validators.pattern(/^(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$/i)]],
-        city: ['', Validators.required],
-        neighborhood: ['', Validators.required],
-        zipCode: ['', [Validators.required, CustomCepValidators.validCep()]],
-        street: ['', Validators.required],
-        complement: [''],
-      }),
+      profile: createProfileForm(this._fb),
     });
   }
 

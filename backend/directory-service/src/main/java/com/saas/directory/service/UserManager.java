@@ -54,6 +54,12 @@ public class UserManager {
         return userRepository.findUserByUsernameIgnoreCase(username);
     }
 
+    /** Serializes credential checks and issuance with account changes. */
+    @Transactional
+    public Optional<User> getUserForUpdate(String username) {
+        return userRepository.findByUsernameForUpdate(username);
+    }
+
     @Transactional(readOnly = true)
     public User getUserOrDie(String username) {
         return getUser(username)

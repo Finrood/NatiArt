@@ -30,6 +30,19 @@ public class ControllerAdvice {
      */
     public static final String INVALID_TOKEN_MESSAGE = "Invalid or expired token";
 
+    @ExceptionHandler(com.saas.directory.controller.helper.AccountChangeRejectedException.class)
+    public ResponseEntity<Object> handleAccountChange(
+            com.saas.directory.controller.helper.AccountChangeRejectedException e) {
+        final HttpStatus status =
+                switch (e.getReason()) {
+                    case TRY_LATER -> HttpStatus.TOO_MANY_REQUESTS;
+                    case PROFILE_CONFLICT, ACCOUNT_SETUP_IN_PROGRESS -> HttpStatus.CONFLICT;
+                    case PROVIDER_UNAVAILABLE -> HttpStatus.SERVICE_UNAVAILABLE;
+                    case CURRENT_PASSWORD_INCORRECT -> HttpStatus.BAD_REQUEST;
+                };
+        return new ResponseEntity<>(java.util.Map.of("code", e.getReason().name()), status);
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Object> handleAccessDeniedException(AccessDeniedException e) {
         LOGGER.debug("Access denied: ", e);

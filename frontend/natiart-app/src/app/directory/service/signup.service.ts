@@ -1,4 +1,4 @@
-import {Injectable} from '@angular/core';
+import {inject, Injectable} from '@angular/core';
 import {HttpClient} from "@angular/common/http";
 import {Observable, throwError} from "rxjs";
 import {environment} from "../../../environments/environment";
@@ -13,11 +13,10 @@ import {ViaCEPResponse} from "../models/viaCEPResponse.model";
 export class SignupService {
   private readonly apiUrl: string = `${environment.api.directory.url}`;
 
-  constructor(private http: HttpClient) {
-  }
+  private readonly _http: HttpClient = inject(HttpClient);
 
   registerUser(userRegistration: UserRegistration): Observable<User> {
-    return this.http.post<User>(`${this.apiUrl}${environment.api.directory.endpoints.registerUser}`, userRegistration);
+    return this._http.post<User>(`${this.apiUrl}${environment.api.directory.endpoints.registerUser}`, userRegistration);
   }
 
   getAddressFromZipCode(zipCode: string): Observable<ViaCEPResponse> {
@@ -25,6 +24,6 @@ export class SignupService {
     if (!/^\d{8}$/.test(digits)) {
       return throwError(() => new Error('Invalid zip code: expected 8 digits'));
     }
-    return this.http.get<ViaCEPResponse>(`${environment.api.viaCep.url}/${digits}/json/`);
+    return this._http.get<ViaCEPResponse>(`${environment.api.viaCep.url}/${digits}/json/`);
   }
 }

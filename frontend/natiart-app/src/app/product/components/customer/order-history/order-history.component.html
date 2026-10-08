@@ -1,13 +1,7 @@
-<div class="min-h-screen bg-background font-sans">
+<div class="font-sans">
 
-  <main [attr.aria-busy]="loading" class="container mx-auto px-4 sm:px-6 lg:px-8 py-10 max-w-5xl">
-    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
-      <div>
-        <p class="text-sm uppercase tracking-widest text-secondary-light" i18n>Your account</p>
-        <h1 class="art-title" i18n>Order history</h1>
-      </div>
-      <a routerLink="/products" class="art-link inline-flex min-h-11 items-center" i18n>Continue shopping</a>
-    </div>
+  <section [attr.aria-busy]="loading">
+    <h2 class="text-3xl font-serif text-secondary-dark mb-6" i18n>Order history</h2>
 
     @if ($selectedOrderId()) {
       <a routerLink="/account" class="inline-block mb-6 text-primary underline" i18n>View all orders</a>
@@ -18,10 +12,14 @@
     @if (loading) {
       <p role="status" class="text-secondary-light" i18n>Loading your orders…</p>
     } @else if (orders.length === 0 && !errorMessage) {
-      <section class="rounded-2xl bg-surface border border-primary-lighter/30 p-10 text-center shadow-sm">
-        <h2 class="text-xl text-secondary mb-2" i18n>No orders yet</h2>
-        <p class="text-secondary-light mb-6" i18n>Your completed purchases will appear here.</p>
-        <a routerLink="/products" class="inline-block rounded-lg bg-primary px-5 py-3 text-white hover:bg-primary-dark" i18n>Explore the collection</a>
+      <section class="art-panel px-6 py-12 sm:py-16 text-center">
+        <svg class="mx-auto mb-6 h-16 w-16 text-primary" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M15 23h34l3 32H12l3-32Z"/><path d="M23 24v-9a9 9 0 0 1 18 0v9"/>
+          <path d="M32 33c-8-7-14 3-5 6-9 3-3 13 5 6 8 7 14-3 5-6 9-3 3-13-5-6Z"/>
+        </svg>
+        <h3 class="text-2xl font-serif text-secondary-dark mb-3" i18n>No orders yet</h3>
+        <p class="text-secondary-light text-sm mb-7 max-w-sm mx-auto" i18n="@@accountOrdersEmptyHint">Your orders and payment updates will appear here.</p>
+        <a routerLink="/products" class="art-action inline-flex" i18n>Explore the collection</a>
       </section>
     } @else {
       <div class="space-y-5">
@@ -29,7 +27,7 @@
           <article class="min-w-0 break-words art-panel p-4 sm:p-6">
             <div class="flex flex-wrap items-start justify-between gap-4 mb-5">
               <div>
-                <h2 class="text-xl font-normal text-secondary" i18n="@@shortOrderReference">Order {{ order.id?.slice(0, 8) }}</h2>
+                <h3 class="text-xl font-normal text-secondary" i18n="@@shortOrderReference">Order {{ order.id?.slice(0, 8) }}</h3>
                 <p class="text-sm text-secondary-light">{{ order.orderDate | date:'mediumDate' }}</p>
               </div>
               <span class="order-status rounded-full px-3 py-1 text-sm capitalize" [attr.data-status]="order.status">{{ statusLabel(order.status) }}</span>
@@ -57,7 +55,7 @@
             </div>
             @if (order.status === 'PENDING' && order.paymentId) {
               <a [routerLink]="['/pix-payment', order.paymentId]"
-                class="inline-block mt-4 rounded-lg bg-primary px-4 py-2 text-sm text-white hover:bg-primary-dark" i18n>
+                class="art-action inline-flex mt-4 text-sm" i18n>
                 Continue payment
               </a>
             }
@@ -73,5 +71,5 @@
         </div>
       }
     }
-  </main>
+  </section>
 </div>

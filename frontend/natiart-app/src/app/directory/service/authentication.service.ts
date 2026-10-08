@@ -1,6 +1,7 @@
 import {inject, Injectable, OnDestroy} from '@angular/core';
 import {HttpClient, HttpErrorResponse, HttpHeaders} from "@angular/common/http";
 import {Router} from "@angular/router";
+import {Profile} from '../models/profile.model';
 import {RoleName, User} from "../models/user.model";
 import {environment} from "../../../environments/environment";
 import {BehaviorSubject, catchError, Observable, Subject, throwError, timer, Subscription, of, timeout, shareReplay} from "rxjs";
@@ -173,6 +174,19 @@ export class AuthenticationService implements OnDestroy {
     );
     this.userLookup$ = lookup$;
     return lookup$;
+  }
+
+  updateProfile(profile: Profile, currentPassword: string): Observable<Profile> {
+    const generation: number = this.sessionGeneration;
+    return this._http.put<Profile>(
+      `${this.apiUrl}${environment.api.directory.endpoints.user}${environment.api.directory.endpoints.current}/profile`,
+      {profile, currentPassword}
+    ).pipe(tap((saved: Profile): void => {
+      if (generation !== this.sessionGeneration || !this.stateSubject.value) throw new Error('Authentication session changed during profile update');
+      const user: User = this.stateSubject.value;
+      this.invalidateSession();
+      this.updateState({...user, profile: saved});
+    }));
   }
 
   private updateState(user: User | null) {

@@ -108,7 +108,9 @@ class UserRegistrationHttpTest {
                 .andExpect(jsonPath("$.profile.cpf").value("12345678909"))
                 .andExpect(jsonPath("$.profile.zipCode").value("12345678"))
                 .andExpect(jsonPath("$.profile.state").value("SP"))
-                .andExpect(jsonPath("$.profile.phone").isEmpty());
+                .andExpect(jsonPath("$.profile.phone").isEmpty())
+                .andExpect(jsonPath("$.profile.houseNumber").value("123"))
+                .andExpect(jsonPath("$.profile.complement").value("Apt 4"));
 
         verify(userRepository, times(2)).save(any());
         verify(profileRepository).save(any());
@@ -118,7 +120,7 @@ class UserRegistrationHttpTest {
     private static String body(
             String password, String cpf, String zipCode, String firstname, String state, String phone) {
         return """
-                {"username":"ana@example.com","password":"%s","profile":{"firstname":"%s","lastname":"Silva","cpf":"%s","phone":"%s","country":"Brazil","state":"%s","city":"São Paulo","neighborhood":"Centro","zipCode":"%s","street":"Rua Principal"}}
+                {"username":"ana@example.com","password":"%s","profile":{"firstname":"%s","lastname":"Silva","cpf":"%s","phone":"%s","country":"Brazil","state":"%s","city":"São Paulo","neighborhood":"Centro","zipCode":"%s","street":"Rua Principal","houseNumber":"123","complement":"Apt 4"}}
                 """.formatted(password, firstname, cpf, phone, state, zipCode);
     }
 }

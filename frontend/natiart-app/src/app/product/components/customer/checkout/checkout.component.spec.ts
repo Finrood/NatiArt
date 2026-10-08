@@ -66,6 +66,8 @@ describe('CheckoutComponent', () => {
       neighborhood: 'Centro',
       zipCode: '01001000',
       street: 'Praca da Se',
+      houseNumber: '10',
+      complement: 'Apartment 4',
     },
     role: RoleName.USER,
     externalId: 'cus_1',
@@ -197,7 +199,14 @@ describe('CheckoutComponent', () => {
     createOrderSpy.and.returnValue(of(createdOrder));
     createPixPaymentSpy.and.returnValue(of(paymentResponseWith('pay_123')));
     fixture.detectChanges();
-    component.checkoutForm.get('billingInfo.zipCode')?.setValue('01001-000');
+  });
+
+  it('prefills the saved house and apartment numbers and requires a number on older accounts', () => {
+    expect(component.checkoutForm.get('shippingInfo.houseNumber')!.value).toBe('10');
+    expect(component.checkoutForm.get('shippingInfo.complement')!.value).toBe('Apartment 4');
+    expect(component.checkoutForm.get('billingInfo')).toBeNull();
+    currentUserSubject.next({...loggedInUser, username: 'legacy@example.test', profile: {...loggedInUser.profile, houseNumber: undefined}});
+    expect(component.checkoutForm.get('shippingInfo.houseNumber')!.invalid).toBeTrue();
   });
 
   it('shows provisioning retry feedback before creating an order', async () => {
@@ -477,7 +486,6 @@ describe('CheckoutComponent', () => {
       complement: '',
     });
     component.checkoutForm.get('paymentInfo.paymentMethod')?.setValue('PIX');
-    component.checkoutForm.get('billingInfo')?.patchValue({zipCode: '01001-000'});
     component.shippingQuote = {
       quoteId: 'quote-1',
       destinationPostalCode: '01001000',
@@ -493,7 +501,6 @@ describe('CheckoutComponent', () => {
       zipCode: '01001000',
       items: [{productId: 'prod-1', quantity: 1}],
     });
-    component.checkoutForm.get('billingInfo.zipCode')?.setValue('01001-000');
     expect(component.checkoutForm.invalid).toBeFalse();
 
     const first: Promise<void> = component.onSubmit();
@@ -568,7 +575,6 @@ describe('CheckoutComponent', () => {
       complement: '',
     });
     component.checkoutForm.get('paymentInfo.paymentMethod')?.setValue('PIX');
-    component.checkoutForm.get('billingInfo.zipCode')?.setValue('01001-000');
     expect(component.checkoutForm.invalid).toBeFalse();
 
     await component.onSubmit();

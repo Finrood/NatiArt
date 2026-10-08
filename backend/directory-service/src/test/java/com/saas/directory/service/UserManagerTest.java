@@ -95,7 +95,7 @@ public class UserManagerTest {
         profileDto.setState("California");
         profileDto.setCity("Los Angeles");
         profileDto.setZipCode("90001");
-        profileDto.setStreet("123 Main St");
+        profileDto.setStreet("123 Main St").setHouseNumber("123");
         profileDto.setComplement("Apt 101");
 
         final UserRegistrationDto userRegistrationDto =
@@ -168,7 +168,7 @@ public class UserManagerTest {
         profileDto.setState("California");
         profileDto.setCity("Los Angeles");
         profileDto.setZipCode("90001");
-        profileDto.setStreet("123 Main St");
+        profileDto.setStreet("123 Main St").setHouseNumber("123");
         profileDto.setComplement("Apt 101");
 
         final UserRegistrationDto userRegistrationDto =

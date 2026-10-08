@@ -5,7 +5,11 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 REQUIRED = {
-    'directory-service': {'com.saas.directory.DirectoryContextBootSmokeTest'},
+    'directory-service': {
+        'com.saas.directory.DirectoryContextBootSmokeTest',
+        'com.saas.directory.AccountProfileHttpIntegrationTest',
+        'com.saas.directory.service.AsaasProvisioningTransactionTest',
+    },
     'product-service': {
         'com.portcelana.natiart.ProductContextBootSmokeTest',
         'com.portcelana.natiart.ServiceConstructorWiringTest',

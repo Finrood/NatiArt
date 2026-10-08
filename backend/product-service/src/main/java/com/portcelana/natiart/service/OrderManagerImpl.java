@@ -127,7 +127,9 @@ public class OrderManagerImpl implements OrderManager {
     @Override
     @Transactional(readOnly = true)
     public List<CustomerOrder> getOrdersForOwner(String ownerExternalId, int page, int size) {
-        requireOwner(ownerExternalId);
+        // An authenticated new account may still be awaiting its provider identity.
+        // Never query with a missing owner: it cannot have any provider-owned orders.
+        if (ownerExternalId == null || ownerExternalId.isBlank()) return List.of();
         final List<String> orderIds = orderRepository
                 .findIdsByOwnerExternalId(ownerExternalId, pageRequest(page, size))
                 .getContent();

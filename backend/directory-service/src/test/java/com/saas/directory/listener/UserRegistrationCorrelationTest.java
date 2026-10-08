@@ -53,7 +53,7 @@ class UserRegistrationCorrelationTest {
                 .provisionUser(eq("synthetic@example.invalid"));
 
         final Logger logger = (Logger) LoggerFactory.getLogger(UserRegistrationListener.class);
-        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        final ListAppender<ILoggingEvent> appender = new WorkerLogAppender();
         appender.start();
         logger.addAppender(appender);
         try {
@@ -70,6 +70,7 @@ class UserRegistrationCorrelationTest {
                     .anyMatch(event -> event.getFormattedMessage().contains("synthetic@example.invalid")));
         } finally {
             logger.detachAppender(appender);
+            appender.stop();
         }
     }
 
@@ -84,11 +85,12 @@ class UserRegistrationCorrelationTest {
                 .provisionUser(eq("failure@example.invalid"));
 
         final CountDownLatch logged = new CountDownLatch(1);
-        final ListAppender<ILoggingEvent> appender = new ListAppender<>() {
+        final ListAppender<ILoggingEvent> appender = new WorkerLogAppender() {
             @Override
             protected void append(ILoggingEvent event) {
                 super.append(event);
-                if (event.getFormattedMessage().contains("Provisioning wake-up failed")) {
+                if (event.getFormattedMessage().contains("Provisioning wake-up failed")
+                        && event.getFormattedMessage().contains("requestId=signup-43")) {
                     logged.countDown();
                 }
             }
@@ -102,7 +104,8 @@ class UserRegistrationCorrelationTest {
                             events.publishEvent(new UserRegisteredEvent("failure@example.invalid", "signup-43")));
             assertTrue(logged.await(5, TimeUnit.SECONDS));
             final ILoggingEvent failure = appender.list.stream()
-                    .filter(event -> event.getFormattedMessage().contains("Provisioning wake-up failed"))
+                    .filter(event -> event.getFormattedMessage().contains("Provisioning wake-up failed")
+                            && event.getFormattedMessage().contains("requestId=signup-43"))
                     .findFirst()
                     .orElseThrow();
             assertEquals("signup-43", failure.getMDCPropertyMap().get(RequestCorrelationFilter.MDC_KEY));
@@ -114,6 +117,16 @@ class UserRegistrationCorrelationTest {
             assertTrue(message.length() < 200);
         } finally {
             logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    private static class WorkerLogAppender extends ListAppender<ILoggingEvent> {
+        @Override
+        protected void append(ILoggingEvent event) {
+            // Resolve lazy MDC on the emitting worker before it clears its request context.
+            event.prepareForDeferredProcessing();
+            super.append(event);
         }
     }
 }

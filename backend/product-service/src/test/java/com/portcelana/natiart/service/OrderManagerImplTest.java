@@ -156,6 +156,15 @@ class OrderManagerImplTest {
     }
 
     @Test
+    void newAccountWithoutProviderCustomerHasEmptyHistoryWithoutAnUnscopedQuery() {
+        assertEquals(List.of(), orderManager.getOrdersForOwner(null, 0, 20));
+        assertEquals(List.of(), orderManager.getOrdersForOwner(" ", 0, 20));
+        verifyNoInteractions(orderRepository);
+        assertThrows(IllegalArgumentException.class, () -> orderManager.getOrderForOwner("foreign-order", null));
+        verifyNoInteractions(orderRepository);
+    }
+
+    @Test
     void createOrderComputesTotalsAndPersistsItems() {
         Product plate = product("p1", "Plate", new BigDecimal("15.00"), new BigDecimal("13.00"), 100);
         plate.setAvailablePersonalizations(java.util.Set.of(PersonalizationOption.GOLDEN_BORDER));

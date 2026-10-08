@@ -22,6 +22,8 @@ import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationRequest;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
 import com.saas.directory.dto.asaas.AsaasCustomerSearchResponse;
+import com.saas.directory.dto.asaas.AsaasCustomerUpdateRequest;
+import com.saas.directory.dto.asaas.AsaasCustomerUpdateResponse;
 
 @Service
 public class AsaasUserManager {
@@ -75,6 +77,28 @@ public class AsaasUserManager {
             LOGGER.warn(
                     "Unexpected Asaas customer failure: type={}", e.getClass().getSimpleName());
             throw new Exception("Unexpected error during Asaas user registration");
+        }
+    }
+
+    /** Updates the stored provider identity; it never creates a replacement customer. */
+    public void updateCustomer(String customerId, AsaasCustomerUpdateRequest update) {
+        if (customerId == null || !customerId.matches("[A-Za-z0-9_-]{1,128}")) {
+            throw new IllegalArgumentException("Provider customer identity is invalid");
+        }
+        try {
+            final ResponseEntity<AsaasCustomerUpdateResponse> response = restTemplate.exchange(
+                    asaasCustomerUrl.replaceAll("/+$", "") + "/" + customerId,
+                    HttpMethod.PUT,
+                    new HttpEntity<>(update, getRequestHeaders()),
+                    AsaasCustomerUpdateResponse.class);
+            if (!response.getStatusCode().is2xxSuccessful()
+                    || response.getBody() == null
+                    || !customerId.equals(response.getBody().id())
+                    || !Boolean.FALSE.equals(response.getBody().deleted())) {
+                throw new IllegalStateException("Payment provider did not confirm customer update");
+            }
+        } catch (HttpClientErrorException failure) {
+            throw mapAsaasError(failure);
         }
     }
 

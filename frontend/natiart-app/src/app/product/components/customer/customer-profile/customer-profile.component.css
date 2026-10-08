@@ -1,0 +1,9 @@
+:host { display: block; background: rgb(var(--background)); }
+.account-page { max-width: 68rem; min-height: 65vh; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+.account-heading { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 2rem; }
+.account-eyebrow { font: 500 .6875rem var(--font-sans); letter-spacing: .16em; text-transform: uppercase; color: rgb(var(--secondary-light)); margin-bottom: .75rem; }
+.account-nav { display: flex; flex-wrap: wrap; gap: 0 1.5rem; border-bottom: 1px solid rgb(var(--primary-light) / .55); margin-bottom: 2rem; }
+.account-nav a { display: inline-flex; align-items: center; min-height: 3rem; padding: .5rem 0; border-bottom: 2px solid transparent; color: rgb(var(--secondary-light)); font-size: .875rem; }
+.account-nav a.active { border-bottom-color: rgb(var(--primary)); color: rgb(var(--primary)); }
+.account-nav a:hover { color: rgb(var(--primary)); }
+@media (max-width: 639px) { .account-page { padding: 2rem 1rem 3rem; } .account-nav { gap: 0 1rem; } }

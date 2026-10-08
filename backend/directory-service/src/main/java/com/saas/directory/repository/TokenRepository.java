@@ -19,6 +19,10 @@ public interface TokenRepository extends JpaRepository<Token, String> {
 
     Optional<Token> findByJtiAndTokenType(String jti, TokenType tokenType);
 
+    @Query("SELECT t.user.id FROM Token t WHERE t.jti = :jti AND t.tokenType = :tokenType AND t.expiry > :now")
+    Optional<String> findValidTokenUserId(
+            @Param("jti") String jti, @Param("tokenType") TokenType tokenType, @Param("now") Instant now);
+
     void deleteAllByUser(User user);
 
     @Modifying

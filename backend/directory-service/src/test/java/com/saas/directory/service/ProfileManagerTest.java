@@ -40,6 +40,7 @@ public class ProfileManagerTest {
                 .setNeighborhood("Campinas")
                 .setZipCode("12345678")
                 .setStreet("Main Street")
+                .setHouseNumber("123")
                 .setComplement("Apartment 123");
 
         // Mock the repository behavior
@@ -66,7 +67,8 @@ public class ProfileManagerTest {
                 .setCity("Los Angeles")
                 .setNeighborhood("Campinas")
                 .setZipCode("12345678")
-                .setStreet("Main Street");
+                .setStreet("Main Street")
+                .setHouseNumber("123");
         when(profileRepository.save(any(Profile.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         final Profile createdProfile = profileManager.createProfile(user, profileDto);
@@ -88,7 +90,8 @@ public class ProfileManagerTest {
                 .setCity("São Paulo")
                 .setNeighborhood("Centro")
                 .setZipCode("12345678")
-                .setStreet("Main Street");
+                .setStreet("Main Street")
+                .setHouseNumber("123");
         when(profileRepository.save(any(Profile.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         final Profile profile = profileManager.createProfile(new User("john@example.com", "password"), profileDto);
@@ -107,7 +110,8 @@ public class ProfileManagerTest {
                 .setCity("São Paulo")
                 .setNeighborhood("Centro")
                 .setZipCode("12345678")
-                .setStreet("Main Street");
+                .setStreet("Main Street")
+                .setHouseNumber("123");
 
         assertThrows(IllegalArgumentException.class, () -> profileManager.validateProfile(profileDto));
     }
@@ -131,7 +135,8 @@ public class ProfileManagerTest {
                 .setCity("Los Angeles")
                 .setNeighborhood("Campinas")
                 .setZipCode("12345678")
-                .setStreet("Main Street");
+                .setStreet("Main Street")
+                .setHouseNumber("123");
 
         final IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,

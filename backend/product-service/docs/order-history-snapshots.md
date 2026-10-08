@@ -23,3 +23,9 @@ after its original transaction closes. The admin status endpoint only advances
 `PAID` to `PROCESSING`, `PROCESSING` to `SHIPPED`, and `SHIPPED` to `DELIVERED`.
 The payment confirmation path alone marks a pending order paid. Status writes
 flush a managed, versioned order so concurrent updates produce a conflict.
+
+A fully authenticated account without a payment-provider customer ID receives
+an empty list from `GET /orders`. The manager returns before querying the order
+repository; it never performs an unscoped lookup. Anonymous access remains denied.
+Single-order reads, checkout creation and cancellation still require a valid
+owner and preserve their existing ownership checks.

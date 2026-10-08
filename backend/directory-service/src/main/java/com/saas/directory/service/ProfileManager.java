@@ -33,7 +33,8 @@ public class ProfileManager {
         buildProfile(null, profileDto);
     }
 
-    private Profile buildProfile(User user, ProfileDto profileDto) {
+    /** Builds a validated copy without mutating an existing profile. */
+    public Profile buildProfile(User user, ProfileDto profileDto) {
         if (profileDto == null) {
             throw new IllegalArgumentException("Profile cannot be null");
         }
@@ -60,6 +61,7 @@ public class ProfileManager {
                 zipCode,
                 required(profileDto.getStreet(), "Street", 255),
                 user);
+        profile.setHouseNumber(required(profileDto.getHouseNumber(), "House number", 255));
         if (profileDto.getPhone() != null && !profileDto.getPhone().isBlank()) {
             final String phone = profileDto.getPhone().replaceAll("[^0-9]", "");
             if (phone.length() != 10 && phone.length() != 11) {

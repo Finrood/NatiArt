@@ -35,7 +35,7 @@ public class AuthenticationManager {
     @Transactional
     public UserAuthDto login(CredentialsDto credentialsDto) {
         final User user = userManager
-                .getUser(credentialsDto.username())
+                .getUserForUpdate(credentialsDto.username())
                 .filter(u -> u.isActive() && u.getRole() != null && u.getRole().isActive())
                 .filter(u -> passwordEncoder.matches(credentialsDto.password(), u.getPasswordHash()))
                 .orElseThrow(() -> new ResourceNotFoundException("Invalid credentials", HttpStatus.UNAUTHORIZED));

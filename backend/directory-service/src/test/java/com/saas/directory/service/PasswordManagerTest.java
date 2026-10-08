@@ -50,7 +50,7 @@ public class PasswordManagerTest {
     @Test
     public void doResetPassword_withExpiredToken_rejectsReset() {
         final String jti = "expired-jti";
-        when(tokenManager.getValidTokenByJtiAndTokenTypeOrDie(jti, TokenType.PASSWORD_RESET))
+        when(tokenManager.getValidTokenUserIdOrDie(jti, TokenType.PASSWORD_RESET))
                 .thenThrow(new IllegalArgumentException("Token [" + jti + "] is invalid"));
 
         assertThrows(
@@ -68,8 +68,9 @@ public class PasswordManagerTest {
         final User user = new User("user", "oldpass");
         final Token token =
                 new Token(jti, user, TokenType.PASSWORD_RESET, Instant.now().plus(1, ChronoUnit.HOURS));
-        when(tokenManager.getValidTokenByJtiAndTokenTypeOrDie(jti, TokenType.PASSWORD_RESET))
-                .thenReturn(token);
+        when(tokenManager.getValidTokenUserIdOrDie(jti, TokenType.PASSWORD_RESET))
+                .thenReturn(user.getId());
+        when(userRepository.findByIdForUpdate(user.getId())).thenReturn(Optional.of(user));
         when(passwordEncoder.encode("newPass123")).thenReturn("encoded");
         when(tokenManager.consumeValidToken(jti, TokenType.PASSWORD_RESET)).thenReturn(true);
 
@@ -87,7 +88,7 @@ public class PasswordManagerTest {
                 IllegalArgumentException.class,
                 () -> passwordManager.doResetPassword("any-jti", new ResetPasswordDto("one", "two")));
 
-        verify(tokenManager, never()).getValidTokenByJtiAndTokenTypeOrDie(any(), any());
+        verify(tokenManager, never()).getValidTokenUserIdOrDie(any(), any());
         verify(userRepository, never()).save(any());
     }
 
@@ -97,7 +98,7 @@ public class PasswordManagerTest {
                 IllegalArgumentException.class,
                 () -> passwordManager.doResetPassword("any-jti", new ResetPasswordDto("   ", "   ")));
 
-        verify(tokenManager, never()).getValidTokenByJtiAndTokenTypeOrDie(any(), any());
+        verify(tokenManager, never()).getValidTokenUserIdOrDie(any(), any());
         verify(userRepository, never()).save(any());
     }
 
@@ -148,8 +149,9 @@ public class PasswordManagerTest {
         final User user = new User("customer@example.com", "OldPass1");
         final Token token = new Token(
                 "reset-jti", user, TokenType.PASSWORD_RESET, Instant.now().plus(15, ChronoUnit.MINUTES));
-        when(tokenManager.getValidTokenByJtiAndTokenTypeOrDie("reset-jti", TokenType.PASSWORD_RESET))
-                .thenReturn(token);
+        when(tokenManager.getValidTokenUserIdOrDie("reset-jti", TokenType.PASSWORD_RESET))
+                .thenReturn(user.getId());
+        when(userRepository.findByIdForUpdate(user.getId())).thenReturn(Optional.of(user));
         when(tokenManager.consumeValidToken("reset-jti", TokenType.PASSWORD_RESET))
                 .thenReturn(false);
 

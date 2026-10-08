@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -66,6 +67,34 @@ class OrderControllerSecurityTest {
 
     @MockitoBean
     private TokenValidationCache tokenValidationCache;
+
+    @Test
+    @WithAnonymousUser
+    void anonymousCannotReadAnEmptyOrPopulatedOrderHistory() throws Exception {
+        mockMvc.perform(get("/orders")).andExpect(result -> {
+            final int status = result.getResponse().getStatus();
+            org.junit.jupiter.api.Assertions.assertTrue(status == 401 || status == 403);
+        });
+        org.mockito.Mockito.verifyNoInteractions(orderViewService, orderManager);
+    }
+
+    @Test
+    void authenticatedNewAccountCanReadEmptyHistoryWithItsOwnMissingProviderIdentity() throws Exception {
+        final AuthenticationResponseDto.Principal principal = mock(AuthenticationResponseDto.Principal.class);
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(
+                        principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+        when(orderViewService.getCustomerOrders(null, 0, 20)).thenReturn(List.of());
+        try {
+            mockMvc.perform(get("/orders"))
+                    .andExpect(status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                            .json("[]"));
+            verify(orderViewService).getCustomerOrders(null, 0, 20);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
 
     @Test
     void createOrderRequiresFullAuthenticationLikeCartAndPayment() throws Exception {

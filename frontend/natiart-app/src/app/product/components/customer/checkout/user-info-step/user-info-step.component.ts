@@ -1,4 +1,5 @@
 import {ChangeDetectionStrategy, Component, Input} from '@angular/core';
+import {RouterLink} from '@angular/router';
 
 import {FormGroup, ReactiveFormsModule} from "@angular/forms";
 import {
@@ -9,9 +10,9 @@ import {PhoneFormatBrazilDirective} from "../../../../../directory/directive/pho
 
 @Component({
   selector: 'app-user-info-step',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
+    RouterLink,
     NatiartFormFieldComponent,
     CpfFormatDirective,
     PhoneFormatBrazilDirective
@@ -20,11 +21,10 @@ import {PhoneFormatBrazilDirective} from "../../../../../directory/directive/pho
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UserInfoStepComponent {
-  @Input({ required: true }) checkoutForm!: FormGroup; // Parent form groupµµ
+  @Input({ required: true }) checkoutForm!: FormGroup;
 
-  get userInfoGroup(): FormGroup { // Helper getter
+  get userInfoGroup(): FormGroup {
     return this.checkoutForm.get('userInfo') as FormGroup;
   }
 
-  // No need for formFields array if using NatiartFormFieldComponent correctly
 }
