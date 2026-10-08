@@ -6,6 +6,11 @@ import static org.mockito.Mockito.*;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
@@ -21,6 +26,7 @@ import com.saas.directory.configuration.RequestCorrelationFilter;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
 import com.saas.directory.model.AsaasProvisioningJob;
 import com.saas.directory.model.AsaasProvisioningStatus;
+import com.saas.directory.model.Profile;
 import com.saas.directory.model.Role;
 import com.saas.directory.model.RoleName;
 import com.saas.directory.model.User;
@@ -149,5 +155,50 @@ class AsaasProvisioningTransactionTest {
                         .findByUserAndPaymentProcessor(user, PaymentProcessor.ASAAS)
                         .orElseThrow()
                         .getExternalId());
+    }
+
+    @Test
+    void claimWaitsForProfileEditAndUsesItsCommittedAddress() throws Exception {
+        final Role role = roleRepository
+                .findRoleByLabel(RoleName.USER)
+                .orElseGet(() -> roleRepository.save(new Role(RoleName.USER)));
+        final User user = new TransactionTemplate(transactionManager).execute(status -> {
+            final User created = new User(UUID.randomUUID() + "@example.test", "password").setRole(role);
+            created.setProfile(new Profile(
+                            "Ana",
+                            "Silva",
+                            "12345678909",
+                            "Brazil",
+                            "SP",
+                            "São Paulo",
+                            "Centro",
+                            "01001000",
+                            "Rua Principal",
+                            created)
+                    .setHouseNumber("123"));
+            final User saved = userRepository.saveAndFlush(created);
+            jobRepository.saveAndFlush(new AsaasProvisioningJob(saved, PaymentProcessor.ASAAS, Instant.now()));
+            return saved;
+        });
+        assertNotNull(user);
+        try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
+            final java.util.List<Future<Claim>> requests = new java.util.ArrayList<>();
+            new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                final User editing = userRepository
+                        .findByUsernameForUpdate(user.getUsername())
+                        .orElseThrow();
+                jobRepository
+                        .findByUserAndPaymentProcessor(editing, PaymentProcessor.ASAAS)
+                        .orElseThrow();
+                editing.getProfile().setHouseNumber("456B").setComplement("Apartment 7");
+                userRepository.saveAndFlush(editing);
+                requests.add(executor.submit(() -> stateService.claimForUsername(user.getUsername())));
+                assertThrows(TimeoutException.class, () -> requests.getFirst().get(150, TimeUnit.MILLISECONDS));
+            });
+            final Claim claim = requests.getFirst().get(10, TimeUnit.SECONDS);
+            assertNotNull(claim);
+            assertEquals("456B", claim.customer().getProfile().getHouseNumber());
+            assertEquals("Apartment 7", claim.customer().getProfile().getComplement());
+        }
     }
 }

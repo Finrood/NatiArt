@@ -39,6 +39,8 @@ public class Profile {
 
     private String street;
 
+    private String houseNumber;
+
     private String complement;
 
     @OneToOne(optional = false)
@@ -174,6 +176,15 @@ public class Profile {
 
     public Profile setStreet(String street) {
         this.street = street;
+        return this;
+    }
+
+    public String getHouseNumber() {
+        return houseNumber;
+    }
+
+    public Profile setHouseNumber(String houseNumber) {
+        this.houseNumber = houseNumber;
         return this;
     }
 

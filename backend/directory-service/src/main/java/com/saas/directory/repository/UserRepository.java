@@ -19,6 +19,10 @@ public interface UserRepository extends JpaRepository<User, String> {
     boolean existsUserByUsernameIgnoreCase(String username);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT user FROM User user WHERE lower(user.username) = lower(:username)")
+    Optional<User> findByUsernameForUpdate(@Param("username") String username);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT user FROM User user WHERE user.id = :id")
     Optional<User> findByIdForUpdate(@Param("id") String id);
 }

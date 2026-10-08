@@ -8,6 +8,7 @@ import com.saas.directory.model.Profile;
 
 public class ProfileDto {
     private String id;
+    private Long version;
 
     @NotBlank
     @Size(max = 100)
@@ -49,6 +50,10 @@ public class ProfileDto {
     @Size(max = 255)
     private String street;
 
+    @NotBlank
+    @Size(max = 255)
+    private String houseNumber;
+
     @Size(max = 255)
     private String complement;
 
@@ -56,6 +61,7 @@ public class ProfileDto {
         if (profile == null) return null;
         return new ProfileDto()
                 .setId(profile.getId())
+                .setVersion(profile.getVersion())
                 .setFirstname(profile.getFirstname())
                 .setLastname(profile.getLastname())
                 .setCpf(profile.getCpf())
@@ -66,6 +72,7 @@ public class ProfileDto {
                 .setNeighborhood(profile.getNeighborhood())
                 .setZipCode(profile.getZipCode())
                 .setStreet(profile.getStreet())
+                .setHouseNumber(profile.getHouseNumber())
                 .setComplement(profile.getComplement());
     }
 
@@ -165,6 +172,24 @@ public class ProfileDto {
 
     public ProfileDto setStreet(String street) {
         this.street = street;
+        return this;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public ProfileDto setVersion(Long version) {
+        this.version = version;
+        return this;
+    }
+
+    public String getHouseNumber() {
+        return houseNumber;
+    }
+
+    public ProfileDto setHouseNumber(String houseNumber) {
+        this.houseNumber = houseNumber;
         return this;
     }
 

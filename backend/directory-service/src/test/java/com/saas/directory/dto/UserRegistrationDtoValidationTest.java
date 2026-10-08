@@ -41,7 +41,8 @@ class UserRegistrationDtoValidationTest {
                 .setCity("São Paulo")
                 .setNeighborhood("Campinas")
                 .setZipCode("12345678")
-                .setStreet("Main Street");
+                .setStreet("Main Street")
+                .setHouseNumber("123");
     }
 
     private static Set<String> violatedFields(UserRegistrationDto dto) {

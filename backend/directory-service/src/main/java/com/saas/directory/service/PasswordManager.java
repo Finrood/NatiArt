@@ -86,12 +86,13 @@ public class PasswordManager {
         }
         PasswordPolicy.validate(resetPasswordDto.password());
 
-        final Token passwordResetToken = getValidPasswordResetTokenOrDie(jti);
+        final String userId = tokenManager.getValidTokenUserIdOrDie(jti, TokenType.PASSWORD_RESET);
+        final User user = userRepository
+                .findByIdForUpdate(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid token"));
         if (!tokenManager.consumeValidToken(jti, TokenType.PASSWORD_RESET)) {
             throw new IllegalArgumentException("Invalid token");
         }
-
-        final User user = passwordResetToken.getUser();
 
         user.setPasswordHash(passwordEncoder.encode(resetPasswordDto.password()));
         userRepository.save(user);

@@ -38,6 +38,7 @@ public class AsaasCustomerCreationRequest {
                 .setProvince(userDto.getProfile().getNeighborhood())
                 .setComplement(userDto.getProfile().getComplement())
                 .setAddress(userDto.getProfile().getStreet())
+                .setAddressNumber(userDto.getProfile().getHouseNumber())
                 .setExternalReference(userDto.getId());
     }
 

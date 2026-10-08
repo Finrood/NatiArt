@@ -214,6 +214,7 @@ class UserAuthenticationProviderTest {
                 new Token(jti, user, TokenType.AUTH_REFRESH, Instant.now().plus(10, ChronoUnit.MINUTES));
         when(tokenRepository.findByJtiAndTokenType(eq(jti), eq(TokenType.AUTH_REFRESH)))
                 .thenReturn(Optional.of(dbToken));
+        when(userManager.getUserForUpdate(eq("mallory"))).thenReturn(Optional.of(user));
         final HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getHeader(eq(HttpHeaders.AUTHORIZATION))).thenReturn("Bearer " + refreshToken);
 
@@ -231,6 +232,7 @@ class UserAuthenticationProviderTest {
                 new Token(jti, user, TokenType.AUTH_REFRESH, Instant.now().plus(10, ChronoUnit.MINUTES));
         when(tokenRepository.findByJtiAndTokenType(eq(jti), eq(TokenType.AUTH_REFRESH)))
                 .thenReturn(Optional.of(dbToken));
+        when(userManager.getUserForUpdate(eq("alice"))).thenReturn(Optional.of(user));
         when(userManager.getUserOrDie(eq("alice"))).thenReturn(user);
         final HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getHeader(eq(HttpHeaders.AUTHORIZATION))).thenReturn("Bearer " + refreshToken);

@@ -104,6 +104,8 @@ class PasswordRecoveryCommittedContractTest {
         when(limiter.tryAcquire(anyString(), eq(3))).thenReturn(true);
         when(userManager.getUser(anyString()))
                 .thenAnswer(call -> users.findUserByUsernameIgnoreCase(call.getArgument(0)));
+        when(userManager.getUserForUpdate(anyString()))
+                .thenAnswer(call -> users.findByUsernameForUpdate(call.getArgument(0)));
         when(userManager.getUserOrDie(anyString()))
                 .thenAnswer(call ->
                         users.findUserByUsernameIgnoreCase(call.getArgument(0)).orElseThrow());

@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -13,7 +15,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
@@ -22,6 +27,7 @@ import org.springframework.web.client.RestTemplate;
 import com.saas.directory.dto.ProfileDto;
 import com.saas.directory.dto.UserDto;
 import com.saas.directory.dto.asaas.AsaasCustomerCreationResponse;
+import com.saas.directory.dto.asaas.AsaasCustomerUpdateRequest;
 
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -125,6 +131,39 @@ class AsaasUserManagerTest {
         assertEquals("connection refused", thrown.getMessage());
     }
 
+    @Test
+    void updatesTheExistingCustomerWithOnlyIntendedFieldsAndHouseNumber() {
+        final RestTemplate http = new RestTemplate();
+        final MockRestServiceServer server = MockRestServiceServer.bindTo(http).build();
+        server.expect(requestTo(CUSTOMERS_URL + "/cus_existing"))
+                .andExpect(method(HttpMethod.PUT))
+                .andExpect(header("access_token", "test-api-key"))
+                .andExpect(content().json("""
+                        {"name":"Test User","cpfCnpj":"12345678909","email":"test@example.com","phone":"48999999999","address":"Main Street","addressNumber":"123","complement":"","province":"Centro","postalCode":"88000000","externalReference":"user-id"}
+                        """, true))
+                .andRespond(withSuccess("{\"id\":\"cus_existing\",\"deleted\":false}", MediaType.APPLICATION_JSON));
+        final AsaasUserManager manager = new AsaasUserManager("test-api-key", CUSTOMERS_URL, http);
+        manager.updateCustomer(
+                "cus_existing",
+                AsaasCustomerUpdateRequest.from(
+                        "user-id", "test@example.com", validUser().getProfile()));
+        server.verify();
+    }
+
+    @Test
+    void rejectsAnUnconfirmedProviderIdentityAndUnsafeCustomerPath() {
+        final RestTemplate http = new RestTemplate();
+        final MockRestServiceServer server = MockRestServiceServer.bindTo(http).build();
+        server.expect(requestTo(CUSTOMERS_URL + "/cus_existing"))
+                .andRespond(withSuccess("{\"id\":\"cus_other\"}", MediaType.APPLICATION_JSON));
+        final AsaasUserManager manager = new AsaasUserManager("test-api-key", CUSTOMERS_URL, http);
+        final AsaasCustomerUpdateRequest update = AsaasCustomerUpdateRequest.from(
+                "user-id", "test@example.com", validUser().getProfile());
+        assertThrows(IllegalArgumentException.class, () -> manager.updateCustomer("../other", update));
+        assertThrows(IllegalStateException.class, () -> manager.updateCustomer("cus_existing", update));
+        server.verify();
+    }
+
     private UserDto validUser() {
         return new UserDto()
                 .setUsername("test@example.com")
@@ -138,6 +177,7 @@ class AsaasUserManagerTest {
                         .setCity("Florianopolis")
                         .setNeighborhood("Centro")
                         .setZipCode("88000000")
-                        .setStreet("Main Street"));
+                        .setStreet("Main Street")
+                        .setHouseNumber("123"));
     }
 }

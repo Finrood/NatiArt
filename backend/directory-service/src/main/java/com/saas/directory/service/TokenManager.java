@@ -56,6 +56,14 @@ public class TokenManager {
         return dbToken.get();
     }
 
+    /** Resolves ownership without loading a user before its password-change lock is acquired. */
+    @Transactional(readOnly = true)
+    public String getValidTokenUserIdOrDie(String jti, TokenType tokenType) {
+        return tokenRepository
+                .findValidTokenUserId(jti, tokenType, Instant.now())
+                .orElseThrow(() -> new IllegalArgumentException("Invalid token"));
+    }
+
     @Transactional
     public Token generateRandomUUIDToken(User user, long timeToLive, ChronoUnit timeUnit, TokenType tokenType) {
         final Instant expiryDate = Instant.now().plus(timeToLive, timeUnit);
