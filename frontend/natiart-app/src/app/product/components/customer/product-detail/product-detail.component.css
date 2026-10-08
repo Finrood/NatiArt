@@ -1,12 +1,18 @@
-.product-gallery { background: rgb(var(--surface-variant)); }
+.product-gallery { background: rgb(var(--surface-variant)); border: 1px solid rgb(var(--primary-light) / .4); }
 .product-content { min-width: 0; }
 .product-detail .product-gallery img { max-height: 38rem; }
 .product-information { padding-top: .5rem; }
 .category-link { display: inline-flex; align-items: center; min-height: 2.75rem; font-size: .75rem; text-decoration: underline; text-underline-offset: .3em; }
-.product-information h1 { letter-spacing: -.035em; }
+.product-information h1 { font-size: clamp(2.25rem, 3.9vw, 3.5rem); letter-spacing: -.045em; }
+.gallery-zoom-affordance { position: absolute; bottom: 1rem; right: 1rem; display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border: 1px solid rgb(var(--primary-light)); border-radius: 50%; background: rgb(var(--surface)); color: rgb(var(--primary)); pointer-events: none; }
+.purchase-panel { padding: clamp(1.25rem, 2.5vw, 2rem); background: rgb(var(--surface)); border: 1px solid rgb(var(--primary-light) / .55); border-radius: .25rem; }
+.purchase-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: .75rem; }
+.current-price { font: 500 1.75rem/1.25 var(--font-sans); color: rgb(var(--primary-dark)); font-variant-numeric: tabular-nums; }
+.purchase-panel app-add-to-cart-button { display: block; }
+.product-facts { border-color: rgb(var(--primary-light) / .5); }
 .gallery-thumbnails { display: flex; gap: .75rem; overflow-x: auto; padding: .375rem .375rem .75rem; }
 .gallery-thumbnail { flex-shrink: 0; border: 1px solid transparent; padding: .25rem; border-radius: .375rem; background: rgb(var(--surface-variant)); }
 .gallery-thumbnail.selected { border-color: rgb(var(--primary)); }
 .gallery-hint { font-size: .75rem; color: rgb(var(--text-muted)); margin-top: .5rem; }
-.personalization-preview { margin-top: 1.5rem; padding: 1rem 1.25rem; border-left: 2px solid rgb(var(--primary-light)); background: rgb(var(--background-variant)); color: rgb(var(--text-muted)); }
+.personalization-preview { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgb(var(--primary-light) / .5); color: rgb(var(--text-muted)); }
 @media (min-width: 1024px) { .product-information { padding-block: 1rem; } }

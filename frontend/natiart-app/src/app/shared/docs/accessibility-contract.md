@@ -12,7 +12,7 @@ reduced-motion styles apply across shopping and administration.
 
 ## Verification
 
-The October 2026 suite has 382 passing ChromeHeadless specs, including native
+The October 2026 suite has 384 passing ChromeHeadless specs, including native
 modal/background focus, nested scroll restoration, rendered journeys, projected
 labels/errors, password state, static-hero behavior and recovery. Real browser
 checks verified menu Enter/Escape, personalization dismissal, cancel-first cart
@@ -29,3 +29,12 @@ the atelier verification record; full assistive-technology and actual browser
 ## Integration
 
 Retain CA33 group/password errors and normalized input behavior, CA37 global projected-input styling/local fonts, CA29 address lookup behavior, CA23 pagination and CA28 write guards when resolving overlapping component files. Shared control IDs/errors should be owned by this wrapper; remove obsolete caller error IDs rather than retain broken descriptions. Keep CA26 product image ordering/upload cancellation and CA13 personalization ownership behavior inside the dialog wrapper. Preserve the public catalog link.
+
+The bold gallery pass additionally verifies Clear search keyboard focus after
+shell navigation, retained category/search context, 200-character empty-result
+recovery, 44px search dismissal, persistent gallery zoom, options cancellation
+and phone-menu Enter/Escape restoration. Thirty main layouts cover both locales
+and all five requested widths; sixteen additional cart/account/checkout/care
+layouts cover 320/1440px. The latest evidence is under
+`docs/design-review/atelier-2026-10/bold-refinement/`. Earlier payment/provider
+journeys remain prior-pass evidence, not new transactions in this visual pass.

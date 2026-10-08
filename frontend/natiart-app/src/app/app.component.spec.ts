@@ -16,6 +16,8 @@ const $ready = signal(false);
 class LoadingPage { readonly $loaded = $ready; }
 @Component({template: '<main [attr.aria-busy]="!$loaded()"><h1>Catalog</h1>@if ($loaded()) { <p>Products</p> }</main>'})
 class BusyPage { readonly $loaded = $ready; }
+@Component({template: '<h1>Collections</h1><input id="catalog-search" aria-label="Search products">'})
+class SearchPage {}
 
 describe('AppComponent', () => {
   beforeEach(async () => {
@@ -27,7 +29,7 @@ describe('AppComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([{path: 'first', component: FirstPage}, {path: 'loaded', component: LoadingPage},
-          {path: 'busy', component: BusyPage}]),
+          {path: 'busy', component: BusyPage}, {path: 'search', component: SearchPage}]),
       ],
     }).compileComponents();
   });
@@ -104,6 +106,30 @@ describe('AppComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(scroll.calls.mostRecent().args).toEqual([[0, 0]]);
+    fixture.destroy();
+  });
+
+  it('honors search focus for a clear action once and keeps normal navigation heading focus', async () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    const router: Router = TestBed.inject(Router);
+    const focus: jasmine.Spy = spyOn(HTMLElement.prototype, 'focus').and.callThrough();
+    fixture.detectChanges();
+    await router.navigateByUrl('/search?query=print');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await router.navigateByUrl('/search?page=0', {info: 'catalog-search'});
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const input: HTMLInputElement = fixture.nativeElement.querySelector('#catalog-search');
+    expect(focus.calls.mostRecent().object).toBe(input);
+    const focusCount: number = focus.calls.count();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(focus.calls.count()).toBe(focusCount);
+    await router.navigateByUrl('/search?query=plate');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(focus.calls.mostRecent().object).toBe(fixture.nativeElement.querySelector('h1'));
     fixture.destroy();
   });
 

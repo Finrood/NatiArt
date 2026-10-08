@@ -1,0 +1,6 @@
+:host { display: block; min-width: 0; }
+aside { width: 100%; }
+@media (min-width: 1024px) {
+  :host { flex: 0 0 14rem; align-self: stretch; }
+  aside { position: sticky; top: 6.5rem; max-height: calc(100dvh - 8rem); overflow-y: auto; border-right: 1px solid rgb(var(--primary-light) / .45); }
+}

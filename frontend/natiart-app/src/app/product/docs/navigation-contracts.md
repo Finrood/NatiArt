@@ -66,3 +66,18 @@ step heading and scroll it below the sticky header. Initial rendering leaves
 the shell's route-heading focus intact. Forward, Back, rejected-order recovery
 and restarting a checkout use the same step transition; form validation and
 server quote checks still run before advancing.
+
+The bold gallery refinement keeps a committed search when switching categories or
+clearing only the category. Collections announces the API result count and exposes
+a separate 44px Clear search action. Clearing retains the category, resets page
+zero and cancels pending requests. Transient router `info: 'catalog-search'` asks
+the shell to restore input focus after navigation; ordinary route/query changes
+and Back retain the heading/scroll contract. It is not persisted into history.
+Router-synchronized search forms become pristine, so switching locale after a
+committed search does not warn about unsaved data. Unsubmitted edits and other
+dirty forms retain the language confirmation. Pagination is shown only when
+another page, a previous page, loading or error recovery needs it.
+
+The desktop category host stretches to the result list height so its sticky
+rail remains within the page and below the header. The rail scrolls internally
+when categories exceed the available viewport. Phones retain native Filters.

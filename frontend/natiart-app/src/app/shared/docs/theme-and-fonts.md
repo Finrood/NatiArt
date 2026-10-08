@@ -59,7 +59,7 @@ color. Secondary muted text and semantic filled-button colors also meet 4.5:1
 against their intended backgrounds. Computed-style checks measure contrast
 rather than hard-coding the palette; disabled controls are excluded.
 
-The current production build and 382-spec ChromeHeadless suite passed on
+The current production build and 384-spec ChromeHeadless suite passed on
 October 8, 2026. Earlier CA-number verification describes historical integration;
 current browser and performance evidence is recorded in the atelier review.
 
@@ -69,3 +69,13 @@ and explicit readable inactive admin states. Its portrait crop keeps the
 porcelain subject visible in both locales without source-asset lettering.
 
 Responsive detail and checkout layouts must also accommodate Poppins at a 320 px viewport. Product columns allow shrinking, quantity controls retain 44 px heights, and stock text wraps below them when needed. Checkout progress uses three equal, shrinkable columns with centered labels; decorative connectors run between circle centers without reserving label width. Keep content visible rather than masking document overflow. Verify both production locales through all three checkout steps and the product detail at phone, tablet, and desktop widths.
+
+The bold gallery pass reuses these assets and tokens: fluid display type up to
+108px in the hero and 96px for Collections, a 36–44px header wordmark, a larger
+footer wordmark, restrained quarter-rem corners, and a labelled white purchase
+panel. Home's four-piece grids use one column below 380px, two through tablet
+widths and four from 1024px. Collections retains its paginated responsive grid.
+The hero uses a smaller 208px phone artwork frame alongside stronger type; all
+commercial photography, font delivery, image priority and deferred loading
+remain intact. Keyboard photo focus uses the same subtle scale as hover and
+the existing reduced-motion override. See the latest gallery review for evidence.

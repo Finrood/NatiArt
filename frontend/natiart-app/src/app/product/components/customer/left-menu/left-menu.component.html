@@ -15,7 +15,7 @@
   <nav id="category-filters" [class.hidden]="!$filtersOpen()" class="lg:block pb-4" aria-label="Product categories" i18n-aria-label>
     <ul>
       <li>
-        <a aria-label="All products" routerLink="/products" [queryParams]="{page: 0}"
+        <a aria-label="All products" i18n-aria-label routerLink="/products" [queryParams]="{categoryId: null, page: 0}" queryParamsHandling="merge"
           (click)="$filtersOpen.set(false)" [attr.aria-current]="!$selectedCategoryId() ? 'page' : null" class="block py-3 px-6 text-sm hover:bg-primary-lighter/50 hover:text-primary-dark" i18n>All Products</a>
       </li>
       @if (pages.$error()) {
@@ -23,12 +23,14 @@
       }
       @for (category of $categories(); track category.id) {
         <li>
-          <a [attr.aria-label]="category.label" routerLink="/products" [queryParams]="{categoryId: category.id, page: 0}"
+          <a [attr.aria-label]="category.label" routerLink="/products" [queryParams]="{categoryId: category.id, page: 0}" queryParamsHandling="merge"
             (click)="$filtersOpen.set(false)" [attr.aria-current]="$selectedCategoryId() === category.id ? 'page' : null" class="block py-3 px-6 text-sm break-words hover:bg-primary-lighter/50 hover:text-primary-dark">{{ category.label }}</a>
         </li>
       }
     </ul>
-    <app-page-controls [page]="pages.$page()" [total]="pages.$total()" [hasNext]="pages.$hasNext()"
+    @if (pages.$hasNext() || pages.$page() > 0 || pages.$loading() || pages.$error()) {
+      <app-page-controls [page]="pages.$page()" [total]="pages.$total()" [hasNext]="pages.$hasNext()"
       [loading]="pages.$loading()" [error]="pages.$error()" (pageChange)="pages.load($event)"></app-page-controls>
+    }
   </nav>
 </aside>
