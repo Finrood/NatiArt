@@ -6,6 +6,7 @@ import {fakeAsync, tick} from '@angular/core/testing';
 
 import {AuthenticationService} from './authentication.service';
 import {TokenService} from './token.service';
+import {Profile} from '../models/profile.model';
 import {RoleName, User} from '../models/user.model';
 import {environment} from '../../../environments/environment';
 
@@ -122,6 +123,48 @@ describe('authenticationService', () => {
     subscription.unsubscribe();
     httpTesting.verify();
     service.ngOnDestroy();
+  }));
+
+  it('keeps a saved profile when an older current-user response arrives later', fakeAsync(() => {
+    const future: number = Math.floor(Date.now() / 1000) + 8 * 24 * 3600;
+    localStorage.setItem('accessToken', unsignedToken(future));
+    localStorage.setItem('refreshToken', unsignedToken(future));
+    const service = TestBed.inject(AuthenticationService);
+    const http = TestBed.inject(HttpTestingController);
+    tick(); http.expectOne(CURRENT_USER_URL).flush(mockUser); tick();
+    const saved: Profile = {firstname: 'Ana', lastname: 'Silva', cpf: '12345678909', country: 'Brazil',
+      state: 'SP', city: 'São Paulo', neighborhood: 'Centro', zipCode: '01001000', street: 'Rua Nova', houseNumber: '456', version: 2};
+    let current: User | null = null;
+    const subscription = service.currentUser$.subscribe((user: User | null): void => {current = user;});
+    service.fetchCurrentUser().subscribe({error: (): void => {}});
+    const stale = http.expectOne(CURRENT_USER_URL);
+    service.updateProfile(saved, 'CurrentPassword123').subscribe();
+    const update = http.expectOne(CURRENT_USER_URL + '/profile');
+    expect(update.request.method).toBe('PUT');
+    expect(update.request.body).toEqual({profile: saved, currentPassword: 'CurrentPassword123'});
+    update.flush(saved);
+    stale.flush(mockUser);
+    expect((current as User | null)?.profile).toEqual(saved);
+    subscription.unsubscribe(); http.verify(); service.ngOnDestroy();
+  }));
+
+  it('never restores a signed-out account from a delayed profile-save response', fakeAsync(() => {
+    const future: number = Math.floor(Date.now() / 1000) + 8 * 24 * 3600;
+    localStorage.setItem('accessToken', unsignedToken(future));
+    localStorage.setItem('refreshToken', unsignedToken(future));
+    const service = TestBed.inject(AuthenticationService);
+    const http = TestBed.inject(HttpTestingController);
+    tick(); http.expectOne(CURRENT_USER_URL).flush(mockUser); tick();
+    let current: User | null = null;
+    let rejected: boolean = false;
+    const subscription = service.currentUser$.subscribe((user: User | null): void => {current = user;});
+    service.updateProfile(mockUser.profile, 'CurrentPassword123').subscribe({error: (): void => {rejected = true;}});
+    const update = http.expectOne(CURRENT_USER_URL + '/profile');
+    TestBed.inject(TokenService).clearTokens();
+    update.flush(mockUser.profile);
+    expect(rejected).toBeTrue(); expect(current).toBeNull();
+    expect(TestBed.inject(TokenService).accessToken).toBeNull();
+    subscription.unsubscribe(); http.verify(); service.ngOnDestroy();
   }));
 
   it('keeps credentials when a background refresh hits a transient server error', fakeAsync(() => {

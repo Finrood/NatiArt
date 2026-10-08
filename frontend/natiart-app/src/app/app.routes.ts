@@ -39,8 +39,14 @@ export const routes: Routes = [
   {
     path: 'account',
     canActivate: [authGuard],
-    loadComponent: () => import('./product/components/customer/order-history/order-history.component')
-      .then(m => m.OrderHistoryComponent)
+    canActivateChild: [authGuard],
+    loadComponent: () => import('./product/components/customer/customer-profile/customer-profile.component')
+      .then(m => m.CustomerProfileComponent),
+    children: [
+      {path: '', pathMatch: 'full', loadComponent: () => import('./product/components/customer/order-history/order-history.component').then(m => m.OrderHistoryComponent)},
+      {path: 'profile', loadComponent: () => import('./directory/components/account/account-details.component').then(m => m.AccountDetailsComponent)},
+      {path: 'security', loadComponent: () => import('./directory/components/account/change-password.component').then(m => m.ChangePasswordComponent)}
+    ]
   },
   {path: 'faq', redirectTo: '/products', pathMatch: 'full'},
   {path: 'shipping-returns', redirectTo: '/products', pathMatch: 'full'},

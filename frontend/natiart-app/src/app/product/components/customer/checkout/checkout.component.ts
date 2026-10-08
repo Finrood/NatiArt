@@ -22,7 +22,8 @@ import {LoadingSpinnerComponent} from "../../../../shared/components/shared/load
 import {User} from "../../../../directory/models/user.model";
 import {AuthenticationService} from "../../../../directory/service/authentication.service";
 import {CustomCpfValidators} from "../../../../directory/validator/CustomCpfValidators";
-import {CustomCepValidators} from "../../../../directory/validator/CustomCepValidators";
+import {createAddressForm} from '../../../../shared/forms/profile-form';
+import {CustomPhoneValidators} from '../../../../directory/validator/CustomPhoneValidators';
 import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportError} from '../../../../shared/service/error-reporting.service';
 import {ShippingQuote, ShippingQuoteRequest, ShippingService} from '../../../service/shipping.service';
@@ -86,7 +87,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   isLoggedIn$: Observable<boolean>;
   currentUser$: Observable<User | null>;
   isLoading$: Observable<boolean>;
-  sameShippingAsBilling = true;
   currentStep = 1;
   shippingQuote: ShippingQuote | null = null;
   isLoadingQuote = false;
@@ -120,31 +120,13 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   constructor() {
     this.checkoutForm = this._fb.group({
       userInfo: this._fb.group({
-        firstname: ['', [Validators.required, Validators.maxLength(255)]],
-        lastname: ['', [Validators.required, Validators.maxLength(255)]],
+        firstname: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(100)]],
+        lastname: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(100)]],
         cpf: ['', [Validators.required, CustomCpfValidators.validCpf()]],
         email: ['', [Validators.required, Validators.email, Validators.maxLength(255)]],
-        phone: ['', [Validators.pattern('[()0-9 -]*'), Validators.maxLength(255)]],
+        phone: ['', CustomPhoneValidators.validPhone()],
       }),
-      shippingInfo: this._fb.group({
-        country: ['Brazil', [Validators.required, Validators.maxLength(255)]],
-        state: ['', [Validators.required, Validators.maxLength(255)]],
-        city: ['', [Validators.required, Validators.maxLength(255)]],
-        neighborhood: ['', [Validators.required, Validators.maxLength(255)]],
-        zipCode: ['', [Validators.required, CustomCepValidators.validCep()]],
-        street: ['', [Validators.required, Validators.maxLength(255)]],
-        houseNumber: ['', [Validators.required, Validators.maxLength(255), Validators.pattern(/\S/)]],
-        complement: ['', Validators.maxLength(255)],
-      }),
-      billingInfo: this._fb.group({
-        country: ['Brazil', Validators.maxLength(255)],
-        state: ['', Validators.maxLength(255)],
-        city: ['', Validators.maxLength(255)],
-        neighborhood: ['', Validators.maxLength(255)],
-        zipCode: ['', Validators.pattern(/^\d{5}-\d{3}$/)],
-        street: ['', Validators.maxLength(255)],
-        complement: ['', Validators.maxLength(255)],
-      }),
+      shippingInfo: createAddressForm(this._fb),
       paymentInfo: this._fb.group({
         paymentMethod: [PaymentMethod.PIX, [Validators.required, Validators.maxLength(255)]],
       }),
@@ -230,11 +212,8 @@ export class CheckoutComponent implements OnInit, OnDestroy {
             if (shippingInfo?.pristine) {
               shippingInfo.patchValue({country: user.profile.country || 'Brazil', state: user.profile.state,
                 city: user.profile.city, neighborhood: user.profile.neighborhood, zipCode: user.profile.zipCode,
-                street: user.profile.street, complement: user.profile.complement});
+                street: user.profile.street, houseNumber: user.profile.houseNumber || '', complement: user.profile.complement});
               if (shippingInfo.invalid) shippingInfo.markAllAsTouched();
-            }
-            if (this.sameShippingAsBilling) {
-              this.checkoutForm.get('billingInfo')?.patchValue(shippingInfo?.value);
             }
           }
         })
@@ -256,11 +235,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.checkoutForm.get('paymentInfo.paymentMethod')?.valueChanges
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.updatePaymentValidators());
-  }
-
-  onSameShippingChange(isSame: boolean): void {
-    this.sameShippingAsBilling = isSame;
-    this._cdr.detectChanges();
   }
 
   updatePaymentValidators(): void {

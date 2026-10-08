@@ -60,7 +60,7 @@
             @if (currentStep === 2) {
               <section>
                 <h2 #stepHeading tabindex="-1" class="text-3xl font-normal text-secondary-dark mb-6" i18n>Shipping Address</h2>
-                <app-shipping-info-step [checkoutForm]="checkoutForm" (sameShippingAsBillingChange)="onSameShippingChange($event)"></app-shipping-info-step>
+                <app-shipping-info-step [checkoutForm]="checkoutForm"></app-shipping-info-step>
                 <div class="mt-8 flex flex-wrap justify-between gap-3">
                   <app-button type="button" (click)="prevStep()" color="secondary" size="md" i18n>Back</app-button>
                   <app-button type="button" (click)="nextStep()" color="primary" size="md" [disabled]="checkoutForm.get('shippingInfo')?.invalid || isLoadingQuote">

@@ -50,6 +50,8 @@ describe('SignupComponent', () => {
         neighborhood: 'Centro',
         zipCode: '12345-678',
         street: 'Rua Principal',
+        houseNumber: '123',
+        complement: 'Apartment 4',
       },
     });
     signupService.registerUser.and.returnValue(new Subject<User>().asObservable());
@@ -58,7 +60,7 @@ describe('SignupComponent', () => {
     component.doRegisterUser();
 
     expect(signupService.registerUser).toHaveBeenCalledOnceWith(jasmine.objectContaining({
-      profile: jasmine.objectContaining({phone: '', state: 'SP'}),
+      profile: jasmine.objectContaining({phone: '', state: 'SP', houseNumber: '123', complement: 'Apartment 4'}),
     }));
   });
 

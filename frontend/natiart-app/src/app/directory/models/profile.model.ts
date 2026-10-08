@@ -1,5 +1,6 @@
 export interface Profile {
   id?: string;
+  version?: number;
   firstname: string;
   lastname: string;
   cpf: string;
@@ -10,5 +11,6 @@ export interface Profile {
   neighborhood: string;
   zipCode: string;
   street: string;
+  houseNumber?: string;
   complement?: string;
 }

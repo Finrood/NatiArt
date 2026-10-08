@@ -35,3 +35,25 @@ and stored-session validation subscriptions end when the login view is destroyed
 The rendered rejection/retry regression test uses zoneless change detection to
 match application bootstrap, and waits for normal rendering after the HTTP error
 without forcing a refresh.
+
+Signup and account editing use `ProfileFormFieldsComponent` and
+`createProfileForm`; checkout uses its shared address factory and renderer.
+House number is required; apartment/suite uses optional `complement`. A legacy
+missing house number stays blank and blocks checkout until corrected. CEP lookup
+never clears manual address text on failure and preserves edits made after the
+postcode changed, including during its debounce. Initial account data resets
+without triggering a lookup or marking saved fields dirty.
+
+`/account` contains orders, `/account/profile` personal/address details and
+`/account/security` password changes. Loading errors show retry without a blank
+editable profile. Saving requires current password and the loaded profile version;
+errors, busy states and confirmation render from signals without another input
+or manual refresh. Failed saves preserve edits and clear the current password.
+Saved profiles update auth state and invalidate older lookup responses. A delayed
+save cannot restore a signed-out or replaced session. Email remains read-only.
+
+Checkout's editable name/contact fields are recipient snapshots for the order.
+CPF is read-only and links to the account editor because payment uses the stored
+customer identity. PIX checkout has one delivery address; the former separate
+billing form was never included in the server order contract and has been removed.
+Password changes clear tokens and show a new-sign-in action only after 204.

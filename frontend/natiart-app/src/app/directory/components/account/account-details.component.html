@@ -1,0 +1,24 @@
+<section [attr.aria-busy]="$loading()" class="art-panel p-5 sm:p-8">
+  <h2 class="text-3xl font-serif text-secondary-dark mb-2" i18n="@@accountDetailsTitle">Personal details</h2>
+  <p class="text-sm text-secondary-light mb-6" i18n="@@accountDetailsHint">Keep your contact details and delivery address up to date. Changes apply to future purchases.</p>
+  @if ($error()) { <div class="mb-6"><p class="text-error mb-3" role="alert">{{ $error() }}</p><button type="button" class="art-link min-h-11" (click)="reload()" [disabled]="$loading() || $saving()" i18n="@@accountReload">Reload details</button></div> }
+  @if ($saved()) { <p role="status" class="mb-6 border border-success/30 bg-success/10 text-success p-4" i18n="@@accountDetailsSaved">Your details have been saved.</p> }
+  @if ($loading()) { <p role="status" class="text-secondary-light" i18n="@@accountDetailsLoading">Loading your details…</p> }
+  @else if ($profileLoaded()) {
+    <form [formGroup]="form" (ngSubmit)="save()">
+      <div class="mb-6 text-sm"><span class="text-secondary-light" i18n>Email</span><p class="break-all mt-1">{{ $email() }}</p></div>
+      <fieldset [disabled]="$saving()">
+        <app-profile-form-fields [form]="profileForm"></app-profile-form-fields>
+        <div class="mt-8 border-t border-primary-light/40 pt-6">
+          <app-natiart-form-field label="Current password" i18n-label="@@accountCurrentPassword" controlName="currentPassword" [form]="form" [isPassword]="true">
+            <input class="form-input" type="password" formControlName="currentPassword" autocomplete="current-password" maxlength="256">
+          </app-natiart-form-field>
+          <p class="text-xs text-secondary-light mt-2 mb-5" i18n="@@accountConfirmIdentity">Confirm your current password to save these details.</p>
+          <button type="submit" class="art-action w-full sm:w-auto" [disabled]="form.invalid || $saving() || !profileForm.dirty">
+            @if ($saving()) { <span i18n="@@accountSaving">Saving…</span> } @else { <span i18n="@@accountSaveDetails">Save details</span> }
+          </button>
+        </div>
+      </fieldset>
+    </form>
+  }
+</section>

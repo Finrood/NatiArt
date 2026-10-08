@@ -22,12 +22,12 @@ describe('Customer order history pages', (): void => {
       .flush(Array.from({length: 20}, (_, index: number) => ({...entry, id: 'recent-' + index})));
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('article').length).toBe(20);
-    const more: HTMLButtonElement = fixture.nativeElement.querySelector('main button'); more.click();
+    const more: HTMLButtonElement = fixture.nativeElement.querySelector('section button'); more.click();
     http.expectOne(request => request.url.endsWith('/orders') && request.params.get('page') === '1' && request.params.get('size') === '20')
       .flush([{...entry, id: 'older-21'}]); fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('article').length).toBe(21);
     expect(fixture.nativeElement.textContent).toContain('older-21');
-    expect(fixture.nativeElement.querySelector('main button')).toBeNull();
+    expect(fixture.nativeElement.querySelector('section button')).toBeNull();
   });
   it('opens the purchased order directly and recovers from a missing order to paged history', async (): Promise<void> => {
     const http: HttpTestingController = TestBed.inject(HttpTestingController);

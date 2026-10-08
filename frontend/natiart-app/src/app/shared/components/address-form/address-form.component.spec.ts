@@ -6,9 +6,9 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Subject, of, throwError } from 'rxjs';
 
 import { AddressFormComponent } from './address-form.component';
-import { SignupService } from '../../../../../directory/service/signup.service';
-import { ViaCEPResponse } from '../../../../../directory/models/viaCEPResponse.model';
-import { CustomCepValidators } from '../../../../../directory/validator/CustomCepValidators';
+import { SignupService } from '../../../directory/service/signup.service';
+import { ViaCEPResponse } from '../../../directory/models/viaCEPResponse.model';
+import { CustomCepValidators } from '../../../directory/validator/CustomCepValidators';
 
 function makeAddressForm(fb: FormBuilder): FormGroup {
   return fb.group({
@@ -107,6 +107,26 @@ describe('AddressFormComponent', () => {
         street: 'Rua Manual', houseNumber: '10'
       });
       expect(form.valid).toBeTrue();
+      fixture.destroy();
+    }));
+  }
+
+  for (const failure of [false, true]) {
+    it(`preserves manual corrections during a slow CEP lookup (failure=${failure})`, fakeAsync(() => {
+      const response: Subject<ViaCEPResponse> = new Subject<ViaCEPResponse>();
+      spyOn(TestBed.inject(SignupService), 'getAddressFromZipCode').and.returnValue(response);
+      const fixture = TestBed.createComponent(AddressFormComponent);
+      const form = makeAddressForm(TestBed.inject(FormBuilder));
+      fixture.componentInstance.addressFormGroup = form; fixture.detectChanges();
+      form.get('zipCode')!.setValue('01001000'); tick(200);
+      form.patchValue({street: 'Rua Manual', houseNumber: '123', complement: 'Apartment 4'});
+      tick(200);
+      if (failure) response.error(new Error('offline'));
+      else { response.next(viaCepResponse('Rua Suggested')); response.complete(); }
+      expect(form.get('street')!.value).toBe('Rua Manual');
+      expect(form.get('houseNumber')!.value).toBe('123');
+      expect(form.get('complement')!.value).toBe('Apartment 4');
+      if (!failure) expect(form.get('state')!.value).toBe('SP');
       fixture.destroy();
     }));
   }

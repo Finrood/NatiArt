@@ -1,1 +1,12 @@
-<p i18n>customer-profile works!</p>
+<main class="account-page">
+  <header class="account-heading">
+    <div><p class="account-eyebrow" i18n="@@accountWelcome">Made for you</p><h1 class="art-title" i18n>Your account</h1></div>
+    <a routerLink="/products" class="art-link min-h-11 inline-flex items-center" i18n>Continue shopping</a>
+  </header>
+  <nav class="account-nav" aria-label="Account navigation" i18n-aria-label="@@accountNavigation">
+    <a routerLink="/account" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" ariaCurrentWhenActive="page" i18n>Order history</a>
+    <a routerLink="/account/profile" routerLinkActive="active" ariaCurrentWhenActive="page" i18n="@@accountDetailsTitle">Personal details</a>
+    <a routerLink="/account/security" routerLinkActive="active" ariaCurrentWhenActive="page" i18n="@@accountSecurityTitle">Password & security</a>
+  </nav>
+  <router-outlet></router-outlet>
+</main>

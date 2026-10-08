@@ -21,41 +21,43 @@
   <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
     <app-natiart-form-field label="Country" controlName="country" [inputId]="isBillingAddress ? 'billingCountry' : 'shippingCountry'" [form]="addressFormGroup" i18n-label>
       <input [id]="isBillingAddress ? 'billingCountry' : 'shippingCountry'" formControlName="country" [attr.autocomplete]="isBillingAddress ? 'billing country-name' : 'shipping country-name'" readonly
-        class="form-input bg-surface-variant/30 cursor-not-allowed" maxlength="255">
+        class="form-input bg-surface-variant/30 cursor-not-allowed" maxlength="100">
       </app-natiart-form-field>
 
       <app-natiart-form-field label="State" controlName="state" [inputId]="isBillingAddress ? 'billingState' : 'shippingState'" [form]="addressFormGroup" i18n-label>
         <input [id]="isBillingAddress ? 'billingState' : 'shippingState'" formControlName="state" [attr.autocomplete]="isBillingAddress ? 'billing address-level1' : 'shipping address-level1'" placeholder="State"
-          class="form-input" i18n-placeholder maxlength="255">
+          class="form-input uppercase" i18n-placeholder maxlength="2">
       </app-natiart-form-field>
 
       <app-natiart-form-field label="City" controlName="city" [inputId]="isBillingAddress ? 'billingCity' : 'shippingCity'" [form]="addressFormGroup" i18n-label>
         <input [id]="isBillingAddress ? 'billingCity' : 'shippingCity'" formControlName="city" [attr.autocomplete]="isBillingAddress ? 'billing address-level2' : 'shipping address-level2'" placeholder="City"
-          class="form-input" i18n-placeholder maxlength="255">
+          class="form-input" i18n-placeholder maxlength="100">
       </app-natiart-form-field>
 
       <app-natiart-form-field label="Neighborhood" controlName="neighborhood" [inputId]="isBillingAddress ? 'billingNeighborhood' : 'shippingNeighborhood'" [form]="addressFormGroup" i18n-label>
         <input [id]="isBillingAddress ? 'billingNeighborhood' : 'shippingNeighborhood'" formControlName="neighborhood" placeholder="Neighborhood"
-          class="form-input" i18n-placeholder maxlength="255">
+          class="form-input" i18n-placeholder maxlength="100">
       </app-natiart-form-field>
     </div>
 
     <app-natiart-form-field label="Street" controlName="street" [inputId]="isBillingAddress ? 'billingStreet' : 'shippingStreet'" [form]="addressFormGroup" i18n-label>
-      <input [id]="isBillingAddress ? 'billingStreet' : 'shippingStreet'" formControlName="street" [attr.autocomplete]="isBillingAddress ? 'billing address-line1' : 'shipping address-line1'" placeholder="123 Main St"
-        class="form-input" i18n-placeholder maxlength="255">
+      <input [id]="isBillingAddress ? 'billingStreet' : 'shippingStreet'" formControlName="street" [attr.autocomplete]="isBillingAddress ? 'billing address-line1' : 'shipping address-line1'" placeholder="Street name"
+        class="form-input" i18n-placeholder="@@addressStreetPlaceholder" maxlength="255">
     </app-natiart-form-field>
 
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
     @if (addressFormGroup.get('houseNumber')) {
       <app-natiart-form-field label="House number" controlName="houseNumber" [inputId]="isBillingAddress ? 'billingHouseNumber' : 'shippingHouseNumber'" [form]="addressFormGroup" i18n-label>
         <input [id]="isBillingAddress ? 'billingHouseNumber' : 'shippingHouseNumber'" formControlName="houseNumber"
-          maxlength="255" placeholder="Number or N/A" i18n-placeholder class="form-input" autocomplete="address-line2">
+          maxlength="255" placeholder="Number or N/A" i18n-placeholder class="form-input" [attr.autocomplete]="isBillingAddress ? 'billing address-line2' : 'shipping address-line2'">
         <p class="mt-1 text-xs text-secondary-light" i18n>Enter N/A when the address has no house number.</p>
       </app-natiart-form-field>
     }
 
-    <app-natiart-form-field label="Address Complement" controlName="complement" [inputId]="isBillingAddress ? 'billingComplement' : 'shippingComplement'" [form]="addressFormGroup" [isOptional]="true" i18n-label>
+    <app-natiart-form-field label="Apartment, suite or complement" i18n-label="@@addressUnitLabel" controlName="complement" [inputId]="isBillingAddress ? 'billingComplement' : 'shippingComplement'" [form]="addressFormGroup" [isOptional]="true">
       <input [id]="isBillingAddress ? 'billingComplement' : 'shippingComplement'" formControlName="complement"
-        placeholder="Apt, suite, etc. (Optional)"
+        [attr.autocomplete]="isBillingAddress ? 'billing address-line3' : 'shipping address-line3'" placeholder="Apt, suite, etc. (Optional)"
         class="form-input" i18n-placeholder maxlength="255">
     </app-natiart-form-field>
+    </div>
   </div>
