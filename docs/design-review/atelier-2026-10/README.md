@@ -1,6 +1,8 @@
 # NatiArt atelier redesign
 
-**Latest:** the [October 8 refinement pass](refinement/README.md) adds a more
+**Latest:** the [bold gallery refinement](bold-refinement/README.md) strengthens
+Home, Collections, product purchase panels and brand typography, with fresh
+responsive evidence and search/focus repairs. The [earlier October 8 pass](refinement/README.md) adds a more
 distinctive composition across the shop, fixes mini-cart/checkout behavior,
 repairs a reproduced authentication-cache race and records fresh verification.
 The findings, screenshots and counts below preserve the first pass.

@@ -1,0 +1,94 @@
+[
+  {
+    "capturePath": "/_baseline/pt-BR/dashboard",
+    "cartBadge": "4",
+    "firstProductImages": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "heroHeight": 565.5625,
+    "homeGridColumns": "285px 285px 285px 285px",
+    "route": "/pt-BR/dashboard",
+    "scrollWidth": 1425,
+    "width": 1440,
+    "sourceCommit": "6edb351042395dc1d24e75e9af79e1dd2d0b227a"
+  },
+  {
+    "capturePath": "/_baseline/pt-BR/products",
+    "cartBadge": "4",
+    "firstProductImages": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "homeGridColumns": null,
+    "route": "/pt-BR/products",
+    "scrollWidth": 1425,
+    "width": 1440,
+    "sourceCommit": "6edb351042395dc1d24e75e9af79e1dd2d0b227a"
+  },
+  {
+    "capturePath": "/_baseline/pt-BR/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "cartBadge": "4",
+    "firstProductImages": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "homeGridColumns": null,
+    "route": "/pt-BR/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "scrollWidth": 1425,
+    "width": 1440,
+    "sourceCommit": "6edb351042395dc1d24e75e9af79e1dd2d0b227a"
+  },
+  {
+    "capturePath": "/_baseline/pt-BR/dashboard",
+    "cartBadge": "4",
+    "firstProductImages": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "heroHeight": 543.625,
+    "homeGridColumns": "161.5px 161.5px",
+    "route": "/pt-BR/dashboard",
+    "scrollWidth": 375,
+    "width": 390,
+    "sourceCommit": "6edb351042395dc1d24e75e9af79e1dd2d0b227a"
+  },
+  {
+    "capturePath": "/_baseline/pt-BR/products",
+    "cartBadge": "4",
+    "firstProductImages": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "homeGridColumns": null,
+    "route": "/pt-BR/products",
+    "scrollWidth": 375,
+    "width": 390,
+    "sourceCommit": "6edb351042395dc1d24e75e9af79e1dd2d0b227a"
+  },
+  {
+    "capturePath": "/_baseline/pt-BR/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "cartBadge": "4",
+    "firstProductImages": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "homeGridColumns": null,
+    "route": "/pt-BR/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "scrollWidth": 375,
+    "width": 390,
+    "sourceCommit": "6edb351042395dc1d24e75e9af79e1dd2d0b227a"
+  }
+]
