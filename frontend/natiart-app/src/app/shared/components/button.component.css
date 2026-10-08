@@ -2,6 +2,7 @@
 
 .btn {
   min-height: 2.75rem;
+  min-width: 2.75rem;
   font-family: var(--font-sans);
   white-space: normal;
   @apply px-6 py-3 rounded-md font-medium transition-all duration-200 ease-in-out

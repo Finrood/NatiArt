@@ -1,42 +1,44 @@
 <div
-  class="cart-preview absolute top-full right-0 mt-2 bg-surface art-panel p-5 w-88 max-w-[calc(100vw-2rem)] z-50">
+  data-cart-preview
+  class="cart-preview absolute top-full inset-x-4 lg:inset-x-auto lg:right-0 lg:w-80 mt-2 max-h-[calc(100dvh-8rem)] overflow-y-auto bg-surface art-panel p-4 z-50">
   <h2 class="text-2xl font-normal mb-4" i18n>Your Cart</h2>
 
   @if ((cartItems$ | async); as cartItems) {
     @if (cartItems.length) {
       <div>
-        <div class="max-h-[50svh] overflow-y-auto pr-1">
         @for (item of cartItems; track item.cartItemId) {
-          <div class="flex items-start gap-3 mb-4 pb-4 border-b border-primary-light/40">
-            <div class="w-16 h-16 shrink-0 overflow-hidden rounded">
-              <img (error)="images.failed(item.cartItemId)" [alt]="item.product.label"
-                [src]="imageUrls[item.cartItemId] || emptyImage" class="w-full h-full object-contain">
-            </div>
-            <div class="grow min-w-0">
-              <a [routerLink]="['/product', item.product.id]" class="text-sm font-medium hover:underline break-words">{{ item.product.label }}</a>
-              @if (item.goldBorder) {
-                <p class="mt-1 text-xs text-warning" i18n>With Gold Border</p>
-              }
-              <div class="flex flex-wrap gap-2 items-center mt-2 text-sm">
-                <input (change)="changeQuantity(item, $event)" [value]="item.quantity" [disabled]="item.product.stockQuantity <= 0"
-                  [attr.aria-label]="quantityLabel(item)"
-                  [max]="item.product.stockQuantity"
-                  [min]="1" class="w-16 p-1 border rounded mr-2" type="number">
-                <p>{{ item.product.markedPrice * item.quantity | currency:'BRL' }}</p>
+          <div class="mb-4 pb-4 border-b space-y-3">
+            <div class="flex items-start gap-3">
+              <div class="w-16 h-16 shrink-0 overflow-hidden rounded">
+                <img (error)="images.failed(item.cartItemId)" [alt]="item.product.label"
+                  [src]="imageUrls[item.cartItemId] || emptyImage" class="w-full h-full object-contain">
+              </div>
+              <div class="min-w-0 flex-1 [overflow-wrap:anywhere]">
+                <a [routerLink]="['/product', item.product.id]" class="text-sm font-medium hover:underline">{{ item.product.label }}</a>
+                @if (item.goldBorder) {
+                  <p class="mt-1 text-xs text-warning" i18n>With Gold Border</p>
+                }
               </div>
             </div>
-            <app-button (click)="removeItem(item, $event)" aria-label="Remove item" i18n-aria-label color="link" size="sm">
-              <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                <path clip-rule="evenodd"
-                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                  fill-rule="evenodd"/>
-              </svg>
-            </app-button>
+            <div class="grid grid-cols-[4rem_minmax(0,1fr)_auto] items-center gap-2">
+              <label [for]="'preview-quantity-' + item.cartItemId" class="sr-only" i18n>Quantity</label>
+              <input (change)="changeQuantity(item, $event)" [value]="item.quantity" [disabled]="item.product.stockQuantity <= 0" [attr.aria-label]="quantityLabel(item)"
+                [id]="'preview-quantity-' + item.cartItemId"
+                [max]="item.product.stockQuantity"
+                [min]="1" class="w-16 min-h-11 p-1 border rounded focus:ring-2 focus:ring-primary" type="number">
+              <p class="min-w-0 text-sm [overflow-wrap:anywhere]">{{ item.product.markedPrice * item.quantity | currency:'BRL' }}</p>
+              <app-button (click)="removeItem(item, $event)" aria-label="Remove item" i18n-aria-label color="link" size="sm" customClass="min-h-11">
+                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                  <path clip-rule="evenodd"
+                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                    fill-rule="evenodd"/>
+                </svg>
+              </app-button>
+            </div>
           </div>
         }
-        </div>
         <div class="border-t pt-2 mt-2">
-          <div class="flex justify-between items-center font-bold">
+          <div class="flex flex-wrap justify-between items-center gap-2 font-bold">
             <span i18n>Total:</span>
             <span>{{ cartTotal$ | async | currency:'BRL' }}</span>
           </div>

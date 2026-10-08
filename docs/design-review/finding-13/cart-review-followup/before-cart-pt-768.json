@@ -1,0 +1,319 @@
+{
+  "controls": [
+    {
+      "clipping": [],
+      "height": 40.5,
+      "left": 25,
+      "outside": false,
+      "right": 352.81,
+      "tag": "TH",
+      "text": "Produto",
+      "width": 327.81
+    },
+    {
+      "clipping": [],
+      "height": 40.5,
+      "left": 352.81,
+      "outside": false,
+      "right": 475.27,
+      "tag": "TH",
+      "text": "Preço",
+      "width": 122.45
+    },
+    {
+      "clipping": [],
+      "height": 40.5,
+      "left": 475.27,
+      "outside": false,
+      "right": 660.17,
+      "tag": "TH",
+      "text": "Quantidade",
+      "width": 184.91
+    },
+    {
+      "clipping": [
+        {
+          "left": 24,
+          "overflow": "hidden",
+          "right": 729,
+          "tag": "DIV"
+        }
+      ],
+      "height": 40.5,
+      "left": 660.17,
+      "outside": true,
+      "right": 784.91,
+      "tag": "TH",
+      "text": "Total",
+      "width": 124.73
+    },
+    {
+      "clipping": [
+        {
+          "left": 24,
+          "overflow": "hidden",
+          "right": 729,
+          "tag": "DIV"
+        }
+      ],
+      "height": 40.5,
+      "left": 784.91,
+      "outside": true,
+      "right": 893.17,
+      "tag": "TH",
+      "text": "Remover",
+      "width": 108.27
+    },
+    {
+      "clipping": [],
+      "height": 100.5,
+      "left": 25,
+      "outside": false,
+      "right": 352.81,
+      "tag": "TD",
+      "text": "Collector’s Porcelain Gift Set",
+      "width": 327.81
+    },
+    {
+      "clipping": [],
+      "height": 100.5,
+      "left": 352.81,
+      "outside": false,
+      "right": 475.27,
+      "tag": "TD",
+      "text": "R$ 1.299,90",
+      "width": 122.45
+    },
+    {
+      "clipping": [],
+      "height": 100.5,
+      "left": 475.27,
+      "outside": false,
+      "right": 660.17,
+      "tag": "TD",
+      "text": "1",
+      "width": 184.91
+    },
+    {
+      "clipping": [],
+      "height": 34,
+      "left": 499.27,
+      "outside": false,
+      "right": 553.27,
+      "tag": "BUTTON",
+      "text": "Diminuir quantidade",
+      "width": 54
+    },
+    {
+      "clipping": [],
+      "height": 34,
+      "left": 582.17,
+      "outside": false,
+      "right": 636.17,
+      "tag": "BUTTON",
+      "text": "Increase quantity",
+      "width": 54
+    },
+    {
+      "clipping": [
+        {
+          "left": 24,
+          "overflow": "hidden",
+          "right": 729,
+          "tag": "DIV"
+        }
+      ],
+      "height": 100.5,
+      "left": 660.17,
+      "outside": true,
+      "right": 784.91,
+      "tag": "TD",
+      "text": "R$ 1.299,90",
+      "width": 124.73
+    },
+    {
+      "clipping": [
+        {
+          "left": 24,
+          "overflow": "hidden",
+          "right": 729,
+          "tag": "DIV"
+        }
+      ],
+      "height": 100.5,
+      "left": 784.91,
+      "outside": true,
+      "right": 893.17,
+      "tag": "TD",
+      "text": "",
+      "width": 108.27
+    },
+    {
+      "clipping": [
+        {
+          "left": 24,
+          "overflow": "hidden",
+          "right": 729,
+          "tag": "DIV"
+        }
+      ],
+      "height": 36,
+      "left": 811.03,
+      "outside": true,
+      "right": 867.03,
+      "tag": "BUTTON",
+      "text": "Remover item",
+      "width": 56
+    },
+    {
+      "clipping": [],
+      "height": 32,
+      "left": 48,
+      "outside": false,
+      "right": 462,
+      "tag": "H2",
+      "text": "Calcular frete",
+      "width": 414
+    },
+    {
+      "clipping": [],
+      "height": 50,
+      "left": 48,
+      "outside": false,
+      "right": 462,
+      "tag": "INPUT",
+      "text": "",
+      "width": 414
+    },
+    {
+      "clipping": [],
+      "height": 56,
+      "left": 535,
+      "outside": false,
+      "right": 704,
+      "tag": "H2",
+      "text": "Resumo do carrinho",
+      "width": 169
+    },
+    {
+      "clipping": [],
+      "height": 92,
+      "left": 535,
+      "outside": false,
+      "right": 704,
+      "tag": "BUTTON",
+      "text": "Finalizar compra",
+      "width": 169
+    },
+    {
+      "clipping": [],
+      "height": 44,
+      "left": 574.88,
+      "outside": false,
+      "right": 664.11,
+      "tag": "A",
+      "text": "ou continuar comprando",
+      "width": 89.23
+    },
+    {
+      "clipping": [],
+      "height": 36,
+      "left": 535,
+      "outside": false,
+      "right": 704,
+      "tag": "BUTTON",
+      "text": "Esvaziar carrinho",
+      "width": 169
+    }
+  ],
+  "document": 753,
+  "failures": [
+    {
+      "clipping": [
+        {
+          "left": 24,
+          "overflow": "hidden",
+          "right": 729,
+          "tag": "DIV"
+        }
+      ],
+      "height": 40.5,
+      "left": 660.17,
+      "outside": true,
+      "right": 784.91,
+      "tag": "TH",
+      "text": "Total",
+      "width": 124.73
+    },
+    {
+      "clipping": [
+        {
+          "left": 24,
+          "overflow": "hidden",
+          "right": 729,
+          "tag": "DIV"
+        }
+      ],
+      "height": 40.5,
+      "left": 784.91,
+      "outside": true,
+      "right": 893.17,
+      "tag": "TH",
+      "text": "Remover",
+      "width": 108.27
+    },
+    {
+      "clipping": [
+        {
+          "left": 24,
+          "overflow": "hidden",
+          "right": 729,
+          "tag": "DIV"
+        }
+      ],
+      "height": 100.5,
+      "left": 660.17,
+      "outside": true,
+      "right": 784.91,
+      "tag": "TD",
+      "text": "R$ 1.299,90",
+      "width": 124.73
+    },
+    {
+      "clipping": [
+        {
+          "left": 24,
+          "overflow": "hidden",
+          "right": 729,
+          "tag": "DIV"
+        }
+      ],
+      "height": 100.5,
+      "left": 784.91,
+      "outside": true,
+      "right": 893.17,
+      "tag": "TD",
+      "text": "",
+      "width": 108.27
+    },
+    {
+      "clipping": [
+        {
+          "left": 24,
+          "overflow": "hidden",
+          "right": 729,
+          "tag": "DIV"
+        }
+      ],
+      "height": 36,
+      "left": 811.03,
+      "outside": true,
+      "right": 867.03,
+      "tag": "BUTTON",
+      "text": "Remover item",
+      "width": 56
+    }
+  ],
+  "preview": null,
+  "viewport": 753
+}

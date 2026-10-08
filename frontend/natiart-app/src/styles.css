@@ -230,7 +230,7 @@ app-left-menu a[aria-current="page"] { background: rgb(var(--background-variant)
 .order-status[data-status="PROCESSING"], .order-status[data-status="SHIPPED"] { background: #edf1f4; color: #3c5366; border-color: #bdcbd5; }
 .order-status[data-status="CANCELLED"] { background: #f8eae7; color: #803f34; border-color: #e1bab2; }
 app-order-history > .min-h-screen, app-checkout > .min-h-screen { min-height: calc(100svh - 5.5rem); }
-.art-search button { background: rgb(var(--primary)); color: white; padding: .75rem 1.25rem; border-radius: .375rem; }
+.art-search app-button { flex-shrink: 0; }
 .art-search input { flex: 1; min-width: 0; }
 .art-grid { display: grid; grid-template-columns: 1fr; gap: 2rem 1.25rem; }
 @media (min-width: 380px) { .art-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
@@ -252,8 +252,6 @@ app-admin-dashboard .admin-hidden { border-style: dashed; background: rgb(var(--
 app-admin-dashboard [data-load-more] { display: inline-flex; align-items: center; min-height: 2.75rem; margin-top: 1.5rem; padding: .5rem 1rem; border: 1px solid rgb(var(--primary)); color: rgb(var(--primary)); border-radius: .375rem; }
 @media (max-width: 639px) { .auth-grid { min-height: 0; padding-block: 1.5rem; } }
 
-app-checkout .step-icon { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border: 1px solid rgb(var(--primary-light)); border-radius: 50%; color: rgb(var(--text-muted)); }
-app-checkout .step.active .step-icon, app-checkout .step.completed .step-icon { background: rgb(var(--primary)); color: white; border-color: rgb(var(--primary)); }
 
 /* Artwork frames and open forms give account entry the same proportions as the shop. */
 .auth-art { flex-direction: column; justify-content: center; align-items: center; gap: 1.5rem; padding: 3rem; background: #f4e8e2; }
@@ -270,11 +268,6 @@ app-checkout .step.active .step-icon, app-checkout .step.completed .step-icon { 
 .cart-product-name { display: inline-flex; align-items: center; min-height: 2.75rem; font: 400 1.125rem/1.35 var(--font-serif); text-wrap: pretty; }
 .cart-product-name:hover { color: rgb(var(--primary)); text-decoration: underline; text-underline-offset: .3em; }
 app-cart table { table-layout: fixed; }
-app-cart table th:first-child { width: 42%; }
 app-cart table td:first-child { white-space: normal; overflow-wrap: anywhere; }
 app-cart table td:first-child > div > div:last-child { min-width: 0; }
-@media (max-width: 1023px) and (min-width: 768px) {
-  app-cart table th, app-cart table td { padding-inline: .75rem; }
-  app-cart table td:first-child img, app-cart table td:first-child .shrink-0 { width: 4rem; height: 4rem; }
-}
 @media (max-width: 639px) { .auth-recovery .art-panel { padding: 1.5rem; } .cart-product-name { font-size: 1rem; } }

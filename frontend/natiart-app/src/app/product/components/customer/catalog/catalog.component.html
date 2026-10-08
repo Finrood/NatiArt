@@ -5,7 +5,7 @@
     <form (ngSubmit)="searchProducts()" class="art-search">
       <label for="catalog-search" class="sr-only" i18n>Search products</label>
       <input id="catalog-search" name="search" type="search" [(ngModel)]="search" maxlength="200" placeholder="Search products" i18n-placeholder class="form-input" />
-      <button type="submit" i18n>Search</button>
+      <app-button type="submit" color="primary" size="sm" i18n>Search</app-button>
     </form>
     @if (pages.$loading()) {
       <p role="status" class="mb-4 text-sm" i18n>Loading products...</p>

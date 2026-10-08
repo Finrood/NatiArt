@@ -20,7 +20,7 @@ conversion uplift or field-performance claim is made.
   The 22 initial orders plus the two new purchases survive `--resume`.
 - To restart this exact saved fixture, use Java25 and
   `python3 backend/design-review/run.py --resume`; wait for Ready. Follow
-  [the fixture instructions](../../../backend/design-review/README.md) for setup
+  the local owner-supplied `backend/design-review/README.md` (not published in this change) for setup
   and demonstration accounts. `--verify` validates without reseeding.
 - An isolated `git archive` of baseline commit `1e922119` was built and served on
   4201 against the same product data. It supplies the public before matrix.

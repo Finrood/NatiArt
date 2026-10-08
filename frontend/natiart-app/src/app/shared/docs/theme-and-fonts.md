@@ -63,3 +63,5 @@ The refinement reuses the same fonts/tokens with an arched approved artwork
 frame, stronger display scale, quiet ruled product cards, semantic order pills
 and explicit readable inactive admin states. Its portrait crop keeps the
 porcelain subject visible in both locales without source-asset lettering.
+
+Responsive detail and checkout layouts must also accommodate Poppins at a 320 px viewport. Product columns allow shrinking, quantity controls retain 44 px heights, and stock text wraps below them when needed. Checkout progress uses three equal, shrinkable columns with centered labels; decorative connectors run between circle centers without reserving label width. Keep content visible rather than masking document overflow. Verify both production locales through all three checkout steps and the product detail at phone, tablet, and desktop widths.

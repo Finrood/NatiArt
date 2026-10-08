@@ -8,7 +8,9 @@ the composition more distinctive across discovery, detail, basket, checkout,
 authentication, account and administration, and repairs newly reproduced
 interaction failures. Existing payment, ownership, recovery and validation
 contracts remain intact. The only backend change addresses a demonstrated
-token-validation cache race. Nothing was committed, pushed or deployed.
+token-validation cache race. This evidence was captured before Git integration; the completed source and
+review artifacts are committed. See [integration verification](integration.md).
+No production deployment was performed.
 
 ## Direction and tradeoffs
 
