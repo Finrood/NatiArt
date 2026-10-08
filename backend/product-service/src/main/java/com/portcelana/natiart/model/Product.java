@@ -37,7 +37,7 @@ public class Product {
     @Column(nullable = false)
     private int stockQuantity;
 
-    /** Net product weight in kilograms, kept separate from the configured package dimensions. */
+    /** Packed weight in kilograms for one shipping parcel; legacy net weights require reweighing. */
     @Column(precision = 8, scale = 3)
     private BigDecimal weightKg;
 

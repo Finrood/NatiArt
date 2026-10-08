@@ -1,5 +1,6 @@
 package com.portcelana.natiart.service.support;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -18,6 +19,15 @@ public class MelhorenvioShippingCalculationRequest {
 
     public static MelhorenvioShippingCalculationRequest from(
             List<ShippingEstimateRequest> shippingEstimateRequests, String fromPostalCode) {
+        if (shippingEstimateRequests == null
+                || shippingEstimateRequests.isEmpty()
+                || shippingEstimateRequests.stream().anyMatch(Objects::isNull)) {
+            throw new IllegalArgumentException("At least one valid shipping parcel is required");
+        }
+        final String destination = shippingEstimateRequests.getFirst().getTo();
+        if (shippingEstimateRequests.stream().anyMatch(item -> !destination.equals(item.getTo()))) {
+            throw new IllegalArgumentException("All shipping parcels must have the same destination");
+        }
         final MelhorenvioShippingCalculationRequest request = new MelhorenvioShippingCalculationRequest();
 
         final Address fromAddress = new Address();
@@ -29,7 +39,6 @@ public class MelhorenvioShippingCalculationRequest {
         request.setTo(toAddress);
 
         request.setVolumes(shippingEstimateRequests.stream()
-                .filter(Objects::nonNull)
                 .flatMap(item ->
                         java.util.stream.IntStream.range(0, item.getQuantity()).mapToObj(index -> toVolume(item)))
                 .collect(Collectors.toList()));
@@ -43,6 +52,7 @@ public class MelhorenvioShippingCalculationRequest {
         volume.setWidth(shippingEstimateRequest.getWidth());
         volume.setLength(shippingEstimateRequest.getLength());
         volume.setWeight(shippingEstimateRequest.getWeight());
+        volume.setInsurance(shippingEstimateRequest.getInsuranceValue());
         return volume;
     }
 
@@ -88,6 +98,15 @@ class Volume {
     private float width;
     private float length;
     private float weight;
+    private BigDecimal insurance;
+
+    public BigDecimal getInsurance() {
+        return insurance;
+    }
+
+    public void setInsurance(BigDecimal insurance) {
+        this.insurance = insurance;
+    }
 
     public float getHeight() {
         return height;

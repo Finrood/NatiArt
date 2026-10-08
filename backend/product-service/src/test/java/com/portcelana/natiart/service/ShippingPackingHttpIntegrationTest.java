@@ -134,7 +134,11 @@ class ShippingPackingHttpIntegrationTest {
         @org.springframework.context.annotation.Bean
         ShippingService shippingService(org.springframework.web.client.RestTemplate carrierClient) {
             return new ShippingService(
-                    "https://carrier.example.test/calculate", "fixture-token", "88010000", carrierClient);
+                    "https://carrier.example.test/calculate",
+                    "fixture-token",
+                    "88010000",
+                    "NatiArt (shipping@example.test)",
+                    carrierClient);
         }
     }
 
@@ -154,7 +158,9 @@ class ShippingPackingHttpIntegrationTest {
                 .setAvailablePersonalizations(java.util.Set.of(
                         com.portcelana.natiart.model.support.PersonalizationOption.GOLDEN_BORDER,
                         com.portcelana.natiart.model.support.PersonalizationOption.CUSTOM_IMAGE)));
-        when(productManager.getProductsOrDie(List.of(product.getId()))).thenReturn(Map.of(product.getId(), product));
+        when(productManager.getProductsOrDie(List.of(product.getId())))
+                .thenAnswer(invocation -> products.findAllWithShippingDataByIds(List.of(product.getId())).stream()
+                        .collect(java.util.stream.Collectors.toMap(Product::getId, value -> value)));
         final org.springframework.test.web.client.MockRestServiceServer server =
                 org.springframework.test.web.client.MockRestServiceServer.bindTo(carrierClient)
                         .build();
@@ -166,6 +172,7 @@ class ShippingPackingHttpIntegrationTest {
                     final tools.jackson.databind.JsonNode volumes = body.get("volumes");
                     assertEquals(units, volumes.size());
                     double mass = 0;
+                    BigDecimal insured = BigDecimal.ZERO;
                     for (int i = 0; i < volumes.size(); i++) {
                         final tools.jackson.databind.JsonNode volume = volumes.get(i);
                         org.junit.jupiter.api.Assertions.assertFalse(volume.has("qntd"));
@@ -173,11 +180,21 @@ class ShippingPackingHttpIntegrationTest {
                             org.junit.jupiter.api.Assertions.assertTrue(
                                     volume.get(dimension).isNumber());
                         mass += volume.get("weight").asDouble();
+                        org.junit.jupiter.api.Assertions.assertTrue(
+                                volume.get("insurance").isNumber());
+                        insured = insured.add(
+                                new BigDecimal(volume.get("insurance").asString()));
                     }
                     assertEquals(0.5 * units, mass, 0.000001);
+                    assertEquals(
+                            new BigDecimal(
+                                    scenario.equals("variants")
+                                            ? "32.50"
+                                            : scenario.equals("custom") ? "12.50" : units == 1 ? "10.00" : "30.00"),
+                            insured.setScale(2));
                 })
                 .andRespond(org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess(
-                        "[{\"id\":1,\"name\":\"PAC\",\"price\":7.50,\"delivery_time\":3,\"company\":{\"name\":\"Correios\"}}]",
+                        "[{\"id\":1,\"name\":\"PAC\",\"price\":7.50,\"custom_price\":8.40,\"delivery_time\":3,\"custom_delivery_time\":6,\"company\":{\"name\":\"Correios\"}}]",
                         org.springframework.http.MediaType.APPLICATION_JSON));
         final java.util.List<com.portcelana.natiart.dto.shipping.ShippingQuoteItemRequest> quoteItems =
                 new java.util.ArrayList<>();
@@ -228,7 +245,8 @@ class ShippingPackingHttpIntegrationTest {
                         .setZipCode("88010000")
                         .setItems(quoteItems),
                 "owner");
-        assertEquals(new BigDecimal("12.50"), quote.getShippingAmount());
+        assertEquals(new BigDecimal("8.40"), quote.getShippingAmount());
+        assertEquals(6, quote.getEstimatedDeliveryDays());
         final OrderDto orderRequest = new OrderDto()
                 .setHouseNumber("N/A")
                 .setFirstname("Buyer")
@@ -251,7 +269,7 @@ class ShippingPackingHttpIntegrationTest {
                         .contentType("application/json")
                         .content(body))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.deliveryAmount").value(12.5))
+                .andExpect(jsonPath("$.deliveryAmount").value(8.4))
                 .andExpect(
                         jsonPath("$.totalAmount").value(quote.getTotalAmount().doubleValue()));
         final com.portcelana.natiart.model.CustomerOrder saved =

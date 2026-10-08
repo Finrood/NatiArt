@@ -33,6 +33,7 @@ class ServiceConstructorWiringTest {
                     "melhorenvio.api.url=https://shipping.example.test",
                     "melhorenvio.api.token=test-token",
                     "melhorenvio.api.from-postal-code=88085201",
+                    "melhorenvio.api.user-agent=NatiArt (shipping@example.test)",
                     "directory.service.auth-cache.ttl-millis=30000",
                     "directory.service.auth-cache.max-entries=10");
             context.registerBean(PaymentRepository.class, () -> mock(PaymentRepository.class));

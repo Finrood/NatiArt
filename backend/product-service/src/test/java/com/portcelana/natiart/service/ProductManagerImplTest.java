@@ -330,19 +330,21 @@ class ProductManagerImplTest {
     void getProductsOrDie_allPresent_loadsInOneQuery() {
         final Product plate = new Product("Plate", BigDecimal.TEN);
         final Product mug = new Product("Mug", BigDecimal.TEN);
-        when(productRepository.findAllById(List.of(plate.getId(), mug.getId()))).thenReturn(List.of(plate, mug));
+        when(productRepository.findAllWithShippingDataByIds(List.of(plate.getId(), mug.getId())))
+                .thenReturn(List.of(plate, mug));
 
         final Map<String, Product> result = productManager.getProductsOrDie(List.of(plate.getId(), mug.getId()));
 
         assertEquals(2, result.size());
         assertEquals(plate.getId(), result.get(plate.getId()).getId());
-        verify(productRepository, times(1)).findAllById(anyList());
+        verify(productRepository, times(1)).findAllWithShippingDataByIds(anyList());
     }
 
     @Test
     void getProductsOrDie_missingId_throwsNotFound() {
         final Product plate = new Product("Plate", BigDecimal.TEN);
-        when(productRepository.findAllById(List.of(plate.getId(), "missing"))).thenReturn(List.of(plate));
+        when(productRepository.findAllWithShippingDataByIds(List.of(plate.getId(), "missing")))
+                .thenReturn(List.of(plate));
 
         assertThrows(
                 ResourceNotFoundException.class,

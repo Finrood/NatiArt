@@ -22,8 +22,6 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
-import com.portcelana.natiart.controller.helper.ResourceNotFoundException;
-import com.portcelana.natiart.controller.helper.UserNotAllowedException;
 import com.portcelana.natiart.dto.shipping.ShippingEstimateRequest;
 
 import ch.qos.logback.classic.Level;
@@ -37,53 +35,50 @@ class ShippingServiceTest {
     void constructor_rejectsBlankApiToken() {
         assertThrows(
                 IllegalStateException.class,
-                () -> new ShippingService("https://api.example.com/calculate", "  ", "88085201"));
+                () -> new ShippingService(
+                        "https://api.example.com/calculate", "  ", "88085201", "NatiArt (shipping@example.test)"));
     }
 
     @Test
     void constructor_rejectsNullApiToken() {
         assertThrows(
                 IllegalStateException.class,
-                () -> new ShippingService("https://api.example.com/calculate", null, "88085201"));
+                () -> new ShippingService(
+                        "https://api.example.com/calculate", null, "88085201", "NatiArt (shipping@example.test)"));
     }
 
     @Test
     void constructor_rejectsBlankFromPostalCode() {
         assertThrows(
                 IllegalStateException.class,
-                () -> new ShippingService("https://api.example.com/calculate", "test-token", "  "));
+                () -> new ShippingService(
+                        "https://api.example.com/calculate", "test-token", "  ", "NatiArt (shipping@example.test)"));
     }
 
     @Test
     void constructor_rejectsNullFromPostalCode() {
         assertThrows(
                 IllegalStateException.class,
-                () -> new ShippingService("https://api.example.com/calculate", "test-token", null));
+                () -> new ShippingService(
+                        "https://api.example.com/calculate", "test-token", null, "NatiArt (shipping@example.test)"));
     }
 
     @Test
     void constructor_acceptsConfiguredApiToken() {
-        assertDoesNotThrow(() -> new ShippingService("https://api.example.com/calculate", "test-token", "88085201"));
+        assertDoesNotThrow(() -> new ShippingService(
+                "https://api.example.com/calculate", "test-token", "88085201", "NatiArt (shipping@example.test)"));
     }
 
     @Test
-    void mapShippingError_mapsAuthFailuresToUserNotAllowed() {
-        assertThrows(UserNotAllowedException.class, () -> {
-            throw ShippingService.mapShippingError(
-                    HttpClientErrorException.create(HttpStatus.UNAUTHORIZED, "Unauthorized", null, null, null));
-        });
-        assertThrows(UserNotAllowedException.class, () -> {
-            throw ShippingService.mapShippingError(
-                    HttpClientErrorException.create(HttpStatus.FORBIDDEN, "Forbidden", null, null, null));
-        });
-    }
-
-    @Test
-    void mapShippingError_mapsMissingEstimateToNotFound() {
-        assertThrows(ResourceNotFoundException.class, () -> {
-            throw ShippingService.mapShippingError(
-                    HttpClientErrorException.create(HttpStatus.NOT_FOUND, "Not Found", null, null, null));
-        });
+    void mapShippingError_providerAuthOrMissingRouteDoesNotBecomeCustomerAuthOrNotFound() {
+        for (final HttpStatus status : List.of(HttpStatus.UNAUTHORIZED, HttpStatus.FORBIDDEN, HttpStatus.NOT_FOUND)) {
+            final UpstreamServiceException mapped = assertInstanceOf(
+                    UpstreamServiceException.class,
+                    ShippingService.mapShippingError(
+                            HttpClientErrorException.create(status, "Unavailable", null, null, null)));
+            assertEquals(HttpStatus.BAD_GATEWAY, mapped.getHttpStatus());
+            assertEquals("Shipping provider unavailable", mapped.getMessage());
+        }
     }
 
     @Test
@@ -124,11 +119,16 @@ class ShippingServiceTest {
 
         final UpstreamServiceException mapped = org.junit.jupiter.api.Assertions.assertThrows(
                 UpstreamServiceException.class,
-                () -> new ShippingService("https://api.example.com/calculate", "test-token", "88085201", restTemplate)
+                () -> new ShippingService(
+                                "https://api.example.com/calculate",
+                                "test-token",
+                                "88085201",
+                                "NatiArt (shipping@example.test)",
+                                restTemplate)
                         .getShippingEstimates(new ShippingEstimateRequest("88010000", 1.0f, 20.0f, 15.0f, 10.0f, 1)));
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, mapped.getHttpStatus());
-        org.mockito.Mockito.verify(restTemplate, org.mockito.Mockito.times(3))
+        org.mockito.Mockito.verify(restTemplate, org.mockito.Mockito.times(2))
                 .exchange(
                         org.mockito.ArgumentMatchers.eq("https://api.example.com/calculate"),
                         org.mockito.ArgumentMatchers.eq(HttpMethod.POST),
@@ -167,7 +167,7 @@ class ShippingServiceTest {
 
         final RuntimeException mapped = ShippingService.mapShippingError(upstream);
 
-        assertEquals("Unauthorized api call to the shipping provider", mapped.getMessage());
+        assertEquals("Shipping provider unavailable", mapped.getMessage());
         assertFalse(mapped.getMessage().contains("validation-failed-marker"));
     }
 

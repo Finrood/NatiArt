@@ -1,5 +1,10 @@
 package com.portcelana.natiart.dto.shipping;
 
+import java.math.BigDecimal;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import com.portcelana.natiart.service.support.DomainValidation;
 import com.portcelana.natiart.service.support.InputValidationException;
 
@@ -10,8 +15,21 @@ public class ShippingEstimateRequest {
     private final float width; // in CM
     private final float height; // in CM
     private final int quantity;
+    private final BigDecimal insuranceValue;
 
     public ShippingEstimateRequest(String to, float weight, float length, float width, float height, int quantity) {
+        this(to, weight, length, width, height, quantity, BigDecimal.ZERO);
+    }
+
+    @JsonCreator
+    public ShippingEstimateRequest(
+            @JsonProperty("to") String to,
+            @JsonProperty("weight") float weight,
+            @JsonProperty("length") float length,
+            @JsonProperty("width") float width,
+            @JsonProperty("height") float height,
+            @JsonProperty("quantity") int quantity,
+            @JsonProperty("insuranceValue") BigDecimal insuranceValue) {
         this.to = DomainValidation.cep(to);
         DomainValidation.shippingWeight(weight);
         DomainValidation.finitePositive(length, "length", 200);
@@ -25,6 +43,14 @@ public class ShippingEstimateRequest {
         this.width = width;
         this.height = height;
         this.quantity = quantity;
+        final BigDecimal declaredValue = insuranceValue == null ? BigDecimal.ZERO : insuranceValue;
+        if (declaredValue.signum() < 0
+                || declaredValue.scale() > 2
+                || declaredValue.compareTo(new BigDecimal("99999999.99")) > 0) {
+            throw new InputValidationException(
+                    "insuranceValue", "insuranceValue must be a non-negative BRL amount with at most two decimals");
+        }
+        this.insuranceValue = declaredValue;
     }
 
     public String getTo() {
@@ -49,5 +75,9 @@ public class ShippingEstimateRequest {
 
     public int getQuantity() {
         return quantity;
+    }
+
+    public BigDecimal getInsuranceValue() {
+        return insuranceValue;
     }
 }

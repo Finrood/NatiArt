@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.portcelana.natiart.controller.helper.ShippingQuoteNotValidException;
 import com.portcelana.natiart.dto.OrderItemDto;
+import com.portcelana.natiart.dto.shipping.ShippingBasketEstimateRequest;
 import com.portcelana.natiart.dto.shipping.ShippingEstimate;
 import com.portcelana.natiart.dto.shipping.ShippingEstimateRequest;
 import com.portcelana.natiart.dto.shipping.ShippingQuoteItemRequest;
@@ -152,9 +153,6 @@ public class ShippingQuoteService {
                 throw new IllegalArgumentException("The combined quantity for a product exceeds " + MAX_ITEM_QUANTITY);
             }
             quantitiesByProduct.put(product.getId(), aggregate);
-        }
-        for (Map.Entry<String, Integer> entry : quantitiesByProduct.entrySet()) {
-            final Product product = products.get(entry.getKey());
             final Package packaging = product.getPackaging()
                     .orElseThrow(() -> new IllegalArgumentException(
                             "Product [" + product.getLabel() + "] has no shipping package configured"));
@@ -164,9 +162,11 @@ public class ShippingQuoteService {
                     packaging.getDepth(),
                     packaging.getWidth(),
                     packaging.getHeight(),
-                    entry.getValue()));
+                    quantity,
+                    money(unitPrice, "insurance value")));
         }
 
+        com.portcelana.natiart.service.support.DomainValidation.orderTotal(itemAmount);
         final ShippingEstimate estimate = shippingService.getShippingEstimates(volumes).stream()
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("No shipping options are available for this address"));
@@ -179,18 +179,74 @@ public class ShippingQuoteService {
         }
         final BigDecimal shippingAmount = money(estimate.getPrice(), "shipping amount");
         final BigDecimal normalizedItemAmount = money(itemAmount, "item amount");
+        final BigDecimal totalAmount = normalizedItemAmount.add(shippingAmount).setScale(2);
+        com.portcelana.natiart.service.support.DomainValidation.orderTotal(totalAmount);
         final ShippingQuote quote = new ShippingQuote()
                 .setOwnerExternalId(ownerExternalId)
                 .setDestinationPostalCode(destination)
                 .setServiceId(serviceId)
                 .setServiceName(estimate.getService())
+                .setEstimatedDeliveryDays(estimate.getEstimatedDeliveryDays())
                 .setItemAmount(normalizedItemAmount)
                 .setShippingAmount(shippingAmount)
-                .setTotalAmount(normalizedItemAmount.add(shippingAmount).setScale(2))
+                .setTotalAmount(totalAmount)
                 .setExpiresAt(clock.instant().plus(quoteTtl))
-                .setRequestFingerprint(fingerprint(destination, quoteItems))
+                .setRequestFingerprint(fingerprint(destination, quoteItems, products))
                 .setItems(quoteItems);
         return ShippingQuoteResponse.from(shippingQuoteRepository.save(quote));
+    }
+
+    /** Non-binding basket preview uses catalog parcels/prices and never claims artwork or persists a quote. */
+    @Transactional(readOnly = true)
+    public List<ShippingEstimate> estimateBasket(ShippingBasketEstimateRequest request) {
+        final String destination = normalizePostalCode(request == null ? null : request.zipCode());
+        if (request.items() == null
+                || request.items().isEmpty()
+                || request.items().size() > MAX_ORDER_LINES) {
+            throw new IllegalArgumentException("A shipping estimate requires 1 to 50 basket lines");
+        }
+        for (final ShippingBasketEstimateRequest.Item item : request.items()) {
+            if (item == null
+                    || item.productId() == null
+                    || item.productId().isBlank()
+                    || item.quantity() < 1
+                    || item.quantity() > MAX_ITEM_QUANTITY) {
+                throw new IllegalArgumentException("Invalid shipping estimate item");
+            }
+        }
+        final Map<String, Product> products = loadProducts(request.items().stream()
+                .map(ShippingBasketEstimateRequest.Item::productId)
+                .distinct()
+                .toList());
+        final Map<String, Integer> quantities = new LinkedHashMap<>();
+        final List<ShippingEstimateRequest> parcels = new ArrayList<>();
+        BigDecimal itemAmount = ZERO;
+        for (final ShippingBasketEstimateRequest.Item item : request.items()) {
+            final Product product = products.get(item.productId());
+            requireProductShippingData(product);
+            final int quantity = quantities.getOrDefault(item.productId(), 0) + item.quantity();
+            if (quantity > MAX_ITEM_QUANTITY)
+                throw new IllegalArgumentException("Combined product quantity exceeds 100");
+            quantities.put(item.productId(), quantity);
+            if (item.personalized() && product.getAvailablePersonalizations().isEmpty()) {
+                throw new IllegalArgumentException("This product cannot be personalized");
+            }
+            final BigDecimal basePrice = product.getMarkedPrice().orElseGet(product::getOriginalPrice);
+            final BigDecimal unitPrice =
+                    money(item.personalized() ? basePrice.add(personalizationSurcharge) : basePrice, "product price");
+            itemAmount = itemAmount.add(unitPrice.multiply(BigDecimal.valueOf(item.quantity())));
+            final Package packaging = product.getPackaging().orElseThrow();
+            parcels.add(new ShippingEstimateRequest(
+                    destination,
+                    product.getWeightKg().floatValue(),
+                    packaging.getDepth(),
+                    packaging.getWidth(),
+                    packaging.getHeight(),
+                    item.quantity(),
+                    unitPrice));
+        }
+        com.portcelana.natiart.service.support.DomainValidation.orderTotal(itemAmount);
+        return shippingService.getShippingEstimates(parcels);
     }
 
     @Transactional(readOnly = true)
@@ -215,7 +271,7 @@ public class ShippingQuoteService {
         final String destination = normalizePostalCode(destinationPostalCode);
         final List<ShippingQuoteItem> currentItems = currentItems(orderItems, products);
         if (!Objects.equals(quote.getDestinationPostalCode(), destination)
-                || !Objects.equals(quote.getRequestFingerprint(), fingerprint(destination, currentItems))) {
+                || !Objects.equals(quote.getRequestFingerprint(), fingerprint(destination, currentItems, products))) {
             throw new ShippingQuoteNotValidException(
                     "The shipping quote no longer matches the order; request a new quote");
         }
@@ -291,6 +347,9 @@ public class ShippingQuoteService {
         if (!product.isActive()) {
             throw new IllegalArgumentException("Product [" + product.getLabel() + "] is no longer available");
         }
+        if (product.getCategory().map(category -> !category.isActive()).orElse(false)) {
+            throw new IllegalArgumentException("Product category is no longer available");
+        }
         com.portcelana.natiart.service.support.DomainValidation.weightKg(product.getWeightKg());
         final Package packaging = product.getPackaging().orElse(null);
         if (packaging == null || !packaging.isActive()) {
@@ -299,14 +358,11 @@ public class ShippingQuoteService {
     }
 
     private static String normalizePostalCode(String postalCode) {
-        final String normalized = postalCode == null ? "" : postalCode.replaceAll("\\D", "");
-        if (!normalized.matches("\\d{8}")) {
-            throw new IllegalArgumentException("Destination postal code must contain exactly eight digits");
-        }
-        return normalized;
+        return com.portcelana.natiart.service.support.DomainValidation.cep(postalCode);
     }
 
-    private static String fingerprint(String destination, List<ShippingQuoteItem> items) {
+    private static String fingerprint(
+            String destination, List<ShippingQuoteItem> items, Map<String, Product> products) {
         final String canonicalItems = items.stream()
                 .sorted(java.util.Comparator.comparing(ShippingQuoteItem::getProductId)
                         .thenComparing(ShippingQuoteItem::getPersonalizationKey))
@@ -318,7 +374,9 @@ public class ShippingQuoteService {
                         + ":"
                         + item.getUnitPrice().toPlainString()
                         + ":"
-                        + item.getProductVersion())
+                        + item.getProductVersion()
+                        + ":"
+                        + shippingFingerprint(products.get(item.getProductId())))
                 .collect(Collectors.joining("|"));
         final String value = destination + "|" + canonicalItems;
         try {
@@ -331,6 +389,15 @@ public class ShippingQuoteService {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 is required", e);
         }
+    }
+
+    private static String shippingFingerprint(Product product) {
+        final Package packaging = product.getPackaging().orElse(null);
+        if (packaging == null) return "missing-package";
+        return product.isActive() + ":"
+                + product.getWeightKg().stripTrailingZeros().toPlainString() + ":" + packaging.getId() + ":"
+                + packaging.getVersion() + ":" + packaging.isActive() + ":" + packaging.getHeight() + ":"
+                + packaging.getWidth() + ":" + packaging.getDepth();
     }
 
     private static BigDecimal money(BigDecimal amount, String field) {

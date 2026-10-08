@@ -87,7 +87,7 @@ public interface ProductRepository extends JpaRepository<Product, String> {
             "SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.images LEFT JOIN FETCH p.category LEFT JOIN FETCH p.packaging WHERE p.id IN :ids AND p.active = true AND p.category.active = true")
     List<Product> findAllActiveWithImagesByIds(@Param("ids") List<String> ids);
 
-    @Query("SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.packaging WHERE p.id IN :ids")
+    @Query("SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.packaging LEFT JOIN FETCH p.category WHERE p.id IN :ids")
     List<Product> findAllWithShippingDataByIds(@Param("ids") List<String> ids);
 
     boolean existsByCategory(Category category);

@@ -116,6 +116,8 @@ class ShippingQuoteServiceTest {
         assertEquals(0.35f, volumes.getValue().get(0).getWeight());
         assertEquals(20.0f, volumes.getValue().get(0).getLength());
         assertEquals(2, volumes.getValue().get(0).getQuantity());
+        assertEquals(new BigDecimal("13.99"), volumes.getValue().get(0).getInsuranceValue());
+        assertEquals(new BigDecimal("22.99"), volumes.getValue().get(1).getInsuranceValue());
         assertEquals(60.0f, volumes.getValue().get(1).getLength());
         assertEquals(new BigDecimal("50.97"), response.getItemAmount());
         assertEquals(new BigDecimal("18.50"), response.getShippingAmount());
@@ -125,7 +127,7 @@ class ShippingQuoteServiceTest {
     }
 
     @Test
-    void twoPersonalizedVariantsShareFreightVolumeAndKeepQuotedLinePrices() {
+    void twoPersonalizedVariantsKeepTheirInsuredUnitPricesAndCombinedQuantityLimit() {
         final Product plate = product("p1", "Plate", "10.00", "0.40", new Package("box", 10, 10, 10));
         plate.setAvailablePersonalizations(
                 Set.of(PersonalizationOption.GOLDEN_BORDER, PersonalizationOption.CUSTOM_IMAGE));
@@ -165,8 +167,11 @@ class ShippingQuoteServiceTest {
 
         final ArgumentCaptor<List<ShippingEstimateRequest>> volumes = ArgumentCaptor.forClass(List.class);
         verify(shippingService).getShippingEstimates(volumes.capture());
-        assertEquals(1, volumes.getValue().size());
-        assertEquals(3, volumes.getValue().getFirst().getQuantity());
+        assertEquals(2, volumes.getValue().size());
+        assertEquals(1, volumes.getValue().getFirst().getQuantity());
+        assertEquals(2, volumes.getValue().get(1).getQuantity());
+        assertEquals(new BigDecimal("12.50"), volumes.getValue().getFirst().getInsuranceValue());
+        assertEquals(new BigDecimal("12.50"), volumes.getValue().get(1).getInsuranceValue());
         assertEquals(new BigDecimal("37.50"), response.getItemAmount());
         assertEquals(new BigDecimal("45.50"), response.getTotalAmount());
         assertEquals(2, response.getItems().size());
@@ -289,6 +294,74 @@ class ShippingQuoteServiceTest {
         assertThrows(
                 ShippingQuoteNotValidException.class,
                 () -> quoteService.requireQuoteForOrder("quote-1", "owner-2", "01001000", List.of(), Map.of()));
+    }
+
+    @Test
+    void requireQuote_rejectsChangedPackageEvenWhenProductVersionIsUnchanged() {
+        final Package packaging = new Package("box", 10, 10, 10);
+        final Product product = product("p1", "Product", "10.00", "0.40", packaging);
+        final ShippingQuoteResponse response = createQuote(product);
+        final ShippingQuote persisted = capturedQuote();
+        when(shippingQuoteRepository.findByIdAndOwnerExternalIdForUse(response.getQuoteId(), "owner-1"))
+                .thenReturn(Optional.of(persisted));
+        packaging.setWidth(30);
+        assertThrows(
+                ShippingQuoteNotValidException.class,
+                () -> quoteService.requireQuoteForOrder(
+                        response.getQuoteId(),
+                        "owner-1",
+                        "01001000",
+                        List.of(new OrderItemDto().setProductId("p1").setQuantity(1)),
+                        Map.of("p1", product)));
+    }
+
+    @Test
+    void createQuote_rejectsAnUnrepresentableBasketBeforeCallingTheCarrier() {
+        final Product product = product("p1", "Product", "99999999.99", "0.40", new Package("box", 10, 10, 10));
+        when(productRepository.findAllWithShippingDataByIds(List.of("p1"))).thenReturn(List.of(product));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> quoteService.createQuote(
+                        new ShippingQuoteRequest()
+                                .setZipCode("01001000")
+                                .setItems(List.of(new ShippingQuoteItemRequest()
+                                        .setProductId("p1")
+                                        .setQuantity(2))),
+                        "owner-1"));
+        org.mockito.Mockito.verifyNoInteractions(shippingService, shippingQuoteRepository);
+    }
+
+    @Test
+    void basketPreviewUsesServerDimensionsWeightsAndDeclaredPricesWithoutPersistingAQuote() {
+        final Product product = product("p1", "Product", "13.99", "0.40", new Package("box", 10, 15, 20));
+        when(productRepository.findAllWithShippingDataByIds(List.of("p1"))).thenReturn(List.of(product));
+        when(shippingService.getShippingEstimates(anyList())).thenReturn(List.of());
+        quoteService.estimateBasket(new com.portcelana.natiart.dto.shipping.ShippingBasketEstimateRequest(
+                "01001-000",
+                List.of(new com.portcelana.natiart.dto.shipping.ShippingBasketEstimateRequest.Item("p1", 3, false))));
+        final ArgumentCaptor<List<ShippingEstimateRequest>> parcels = ArgumentCaptor.forClass(List.class);
+        verify(shippingService).getShippingEstimates(parcels.capture());
+        assertEquals(3, parcels.getValue().getFirst().getQuantity());
+        assertEquals(0.4f, parcels.getValue().getFirst().getWeight());
+        assertEquals(20f, parcels.getValue().getFirst().getLength());
+        assertEquals(new BigDecimal("13.99"), parcels.getValue().getFirst().getInsuranceValue());
+        org.mockito.Mockito.verifyNoInteractions(shippingQuoteRepository, customerUploadService);
+    }
+
+    @Test
+    void basketPreviewRejectsExcessiveCombinedQuantitiesAcrossPersonalizedLines() {
+        final Product product = product("p1", "Product", "10.00", "0.40", new Package("box", 10, 15, 20));
+        when(productRepository.findAllWithShippingDataByIds(List.of("p1"))).thenReturn(List.of(product));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> quoteService.estimateBasket(new com.portcelana.natiart.dto.shipping.ShippingBasketEstimateRequest(
+                        "01001000",
+                        List.of(
+                                new com.portcelana.natiart.dto.shipping.ShippingBasketEstimateRequest.Item(
+                                        "p1", 60, false),
+                                new com.portcelana.natiart.dto.shipping.ShippingBasketEstimateRequest.Item(
+                                        "p1", 60, false)))));
+        org.mockito.Mockito.verifyNoInteractions(shippingService, shippingQuoteRepository);
     }
 
     private ShippingQuoteResponse createQuote(Product product) {
