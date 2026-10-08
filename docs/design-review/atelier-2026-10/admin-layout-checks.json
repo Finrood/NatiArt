@@ -1,0 +1,282 @@
+[
+  {
+    "screen": "categories",
+    "lang": "en",
+    "width": 320,
+    "documentWidth": 305,
+    "viewport": 320
+  },
+  {
+    "screen": "packages",
+    "lang": "en",
+    "width": 320,
+    "documentWidth": 305,
+    "viewport": 320
+  },
+  {
+    "screen": "orders",
+    "lang": "en",
+    "width": 320,
+    "documentWidth": 305,
+    "viewport": 320
+  },
+  {
+    "screen": "categories",
+    "lang": "pt-BR",
+    "width": 320,
+    "documentWidth": 305,
+    "viewport": 320
+  },
+  {
+    "screen": "packages",
+    "lang": "pt-BR",
+    "width": 320,
+    "documentWidth": 305,
+    "viewport": 320
+  },
+  {
+    "screen": "orders",
+    "lang": "pt-BR",
+    "width": 320,
+    "documentWidth": 305,
+    "viewport": 320
+  },
+  {
+    "screen": "categories",
+    "lang": "en",
+    "width": 390,
+    "documentWidth": 375,
+    "viewport": 390
+  },
+  {
+    "screen": "packages",
+    "lang": "en",
+    "width": 390,
+    "documentWidth": 375,
+    "viewport": 390
+  },
+  {
+    "screen": "orders",
+    "lang": "en",
+    "width": 390,
+    "documentWidth": 375,
+    "viewport": 390
+  },
+  {
+    "screen": "categories",
+    "lang": "pt-BR",
+    "width": 390,
+    "documentWidth": 375,
+    "viewport": 390
+  },
+  {
+    "screen": "packages",
+    "lang": "pt-BR",
+    "width": 390,
+    "documentWidth": 375,
+    "viewport": 390
+  },
+  {
+    "screen": "orders",
+    "lang": "pt-BR",
+    "width": 390,
+    "documentWidth": 375,
+    "viewport": 390
+  },
+  {
+    "screen": "categories",
+    "lang": "en",
+    "width": 768,
+    "documentWidth": 753,
+    "viewport": 768
+  },
+  {
+    "screen": "packages",
+    "lang": "en",
+    "width": 768,
+    "documentWidth": 753,
+    "viewport": 768
+  },
+  {
+    "screen": "orders",
+    "lang": "en",
+    "width": 768,
+    "documentWidth": 753,
+    "viewport": 768
+  },
+  {
+    "screen": "categories",
+    "lang": "pt-BR",
+    "width": 768,
+    "documentWidth": 753,
+    "viewport": 768
+  },
+  {
+    "screen": "packages",
+    "lang": "pt-BR",
+    "width": 768,
+    "documentWidth": 753,
+    "viewport": 768
+  },
+  {
+    "screen": "orders",
+    "lang": "pt-BR",
+    "width": 768,
+    "documentWidth": 753,
+    "viewport": 768
+  },
+  {
+    "screen": "categories",
+    "lang": "en",
+    "width": 1280,
+    "documentWidth": 1265,
+    "viewport": 1280
+  },
+  {
+    "screen": "packages",
+    "lang": "en",
+    "width": 1280,
+    "documentWidth": 1265,
+    "viewport": 1280
+  },
+  {
+    "screen": "orders",
+    "lang": "en",
+    "width": 1280,
+    "documentWidth": 1265,
+    "viewport": 1280
+  },
+  {
+    "screen": "categories",
+    "lang": "pt-BR",
+    "width": 1280,
+    "documentWidth": 1265,
+    "viewport": 1280
+  },
+  {
+    "screen": "packages",
+    "lang": "pt-BR",
+    "width": 1280,
+    "documentWidth": 1265,
+    "viewport": 1280
+  },
+  {
+    "screen": "orders",
+    "lang": "pt-BR",
+    "width": 1280,
+    "documentWidth": 1265,
+    "viewport": 1280
+  },
+  {
+    "screen": "categories",
+    "lang": "en",
+    "width": 1440,
+    "documentWidth": 1425,
+    "viewport": 1440
+  },
+  {
+    "screen": "packages",
+    "lang": "en",
+    "width": 1440,
+    "documentWidth": 1425,
+    "viewport": 1440
+  },
+  {
+    "screen": "orders",
+    "lang": "en",
+    "width": 1440,
+    "documentWidth": 1425,
+    "viewport": 1440
+  },
+  {
+    "screen": "categories",
+    "lang": "pt-BR",
+    "width": 1440,
+    "documentWidth": 1425,
+    "viewport": 1440
+  },
+  {
+    "screen": "packages",
+    "lang": "pt-BR",
+    "width": 1440,
+    "documentWidth": 1425,
+    "viewport": 1440
+  },
+  {
+    "screen": "orders",
+    "lang": "pt-BR",
+    "width": 1440,
+    "documentWidth": 1425,
+    "viewport": 1440
+  },
+  {
+    "screen": "admin-products",
+    "locale": "en",
+    "requestedWidth": 1440,
+    "documentWidth": 1425,
+    "width": 1440
+  },
+  {
+    "screen": "admin-products",
+    "locale": "en",
+    "requestedWidth": 1280,
+    "documentWidth": 1265,
+    "width": 1280
+  },
+  {
+    "screen": "admin-products",
+    "locale": "en",
+    "requestedWidth": 768,
+    "documentWidth": 753,
+    "width": 768
+  },
+  {
+    "screen": "admin-products",
+    "locale": "en",
+    "requestedWidth": 390,
+    "documentWidth": 375,
+    "width": 390
+  },
+  {
+    "screen": "admin-products",
+    "locale": "en",
+    "requestedWidth": 320,
+    "documentWidth": 305,
+    "width": 320
+  },
+  {
+    "screen": "admin-products",
+    "locale": "pt-BR",
+    "requestedWidth": 1440,
+    "documentWidth": 1425,
+    "width": 1440
+  },
+  {
+    "screen": "admin-products",
+    "locale": "pt-BR",
+    "requestedWidth": 1280,
+    "documentWidth": 1265,
+    "width": 1280
+  },
+  {
+    "screen": "admin-products",
+    "locale": "pt-BR",
+    "requestedWidth": 768,
+    "documentWidth": 753,
+    "width": 768
+  },
+  {
+    "screen": "admin-products",
+    "locale": "pt-BR",
+    "requestedWidth": 390,
+    "documentWidth": 375,
+    "width": 390
+  },
+  {
+    "screen": "admin-products",
+    "locale": "pt-BR",
+    "requestedWidth": 320,
+    "documentWidth": 305,
+    "width": 320
+  }
+]
