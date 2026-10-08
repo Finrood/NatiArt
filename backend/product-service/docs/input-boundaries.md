@@ -53,3 +53,11 @@ unit/value through the admin editor; deactivate genuinely unsupported products
 until a reviewed shipping policy supports them. Do not round lightweight items
 up or split heavy ones automatically. Quotes reject unsupported legacy weights
 before provider egress. Existing orders keep their committed quote snapshot.
+
+Shipping's one-parcel-per-unit rule requires the complete packed weight, including
+box and protective material, and the outer dimensions of that parcel. Earlier
+catalog guidance called `weightKg` a net product weight. Inventory **every active
+product**, not just out-of-range values, and reweigh parcels before launch; a
+numerically valid net weight can still underquote freight. No tare is invented and
+no existing weight is automatically rewritten. Personalization that changes the
+physical size/mass must be reflected in the shipping configuration before sale.
