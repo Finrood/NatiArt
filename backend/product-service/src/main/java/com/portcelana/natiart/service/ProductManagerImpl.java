@@ -117,7 +117,7 @@ public class ProductManagerImpl implements ProductManager {
     @Override
     @Transactional(readOnly = true)
     public Map<String, Product> getProductsOrDie(Collection<String> ids) {
-        final Map<String, Product> byId = productRepository.findAllById(ids).stream()
+        final Map<String, Product> byId = productRepository.findAllWithShippingDataByIds(List.copyOf(ids)).stream()
                 .collect(Collectors.toMap(Product::getId, Function.identity()));
         for (String id : ids) {
             if (!byId.containsKey(id)) {

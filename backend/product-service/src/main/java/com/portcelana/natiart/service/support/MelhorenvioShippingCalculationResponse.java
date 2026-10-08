@@ -10,9 +10,9 @@ public class MelhorenvioShippingCalculationResponse {
     private BigDecimal custom_price;
     private BigDecimal discount;
     private String currency;
-    private int delivery_time;
+    private Integer delivery_time;
     private DeliveryRange delivery_range;
-    private int custom_delivery_time;
+    private Integer custom_delivery_time;
     private DeliveryRange custom_delivery_range;
     private List<Package> packages;
     private AdditionalServices additional_services;
@@ -71,11 +71,11 @@ public class MelhorenvioShippingCalculationResponse {
         this.currency = currency;
     }
 
-    public int getDelivery_time() {
+    public Integer getDelivery_time() {
         return delivery_time;
     }
 
-    public void setDelivery_time(int delivery_time) {
+    public void setDelivery_time(Integer delivery_time) {
         this.delivery_time = delivery_time;
     }
 
@@ -87,11 +87,11 @@ public class MelhorenvioShippingCalculationResponse {
         this.delivery_range = delivery_range;
     }
 
-    public int getCustom_delivery_time() {
+    public Integer getCustom_delivery_time() {
         return custom_delivery_time;
     }
 
-    public void setCustom_delivery_time(int custom_delivery_time) {
+    public void setCustom_delivery_time(Integer custom_delivery_time) {
         this.custom_delivery_time = custom_delivery_time;
     }
 

@@ -643,6 +643,13 @@
     "addressUnitLabel": "Apartamento, sala ou complemento",
     "accountOrdersEmptyHint": "Seus pedidos e atualizações de pagamento aparecerão aqui.",
     "checkoutCpfAccountHint": "Seu CPF é o informado nos dados da sua conta.",
-    "checkoutEditAccount": "Editar dados da conta"
+    "checkoutEditAccount": "Editar dados da conta",
+    "shippingQuoteDeliveryEstimate": "Prazo estimado da transportadora: {$INTERPOLATION} dias úteis após a postagem. O tempo de preparação é adicional.",
+    "productPackedWeightLabel": "Peso embalado por unidade (kg)",
+    "productPackedWeightHelp": "Pese um pacote pronto para envio, incluindo a caixa e a proteção. Cadastre as medidas externas do pacote em Embalagem.",
+    "basketShippingExplanation": "Esta estimativa considera as peças do seu carrinho e seus pacotes. O frete final é confirmado no checkout.",
+    "basketShippingDelivery": "{$START_TAG_STRONG}Prazo estimado da transportadora:{$CLOSE_TAG_STRONG} {$INTERPOLATION} dias úteis após a postagem",
+    "basketShippingPreparation": "O tempo de preparação é adicional.",
+    "basketShippingRetry": "Tentar calcular o frete novamente"
   }
 }

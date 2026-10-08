@@ -51,6 +51,8 @@ import com.portcelana.natiart.service.ProductManager;
         properties = "directory.service.url=http://localhost:8081")
 @Import({SecurityConfig.class, MvcConfig.class})
 class ControllerSecurityTest {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.portcelana.natiart.service.RateLimitStore shippingRateLimitStore;
 
     @Autowired
     private MockMvc mockMvc;

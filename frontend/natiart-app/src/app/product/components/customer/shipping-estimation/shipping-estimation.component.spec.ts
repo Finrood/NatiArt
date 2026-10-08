@@ -4,6 +4,7 @@ import {HttpTestingController, provideHttpClientTesting} from '@angular/common/h
 import {provideRouter} from '@angular/router';
 
 import {ShippingEstimationComponent} from './shipping-estimation.component';
+import {CartItem} from '../../../models/CartItem.model';
 import {ShippingEstimate} from '../../../service/shipping.service';
 
 describe('ShippingEstimationComponent', () => {
@@ -22,8 +23,14 @@ describe('ShippingEstimationComponent', () => {
     http = TestBed.inject(HttpTestingController);
   });
 
+  const basket = (quantity: number): CartItem[] => [{cartItemId: 'line', quantity, product: {
+    id: 'product-1', label: 'Vase', originalPrice: 100, markedPrice: 90, stockQuantity: 10,
+    categoryId: 'category', images: [], tags: [], availablePersonalizations: []
+  }}];
+
   const createComponent = (): ShippingEstimationComponent => {
     fixture = TestBed.createComponent(ShippingEstimationComponent);
+    fixture.componentRef.setInput('cartItems', basket(2));
     states = [];
     fixture.componentInstance.shippingState$.subscribe(state => states.push(state));
     fixture.detectChanges();
@@ -31,7 +38,7 @@ describe('ShippingEstimationComponent', () => {
   };
 
   const flushEstimateRequest = (body: object, status = 200): void => {
-    const req = http.expectOne(r => r.url.includes('/shipping/estimate'));
+    const req = http.expectOne(r => r.url.includes('/shipping/basket-estimate'));
     expect(req.request.method).toBe('POST');
     req.flush(body, status === 200 ? {} : {status, statusText: 'Server Error'});
   };
@@ -59,8 +66,8 @@ describe('ShippingEstimationComponent', () => {
       expect(component.shippingForm.get('cep')!.value).toBe('12345678');
       expect(component.shippingForm.valid).toBeTrue();
       tick(300);
-      const request = http.expectOne((r) => r.url.includes('/shipping/estimate'));
-      expect(request.request.body.to).toBe('12345678');
+      const request = http.expectOne((r) => r.url.includes('/shipping/basket-estimate'));
+      expect(request.request.body.zipCode).toBe('12345678');
       request.flush([estimate(9)]);
       fixture.detectChanges();
       expect(fixture.nativeElement.textContent).toContain('Cheapest Shipping Option');
@@ -75,9 +82,9 @@ describe('ShippingEstimationComponent', () => {
     component.shippingForm.get('cep')!.setValue('12345678');
 
     tick(300);
-    const req = http.expectOne(r => r.url.includes('/shipping/estimate'));
+    const req = http.expectOne(r => r.url.includes('/shipping/basket-estimate'));
     expect(req.request.method).toBe('POST');
-    expect(req.request.body['to']).toBe('12345678');
+    expect(req.request.body['zipCode']).toBe('12345678');
     req.flush([estimate(15), estimate(9.9), estimate(12)]);
 
     const last = states[states.length - 1];
@@ -123,4 +130,41 @@ describe('ShippingEstimationComponent', () => {
     expect(states[states.length - 1].status).toBe('idle');
     http.verify();
   }));
+  it('uses actual basket quantities and refreshes when the basket changes', fakeAsync(() => {
+    const component = createComponent();
+    component.shippingForm.get('cep')!.setValue('12345678'); tick(300);
+    const first = http.expectOne(r => r.url.includes('/shipping/basket-estimate'));
+    expect(first.request.body).toEqual({zipCode: '12345678', items: [
+      {productId: 'product-1', quantity: 2, personalized: false}
+    ]});
+    first.flush([estimate(10)]);
+    fixture.componentRef.setInput('cartItems', basket(3)); fixture.detectChanges();
+    expect(states[states.length - 1].cheapestOption).toBeNull(); tick(300);
+    const second = http.expectOne(r => r.url.includes('/shipping/basket-estimate'));
+    expect(second.request.body.items[0].quantity).toBe(3);
+    second.flush([estimate(15)]); fixture.destroy(); http.verify();
+  }));
+
+  it('cancels and clears an old estimate immediately when CEP becomes incomplete', fakeAsync(() => {
+    const component = createComponent();
+    component.shippingForm.get('cep')!.setValue('12345678'); tick(300);
+    const first = http.expectOne(r => r.url.includes('/shipping/basket-estimate'));
+    component.shippingForm.get('cep')!.setValue('1234567');
+    expect(first.cancelled).toBeTrue();
+    expect(component.shippingForm.get('cep')!.enabled).toBeTrue();
+    expect(states[states.length - 1].status).toBe('idle');
+    fixture.destroy(); http.verify();
+  }));
+
+  it('retries the same CEP after failure without forcing the shopper to edit it', fakeAsync(() => {
+    const component = createComponent();
+    component.shippingForm.get('cep')!.setValue('12345678'); tick(300);
+    flushEstimateRequest({}, 503); fixture.detectChanges();
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector('button');
+    button.click(); tick(300);
+    flushEstimateRequest([estimate(10)]);
+    expect(states[states.length - 1].status).toBe('success');
+    fixture.destroy(); http.verify();
+  }));
+
 });

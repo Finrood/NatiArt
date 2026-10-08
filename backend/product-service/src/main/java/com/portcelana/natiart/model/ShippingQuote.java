@@ -34,6 +34,8 @@ public class ShippingQuote {
     @Column(nullable = false, length = 120)
     private String serviceName;
 
+    private Integer estimatedDeliveryDays;
+
     @Column(precision = 10, scale = 2, nullable = false)
     private BigDecimal itemAmount;
 
@@ -94,6 +96,15 @@ public class ShippingQuote {
 
     public ShippingQuote setServiceName(String serviceName) {
         this.serviceName = serviceName;
+        return this;
+    }
+
+    public Integer getEstimatedDeliveryDays() {
+        return estimatedDeliveryDays;
+    }
+
+    public ShippingQuote setEstimatedDeliveryDays(Integer estimatedDeliveryDays) {
+        this.estimatedDeliveryDays = estimatedDeliveryDays;
         return this;
     }
 

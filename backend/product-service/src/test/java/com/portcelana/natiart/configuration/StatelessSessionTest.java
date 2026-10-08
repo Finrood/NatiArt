@@ -30,6 +30,8 @@ import com.portcelana.natiart.service.CartManager;
 @WebMvcTest(controllers = CartController.class, properties = "directory.service.url=http://localhost:8081")
 @Import({SecurityConfig.class, MvcConfig.class})
 class StatelessSessionTest {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.portcelana.natiart.service.RateLimitStore shippingRateLimitStore;
 
     @Autowired
     private MockMvc mockMvc;

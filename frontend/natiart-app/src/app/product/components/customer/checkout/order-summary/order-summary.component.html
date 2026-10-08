@@ -56,6 +56,9 @@
             <span class="text-gray-600" i18n>Service:</span>
             <span class="text-gray-600 sm:text-right break-words" i18n>{{ shippingQuote.serviceName }}</span>
           </div>
+          @if (shippingQuote.estimatedDeliveryDays != null) {
+            <p class="text-xs text-text-muted" i18n="@@shippingQuoteDeliveryEstimate">Carrier estimate: {{ shippingQuote.estimatedDeliveryDays }} business days after dispatch. Preparation time is additional.</p>
+          }
           <p class="text-xs text-text-muted" i18n>Quote valid until {{ shippingQuote.expiresAt | date:'short' }}. Review this total before placing payment.</p>
         } @else {
           <p class="text-xs text-text-muted" i18n>Final prices and shipping are confirmed before payment.</p>

@@ -23,7 +23,7 @@ class ShippingRateLimitFilterTest {
     @BeforeEach
     void setUp() {
         store = new FixedWindowStore(Clock.systemUTC());
-        filter = new ShippingRateLimitFilter(2, List.of(), store);
+        filter = new ShippingRateLimitFilter(2, 60, List.of(), store);
     }
 
     @Test
@@ -61,7 +61,7 @@ class ShippingRateLimitFilterTest {
     @Test
     void usesOnlyNormalizedForwardedIpFromTrustedPeer() throws Exception {
         final ShippingRateLimitFilter trustedFilter =
-                new ShippingRateLimitFilter(2, List.of("192.0.2.10"), new FixedWindowStore(Clock.systemUTC()));
+                new ShippingRateLimitFilter(2, 60, List.of("192.0.2.10"), new FixedWindowStore(Clock.systemUTC()));
         for (int i = 0; i < 2; i++) {
             final MockHttpServletRequest request = request("POST", "/shipping/estimate", "192.0.2.10");
             request.addHeader("X-Forwarded-For", "198.51.100.7, 10.0.0.1");
@@ -78,7 +78,7 @@ class ShippingRateLimitFilterTest {
     @Test
     void invalidForwardedValueFallsBackToTheTrustedProxyAddress() throws Exception {
         final ShippingRateLimitFilter trustedFilter =
-                new ShippingRateLimitFilter(1, List.of("192.0.2.10"), new FixedWindowStore(Clock.systemUTC()));
+                new ShippingRateLimitFilter(1, 60, List.of("192.0.2.10"), new FixedWindowStore(Clock.systemUTC()));
         final MockHttpServletRequest first = request("POST", "/shipping/estimate", "192.0.2.10");
         first.addHeader("X-Forwarded-For", "not-an-ip");
         trustedFilter.doFilter(first, new MockHttpServletResponse(), new MockFilterChain());
@@ -93,6 +93,35 @@ class ShippingRateLimitFilterTest {
         assertEquals("2001:db8:0:0:0:0:0:1", ShippingRateLimitFilter.normalizeIp("2001:db8::1"));
         assertEquals("unknown", ShippingRateLimitFilter.normalizeIp("x".repeat(129)));
         assertEquals("unknown", ShippingRateLimitFilter.normalizeIp("hostname.example"));
+    }
+
+    @Test
+    void bothShippingRoutesShareTheClientLimit() throws Exception {
+        filter.doFilter(
+                request("POST", "/shipping/estimate", "192.0.2.10"),
+                new MockHttpServletResponse(),
+                new MockFilterChain());
+        filter.doFilter(
+                request("POST", "/shipping/quote", "192.0.2.10"), new MockHttpServletResponse(), new MockFilterChain());
+        final MockHttpServletResponse blocked = new MockHttpServletResponse();
+        filter.doFilter(request("POST", "/shipping/quote", "192.0.2.10"), blocked, new MockFilterChain());
+        assertEquals(429, blocked.getStatus());
+        assertEquals("60", blocked.getHeader("Retry-After"));
+    }
+
+    @Test
+    void independentInstancesAndClientsShareTheProviderBudget() throws Exception {
+        final ShippingRateLimitFilter first = new ShippingRateLimitFilter(10, 2, List.of(), store);
+        final ShippingRateLimitFilter second = new ShippingRateLimitFilter(10, 2, List.of(), store);
+        first.doFilter(
+                request("POST", "/shipping/estimate", "192.0.2.10"),
+                new MockHttpServletResponse(),
+                new MockFilterChain());
+        second.doFilter(
+                request("POST", "/shipping/quote", "192.0.2.11"), new MockHttpServletResponse(), new MockFilterChain());
+        final MockHttpServletResponse blocked = new MockHttpServletResponse();
+        first.doFilter(request("POST", "/shipping/quote", "192.0.2.12"), blocked, new MockFilterChain());
+        assertEquals(429, blocked.getStatus());
     }
 
     private MockHttpServletRequest request(String method, String uri, String remoteAddr) {

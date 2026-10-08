@@ -45,6 +45,8 @@ import com.portcelana.natiart.service.PaymentService;
 @WebMvcTest(controllers = com.portcelana.natiart.controller.PaymentController.class)
 @Import({SecurityConfig.class, MvcConfig.class})
 class PaymentControllerSecurityTest {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.portcelana.natiart.service.RateLimitStore shippingRateLimitStore;
 
     @Autowired
     private MockMvc mockMvc;

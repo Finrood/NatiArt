@@ -53,7 +53,7 @@ describe('OrderSummaryComponent', () => {
     };
     const quote: ShippingQuote = {
       quoteId: 'quote-1', destinationPostalCode: '01001000', serviceId: 'pac', serviceName: 'PAC',
-      expiresAt: '2099-01-01T00:00:00Z', itemAmount: 80, shippingAmount: 12.5, totalAmount: 92.5,
+      estimatedDeliveryDays: 6, expiresAt: '2099-01-01T00:00:00Z', itemAmount: 80, shippingAmount: 12.5, totalAmount: 92.5,
       items: [{productId: 'p1', quantity: 1, unitPrice: 80, lineAmount: 80}],
     };
     component.cartItems = [{cartItemId: 'line-1', product, quantity: 1}];
@@ -64,6 +64,8 @@ describe('OrderSummaryComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('R$12.50');
     expect(fixture.nativeElement.textContent).toContain('R$92.50');
     expect(fixture.nativeElement.textContent).toContain('PAC');
+    expect(fixture.nativeElement.textContent).toContain('6 business days after dispatch');
+    expect(fixture.nativeElement.textContent).toContain('Preparation time is additional');
   });
 
   it('matches quoted prices to personalized lines of the same product', () => {

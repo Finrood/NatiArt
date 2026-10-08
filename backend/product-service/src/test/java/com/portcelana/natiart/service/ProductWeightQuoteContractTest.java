@@ -83,7 +83,12 @@ class ProductWeightQuoteContractTest {
         final ShippingQuoteService shipping = new ShippingQuoteService(
                 products,
                 quotes,
-                new ShippingService("https://carrier.example.test/quote", "inert-key", "01001000", transport),
+                new ShippingService(
+                        "https://carrier.example.test/quote",
+                        "inert-key",
+                        "01001000",
+                        "NatiArt (shipping@example.test)",
+                        transport),
                 Clock.systemUTC(),
                 900);
         final var quote = shipping.createQuote(

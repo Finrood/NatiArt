@@ -11,6 +11,7 @@ public class ShippingQuoteResponse {
     private String destinationPostalCode;
     private String serviceId;
     private String serviceName;
+    private Integer estimatedDeliveryDays;
     private Instant expiresAt;
     private BigDecimal itemAmount;
     private BigDecimal shippingAmount;
@@ -23,6 +24,7 @@ public class ShippingQuoteResponse {
                 .setDestinationPostalCode(quote.getDestinationPostalCode())
                 .setServiceId(quote.getServiceId())
                 .setServiceName(quote.getServiceName())
+                .setEstimatedDeliveryDays(quote.getEstimatedDeliveryDays())
                 .setExpiresAt(quote.getExpiresAt())
                 .setItemAmount(quote.getItemAmount())
                 .setShippingAmount(quote.getShippingAmount())
@@ -61,6 +63,15 @@ public class ShippingQuoteResponse {
 
     public String getServiceName() {
         return serviceName;
+    }
+
+    public Integer getEstimatedDeliveryDays() {
+        return estimatedDeliveryDays;
+    }
+
+    public ShippingQuoteResponse setEstimatedDeliveryDays(Integer estimatedDeliveryDays) {
+        this.estimatedDeliveryDays = estimatedDeliveryDays;
+        return this;
     }
 
     public ShippingQuoteResponse setServiceName(String serviceName) {

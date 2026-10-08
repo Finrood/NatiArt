@@ -144,9 +144,10 @@
           </div>
 
           <div class="mb-4">
-            <label for="productWeightKg" class="block text-sm font-medium text-gray-700 mb-1" i18n>Weight (kg)</label>
+            <label for="productWeightKg" class="block text-sm font-medium text-gray-700 mb-1" i18n="@@productPackedWeightLabel">Packed weight per unit (kg)</label>
             <input id="productWeightKg" name="productWeightKg" type="number" step="0.001" min="0.01" max="100" formControlName="weightKg"
               class="w-full p-2 border border-gray-300 rounded-md shadow-input focus:ring-primary focus:border-primary sm:text-sm">
+            <p class="mt-1 text-xs text-text-muted" i18n="@@productPackedWeightHelp">Weigh one ready-to-ship parcel, including its box and protective packing. Use the parcel's outer dimensions in Package.</p>
           </div>
 
           <div class="mb-4">

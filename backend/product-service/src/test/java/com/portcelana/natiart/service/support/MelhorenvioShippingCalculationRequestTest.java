@@ -1,6 +1,7 @@
 package com.portcelana.natiart.service.support;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 
@@ -34,5 +35,16 @@ class MelhorenvioShippingCalculationRequestTest {
         assertEquals(20.0f, request.getVolumes().get(0).getLength());
         assertEquals(0.4f, request.getVolumes().get(1).getWeight());
         assertEquals(60.0f, request.getVolumes().get(2).getLength());
+    }
+
+    @Test
+    void from_rejectsMixedDestinationsInsteadOfQuotingOnlyTheFirst() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> MelhorenvioShippingCalculationRequest.from(
+                        List.of(
+                                new ShippingEstimateRequest("01001000", 1, 10, 10, 10, 1),
+                                new ShippingEstimateRequest("88058380", 1, 10, 10, 10, 1)),
+                        "88058380"));
     }
 }

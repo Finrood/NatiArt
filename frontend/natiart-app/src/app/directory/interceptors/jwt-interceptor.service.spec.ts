@@ -130,11 +130,12 @@ describe('jwtInterceptor', () => {
     const {http, httpTesting, tokenService} = setup();
     tokenService.accessToken = 'abc';
 
-    http.get('https://viacep.com.br/ws/01001000/json').subscribe(() => {
-    });
-    const req = httpTesting.expectOne('https://viacep.com.br/ws/01001000/json');
-    expect(req.request.headers.has('Authorization')).toBeFalse();
-    req.flush({});
+    for (const url of ['https://viacep.com.br/ws/01001000/json', 'https://brasilapi.com.br/api/cep/v1/01001000']) {
+      http.get(url).subscribe(() => {});
+      const req: TestRequest = httpTesting.expectOne(url);
+      expect(req.request.headers.has('Authorization')).toBeFalse();
+      req.flush({});
+    }
     httpTesting.verify();
   }));
 

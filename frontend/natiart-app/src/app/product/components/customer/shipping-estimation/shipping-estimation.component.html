@@ -1,7 +1,7 @@
 <section aria-labelledby="shipping-estimation-title" class="art-panel p-4 sm:p-6 relative">
   <h2 class="text-2xl font-normal mb-4 text-secondary-dark" id="shipping-estimation-title" i18n>Shipping Estimation</h2>
 
-  <p class="text-sm text-secondary-light mb-4" i18n>This is an estimate. Checkout calculates the final shipping charge for your basket.</p>
+  <p class="text-sm text-secondary-light mb-4" i18n="@@basketShippingExplanation">This estimate uses your basket and its packed parcels. Checkout confirms the final shipping charge.</p>
 
   <form [formGroup]="shippingForm" class="space-y-4">
     <div>
@@ -37,7 +37,7 @@
         }
         @case ('loading') {
           <div aria-live="polite"
-            class="absolute inset-0 bg-gray-500/75 flex justify-center items-center">
+            class="flex items-center justify-center rounded-lg bg-surface-variant/40 p-4">
             <div class="bg-white p-4 rounded-lg shadow-md text-center">
               <app-loading-spinner></app-loading-spinner>
               <span class="text-gray-800 font-medium mt-2 block" i18n>Estimating shipping...</span>
@@ -60,7 +60,8 @@
                 <div class="mt-2 text-sm text-green-700">
                   <p i18n><strong>Service:</strong> {{ state.cheapestOption?.service }}</p>
                   <p i18n><strong>Price:</strong> {{ state.cheapestOption?.price | currency:'BRL' }}</p>
-                  <p i18n><strong>Estimated Delivery:</strong> {{ state.cheapestOption?.estimatedDeliveryDays }} days</p>
+                  <p i18n="@@basketShippingDelivery"><strong>Carrier estimate:</strong> {{ state.cheapestOption?.estimatedDeliveryDays }} business days after dispatch</p>
+                  <p class="mt-2" i18n="@@basketShippingPreparation">Preparation time is additional.</p>
                 </div>
               </div>
             </div>
@@ -101,6 +102,7 @@
                 <h3 class="text-sm font-medium text-red-800" i18n>Error</h3>
                 <div class="mt-2 text-sm text-red-700">
                   <p>{{ state.error }}</p>
+                  <button type="button" class="mt-2 min-h-11 font-medium underline underline-offset-4" (click)="retryEstimate()" i18n="@@basketShippingRetry">Retry shipping estimate</button>
                 </div>
               </div>
             </div>

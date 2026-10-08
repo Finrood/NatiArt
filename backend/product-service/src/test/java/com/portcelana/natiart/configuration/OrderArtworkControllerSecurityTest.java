@@ -27,6 +27,9 @@ import com.portcelana.natiart.service.OrderArtworkService;
 @WebMvcTest(controllers = OrderArtworkController.class)
 @Import({SecurityConfig.class, MvcConfig.class})
 class OrderArtworkControllerSecurityTest {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.portcelana.natiart.service.RateLimitStore shippingRateLimitStore;
+
     @Autowired
     private MockMvc mvc;
 

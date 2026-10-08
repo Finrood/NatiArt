@@ -63,3 +63,16 @@ autocomplete off because browsers have no standard standalone house-number
 token; mapping apartment autofill to that required field risks a wrong delivery
 number. Street and number remain separate, and CEP lookup never fills the number
 or apartment field.
+
+CEP lookup uses ViaCEP first (3-second timeout), then BrasilAPI CEP v1
+(8-second timeout) on a missing, malformed, mismatched or failed response. The
+service verifies the requested CEP, valid UF, city and field types/limits before
+suggesting text. Municipality-wide CEPs may legitimately omit street/neighborhood.
+Only public address suggestions are cached in the browser process, at most 50
+entries for 10 minutes; no account fields, credentials or unsuccessful responses
+are cached. Only CEP is sent to the providers; bearer tokens remain confined to
+our APIs. v1 avoids unnecessary coordinates/timezone dependencies.
+
+Changing CEP cancels the full lookup chain immediately. Returning to the same CEP
+after deletion restarts a cancelled lookup even if it happens inside the debounce
+window. Manual fields, house number and apartment remain editable throughout.

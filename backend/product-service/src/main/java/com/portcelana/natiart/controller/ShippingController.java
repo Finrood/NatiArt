@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.portcelana.natiart.dto.AuthenticationResponseDto;
+import com.portcelana.natiart.dto.shipping.ShippingBasketEstimateRequest;
 import com.portcelana.natiart.dto.shipping.ShippingEstimate;
 import com.portcelana.natiart.dto.shipping.ShippingEstimateRequest;
 import com.portcelana.natiart.dto.shipping.ShippingQuoteRequest;
@@ -38,5 +39,10 @@ public class ShippingController {
             @RequestBody ShippingQuoteRequest request,
             @AuthenticationPrincipal AuthenticationResponseDto.Principal principal) {
         return shippingQuoteService.createQuote(request, principal == null ? null : principal.getExternalId());
+    }
+
+    @PostMapping("/shipping/basket-estimate")
+    public List<ShippingEstimate> estimateBasket(@RequestBody ShippingBasketEstimateRequest request) {
+        return shippingQuoteService.estimateBasket(request);
     }
 }

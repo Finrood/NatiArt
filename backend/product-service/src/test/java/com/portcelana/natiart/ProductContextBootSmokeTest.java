@@ -55,6 +55,9 @@ class ProductContextBootSmokeTest {
         assertNotNull(shippingService);
         assertNotNull(tokenCache);
         assertNotNull(rateLimitStore);
+        final var shippingLimits = context.getBean(com.portcelana.natiart.configuration.ShippingRateLimitFilter.class);
+        assertSame(rateLimitStore, ReflectionTestUtils.getField(shippingLimits, "rateLimitStore"));
+        assertEquals(60, ReflectionTestUtils.getField(shippingLimits, "maxProviderRequestsPerWindow"));
         assertEquals("ca3-smoke-only-key", ReflectionTestUtils.getField(paymentService, "asaasApiKey"));
         assertSame(
                 context.getBean(PaymentRepository.class),
