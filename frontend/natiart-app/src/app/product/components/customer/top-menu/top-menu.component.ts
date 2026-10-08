@@ -1,12 +1,13 @@
 import {LanguageSelectorComponent} from "../../../../shared/components/language-selector/language-selector.component";
 import {AccessibleDialogComponent} from '../../../../shared/components/accessible-dialog.component';
-import {Component, ElementRef, inject, signal, HostListener, OnDestroy, OnInit, Signal, viewChild} from '@angular/core';
-import { AsyncPipe, DOCUMENT } from "@angular/common";
+import {Component, DestroyRef, inject, signal, OnInit, WritableSignal} from '@angular/core';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import {AsyncPipe} from "@angular/common";
 import {CartService} from "../../../service/cart.service";
-import {Observable, Subscription} from "rxjs";
+import {Observable} from "rxjs";
 import {CartModalComponent} from "../cart-modal/cart-modal.component";
 import {AuthenticationService} from "../../../../directory/service/authentication.service";
-import {RouterLink, RouterLinkActive} from "@angular/router";
+import {Event, NavigationSkipped, NavigationStart, Router, RouterLink, RouterLinkActive} from "@angular/router";
 
 @Component({
     selector: 'app-top-menu',
@@ -21,78 +22,49 @@ import {RouterLink, RouterLinkActive} from "@angular/router";
     templateUrl: './top-menu.component.html',
     styleUrl: './top-menu.component.css'
 })
-export class TopMenuComponent implements OnInit, OnDestroy {
-  readonly $isLoggedIn = signal(false);
+export class TopMenuComponent implements OnInit {
+  readonly $isLoggedIn: WritableSignal<boolean> = signal(false);
   get isLoggedIn(): boolean { return this.$isLoggedIn(); }
   set isLoggedIn(value: boolean) { this.$isLoggedIn.set(value); }
-  cartItemCount$: Observable<number>;
-  isCartHovered = false;
-  isMobileMenuOpen = false;
+  readonly cartItemCount$: Observable<number>;
+  readonly $isCartOpen: WritableSignal<boolean> = signal(false);
+  readonly $isMobileMenuOpen: WritableSignal<boolean> = signal(false);
 
-  private authSubscription: Subscription | undefined;
-  private cartHoverCloseTimer: ReturnType<typeof setTimeout> | undefined = undefined;
-
-  private readonly _cartService = inject(CartService);
-  private readonly _authService = inject(AuthenticationService);
-  private readonly _document: Document = inject(DOCUMENT);
-  readonly $cartLink: Signal<ElementRef<HTMLAnchorElement> | undefined> = viewChild<ElementRef<HTMLAnchorElement>>('cartLink');
+  private readonly _cartService: CartService = inject(CartService);
+  private readonly _authService: AuthenticationService = inject(AuthenticationService);
+  private readonly _router: Router = inject(Router);
+  private readonly _destroyRef: DestroyRef = inject(DestroyRef);
 
   constructor() {
     this.cartItemCount$ = this._cartService.getCartCount();
+    this._router.events.pipe(takeUntilDestroyed(this._destroyRef)).subscribe((event: Event): void => {
+      if (event instanceof NavigationStart || event instanceof NavigationSkipped) {
+        this.closeCartPreview();
+        this.closeMobileMenu();
+      }
+    });
   }
 
-  ngOnInit() {
-    this.authSubscription = this._authService.isLoggedIn$.subscribe(isLoggedIn => {
+  ngOnInit(): void {
+    this._authService.isLoggedIn$.pipe(takeUntilDestroyed(this._destroyRef)).subscribe((isLoggedIn: boolean): void => {
       this.isLoggedIn = isLoggedIn;
     });
   }
 
-  ngOnDestroy(): void {
-    this.clearCartHoverCloseTimer();
-    this.authSubscription?.unsubscribe();
-  }
+  closeMobileMenu(): void { this.$isMobileMenuOpen.set(false); }
 
-  @HostListener('document:click', ['$event'])
-  clickOutside(event: Event) {
-    if (!(event.target as HTMLElement).closest('.cart-container')) {
-      this.isCartHovered = false;
-    }
-  }
-
-  closeMobileMenu(): void { this.isMobileMenuOpen = false; }
-
-  @HostListener('document:keydown.escape')
   closeCartPreview(): void {
-    const link: HTMLAnchorElement | undefined = this.$cartLink()?.nativeElement;
-    const previewHadFocus: boolean = link?.parentElement?.querySelector('app-cart-modal')?.contains(this._document.activeElement) === true;
-    this.clearCartHoverCloseTimer();
-    this.isCartHovered = false;
-    if (previewHadFocus) link?.focus({preventScroll: true});
+    this.$isCartOpen.set(false);
   }
 
   toggleMobileMenu(): void {
-    this.isMobileMenuOpen = !this.isMobileMenuOpen;
+    this.closeCartPreview();
+    this.$isMobileMenuOpen.update((open: boolean): boolean => !open);
   }
 
-  showCartModal() {
-    this.clearCartHoverCloseTimer();
-    this.isCartHovered = true;
-  }
-
-  hideCartModal(): void {
-    // Using setTimeout to allow clicking inside the modal before it closes
-    this.clearCartHoverCloseTimer();
-    this.cartHoverCloseTimer = setTimeout(() => {
-      this.isCartHovered = false;
-      this.cartHoverCloseTimer = undefined;
-    }, 200);
-  }
-
-  private clearCartHoverCloseTimer(): void {
-    if (this.cartHoverCloseTimer !== undefined) {
-      clearTimeout(this.cartHoverCloseTimer);
-      this.cartHoverCloseTimer = undefined;
-    }
+  toggleCartPreview(): void {
+    this.closeMobileMenu();
+    this.$isCartOpen.update((open: boolean): boolean => !open);
   }
 
 }

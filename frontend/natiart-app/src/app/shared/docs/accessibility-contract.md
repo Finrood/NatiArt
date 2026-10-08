@@ -4,6 +4,15 @@ Projected form inputs, selects and textareas receive unique IDs, required and in
 
 Use `app-accessible-dialog` for modal content. Native `showModal()` provides focus containment and inert background content; Escape and backdrop dismissal emit `dismiss` to the owner. Closing restores the connected opener and restores body scrolling after the last dialog closes. Confirmation starts at Cancel. Every owner must handle dismissal and destroy the component when closed. Personalization and long admin editors opt into `showClose`, a sticky, named 44px Close button; confirmation dialogs retain their cancel-first behavior without this extra control.
 
+The cart opts into `appearance="drawer"`, a right-side panel capped at 29rem
+and full width on phones. Its own header provides a named 44px Close button.
+The cart button opens it on activation, keeps the current route, and exposes
+expanded state. Cart, product and Collections links dismiss before navigation;
+the header also closes overlays on route starts and skipped same-URL navigation.
+Normal dismissal restores the opener; route changes hand focus to the app shell.
+The drawer reuses native containment and reduced-motion handling. Below 520px
+viewport height, its whole panel scrolls with a sticky header so actions stay reachable.
+
 Home now has one static approved hero image with a real Explore Collections
 link to public `/products`. It has no rotation, slide or pause controls. The
 shared header includes desktop locale links and a native phone navigation dialog
@@ -12,13 +21,19 @@ reduced-motion styles apply across shopping and administration.
 
 ## Verification
 
-The October 2026 suite has 386 passing ChromeHeadless specs, including native
+The October 2026 suite has 390 passing ChromeHeadless specs, including native
 modal/background focus, nested scroll restoration, rendered journeys, projected
 labels/errors, password state, static-hero behavior and recovery. Real browser
 checks verified menu Enter/Escape, personalization dismissal, cancel-first cart
 removal, gallery Space zoom and opener restoration. Both locales were rendered
 at 320/390/768/1280/1440px. Home's Lighthouse accessibility score was 100; this
 does not establish whole-app WCAG conformance or a screen-reader audit.
+
+Cart drawer regression tests use the real app shell and CartService with
+zoneless rendering, including product/Back navigation, same-URL dismissal,
+empty-cart recovery and quantity/subtotal updates. Current cart-specific native
+browser evidence covers both locales at 320/360/390/768/1024/1440px plus short
+portrait/landscape layouts, in `docs/design-review/atelier-2026-10/cart-drawer/`.
 
 Login's localized rejection alert and retry button update after an HTTP error
 without another input event. The rendered regression test explicitly uses the

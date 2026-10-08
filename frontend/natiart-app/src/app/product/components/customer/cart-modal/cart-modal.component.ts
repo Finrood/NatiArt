@@ -1,11 +1,11 @@
 import {ImageCollection, ImageLoaderService, EMPTY_PRODUCT_IMAGE} from '../../../service/image-loader.service';
-import {Component, inject, OnDestroy, OnInit} from '@angular/core';
+import {Component, inject, OnDestroy, OnInit, output, OutputEmitterRef} from '@angular/core';
 import { AsyncPipe, CurrencyPipe } from "@angular/common";
 import {CartItem} from "../../../models/CartItem.model";
 import {Observable, Subscription} from "rxjs";
 import {CartService} from "../../../service/cart.service";
 import {RouterLink} from "@angular/router";
-import {ButtonComponent} from "../../../../shared/components/button.component";
+import {AccessibleDialogComponent} from '../../../../shared/components/accessible-dialog.component';
 
 @Component({
     selector: 'app-cart-modal',
@@ -13,11 +13,14 @@ import {ButtonComponent} from "../../../../shared/components/button.component";
     AsyncPipe,
     CurrencyPipe,
     RouterLink,
-    ButtonComponent
+    AccessibleDialogComponent
 ],
-    templateUrl: './cart-modal.component.html'
+    templateUrl: './cart-modal.component.html',
+    styleUrl: './cart-modal.component.css'
 })
 export class CartModalComponent implements OnInit, OnDestroy {
+  readonly dismiss: OutputEmitterRef<void> = output<void>();
+  readonly navigate: OutputEmitterRef<void> = output<void>();
   readonly images: ImageCollection = inject(ImageLoaderService).create();
   readonly emptyImage: string = EMPTY_PRODUCT_IMAGE;
   get imageUrls(): Record<string, string> { return this.images.urls(); }
@@ -59,9 +62,12 @@ export class CartModalComponent implements OnInit, OnDestroy {
   }
 
   quantityLabel(item: CartItem): string { return $localize`Quantity for ${item.product.label}:INTERPOLATION:`; }
+  decreaseLabel(item: CartItem): string { return $localize`:@@cartPreviewDecrease:Decrease quantity for ${item.product.label}:productName:`; }
+  increaseLabel(item: CartItem): string { return $localize`:@@cartPreviewIncrease:Increase quantity for ${item.product.label}:productName:`; }
+  removeLabel(item: CartItem): string { return $localize`:@@cartPreviewRemove:Remove ${item.product.label}:productName: from cart`; }
 
   removeItem(item: CartItem, event: Event): void {
-    event.stopPropagation()
+    event.stopPropagation();
     this._cartService.removeFromCart(item.cartItemId);
   }
 

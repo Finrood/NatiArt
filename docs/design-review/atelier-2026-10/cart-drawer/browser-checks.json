@@ -1,0 +1,396 @@
+{
+  "layouts": [
+    {
+      "drawer": {
+        "height": 740,
+        "width": 320,
+        "x": 0,
+        "y": 0
+      },
+      "footerVisible": true,
+      "height": 740,
+      "horizontalOverflow": false,
+      "locale": "pt-BR",
+      "modal": true,
+      "scroll": {
+        "bodyContentHeight": 393,
+        "bodyHeight": 392,
+        "panelContentHeight": 740,
+        "panelHeight": 740
+      },
+      "smallActions": [],
+      "width": 320
+    },
+    {
+      "drawer": {
+        "height": 800,
+        "width": 360,
+        "x": 0,
+        "y": 0
+      },
+      "footerVisible": true,
+      "height": 800,
+      "horizontalOverflow": false,
+      "locale": "pt-BR",
+      "modal": true,
+      "scroll": {
+        "bodyContentHeight": 452,
+        "bodyHeight": 452,
+        "panelContentHeight": 800,
+        "panelHeight": 800
+      },
+      "smallActions": [],
+      "width": 360
+    },
+    {
+      "drawer": {
+        "height": 844,
+        "width": 390,
+        "x": 0,
+        "y": 0
+      },
+      "footerVisible": true,
+      "height": 844,
+      "horizontalOverflow": false,
+      "locale": "pt-BR",
+      "modal": true,
+      "scroll": {
+        "bodyContentHeight": 496,
+        "bodyHeight": 496,
+        "panelContentHeight": 844,
+        "panelHeight": 844
+      },
+      "smallActions": [],
+      "width": 390
+    },
+    {
+      "drawer": {
+        "height": 1024,
+        "width": 464,
+        "x": 304,
+        "y": 0
+      },
+      "footerVisible": true,
+      "height": 1024,
+      "horizontalOverflow": false,
+      "locale": "pt-BR",
+      "modal": true,
+      "scroll": {
+        "bodyContentHeight": 696,
+        "bodyHeight": 696,
+        "panelContentHeight": 1024,
+        "panelHeight": 1024
+      },
+      "smallActions": [],
+      "width": 768
+    },
+    {
+      "drawer": {
+        "height": 900,
+        "width": 464,
+        "x": 560,
+        "y": 0
+      },
+      "footerVisible": true,
+      "height": 900,
+      "horizontalOverflow": false,
+      "locale": "pt-BR",
+      "modal": true,
+      "scroll": {
+        "bodyContentHeight": 572,
+        "bodyHeight": 572,
+        "panelContentHeight": 900,
+        "panelHeight": 900
+      },
+      "smallActions": [],
+      "width": 1024
+    },
+    {
+      "drawer": {
+        "height": 1000,
+        "width": 464,
+        "x": 976,
+        "y": 0
+      },
+      "footerVisible": true,
+      "height": 1000,
+      "horizontalOverflow": false,
+      "locale": "pt-BR",
+      "modal": true,
+      "scroll": {
+        "bodyContentHeight": 672,
+        "bodyHeight": 672,
+        "panelContentHeight": 1000,
+        "panelHeight": 1000
+      },
+      "smallActions": [],
+      "width": 1440
+    },
+    {
+      "drawer": {
+        "height": 480,
+        "width": 320,
+        "x": 0,
+        "y": 0
+      },
+      "footerVisible": false,
+      "height": 480,
+      "horizontalOverflow": false,
+      "locale": "pt-BR",
+      "modal": true,
+      "scroll": {
+        "bodyContentHeight": 393,
+        "bodyHeight": 393,
+        "panelContentHeight": 741,
+        "panelHeight": 480
+      },
+      "smallActions": [],
+      "width": 320
+    },
+    {
+      "drawer": {
+        "height": 400,
+        "width": 464,
+        "x": 304,
+        "y": 0
+      },
+      "footerVisible": false,
+      "height": 400,
+      "horizontalOverflow": false,
+      "locale": "pt-BR",
+      "modal": true,
+      "scroll": {
+        "bodyContentHeight": 409,
+        "bodyHeight": 409,
+        "panelContentHeight": 737,
+        "panelHeight": 400
+      },
+      "smallActions": [],
+      "width": 768
+    },
+    {
+      "drawer": {
+        "height": 740,
+        "width": 320,
+        "x": 0,
+        "y": 0
+      },
+      "footerVisible": true,
+      "height": 740,
+      "horizontalOverflow": false,
+      "locale": "en",
+      "modal": true,
+      "scroll": {
+        "bodyContentHeight": 393,
+        "bodyHeight": 392,
+        "panelContentHeight": 740,
+        "panelHeight": 740
+      },
+      "smallActions": [],
+      "width": 320
+    },
+    {
+      "drawer": {
+        "height": 800,
+        "width": 360,
+        "x": 0,
+        "y": 0
+      },
+      "footerVisible": true,
+      "height": 800,
+      "horizontalOverflow": false,
+      "locale": "en",
+      "modal": true,
+      "scroll": {
+        "bodyContentHeight": 452,
+        "bodyHeight": 452,
+        "panelContentHeight": 800,
+        "panelHeight": 800
+      },
+      "smallActions": [],
+      "width": 360
+    },
+    {
+      "drawer": {
+        "height": 844,
+        "width": 390,
+        "x": 0,
+        "y": 0
+      },
+      "footerVisible": true,
+      "height": 844,
+      "horizontalOverflow": false,
+      "locale": "en",
+      "modal": true,
+      "scroll": {
+        "bodyContentHeight": 516,
+        "bodyHeight": 516,
+        "panelContentHeight": 844,
+        "panelHeight": 844
+      },
+      "smallActions": [],
+      "width": 390
+    },
+    {
+      "drawer": {
+        "height": 1024,
+        "width": 464,
+        "x": 304,
+        "y": 0
+      },
+      "footerVisible": true,
+      "height": 1024,
+      "horizontalOverflow": false,
+      "locale": "en",
+      "modal": true,
+      "scroll": {
+        "bodyContentHeight": 696,
+        "bodyHeight": 696,
+        "panelContentHeight": 1024,
+        "panelHeight": 1024
+      },
+      "smallActions": [],
+      "width": 768
+    },
+    {
+      "drawer": {
+        "height": 900,
+        "width": 464,
+        "x": 560,
+        "y": 0
+      },
+      "footerVisible": true,
+      "height": 900,
+      "horizontalOverflow": false,
+      "locale": "en",
+      "modal": true,
+      "scroll": {
+        "bodyContentHeight": 572,
+        "bodyHeight": 572,
+        "panelContentHeight": 900,
+        "panelHeight": 900
+      },
+      "smallActions": [],
+      "width": 1024
+    },
+    {
+      "drawer": {
+        "height": 1000,
+        "width": 464,
+        "x": 976,
+        "y": 0
+      },
+      "footerVisible": true,
+      "height": 1000,
+      "horizontalOverflow": false,
+      "locale": "en",
+      "modal": true,
+      "scroll": {
+        "bodyContentHeight": 672,
+        "bodyHeight": 672,
+        "panelContentHeight": 1000,
+        "panelHeight": 1000
+      },
+      "smallActions": [],
+      "width": 1440
+    },
+    {
+      "drawer": {
+        "height": 480,
+        "width": 320,
+        "x": 0,
+        "y": 0
+      },
+      "footerVisible": false,
+      "height": 480,
+      "horizontalOverflow": false,
+      "locale": "en",
+      "modal": true,
+      "scroll": {
+        "bodyContentHeight": 393,
+        "bodyHeight": 393,
+        "panelContentHeight": 741,
+        "panelHeight": 480
+      },
+      "smallActions": [],
+      "width": 320
+    },
+    {
+      "drawer": {
+        "height": 400,
+        "width": 464,
+        "x": 304,
+        "y": 0
+      },
+      "footerVisible": false,
+      "height": 400,
+      "horizontalOverflow": false,
+      "locale": "en",
+      "modal": true,
+      "scroll": {
+        "bodyContentHeight": 409,
+        "bodyHeight": 409,
+        "panelContentHeight": 737,
+        "panelHeight": 400
+      },
+      "smallActions": [],
+      "width": 768
+    }
+  ],
+  "journeys": [
+    {
+      "action": "Escape",
+      "closed": true,
+      "focus": "Carrinho de compras",
+      "overflow": "",
+      "path": "/pt-BR/dashboard"
+    },
+    {
+      "action": "Backdrop",
+      "closed": true,
+      "focus": "Carrinho de compras",
+      "overflow": "",
+      "path": "/pt-BR/dashboard"
+    },
+    {
+      "action": "Product link",
+      "closed": true,
+      "focus": "BUTTON",
+      "overflow": "",
+      "path": "/pt-BR/product/4d5e6f7g-8h9i-0j1k-2l3m-4n5o6p7q8r9s"
+    },
+    {
+      "action": "Browser Back",
+      "closed": true,
+      "focus": "H1",
+      "overflow": "",
+      "path": "/pt-BR/dashboard"
+    },
+    {
+      "action": "Go to cart",
+      "closed": true,
+      "focus": "H1",
+      "overflow": "",
+      "path": "/pt-BR/cart"
+    },
+    {
+      "action": "Increase quantity",
+      "modal": true,
+      "quantity": "4",
+      "total": "R$1,391.86"
+    },
+    {
+      "action": "Continue shopping",
+      "closed": true,
+      "focus": "Shopping cart",
+      "overflow": "",
+      "path": "/en/cart"
+    },
+    {
+      "action": "Empty cart Collections",
+      "closed": true,
+      "overflow": "",
+      "path": "/pt-BR/products"
+    }
+  ]
+}

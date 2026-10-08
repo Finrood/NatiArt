@@ -601,6 +601,14 @@
     "9131023588591875802": "Sua arte",
     "8095852233413005347": "A arte da {$START_TAG_SPAN}porcelana{$CLOSE_TAG_SPAN}",
     "6902581486181747976": "Arte com a sua história.",
-    "4828734142233953553": "Opções de compra"
+    "4828734142233953553": "Opções de compra",
+    "cartPreviewSelection": "Sua seleção",
+    "cartPreviewArtworkReselect": "Selecione sua arte novamente no carrinho.",
+    "cartPreviewViewCart": "Ver carrinho",
+    "cartPreviewContinue": "Continuar comprando",
+    "cartPreviewEmptyHint": "Descubra sua próxima peça favorita.",
+    "cartPreviewDecrease": "Diminuir quantidade de {$productName}",
+    "cartPreviewIncrease": "Aumentar quantidade de {$productName}",
+    "cartPreviewRemove": "Remover {$productName} do carrinho"
   }
 }
