@@ -1,5 +1,10 @@
 # Storefront container deployment
 
+The root [QA Compose stack](../qa/README.md) builds the explicit `qa` target,
+which adds a `/qa/` proxy for the private fixture control page and recovery inbox.
+Default builds end at `production` and include no QA location template. Both
+targets use the same Angular production bundles and immutable asset publisher.
+
 The frontend image runs nginx. Build from `frontend/` with the production
 configuration (the Dockerfile default), then expose container port 80 behind
 an HTTPS ingress. The Angular production APIs use relative `/server/directory`

@@ -1,0 +1,74 @@
+[
+  {
+    "id": "cus_000006360414",
+    "externalReference": "789e4567-e89b-12d3-a456-426614174000",
+    "name": "John Doe",
+    "email": "john.doe@gmail.com",
+    "cpfCnpj": "11144477735",
+    "deleted": false
+  },
+  {
+    "id": "cus_local_admin",
+    "externalReference": "889e4567-e89b-12d3-a456-426614174000",
+    "name": "NatiArt Admin",
+    "email": "admin@gmail.com",
+    "cpfCnpj": "52998224725",
+    "deleted": false
+  },
+  {
+    "id": "cus_qa_seed_maria",
+    "externalReference": "364aeae5-37ee-56ce-90f3-9ef6547ab5b1",
+    "name": "Maria Oliveira",
+    "email": "maria@natiart.local",
+    "cpfCnpj": "12345678909",
+    "postalCode": "01310930",
+    "address": "Rua de Teste",
+    "addressNumber": "100",
+    "complement": "Apto 1",
+    "province": "Centro",
+    "mobilePhone": "11999990000",
+    "deleted": false
+  },
+  {
+    "id": "cus_qa_seed_ana",
+    "externalReference": "62d5536b-39eb-543c-9790-4ab4b4fdd30c",
+    "name": "Ana Lima",
+    "email": "ana@natiart.local",
+    "cpfCnpj": "98765432100",
+    "postalCode": "80010000",
+    "address": "Rua de Teste",
+    "addressNumber": "101",
+    "complement": "Apto 2",
+    "province": "Centro",
+    "mobilePhone": "41999990001",
+    "deleted": false
+  },
+  {
+    "id": "cus_qa_seed_newbuyer",
+    "externalReference": "de10ccec-be41-51b5-bbd5-c3ec3a979aef",
+    "name": "Rafael Souza",
+    "email": "newbuyer@natiart.local",
+    "cpfCnpj": "11122233396",
+    "postalCode": "50010000",
+    "address": "Rua de Teste",
+    "addressNumber": "102",
+    "complement": "Apto 3",
+    "province": "Centro",
+    "mobilePhone": "81999990002",
+    "deleted": false
+  },
+  {
+    "id": "cus_qa_seed_disabled",
+    "externalReference": "70c28aad-b538-5ecf-9c94-fb654f263451",
+    "name": "Carlos Ramos",
+    "email": "disabled@natiart.local",
+    "cpfCnpj": "22233344405",
+    "postalCode": "90010000",
+    "address": "Rua de Teste",
+    "addressNumber": "103",
+    "complement": "Apto 4",
+    "province": "Centro",
+    "mobilePhone": "51999990003",
+    "deleted": false
+  }
+]

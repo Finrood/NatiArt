@@ -23,6 +23,7 @@ WORKDIR /app
 
 # Create non-root user for security
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+COPY --chmod=755 backend/docker/entrypoint.sh /app/entrypoint.sh
 USER appuser
 
 # Copy only the built JAR from the build stage
@@ -32,4 +33,4 @@ COPY --from=build --chown=appuser:appgroup /app/directory-service/build/libs/dir
 EXPOSE 8081
 
 # Optimize JVM flags for Spring Boot in a container
-ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
+ENTRYPOINT ["/app/entrypoint.sh"]

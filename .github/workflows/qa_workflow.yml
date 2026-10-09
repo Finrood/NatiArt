@@ -1,0 +1,44 @@
+name: H2 QA stack
+
+on:
+  push:
+    branches: ["master"]
+    paths:
+      - "compose*.yaml"
+      - "qa/**"
+      - "backend/**"
+      - "frontend/**"
+      - ".dockerignore"
+      - ".github/workflows/qa_workflow.yml"
+  pull_request:
+    branches: ["master"]
+    paths:
+      - "compose*.yaml"
+      - "qa/**"
+      - "backend/**"
+      - "frontend/**"
+      - ".dockerignore"
+      - ".github/workflows/qa_workflow.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  complete-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Check private providers and fixed gallery
+        run: python3 -m unittest discover -s qa/tests -p 'test_*.py'
+      - name: Validate local and Caddy Compose configuration
+        run: |
+          docker compose config --quiet
+          docker compose -f compose.yaml -f compose.caddy.yaml config --quiet
+      - name: Verify full QA journeys and disposable restart
+        run: python3 qa/tests/compose_smoke.py

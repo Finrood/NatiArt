@@ -60,6 +60,27 @@ class CartAddSerializationTest {
     @MockitoBean
     ProductImageLifecycle imageLifecycle;
 
+    @org.junit.jupiter.api.Test
+    void serializeNewLineAfterRealManagerTransaction() throws Exception {
+        final String username = "new-line-" + UUID.randomUUID();
+        final String id = new TransactionTemplate(transactions).execute(status -> {
+            final Category category = categories.save(new Category("category-" + UUID.randomUUID()));
+            return products.saveAndFlush(new Product("Art", BigDecimal.TEN)
+                            .setCategory(category)
+                            .setImages(List.of("file:///owned/cover.webp")))
+                    .getId();
+        });
+        final CartItemDto response = manager.createCartItem(username, id);
+        assertEquals(1, response.getQuantity());
+        assertTrue(new ObjectMapper().writeValueAsString(response).contains("file:///owned/cover.webp"));
+        new TransactionTemplate(transactions)
+                .executeWithoutResult(status -> assertEquals(
+                        1,
+                        carts.findCartItemByUsernameAndProductWithDetails(username, id)
+                                .orElseThrow()
+                                .getQuantity()));
+    }
+
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
     void serializeExistingLineAfterRealManagerTransaction(boolean personalized) throws Exception {

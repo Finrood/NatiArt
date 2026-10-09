@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 
 /** Local/test fixture; production must use the configured SMTP delivery adapter. */
 @Service
-@Profile({"local-h2 & !production", "test & !production"})
+@Profile("(local-h2 | test) & !qa-h2 & !production")
 public class InMemoryPasswordResetNotificationSender implements PasswordResetNotificationSender {
     private static final int MAX_NOTIFICATIONS = 100;
 

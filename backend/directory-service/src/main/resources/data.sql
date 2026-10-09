@@ -11,7 +11,7 @@ INSERT INTO public.users (id, version, username, password_hash, email_confirmed,
 VALUES ('789e4567-e89b-12d3-a456-426614174000', -- id
         1, -- version
         'john.doe@gmail.com', -- username
-        '$2a$10$.8bQh2rBsGCC3R7O2nFt3OJNNHi7J6hGtrmCAAtxo5LrDtetJQNxy', -- bcrypt hash of the local-only password "natiart-local-seed-9f3k"
+        '$2a$10$xMd..Fbi1UXlNgdQXqiaqO9bardQ/FlQMlydljm1aFBvUC4SwZ2gC', -- bcrypt hash of the local-only password "password"
         false, -- emailConfirmed
         '2023-05-15T10:00:00Z', -- createdAt
         '2023-05-15T10:00:00Z', -- updatedAt
@@ -21,7 +21,7 @@ VALUES ('789e4567-e89b-12d3-a456-426614174000', -- id
        ('889e4567-e89b-12d3-a456-426614174000', -- id
         1, -- version
         'admin@gmail.com', -- username
-        '$2a$10$.8bQh2rBsGCC3R7O2nFt3OJNNHi7J6hGtrmCAAtxo5LrDtetJQNxy', -- bcrypt hash of the local-only password "natiart-local-seed-9f3k"
+        '$2a$10$xMd..Fbi1UXlNgdQXqiaqO9bardQ/FlQMlydljm1aFBvUC4SwZ2gC', -- bcrypt hash of the local-only password "password"
         false, -- emailConfirmed
         '2023-05-15T10:00:00Z', -- createdAt
         '2023-05-15T10:00:00Z', -- updatedAt

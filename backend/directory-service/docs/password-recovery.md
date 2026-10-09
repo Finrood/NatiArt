@@ -4,6 +4,12 @@ Unprofiled and production applications require a real SMTP adapter. The bounded
 memory fixture is restricted to `local-h2` or `test`, and an explicitly active
 `production` profile overrides either fixture profile.
 
+The combined `local-h2,qa-h2` profile uses `QaPasswordResetNotificationSender`
+to deliver links to the private QA inbox instead of the bounded memory sender.
+It requires an explicit fixture URL/control token and propagates delivery failures
+so undelivered reset tokens roll back. SMTP/TLS requirements remain unchanged
+for production. See [the complete QA guide](../../../qa/README.md).
+
 Set the following deployment secrets/configuration through the existing secret
 manager; never commit their values:
 

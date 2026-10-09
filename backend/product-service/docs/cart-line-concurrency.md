@@ -14,3 +14,8 @@ constraint present in PostgreSQL before enabling concurrent cart writes.
 
 The 100-unit line cap is checked under the same row lock. Concurrent adds to a
 99-unit line yield one 100-unit line and one rejected add.
+
+Cart responses are mapped inside the manager transaction. `ProductDto.from`
+copies the product's image list while that transaction is open, so a first add
+can serialize its response after the session closes. Both first and repeated
+adds are tested with `open-in-view=false`.

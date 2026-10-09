@@ -1,5 +1,12 @@
 # NatiArt local setup
 
+For the complete disposable QA experience, run `docker compose up -d --build --wait`
+from this directory and open http://localhost:4401/en/dashboard. It uses
+in-memory H2 with a fixed catalog, bundled images and simulated payment/shipping
+providers. Every backend restart restores the committed fixtures. Accounts,
+QA controls and the Caddy deployment override are documented in
+[the QA guide](qa/README.md).
+
 Use Java 25 and Node.js 22.22.3 (or a later supported Angular 22 runtime).
 From the repository root, run `CHROME_BIN=/usr/bin/google-chrome ./gradlew buildAll`
 to build and test both backend services and the Angular storefront. Use the path

@@ -1,0 +1,21 @@
+# Merge with compose.yaml. Caddy must already join caddy-network.
+services:
+  natiart-fixtures:
+    environment:
+      QA_PUBLIC_URL: ${QA_PUBLIC_URL:-https://natiart.samuelpetre.com}
+  natiart-directory:
+    environment:
+      SAAS_SECURITY_PASSWORD_RESET_FRONTEND_URL: ${QA_PUBLIC_URL:-https://natiart.samuelpetre.com}/en/reset-password
+      CORS_ALLOWED_ORIGINS: ${QA_PUBLIC_URL:-https://natiart.samuelpetre.com}
+  natiart-product:
+    environment:
+      CORS_ALLOWED_ORIGINS: ${QA_PUBLIC_URL:-https://natiart.samuelpetre.com}
+  natiart-web:
+    environment:
+      NATIART_PUBLIC_SCHEME: https
+    networks:
+      caddy-network: {}
+
+networks:
+  caddy-network:
+    external: true

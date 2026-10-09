@@ -1,0 +1,105 @@
+# Complete disposable QA: in-memory H2, fictional images, private provider doubles.
+# Run: docker compose up -d --build
+# Serve behind Caddy: add -f compose.caddy.yaml (see qa/README.md).
+services:
+  natiart-fixtures:
+    build:
+      context: .
+      dockerfile: qa/Dockerfile
+    restart: unless-stopped
+    mem_limit: 256m
+    environment:
+      NATIART_PAYMENT_ASAAS_APIKEY: qa-local-provider-key
+      NATIART_PAYMENT_ASAAS_WEBHOOK_TOKEN: qa-local-webhook-token
+      NATIART_QA_CONTROL_TOKEN: ${NATIART_QA_CONTROL_TOKEN:-qa-control-change-me}
+      PRODUCT_SERVICE_URL: http://natiart-product:8082
+      QA_PUBLIC_URL: ${QA_PUBLIC_URL:-http://localhost:4401}
+    networks: [qa]
+
+  natiart-directory:
+    build:
+      context: .
+      dockerfile: backend/directory-service/Dockerfile
+    restart: unless-stopped
+    mem_limit: 1g
+    environment:
+      SPRING_PROFILES_ACTIVE: local-h2,qa-h2
+      NATIART_QA_PROVIDER_RESET_URL: http://natiart-fixtures:8090/internal/reset-customers
+      NATIART_PAYMENT_ASAAS_APIKEY: qa-local-provider-key
+      NATIART_PAYMENT_ASAAS_CUSTOMERS_URL: http://natiart-fixtures:8090/customers
+      NATIART_QA_NOTIFICATIONS_URL: http://natiart-fixtures:8090/notifications/password-reset
+      NATIART_QA_CONTROL_TOKEN: ${NATIART_QA_CONTROL_TOKEN:-qa-control-change-me}
+      PRODUCT_SERVICE_URL: http://natiart-product:8082
+      NATIART_AUTH_CACHE_INVALIDATION_SECRET: qa-local-invalidation-secret
+      SAAS_SECURITY_PASSWORD_RESET_FRONTEND_URL: ${QA_PUBLIC_URL:-http://localhost:4401}/en/reset-password
+      CORS_ALLOWED_ORIGINS: ${QA_PUBLIC_URL:-http://localhost:4401}
+      SAAS_SECURITY_RATE_LIMIT_MAX_REQUESTS_PER_MINUTE: ${SAAS_SECURITY_RATE_LIMIT_MAX_REQUESTS_PER_MINUTE:-100}
+    networks: [qa]
+    healthcheck:
+      test: [CMD, test, -f, /tmp/natiart-qa-ready]
+      interval: 5s
+      timeout: 2s
+      start_period: 90s
+      retries: 12
+    depends_on:
+      natiart-fixtures: {condition: service_healthy}
+
+  natiart-product:
+    build:
+      context: .
+      dockerfile: backend/product-service/Dockerfile
+      target: qa
+    restart: unless-stopped
+    mem_limit: 1g
+    environment:
+      SPRING_PROFILES_ACTIVE: local-h2,qa-h2
+      NATIART_QA_PROVIDER_RESET_URL: http://natiart-fixtures:8090/internal/reset-payments
+      NATIART_PAYMENT_ASAAS_APIKEY: qa-local-provider-key
+      NATIART_PAYMENT_ASAAS_PAYMENTS_URL: http://natiart-fixtures:8090/payments
+      NATIART_PAYMENT_ASAAS_WEBHOOK_TOKEN: qa-local-webhook-token
+      NATIART_PAYMENT_RECONCILIATION_FIXED_DELAY_MILLIS: 5000
+      MELHORENVIO_API_TOKEN: qa-local-provider-key
+      MELHORENVIO_API_URL: http://natiart-fixtures:8090/shipping
+      MELHORENVIO_FROM_POSTAL_CODE: "88010000"
+      MELHORENVIO_USER_AGENT: NatiArt-QA (qa@example.invalid)
+      DIRECTORY_SERVICE_URL: http://natiart-directory:8081
+      NATIART_AUTH_CACHE_INVALIDATION_SECRET: qa-local-invalidation-secret
+      NATIART_ORDER_RESERVATION_TTL_MILLIS: 86400000
+      CORS_ALLOWED_ORIGINS: ${QA_PUBLIC_URL:-http://localhost:4401}
+    networks: [qa]
+    healthcheck:
+      test: [CMD, test, -f, /tmp/natiart-qa-ready]
+      interval: 5s
+      timeout: 2s
+      start_period: 90s
+      retries: 12
+    depends_on:
+      natiart-directory: {condition: service_healthy}
+
+  natiart-web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: qa
+    restart: unless-stopped
+    environment:
+      DIRECTORY_UPSTREAM: http://natiart-directory:8081
+      PRODUCT_UPSTREAM: http://natiart-product:8082
+      NATIART_PUBLIC_SCHEME: http
+      NATIART_QA_UPSTREAM: http://natiart-fixtures:8090
+    ports:
+      - "127.0.0.1:${QA_PORT:-4401}:80"
+    volumes:
+      - natiart-assets:/var/lib/natiart-assets
+    networks: [qa, access]
+    depends_on:
+      natiart-directory: {condition: service_healthy}
+      natiart-product: {condition: service_healthy}
+
+networks:
+  qa:
+    internal: true
+  access: {}
+
+volumes:
+  natiart-assets:

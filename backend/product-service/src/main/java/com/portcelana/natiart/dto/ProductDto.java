@@ -60,7 +60,7 @@ public class ProductDto {
                 .setHasFixedGoldenBorder(product.getHasFixedGoldenBorder().orElse(null))
                 .setAvailablePersonalizations(product.getAvailablePersonalizations())
                 .setTags(product.getTags())
-                .setImages(product.getImages())
+                .setImages(new ArrayList<>(product.getImages()))
                 .setNewProduct(product.isNewProduct())
                 .setFeaturedProduct(product.isFeaturedProduct())
                 .setActive(product.isActive());

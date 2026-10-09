@@ -35,6 +35,22 @@ import ch.qos.logback.core.read.ListAppender;
 
 @ExtendWith(MockitoExtension.class)
 class AsaasUserManagerTest {
+    @Test
+    void registerUser_readsCustomerWireResponse() throws Exception {
+        final RestTemplate client = new RestTemplate();
+        final MockRestServiceServer server =
+                MockRestServiceServer.bindTo(client).build();
+        server.expect(requestTo(CUSTOMERS_URL))
+                .andRespond(withSuccess(
+                        "{\"object\":\"customer\",\"id\":\"cus_qa_created\",\"externalReference\":\"user-id\","
+                                + "\"deleted\":false,\"notificationDisabled\":false,\"canDelete\":true,\"canEdit\":true,\"city\":0}",
+                        MediaType.APPLICATION_JSON));
+        final AsaasCustomerCreationResponse customer =
+                new AsaasUserManager("test-key", CUSTOMERS_URL, client).registerUser(validUser());
+        assertEquals("cus_qa_created", customer.getId());
+        assertEquals("user-id", customer.getExternalReference());
+        server.verify();
+    }
 
     private static final String CUSTOMERS_URL = "https://sandbox.asaas.com/api/v3/customers";
 
