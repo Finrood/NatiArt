@@ -1,3 +1,6 @@
+import {provideZonelessChangeDetection} from '@angular/core';
+import {Subject} from 'rxjs';
+import {AuthenticationService} from '../../../service/authentication.service';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -53,4 +56,34 @@ describe('LogoutComponent', () => {
     expect(navigateSpy).not.toHaveBeenCalled();
     httpTesting.verify();
   }));
+});
+
+
+describe('Logout view lifecycle', () => {
+  it('does not schedule a late redirect after leaving a pending logout', async () => {
+    const pending: Subject<void> = new Subject<void>();
+    await TestBed.configureTestingModule({imports: [LogoutComponent], providers: [
+      provideZonelessChangeDetection(), provideRouter([]),
+      {provide: AuthenticationService, useValue: {logout: (): Subject<void> => pending}}
+    ]}).compileComponents();
+    const navigate: jasmine.Spy = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+    const fixture = TestBed.createComponent(LogoutComponent);
+    await fixture.whenStable(); expect(pending.observed).toBeTrue();
+    fixture.destroy();
+    expect(pending.observed).toBeFalse(); pending.next();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('renders completion immediately without a further user interaction', async () => {
+    const pending: Subject<void> = new Subject<void>();
+    await TestBed.configureTestingModule({imports: [LogoutComponent], providers: [
+      provideZonelessChangeDetection(), provideRouter([]),
+      {provide: AuthenticationService, useValue: {logout: (): Subject<void> => pending}}
+    ]}).compileComponents();
+    const fixture = TestBed.createComponent(LogoutComponent); await fixture.whenStable();
+    pending.next(); pending.complete(); await fixture.whenStable();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('successfully logged out');
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Please wait');
+    fixture.destroy();
+  });
 });

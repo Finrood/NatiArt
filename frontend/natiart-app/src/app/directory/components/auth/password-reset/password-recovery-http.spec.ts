@@ -104,9 +104,36 @@ describe('Rendered password recovery HTTP contract', (): void => {
     expect(resetAuth).not.toHaveBeenCalled();
   }));
 
-  it('handles malformed fragments without throwing or sending a reset request', fakeAsync((): void => {
-    open('/reset-password#token=%25ZZ'); input('password', 'NewPass123'); input('passwordConfirmation', 'NewPass123'); submit();
+  it('shows malformed-link guidance immediately without asking for a password or sending HTTP', fakeAsync((): void => {
+    open('/reset-password#token=%25ZZ');
     expect((fixture.nativeElement as HTMLElement).querySelector('[role="alert"]')?.textContent).toContain('missing or invalid');
+    expect((fixture.nativeElement as HTMLElement).querySelector('input')).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).querySelector('a')?.getAttribute('href')).toBe('/forgot-password');
+    expect(TestBed.inject(Router).url).toBe('/reset-password');
     http.expectNone((candidate): boolean => candidate.url.endsWith('/password-reset'));
+  }));
+
+  it('rejects an absent or duplicated token before showing the password form', fakeAsync((): void => {
+    for (const url of ['/reset-password', '/reset-password#token=' + token + '&token=' + token]) {
+      open(url);
+      expect((fixture.nativeElement as HTMLElement).querySelector('[role="alert"]')?.textContent).toContain('missing or invalid');
+      expect((fixture.nativeElement as HTMLElement).querySelector('input')).toBeNull();
+      void TestBed.inject(Router).navigateByUrl('/forgot-password'); flushMicrotasks(); fixture.detectChanges();
+    }
+    http.expectNone((candidate): boolean => candidate.url.endsWith('/password-reset'));
+  }));
+
+  it('preserves a valid link and entered passwords for retry after a temporary service failure', fakeAsync((): void => {
+    open('/reset-password#token=' + token);
+    input('password', 'NewPass123'); input('passwordConfirmation', 'NewPass123'); submit();
+    request('/password-reset').flush({}, {status: 503, statusText: 'Unavailable'});
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelector('[role="alert"]')?.textContent).toContain('try again');
+    expect((fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>('input[formControlName="password"]')?.value).toBe('NewPass123');
+    submit();
+    request('/password-reset').flush(null, {status: 204, statusText: 'No Content'});
+    flushMicrotasks(); fixture.detectChanges();
+    expect(TestBed.inject(Router).url).toBe('/login');
+    expect(resetAuth).toHaveBeenCalledTimes(1);
   }));
 });

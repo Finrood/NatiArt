@@ -30,6 +30,7 @@ export class PasswordResetComponent implements OnInit {
     passwordConfirmation: ['', [Validators.required, CustomPasswordValidators.passwordComplexity()]]
   }, {validators: PasswordResetComponent.passwordMatchValidator});
   private _token: string = '';
+  readonly $hasResetLink: WritableSignal<boolean> = signal(false);
   readonly $isSubmitting: WritableSignal<boolean> = signal(false);
   readonly $success: WritableSignal<boolean> = signal(false);
   readonly $errorMessage: WritableSignal<string> = signal('');
@@ -38,6 +39,10 @@ export class PasswordResetComponent implements OnInit {
     const fragment: string = this._route.snapshot.fragment ?? '';
     const values: string[] = new URLSearchParams(fragment).getAll('token');
     this._token = values.length === 1 && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(values[0]) ? values[0] : '';
+    this.$hasResetLink.set(!!this._token);
+    if (!this._token) {
+      this.$errorMessage.set($localize`This reset link is missing or invalid. Please request a new one.`);
+    }
     if (fragment) {
       void this._router.navigate([], {relativeTo: this._route, fragment: undefined, replaceUrl: true});
     }
@@ -74,7 +79,14 @@ export class PasswordResetComponent implements OnInit {
           void this._router.navigate(['/login']);
         },
         error: (error: HttpErrorResponse) => {
-          this.$errorMessage.set($localize`This reset link is invalid or expired. Please request a new one.`);
+          if ([400, 404, 410].includes(error.status)) {
+            this._token = '';
+            this.$hasResetLink.set(false);
+            this.form.reset();
+            this.$errorMessage.set($localize`This reset link is invalid or expired. Please request a new one.`);
+          } else {
+            this.$errorMessage.set($localize`We could not update your password. Please try again.`);
+          }
           reportError('password-reset', error);
         }
       });

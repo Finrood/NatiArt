@@ -22,3 +22,10 @@ original request. After successful refresh, business errors (including 403) reac
 the original caller without navigating to login or clearing the valid session.
 API bases may be absolute development/production URLs or relative same-origin
 production paths; URL resolution uses the browser origin in either case.
+
+Logout clears only its captured session generation on completion, error, timeout
+or cancellation. A hung logout is bounded to the existing ten-second auth
+initialization deadline. Leaving the logout screen cancels its subscription and
+redirect timer, while cancellation still removes that session's browser tokens.
+An old logout cannot clear a newer login. The view publishes completion through
+a signal so its confirmation renders without another input event.

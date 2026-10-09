@@ -1,4 +1,5 @@
-import {Component, OnDestroy, OnInit} from '@angular/core';
+import {Component, DestroyRef, inject, signal, OnDestroy, OnInit, WritableSignal} from '@angular/core';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {Router} from "@angular/router";
 import {AuthenticationService} from "../../../service/authentication.service";
 import {CommonModule} from "@angular/common";
@@ -9,29 +10,28 @@ import {reportError} from '../../../../shared/service/error-reporting.service';
     selector: 'app-logout',
     imports: [CommonModule, LoadingSpinnerComponent],
     templateUrl: './logout.component.html',
-    styleUrl: './logout.component.css',
-    standalone: true
+    styleUrl: './logout.component.css'
 })
 export class LogoutComponent implements OnInit, OnDestroy {
-  loggedOut = false;
+  readonly $loggedOut: WritableSignal<boolean> = signal(false);
+  get loggedOut(): boolean { return this.$loggedOut(); }
+  private readonly _router: Router = inject(Router);
+  private readonly _authenticationService: AuthenticationService = inject(AuthenticationService);
+  private readonly _destroyRef: DestroyRef = inject(DestroyRef);
 
   private redirectTimer: ReturnType<typeof setTimeout> | undefined = undefined;
 
-  constructor(private router: Router, private authenticationService: AuthenticationService) {
-  }
-
   ngOnInit(): void {
-    this.authenticationService.logout().subscribe({
+    this._authenticationService.logout().pipe(takeUntilDestroyed(this._destroyRef)).subscribe({
       next: () => {
-        this.loggedOut = true;
+        this.$loggedOut.set(true);
         this.redirectTimer = setTimeout(() => {
-          this.router.navigate(['/login']);
+          this._router.navigate(['/login']);
         }, 2000);
       },
       error: (error) => {
-          reportError('logout', error);
-        // Even if there's an error, we should probably still redirect to login
-        this.router.navigate(['/login']);
+        reportError('logout', error);
+        this._router.navigate(['/login']);
       }
     });
   }
