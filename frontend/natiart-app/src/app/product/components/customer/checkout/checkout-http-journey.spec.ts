@@ -84,6 +84,24 @@ describe('Rendered checkout HTTP journey', (): void => {
     return http.expectOne((request): boolean => request.url.endsWith('/orders/create'));
   }
 
+  it('renders and focuses the next step after a real button click without forcing change detection', async (): Promise<void> => {
+    fixture.autoDetectChanges();
+    await TestBed.inject(Router).navigateByUrl('/checkout');
+    await fixture.whenStable();
+    const screen: HTMLElement = fixture.nativeElement as HTMLElement;
+    const next: HTMLButtonElement | undefined = Array.from(screen.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button: HTMLButtonElement): boolean => button.textContent?.trim() === 'Next: Shipping');
+    expect(next).toBeDefined();
+    expect(next!.disabled).toBeFalse();
+    next!.click();
+    await fixture.whenStable();
+    const heading: HTMLHeadingElement | null = screen.querySelector<HTMLHeadingElement>('h2[tabindex="-1"]');
+    expect(heading?.textContent).toContain('Shipping Address');
+    expect(document.activeElement).toBe(heading);
+    expect(screen.querySelector<HTMLInputElement>('input[formControlName="houseNumber"]')).not.toBeNull();
+    http.expectNone((request): boolean => request.url.endsWith('/shipping/quote'));
+  });
+
   it('uses the committed server total, enters PIX through the router and renders confirmed status', fakeAsync((): void => {
     const order: TestRequest = submit();
     expect(order.request.method).toBe('POST');
