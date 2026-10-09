@@ -56,10 +56,15 @@ public class AsaasUserManager {
     }
 
     public AsaasCustomerCreationResponse registerUser(UserDto userDto) throws Exception {
+        return registerCustomer(userDto, false);
+    }
+
+    /** Creates a payer without granting any account authority. */
+    public AsaasCustomerCreationResponse registerCustomer(UserDto userDto, boolean guest) throws Exception {
         final HttpHeaders headers = getRequestHeaders();
 
         final HttpEntity<AsaasCustomerCreationRequest> asaasPaymentCreationRequestHttpEntity =
-                new HttpEntity<>(AsaasCustomerCreationRequest.from(userDto), headers);
+                new HttpEntity<>(AsaasCustomerCreationRequest.from(userDto).setNotificationDisabled(guest), headers);
 
         try {
             final AsaasCustomerCreationResponse response = restTemplate.postForObject(

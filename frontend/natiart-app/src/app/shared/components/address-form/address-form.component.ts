@@ -83,7 +83,8 @@ export class AddressFormComponent implements OnInit, OnDestroy {
       .pipe(
         finalize(() => {
           this.isLoadingAddress = false;
-          this.addressFormGroup.updateValueAndValidity(); // Update parent form group validity after loading
+          // Stopping a lookup when moving to Payment must not invalidate an already reviewed quote.
+          this.addressFormGroup.updateValueAndValidity({emitEvent: false});
           this.cdr.markForCheck();
         }),
         takeUntil(this.destroy$)

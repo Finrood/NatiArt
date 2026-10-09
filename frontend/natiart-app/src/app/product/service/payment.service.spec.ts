@@ -43,7 +43,7 @@ describe('PaymentService', () => {
         expect(actual.paymentId).toBe('pay_123');
       });
 
-    const request = http.expectOne(`${apiUrl}/payments/create`);
+    const request = http.expectOne(`${apiUrl}/account/payments/create`);
     expect(request.request.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/);
     request.flush(response);
   });
@@ -56,7 +56,7 @@ describe('PaymentService', () => {
       )
       .subscribe();
 
-    const request = http.expectOne(`${apiUrl}/payments/create`);
+    const request = http.expectOne(`${apiUrl}/account/payments/create`);
     expect(request.request.headers.get('Idempotency-Key')).toBe('payment-attempt-1');
     request.flush({});
   });
@@ -68,7 +68,7 @@ describe('PaymentService', () => {
     });
 
     http
-      .expectOne(`${apiUrl}/payments/pay_123/pix-qr-code`)
+      .expectOne(`${apiUrl}/account/payments/pay_123/pix-qr-code`)
       .flush({ success: true, encodedImage: 'abc', payload: 'payload', expirationDate: '2030-01-01T00:00:00Z' });
   });
 
@@ -83,7 +83,7 @@ describe('PaymentService', () => {
     it('rejects malformed raw QR data before constructing an image URL: ' + JSON.stringify(invalid), () => {
       let rejected: boolean = false;
       service.getPixQrCode('pay_123').subscribe({next: () => fail('invalid QR emitted'), error: () => rejected = true});
-      http.expectOne(`${apiUrl}/payments/pay_123/pix-qr-code`).flush(invalid);
+      http.expectOne(`${apiUrl}/account/payments/pay_123/pix-qr-code`).flush(invalid);
       expect(rejected).toBeTrue();
     });
   }
@@ -95,6 +95,6 @@ describe('PaymentService', () => {
         expect(actual.status).toBe('PENDING');
       });
 
-    http.expectOne(`${apiUrl}/payments/pay_123/status`).flush({ paymentId: 'pay_123', status: 'PENDING' });
+    http.expectOne(`${apiUrl}/account/payments/pay_123/status`).flush({ paymentId: 'pay_123', status: 'PENDING' });
   });
 });

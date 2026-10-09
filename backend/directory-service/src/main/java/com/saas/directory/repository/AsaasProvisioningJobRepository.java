@@ -24,6 +24,9 @@ public interface AsaasProvisioningJobRepository extends JpaRepository<AsaasProvi
 
     Optional<AsaasProvisioningJob> findByUserIdAndPaymentProcessor(String userId, PaymentProcessor paymentProcessor);
 
+    Optional<AsaasProvisioningJob> findByGuestCustomerIdAndPaymentProcessor(
+            String guestCustomerId, PaymentProcessor processor);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select j from AsaasProvisioningJob j where j.id = :id")
     Optional<AsaasProvisioningJob> findByIdForUpdate(@Param("id") String id);

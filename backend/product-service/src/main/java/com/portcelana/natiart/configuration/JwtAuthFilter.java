@@ -61,11 +61,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        if (request.getRequestURI().startsWith("/guest/")) {
+            SecurityContextHolder.clearContext();
+            filterChain.doFilter(request, response);
+            return;
+        }
         final String token = extractToken(request);
         if (token != null) {
             try {
                 final AuthenticationResponseDto authenticationResponse =
-                        validationCache.get(token).orElseGet(() -> validateWithDirectory(token));
+                        request.getRequestURI().startsWith("/account/")
+                                ? validateWithDirectory(token)
+                                : validationCache.get(token).orElseGet(() -> validateWithDirectory(token));
 
                 // MUST use the three-arg constructor: the two-arg variant treats the second argument
                 // as CREDENTIALS and builds an *unauthenticated* token with empty authorities, which

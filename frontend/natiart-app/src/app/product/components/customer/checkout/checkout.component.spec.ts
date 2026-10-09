@@ -554,7 +554,7 @@ describe('CheckoutComponent', () => {
     expect(component.errorMessage).toContain('Could not process PIX payment');
   });
 
-  it('blocks unauthenticated checkout before payment', async () => {
+  it('blocks checkout when guest details have not been prepared', async () => {
     isLoggedInSubject.next(false);
     currentUserSubject.next(loggedInUser);
     component.checkoutForm.get('userInfo')?.setValue({
@@ -579,7 +579,7 @@ describe('CheckoutComponent', () => {
 
     await component.onSubmit();
 
-    expect(component.errorMessage).toContain('Please sign in or register');
+    expect(component.errorMessage).toBeTruthy();
     expect(createPixPaymentSpy).not.toHaveBeenCalled();
     expect(routerNavigateSpy).not.toHaveBeenCalled();
   });

@@ -19,7 +19,11 @@ import jakarta.persistence.Version;
 import com.saas.directory.model.helper.PaymentProcessor;
 
 @Entity
-@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "payment_processor"}))
+@Table(
+        uniqueConstraints = {
+            @UniqueConstraint(columnNames = {"user_id", "payment_processor"}),
+            @UniqueConstraint(columnNames = {"guest_customer_id", "payment_processor"})
+        })
 public class AsaasProvisioningJob {
     private static final Pattern SAFE_CORRELATION_ID = Pattern.compile("[A-Za-z0-9._-]{1,64}");
 
@@ -29,9 +33,13 @@ public class AsaasProvisioningJob {
     @Version
     private long version;
 
-    @ManyToOne(optional = false, fetch = FetchType.EAGER)
-    @JoinColumn(name = "user_id", nullable = false)
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "user_id")
     private User user;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "guest_customer_id")
+    private GuestCustomer guestCustomer;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -73,6 +81,19 @@ public class AsaasProvisioningJob {
         this.nextAttemptAt = nextAttemptAt;
         this.correlationId = correlationId;
         ensureCorrelationId();
+    }
+
+    public AsaasProvisioningJob(GuestCustomer customer, PaymentProcessor processor, Instant nextAttemptAt) {
+        this.id = UUID.randomUUID().toString();
+        this.guestCustomer = customer;
+        this.paymentProcessor = processor;
+        this.status = AsaasProvisioningStatus.PENDING;
+        this.nextAttemptAt = nextAttemptAt;
+        this.correlationId = UUID.randomUUID().toString();
+    }
+
+    public GuestCustomer getGuestCustomer() {
+        return guestCustomer;
     }
 
     public String getId() {

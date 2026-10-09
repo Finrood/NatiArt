@@ -101,6 +101,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Rehearse scoped legacy upgrade, duplicates and partial schema
         run: python3 backend/scripts/legacy_idempotency_rollout_test.py
+      - name: Rehearse additive guest checkout migrations and ownership constraints
+        run: python3 backend/scripts/guest_checkout_rollout_test.py
   container-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 45

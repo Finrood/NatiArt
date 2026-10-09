@@ -25,9 +25,21 @@
         </div>
 
         <div class="bg-white p-4 sm:p-8 art-panel">
-          @if (!(isLoggedIn$ | async)) {
-            <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-md mb-6" role="status" i18n>
-              Please sign in or register before checking out. Guest checkout is currently unavailable.
+          @if (guest.$active() || !(isLoggedIn$ | async)) {
+            <div class="mb-6 rounded-md bg-primary-light/20 p-4" role="status">
+              <p i18n>Continue as a guest. You can create an account after placing your order.</p>
+              <a routerLink="/login" class="art-link" i18n>Already have an account? Sign in</a>
+              <label class="mt-3 flex items-center gap-2"><input type="checkbox" [(ngModel)]="rememberDetails">
+                <span i18n>Remember my details on this device for 30 days</span></label>
+              @if (guest.$session()?.profile && !hasSavedAttempt) {
+                <button type="button" class="art-link mt-2" (click)="forgetGuestDetails()" i18n>Forget my details</button>
+              }
+            </div>
+          }
+          @if ((isLoggedIn$ | async) && !resumeGuest && hasGuestAttempt) {
+            <div class="mb-6 rounded-md bg-blue-50 p-4" role="status">
+              <p i18n>You have an unfinished guest checkout on this device. Resume it with its original details to avoid placing a second order.</p>
+              <a [href]="guestResumeUrl" class="art-link" i18n>Resume guest checkout</a>
             </div>
           }
           @if (hasSavedAttempt) {
@@ -48,7 +60,7 @@
             @if (currentStep === 1) {
               <section>
                 <h2 #stepHeading tabindex="-1" class="text-3xl font-normal text-secondary-dark mb-6" i18n>Your Information</h2>
-                <app-user-info-step [checkoutForm]="checkoutForm"></app-user-info-step>
+                <app-user-info-step [checkoutForm]="checkoutForm" [accountCheckout]="(isLoggedIn$ | async) === true && !guest.$active() && !resumeGuest"></app-user-info-step>
                 <div class="mt-8 flex justify-end">
                   <app-button type="button" (click)="nextStep()" color="primary" size="md" [disabled]="checkoutForm.get('userInfo')?.invalid" i18n>
                     Next: Shipping

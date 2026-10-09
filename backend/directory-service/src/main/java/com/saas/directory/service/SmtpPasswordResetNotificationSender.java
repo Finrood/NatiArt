@@ -18,8 +18,11 @@ public class SmtpPasswordResetNotificationSender implements PasswordResetNotific
         final SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from);
         message.setTo(notification.recipient());
-        message.setSubject("Reset your NatiArt password");
-        message.setText("Use this link within 15 minutes to reset your password:\n\n"
+        message.setSubject(
+                notification.checkoutClaim() ? "Your NatiArt orders and account" : "Reset your NatiArt password");
+        message.setText((notification.checkoutClaim()
+                        ? "Use this link within 15 minutes to verify your email and connect your guest orders:\n\n"
+                        : "Use this link within 15 minutes to reset your password:\n\n")
                 + notification.resetLink()
                 + "\n\nIf you did not request this, you can ignore this email.");
         mailSender.send(message);

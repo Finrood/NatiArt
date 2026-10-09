@@ -29,6 +29,10 @@ public class AsaasProvisioningService {
         process(state.claimForUsername(username));
     }
 
+    public void provisionGuest(String customerId) {
+        process(state.claimForGuest(customerId));
+    }
+
     @Scheduled(fixedDelayString = "${saas.asaas.provisioning.fixed-delay-millis:30000}")
     public void processDueJobs() {
         for (String jobId : state.dueJobIds()) {
@@ -52,11 +56,21 @@ public class AsaasProvisioningService {
                 LOGGER.warn("Provisioning stopped requestId={} reason=ambiguous-provider-customers", requestId);
                 return;
             }
-            final AsaasCustomerCreationResponse response =
-                    existing.isEmpty() ? asaasUserManager.registerUser(claim.customer()) : existing.getFirst();
+            final AsaasCustomerCreationResponse response = existing.isEmpty()
+                    ? (claim.username() == null
+                            ? asaasUserManager.registerCustomer(claim.customer(), true)
+                            : asaasUserManager.registerUser(claim.customer()))
+                    : existing.getFirst();
             if (response == null || response.getId() == null || response.getId().isBlank()) {
                 state.retry(claim, "Payment provider returned no customer ID");
                 LOGGER.warn("Provisioning scheduled retry requestId={} reason=empty-provider-id", requestId);
+                return;
+            }
+            if (claim.username() == null
+                    && (!claim.userId().equals(response.getExternalReference())
+                            || response.isDeleted()
+                            || !claim.customer().getProfile().getCpf().equals(response.getCpfCnpj()))) {
+                state.failed(claim, "Payment provider returned a different payer");
                 return;
             }
             state.succeeded(claim, response.getId());

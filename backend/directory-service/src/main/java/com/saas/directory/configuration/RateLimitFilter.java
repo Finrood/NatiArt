@@ -38,7 +38,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
             "/refresh-token",
             "/password-reset/request",
             "/password-reset",
-            "/client-errors");
+            "/client-errors",
+            "/guest/session",
+            "/guest/session/details",
+            "/guest/session/attempt",
+            "/checkout-claim/request",
+            "/checkout-claim/inspect",
+            "/checkout-claim/confirm",
+            "/checkout-claim/track");
     private final int maxRequestsPerWindow;
     private final int clientErrorMaxRequestsPerWindow;
     private final int internalValidationMaxRequestsPerWindow;

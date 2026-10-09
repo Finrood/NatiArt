@@ -55,6 +55,10 @@ public class ShippingRateLimitFilter extends OncePerRequestFilter {
         return !HttpMethod.POST.matches(request.getMethod())
                 || !(SHIPPING_ESTIMATE_ROUTE.equals(request.getRequestURI())
                         || SHIPPING_QUOTE_ROUTE.equals(request.getRequestURI())
+                        || "/guest/shipping/quote".equals(request.getRequestURI())
+                        || "/guest/orders/create".equals(request.getRequestURI())
+                        || "/guest/payments/create".equals(request.getRequestURI())
+                        || "/guest/customer/uploads".equals(request.getRequestURI())
                         || SHIPPING_BASKET_ESTIMATE_ROUTE.equals(request.getRequestURI()));
     }
 

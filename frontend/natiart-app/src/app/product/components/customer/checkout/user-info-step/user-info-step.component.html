@@ -15,13 +15,15 @@
 
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
     <app-natiart-form-field label="CPF" controlName="cpf" [form]="userInfoGroup" i18n-label>
-      <input formControlName="cpf" id="cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" cpfFormat maxlength="14" readonly class="form-input bg-surface-variant/30">
+      <input formControlName="cpf" id="cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" cpfFormat maxlength="14" [readonly]="accountCheckout()" class="form-input">
     </app-natiart-form-field>
 
     <app-natiart-form-field label="Phone (Optional)" controlName="phone" [form]="userInfoGroup" [isOptional]="true" i18n-label>
       <input formControlName="phone" id="phone" type="tel" autocomplete="tel-national" placeholder="(XX) XXXXX-XXXX" appPhoneFormatBrazil maxlength="15" class="form-input" i18n-placeholder>
     </app-natiart-form-field>
   </div>
-  <p class="text-sm text-secondary-light" i18n="@@checkoutCpfAccountHint">Your CPF comes from your account details.</p>
-  <a routerLink="/account/profile" class="art-link min-h-11 inline-flex items-center" i18n="@@checkoutEditAccount">Edit account details</a>
+  @if (accountCheckout()) {
+    <p class="text-sm text-secondary-light" i18n="@@checkoutCpfAccountHint">Your CPF comes from your account details.</p>
+    <a routerLink="/account/profile" class="art-link min-h-11 inline-flex items-center" i18n="@@checkoutEditAccount">Edit account details</a>
+  }
 </div>

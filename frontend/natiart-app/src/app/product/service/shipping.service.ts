@@ -1,3 +1,4 @@
+import {GuestCheckoutService} from './guest-checkout.service';
 import {inject, Injectable} from '@angular/core';
 import {HttpClient} from "@angular/common/http";
 import {Observable} from "rxjs";
@@ -63,6 +64,7 @@ export interface ShippingBasketEstimateRequest {
 export class ShippingService {
   private readonly apiUrl: string = `${environment.api.product.url}/shipping`;
 
+  private readonly _guest: GuestCheckoutService = inject(GuestCheckoutService);
   private readonly _http: HttpClient = inject(HttpClient);
 
   calculateShipping(request: ShippingEstimateRequest): Observable<ShippingEstimate[]> {
@@ -70,7 +72,7 @@ export class ShippingService {
   }
 
   createQuote(request: ShippingQuoteRequest): Observable<ShippingQuote> {
-    return this._http.post<ShippingQuote>(`${this.apiUrl}/quote`, request);
+    return this._http.post<ShippingQuote>(`${this._guest.$active() ? environment.api.product.url + "/guest/shipping" : this.apiUrl}/quote`, request, this._guest.$active() ? this._guest.options() : {});
   }
 
   estimateBasket(request: ShippingBasketEstimateRequest): Observable<ShippingEstimate[]> {

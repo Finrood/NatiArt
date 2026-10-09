@@ -3,6 +3,7 @@ import argparse
 import base64
 from decimal import Decimal
 import json
+import http.cookiejar
 import os
 from pathlib import Path
 import socket
@@ -32,7 +33,7 @@ class Smoke:
     def compose(self, *args):
         subprocess.run(self.command + list(args), cwd=ROOT, env=self.env, check=True)
 
-    def request(self, path, data=None, token=None, method=None, headers=None, expected=200, binary=False):
+    def request(self, path, data=None, token=None, method=None, headers=None, expected=200, binary=False, opener=None):
         supplied = dict(headers or {})
         if token:
             supplied['Authorization'] = 'Bearer ' + token
@@ -41,7 +42,7 @@ class Smoke:
             supplied['Content-Type'] = 'application/json'
         request = urllib.request.Request(self.origin + path, data=data, headers=supplied, method=method)
         try:
-            response = urllib.request.urlopen(request, timeout=30)
+            response = (opener.open if opener else urllib.request.urlopen)(request, timeout=30)
         except urllib.error.HTTPError as error:
             response = error
         with response:
@@ -96,6 +97,98 @@ class Smoke:
         qr = self.request('/server/product/payments/' + payment['paymentId'] + '/pix-qr-code', token=customer)
         assert 'NOT-A-PAYMENT' in qr['payload'] and base64.b64decode(qr['encodedImage']).startswith(b'\x89PNG')
         return order, payment['paymentId']
+
+    def guest_journey(self, product, profile, admin):
+        print('Checking guest checkout, private capabilities, email tracking and account claiming...', flush=True)
+        directory, commerce = '/server/directory', '/server/product'
+        email = 'guest.qa@example.invalid'
+        profile = {key: value for key, value in profile.items() if key not in ['id', 'version']}
+        def browser():
+            return urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+        first, other = browser(), browser()
+        def start(opener):
+            session = self.request(directory + '/guest/session', {}, headers={'X-Guest-Request': '1'}, opener=opener)
+            headers = {'X-Guest-CSRF': session['csrfToken']}
+            session = self.request(directory + '/guest/session/details', {'email': email, 'profile': profile, 'remember': True}, headers=headers, opener=opener)
+            deadline = time.monotonic() + 30
+            while not session['externalId']:
+                assert time.monotonic() < deadline, 'Guest payer was not provisioned'
+                time.sleep(.25)
+                session = self.request(directory + '/guest/session', opener=opener)
+            assert session['remembered'] and session['customerId']
+            return session, headers
+        session, headers = start(first)
+        stranger, stranger_headers = start(other)
+        assert session['customerId'] != stranger['customerId'] and session['externalId'] != stranger['externalId']
+        self.request(commerce + '/account/orders', opener=first, expected=403)
+        self.request(commerce + '/guest/shipping/quote', {'zipCode': profile['zipCode'], 'items': []}, headers={'X-Guest-CSRF': 'wrong'}, opener=first, expected=403)
+        data, multipart_headers = self.multipart({}, [('file', 'guest.png', 'image/png', (ROOT / 'qa/assets/demo-qr.png').read_bytes())])
+        upload = self.request(commerce + '/guest/customer/uploads', data, headers=dict(headers, **multipart_headers), opener=first)
+        item = {'productId': product['id'], 'quantity': 1, 'personalization': {'personalizationOptions': {'CUSTOM_IMAGE': upload['uploadId']}}}
+        quote = self.request(commerce + '/guest/shipping/quote', {'zipCode': profile['zipCode'], 'items': [item]}, headers=headers, opener=first)
+        body = {key: profile.get(key) for key in ['firstname', 'lastname', 'phone', 'country', 'state', 'city', 'neighborhood', 'zipCode', 'street', 'houseNumber', 'complement']}
+        body.update(email='forged@example.invalid', items=[item], shippingQuoteId=quote['quoteId'])
+        order_key, payment_key = str(uuid.uuid4()), str(uuid.uuid4())
+        attempt = {'username': 'guest:' + session['id'], 'orderRequest': body, 'orderIdempotencyKey': order_key,
+                   'paymentIdempotencyKey': payment_key, 'currentOrder': None, 'paymentId': None}
+        self.request(directory + '/guest/session/attempt', {'attemptJson': json.dumps(attempt)}, headers=headers, opener=first, expected=204)
+        order = self.request(commerce + '/guest/orders/create', body, headers=dict(headers, **{'Idempotency-Key': order_key}), opener=first)
+        assert order['email'] == email and order['ownerExternalId'] == session['externalId']
+        replay = self.request(commerce + '/guest/orders/create', body, headers=dict(headers, **{'Idempotency-Key': order_key}), opener=first)
+        assert replay['id'] == order['id']
+        self.request(commerce + '/guest/orders/' + order['id'], opener=other, expected=403)
+        payment_body = {'paymentProcessor': 'ASAAS', 'customerId': 'forged-payer', 'value': order['totalAmount'], 'billingType': 'PIX', 'orderId': order['id']}
+        payment = self.request(commerce + '/guest/payments/create', payment_body, headers=dict(headers, **{'Idempotency-Key': payment_key}), opener=first)
+        replay = self.request(commerce + '/guest/payments/create', payment_body, headers=dict(headers, **{'Idempotency-Key': payment_key}), opener=first)
+        assert replay['paymentId'] == payment['paymentId'] and payment['customerId'] == session['externalId']
+        self.request(commerce + '/guest/payments/' + payment['paymentId'] + '/status', opener=other, expected=403)
+        qr = self.request(commerce + '/guest/payments/' + payment['paymentId'] + '/pix-qr-code', opener=first)
+        assert 'NOT-A-PAYMENT' in qr['payload']
+        attempt.update(currentOrder=order, paymentId=payment['paymentId'])
+        self.request(directory + '/guest/session/attempt', {'attemptJson': json.dumps(attempt)}, headers=headers, opener=first, expected=204)
+        assert json.loads(self.request(directory + '/guest/session', opener=first)['attemptJson'])['paymentId'] == payment['paymentId']
+        self.request(directory + '/login', {'username': email, 'password': PASSWORD}, expected=401)
+        def proof():
+            self.request(directory + '/checkout-claim/request', {'email': email}, expected=202)
+            inbox = self.request('/qa/notifications', headers=self.control)
+            link = next(message['reset_link'] for message in inbox if message['recipient'] == email)
+            assert link.startswith(self.origin + '/en/claim-orders#token=')
+            return urllib.parse.parse_qs(urllib.parse.urlsplit(link).fragment)['token'][0]
+        tracking_proof = proof()
+        reader = browser()
+        self.request(directory + '/checkout-claim/track', {'token': tracking_proof}, opener=reader, expected=204)
+        self.request(directory + '/checkout-claim/inspect', {'token': tracking_proof}, expected=400)
+        visible = self.request(commerce + '/guest/tracking/orders', opener=reader)
+        assert [entry['id'] for entry in visible] == [order['id']]
+        self.request(commerce + '/guest/orders/' + order['id'], method='DELETE', headers=headers, opener=reader, expected=403)
+        self.request(commerce + '/guest/tracking/payments/' + payment['paymentId'] + '/status', opener=reader)
+        self.request(directory + '/login', {'username': email, 'password': PASSWORD}, expected=401)
+        activation = proof()
+        assert not self.request(directory + '/checkout-claim/inspect', {'token': activation})['existingVerifiedAccount']
+        self.request(directory + '/checkout-claim/confirm', {'token': activation, 'password': 'NatiArtGuest9!', 'passwordConfirmation': 'NatiArtGuest9!'}, expected=204)
+        account_token = self.login(email, 'NatiArtGuest9!')
+        deadline = time.monotonic() + 30
+        while True:
+            history = self.request(commerce + '/account/orders', token=account_token)
+            if any(entry['id'] == order['id'] for entry in history): break
+            assert time.monotonic() < deadline, 'Claim was not durably delivered'; time.sleep(.25)
+        claimed = self.request(commerce + '/account/orders/' + order['id'], token=account_token)
+        assert claimed['ownerExternalId'] == session['externalId'] and claimed['paymentId'] == payment['paymentId']
+        self.request(commerce + '/guest/orders/' + order['id'], opener=first, expected=403)
+        self.request(commerce + '/account/payments/' + payment['paymentId'] + '/status', token=account_token)
+        self.request('/qa/confirm/' + payment['paymentId'], {}, headers=self.control)
+        assert self.request(commerce + '/account/orders/' + order['id'], token=account_token)['status'] == 'PAID'
+        artwork = self.request(f"{commerce}/admin/orders/{order['id']}/items/{claimed['items'][0]['id']}/artwork", token=admin, binary=True)
+        assert artwork[:4] == b'RIFF'
+        # The same email can buy as a guest again without replacing its verified account.
+        original_profile = self.request(directory + '/users/current', token=account_token)['profile']
+        again, again_headers = start(browser())
+        assert again['customerId'] != session['customerId']
+        verified = proof()
+        assert self.request(directory + '/checkout-claim/inspect', {'token': verified})['existingVerifiedAccount']
+        self.request(directory + '/checkout-claim/confirm', {'token': verified, 'password': 'WrongPassword1!', 'passwordConfirmation': 'WrongPassword1!'}, expected=400)
+        self.request(directory + '/checkout-claim/confirm', {'token': verified, 'password': 'NatiArtGuest9!', 'passwordConfirmation': 'NatiArtGuest9!'}, expected=204)
+        assert self.request(directory + '/users/current', token=account_token)['profile'] == original_profile
 
     def run(self):
         print('Checking fixed catalog, gallery and both locale bundles...', flush=True)
@@ -179,6 +272,7 @@ class Smoke:
         self.request('/server/directory/password-reset', reset, expected=400)
         customer = self.login(CUSTOMER, 'NatiArtQa9!')
         self.request('/server/product/cart/item/' + product['id'] + '/add', {}, customer)
+        self.guest_journey(product, profile, admin)
         print('Changing a seeded product and replacing a seeded image before restart...', flush=True)
         changed = dict(self.request('/server/product/products/' + product['id'], token=admin), label='Disposable QA edit', images=[])
         data, headers = self.multipart({'productDto': changed}, [('newImages', 'new.png', 'image/png', (ROOT / 'qa/assets/demo-qr.png').read_bytes())])

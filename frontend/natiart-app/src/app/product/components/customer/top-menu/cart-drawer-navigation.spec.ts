@@ -35,7 +35,7 @@ describe('Cart drawer navigation through the real app shell', () => {
       imports: [AppComponent],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideZonelessChangeDetection(),
         provideLocationMocks(),
-        {provide: AuthenticationService, useValue: {isLoggedIn$: of(false), resetInactivityTimer: (): void => undefined}},
+        {provide: AuthenticationService, useValue: {isLoggedIn$: of(false), currentUser$: of(null), resetInactivityTimer: (): void => undefined}},
         provideRouter([{path: 'dashboard', component: GalleryPage}, {path: 'cart', component: CartPage},
           {path: 'product/:id', component: ProductPage}, {path: 'products', component: CollectionsPage}])],
     }).compileComponents();

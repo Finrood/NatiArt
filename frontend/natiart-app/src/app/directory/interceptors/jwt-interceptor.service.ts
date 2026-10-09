@@ -1,3 +1,4 @@
+import {GUEST_REQUEST} from '../../product/service/guest-checkout.service';
 import {HttpContextToken, HttpInterceptorFn} from '@angular/common/http';
 import {inject, Injector} from '@angular/core';
 import {Router} from "@angular/router";
@@ -57,6 +58,7 @@ const isLogoutRequest = (url: string): boolean =>
 
 export const AUTH_RETRY_CONTEXT = new HttpContextToken<boolean>(() => false);
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
+  if (req.context.get(GUEST_REQUEST)) return next(req);
   if (!isConfiguredApiUrl(req.url) || isAuthRequest(req.url, req.method) || isRefreshTokenRequest(req.url)) {
     return next(req);
   }

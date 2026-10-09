@@ -62,6 +62,25 @@ public interface OrderRepository extends JpaRepository<CustomerOrder, String> {
     @Query("SELECT o.id FROM CustomerOrder o WHERE o.ownerExternalId = :ownerExternalId ORDER BY o.orderDate DESC")
     Page<String> findIdsByOwnerExternalId(@Param("ownerExternalId") String ownerExternalId, Pageable pageable);
 
+    @Query(
+            "SELECT o.id FROM CustomerOrder o WHERE o.accountOwnerId = :accountId OR o.ownerExternalId = :externalId ORDER BY o.orderDate DESC")
+    Page<String> findAccountIds(
+            @Param("accountId") String accountId, @Param("externalId") String externalId, Pageable pageable);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(
+            "UPDATE CustomerOrder o SET o.accountOwnerId = :accountId, o.version = o.version + 1 WHERE o.guestCustomerId IS NOT NULL AND o.accountOwnerId IS NULL AND LOWER(o.email) = :email AND o.orderDate <= :cutoff")
+    int claimGuestOrders(
+            @Param("accountId") String accountId, @Param("email") String email, @Param("cutoff") Instant cutoff);
+
+    @Query(
+            "SELECT o.id FROM CustomerOrder o WHERE o.guestCustomerId IS NOT NULL AND o.accountOwnerId IS NULL AND EXISTS (SELECT c.id FROM GuestOrderClaim c WHERE c.email = LOWER(o.email) AND c.cutoff >= o.orderDate) ORDER BY o.orderDate")
+    List<String> findClaimableIds(Pageable pageable);
+
+    @Query(
+            "SELECT o.id FROM CustomerOrder o WHERE o.guestCustomerId IS NOT NULL AND LOWER(o.email) = :email AND o.orderDate <= :cutoff ORDER BY o.orderDate DESC, o.id DESC")
+    List<String> findGuestTrackingIds(@Param("email") String email, @Param("cutoff") Instant cutoff, Pageable page);
+
     @Query("SELECT o.id FROM CustomerOrder o ORDER BY o.orderDate DESC")
     Page<String> findIds(Pageable pageable);
 

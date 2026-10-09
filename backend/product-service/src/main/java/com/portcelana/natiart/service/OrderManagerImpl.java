@@ -170,6 +170,19 @@ public class OrderManagerImpl implements OrderManager {
 
     @Override
     public CustomerOrder createOrder(OrderDto orderDto, String ownerExternalId, String idempotencyKey) {
+        return createOrderForCustomer(orderDto, ownerExternalId, null, idempotencyKey);
+    }
+
+    @Override
+    public CustomerOrder createGuestOrder(
+            OrderDto orderDto, String ownerExternalId, String guestCustomerId, String idempotencyKey) {
+        if (guestCustomerId == null || !guestCustomerId.matches("[a-f0-9-]{36}"))
+            throw new IllegalArgumentException("Guest customer is required");
+        return createOrderForCustomer(orderDto, ownerExternalId, guestCustomerId, idempotencyKey);
+    }
+
+    private CustomerOrder createOrderForCustomer(
+            OrderDto orderDto, String ownerExternalId, String guestCustomerId, String idempotencyKey) {
         if (ownerExternalId == null || ownerExternalId.isBlank()) {
             throw new IllegalArgumentException("An order must have an owner");
         }
@@ -186,7 +199,10 @@ public class OrderManagerImpl implements OrderManager {
 
         orderCreationService.prepareReservationOwner(ownerExternalId);
         try {
-            return orderCreationService.createOrder(orderDto, ownerExternalId, normalizedKey, fingerprint);
+            return guestCustomerId == null
+                    ? orderCreationService.createOrder(orderDto, ownerExternalId, normalizedKey, fingerprint)
+                    : orderCreationService.createGuestOrder(
+                            orderDto, ownerExternalId, normalizedKey, fingerprint, guestCustomerId);
         } catch (UnusableCustomerUploadException exception) {
             // A concurrent same-key creator may have claimed the artwork and committed first.
             // Reload its order before declaring the claim definitively rejected.

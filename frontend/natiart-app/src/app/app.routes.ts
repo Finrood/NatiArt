@@ -26,6 +26,8 @@ export const routes: Routes = [
     loadComponent: () => import('./directory/components/auth/password-reset/password-reset.component')
       .then(m => m.PasswordResetComponent)
   },
+  {path: 'guest-orders', loadComponent: () => import('./product/components/customer/guest-orders/guest-orders.component').then(m => m.GuestOrdersComponent)},
+  {path: 'claim-orders', loadComponent: () => import('./directory/components/auth/claim-orders/claim-orders.component').then(m => m.ClaimOrdersComponent)},
   {
     path: 'dashboard',
     loadComponent: () => import('./product/components/customer/dashboard/dashboard.component').then(m => m.DashboardComponent)
@@ -71,12 +73,10 @@ export const routes: Routes = [
   },
   {
     path: 'checkout',
-    canActivate: [authGuard],
     loadComponent: () => import('./product/components/customer/checkout/checkout.component').then(m => m.CheckoutComponent)
   },
   {
     path: 'pix-payment/:paymentId',
-    canActivate: [authGuard],
     loadComponent: () =>
       import('./product/components/customer/checkout/pix-payment-confirmation/pix-payment-confirmation.component')
         .then(m => m.PixPaymentConfirmationComponent)

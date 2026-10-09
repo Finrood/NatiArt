@@ -1,8 +1,10 @@
+import {GuestCheckoutService} from '../../../../service/guest-checkout.service';
 import {clearCompletedCheckoutAttempt} from '../../../../service/checkout-attempt-storage';
-import {ChangeDetectorRef, Component, inject, signal, OnDestroy, OnInit} from '@angular/core';
-import {exhaustMap, map} from "rxjs/operators";
+import {ChangeDetectorRef, Component, DestroyRef, inject, signal, OnDestroy, OnInit} from '@angular/core';
+import {exhaustMap, filter, map, switchMap} from "rxjs/operators";
 import {catchError, interval, of, Subscription, take, takeUntil, throwError, timeout, timer} from "rxjs";
-import {PaymentService} from "../../../../service/payment.service";
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import {PaymentAccess, PaymentService} from "../../../../service/payment.service";
 import {ActivatedRoute, ParamMap, Router, RouterLink} from "@angular/router";
 import { DatePipe, NgClass } from "@angular/common";
 import * as confetti from 'canvas-confetti';
@@ -33,18 +35,25 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   private resumeSubscription: Subscription | null = null;
   private expirySubscription: Subscription | null = null;
   pollingInterval!: Subscription;
+  private paymentAccess: PaymentAccess = 'account';
+  private identitySubscription: Subscription | null = null;
+  private readonly _destroy: DestroyRef = inject(DestroyRef);
   private paramSubscription: Subscription | null = null;
   private qrSubscription: Subscription | null = null;
   private fireworksTimer: ReturnType<typeof setInterval> | null = null;
   private pollCount: number = 0;
   private readonly MAX_POLL_ATTEMPTS: number = 60;
 
+  readonly guest: GuestCheckoutService = inject(GuestCheckoutService);
   private readonly _route = inject(ActivatedRoute);
   private readonly _paymentService = inject(PaymentService);
   private readonly _router = inject(Router);
   private readonly _changeDetectorRef = inject(ChangeDetectorRef);
   private readonly _cartService = inject(CartService);
   private readonly _authenticationService = inject(AuthenticationService);
+
+  get isGuestPayment(): boolean { return this.paymentAccess === 'guest'; }
+  get isAccountPayment(): boolean { return this.paymentAccess === 'account'; }
 
   get paymentErrorMessage(): string {
     return this.paymentStatus === 'EXPIRED' ? $localize`This PIX code has expired.` : $localize`Could not load the payment details.`;
@@ -67,7 +76,19 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
       this.$copied.set(false);
       if (routedId) {
         this.paymentId = routedId;
-        this.retryPayment();
+        this.identitySubscription?.unsubscribe();
+        this.identitySubscription = this._authenticationService.authResolved$.pipe(filter(Boolean), take(1),
+          switchMap(() => this._authenticationService.currentUser$.pipe(take(1))), switchMap((user) => {
+          const guestRoute: boolean = this._route.snapshot?.queryParamMap?.get('guest') === '1';
+          const trackingRoute: boolean = this._route.snapshot?.queryParamMap?.get('guestTracking') === '1';
+          this.paymentAccess = trackingRoute ? 'tracking' : (!user || guestRoute) ? 'guest' : 'account';
+          this.guest.$tracking.set(trackingRoute);
+          if (trackingRoute) { this.guest.$active.set(false); return of(true); }
+          if (!user || guestRoute) return this.guest.start().pipe(map((): boolean => true));
+          this.guest.$active.set(false); return of(true);
+        }), takeUntilDestroyed(this._destroy)).subscribe({next: (): void => this.retryPayment(), error: (): void => {
+          this.paymentStatus = 'ERROR'; this._changeDetectorRef.markForCheck();
+        }});
       } else {
         this.paymentId = null;
         this.paymentStatus = 'ERROR';
@@ -78,7 +99,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
 
   loadQrCode(paymentId: string): void {
     this.stopQrCode();
-    this.qrSubscription = this._paymentService.getPixQrCode(paymentId).subscribe(
+    this.qrSubscription = this._paymentService.getPixQrCode(paymentId, this.paymentAccess).subscribe(
       (data) => {
         if (!data.encodedImage || !data.payload || Number.isNaN(data.expirationDate.getTime())
           || data.expirationDate.getTime() <= Date.now()) {
@@ -129,7 +150,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
     this.pollingInterval = interval(5000)
       .pipe(
         exhaustMap(() =>
-          this._paymentService.getPaymentStatus(paymentId).pipe(
+          this._paymentService.getPaymentStatus(paymentId, this.paymentAccess).pipe(
             timeout({each: 10000}),
             map((status) => ({ok: true as const, status: status.status, orderId: status.orderId})),
             catchError((error) => {
@@ -212,7 +233,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
     this.stopQrCode();
     this.qrCodeData = undefined;
     this.paymentStatus = 'PENDING';
-    this.resumeSubscription = this._paymentService.getPaymentStatus(paymentId).pipe(timeout(10000)).subscribe({
+    this.resumeSubscription = this._paymentService.getPaymentStatus(paymentId, this.paymentAccess).pipe(timeout(10000)).subscribe({
       next: (status): void => {
         if (status.status === 'COMPLETED') {
           this.completePayment(status.orderId);
@@ -237,8 +258,16 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
     this.qrCodeData = undefined;
     if (orderId) {
       this._authenticationService.currentUser$.pipe(take(1)).subscribe((user): void => {
-        if (!user?.externalId) return;
-        try { this._cartService.completePurchase(orderId, user.externalId); }
+        if (this.paymentAccess === 'tracking') return;
+        if (this.paymentAccess === 'guest') {
+          try { this._cartService.completeVerifiedPurchase(orderId); } catch { this.$cartUpdateFailed.set(true); }
+          this.guest.saveAttempt(null, orderId).pipe(takeUntilDestroyed(this._destroy)).subscribe({
+            error: (): void => this.$checkoutUpdateFailed.set(true)
+          });
+          return;
+        }
+        if (!user) return;
+        try { this._cartService.completeVerifiedPurchase(orderId); }
         catch { this.$cartUpdateFailed.set(true); }
         if (user.username) {
           try { clearCompletedCheckoutAttempt(localStorage, user.username, orderId); }
@@ -302,6 +331,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.identitySubscription?.unsubscribe();
     if (this.paramSubscription) {
       this.paramSubscription.unsubscribe();
       this.paramSubscription = null;

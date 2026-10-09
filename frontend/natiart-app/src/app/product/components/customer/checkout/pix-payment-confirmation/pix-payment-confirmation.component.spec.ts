@@ -13,8 +13,8 @@ import {environment} from '../../../../../../environments/environment';
 describe('PixPaymentConfirmationComponent', () => {
   let http: HttpTestingController;
   let paramMap$: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
-  const statusUrl = `${environment.api.product.url}/payments/pay_123/status`;
-  const qrUrl = `${environment.api.product.url}/payments/pay_123/pix-qr-code`;
+  const statusUrl = `${environment.api.product.url}/account/payments/pay_123/status`;
+  const qrUrl = `${environment.api.product.url}/account/payments/pay_123/pix-qr-code`;
 
   beforeEach(async () => {
     paramMap$ = new BehaviorSubject(convertToParamMap({paymentId: 'pay_123'}));
@@ -24,7 +24,7 @@ describe('PixPaymentConfirmationComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
-        {provide: AuthenticationService, useValue: {currentUser$: of({externalId: 'cus_MINE'})}},
+        {provide: AuthenticationService, useValue: {authResolved$: of(true), currentUser$: of({externalId: 'cus_MINE'})}},
         {
           provide: ActivatedRoute,
           useValue: {paramMap: paramMap$.asObservable()},
@@ -144,8 +144,8 @@ describe('PixPaymentConfirmationComponent', () => {
 
   it('follows the routed payment id: param change restarts QR and polling for the new id', fakeAsync(() => {
     const {component} = createAndFlushQr();
-    const newQrUrl = `${environment.api.product.url}/payments/pay_456/pix-qr-code`;
-    const newStatusUrl = `${environment.api.product.url}/payments/pay_456/status`;
+    const newQrUrl = `${environment.api.product.url}/account/payments/pay_456/pix-qr-code`;
+    const newStatusUrl = `${environment.api.product.url}/account/payments/pay_456/status`;
 
     paramMap$.next(convertToParamMap({paymentId: 'pay_456'}));
     tick(0);
@@ -186,7 +186,7 @@ describe('PixPaymentConfirmationComponent', () => {
   it('cancels the in-flight QR lookup when the routed payment changes', fakeAsync(() => {
     const fixture = TestBed.createComponent(PixPaymentConfirmationComponent);
     const component = fixture.componentInstance;
-    const newQrUrl = `${environment.api.product.url}/payments/pay_456/pix-qr-code`;
+    const newQrUrl = `${environment.api.product.url}/account/payments/pay_456/pix-qr-code`;
     fixture.detectChanges();
     http.expectOne(statusUrl).flush({status: 'PENDING'});
 
@@ -199,7 +199,7 @@ describe('PixPaymentConfirmationComponent', () => {
     const stale: TestRequest[] = http.match(qrUrl);
     expect(stale.length).toBe(1);
     expect(stale[0].cancelled).toBeTrue();
-    http.expectOne(`${environment.api.product.url}/payments/pay_456/status`).flush({status: 'PENDING'});
+    http.expectOne(`${environment.api.product.url}/account/payments/pay_456/status`).flush({status: 'PENDING'});
     http.expectOne(newQrUrl).flush({success: true, encodedImage: 'def', payload: 'y', expirationDate: '2030-01-01T00:00:00Z'});
 
     component.ngOnDestroy();
@@ -211,8 +211,8 @@ describe('PixPaymentConfirmationComponent', () => {
     paramMap$.next(convertToParamMap({paymentId: 'pay_456'}));
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('img')).toBeNull();
-    http.expectOne(`${environment.api.product.url}/payments/pay_456/status`).flush({status: 'PENDING'});
-    http.expectOne(`${environment.api.product.url}/payments/pay_456/pix-qr-code`)
+    http.expectOne(`${environment.api.product.url}/account/payments/pay_456/status`).flush({status: 'PENDING'});
+    http.expectOne(`${environment.api.product.url}/account/payments/pay_456/pix-qr-code`)
       .flush('bad', {status: 502, statusText: 'Bad Gateway'});
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('img')).toBeNull();
@@ -252,7 +252,7 @@ describe('PixPaymentConfirmationComponent', () => {
     tick(5000);
     http.expectOne(statusUrl).flush({status: 'COMPLETED', orderId: 'ord-1'});
     expect(component.$orderId()).toBe('ord-1');
-    http.expectNone(`${environment.api.product.url}/payments/create`);
+    http.expectNone(`${environment.api.product.url}/account/payments/create`);
     component.ngOnDestroy();
     http.verify();
   }));
@@ -263,25 +263,25 @@ describe('PixPaymentConfirmationComponent', () => {
     http.expectOne(statusUrl).flush({status: 'COMPLETED', orderId: 'ord-1'});
     expect(component.paymentStatus).toBe('COMPLETED');
     http.expectNone(qrUrl);
-    http.expectNone(`${environment.api.product.url}/payments/create`);
+    http.expectNone(`${environment.api.product.url}/account/payments/create`);
     component.ngOnDestroy();
     http.verify();
   }));
 
   it('reconciles a completed route before requesting any QR or starting polling', fakeAsync(() => {
     const fixture = TestBed.createComponent(PixPaymentConfirmationComponent);
-    const complete: jasmine.Spy = spyOn(TestBed.inject(CartService), 'completePurchase');
+    const complete: jasmine.Spy = spyOn(TestBed.inject(CartService), 'completeVerifiedPurchase');
     fixture.detectChanges();
     http.expectNone(qrUrl);
     http.expectOne(statusUrl).flush({status: 'COMPLETED', orderId: 'ord-1'});
     fixture.detectChanges();
-    expect(complete).toHaveBeenCalledOnceWith('ord-1', 'cus_MINE');
+    expect(complete).toHaveBeenCalledOnceWith('ord-1');
     expect(fixture.nativeElement.querySelector('h1').textContent).toContain('Payment Successful!');
     expect(fixture.nativeElement.querySelector('img')).toBeNull();
     tick(5000);
     http.expectNone(statusUrl);
     http.expectNone(qrUrl);
-    http.expectNone(`${environment.api.product.url}/payments/create`);
+    http.expectNone(`${environment.api.product.url}/account/payments/create`);
     fixture.destroy();
     http.verify();
   }));
@@ -292,7 +292,7 @@ describe('PixPaymentConfirmationComponent', () => {
     const stale: TestRequest = http.expectOne(statusUrl);
     paramMap$.next(convertToParamMap({paymentId: 'pay_456'}));
     expect(stale.cancelled).toBeTrue();
-    http.expectOne(`${environment.api.product.url}/payments/pay_456/status`)
+    http.expectOne(`${environment.api.product.url}/account/payments/pay_456/status`)
       .flush('unavailable', {status: 503, statusText: 'Service Unavailable'});
     fixture.detectChanges();
     expect(fixture.componentInstance.paymentStatus).toBe('ERROR');
@@ -335,12 +335,12 @@ describe('PixPaymentConfirmationComponent', () => {
 
   it('shows the server order reference and settles its saved cart snapshot on completed reload', fakeAsync(() => {
     const cart: CartService = TestBed.inject(CartService);
-    const complete = spyOn(cart, 'completePurchase');
+    const complete = spyOn(cart, 'completeVerifiedPurchase');
     const {fixture, component} = createAndFlushQr();
     tick(5000);
     http.expectOne(statusUrl).flush({status: 'COMPLETED', orderId: 'ord-1'});
     fixture.detectChanges();
-    expect(complete).toHaveBeenCalledOnceWith('ord-1', 'cus_MINE');
+    expect(complete).toHaveBeenCalledOnceWith('ord-1');
     expect(fixture.nativeElement.textContent).toContain('Order reference: ord-1');
     expect(fixture.nativeElement.querySelector('img')).toBeNull();
     component.ngOnDestroy();
@@ -399,7 +399,7 @@ describe('PixPaymentConfirmationComponent without paymentId', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
-        {provide: AuthenticationService, useValue: {currentUser$: of({externalId: 'cus_MINE'})}},
+        {provide: AuthenticationService, useValue: {authResolved$: of(true), currentUser$: of({externalId: 'cus_MINE'})}},
         {
           provide: ActivatedRoute,
           useValue: {paramMap: paramMap$.asObservable()},

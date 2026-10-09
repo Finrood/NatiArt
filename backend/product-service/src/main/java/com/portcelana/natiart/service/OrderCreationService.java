@@ -134,6 +134,25 @@ public class OrderCreationService {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public CustomerOrder createOrder(
             OrderDto orderDto, String ownerExternalId, String idempotencyKey, String requestFingerprint) {
+        return createForCustomer(orderDto, ownerExternalId, idempotencyKey, requestFingerprint, null);
+    }
+
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public CustomerOrder createGuestOrder(
+            OrderDto orderDto,
+            String ownerExternalId,
+            String idempotencyKey,
+            String requestFingerprint,
+            String guestCustomerId) {
+        return createForCustomer(orderDto, ownerExternalId, idempotencyKey, requestFingerprint, guestCustomerId);
+    }
+
+    private CustomerOrder createForCustomer(
+            OrderDto orderDto,
+            String ownerExternalId,
+            String idempotencyKey,
+            String requestFingerprint,
+            String guestCustomerId) {
         reservationOwners
                 .findByOwnerExternalIdForUpdate(ownerExternalId)
                 .orElseThrow(() -> new IllegalStateException("Reservation owner has not been initialized"));
@@ -157,6 +176,7 @@ public class OrderCreationService {
                 .setOrderDate(Instant.now())
                 .setStatus(OrderStatus.PENDING)
                 .setOwnerExternalId(ownerExternalId)
+                .setGuestCustomerId(guestCustomerId)
                 .setIdempotencyKey(idempotencyKey)
                 .setRequestFingerprint(requestFingerprint)
                 .setFirstname(orderDto.getFirstname())

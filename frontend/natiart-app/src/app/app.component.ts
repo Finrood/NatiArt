@@ -1,3 +1,6 @@
+import {CartService} from './product/service/cart.service';
+import {GuestCheckoutService} from './product/service/guest-checkout.service';
+import {User} from './directory/models/user.model';
 import {afterEveryRender, Component, DestroyRef, ElementRef, HostListener, inject, signal, WritableSignal} from '@angular/core';
 import {Event, NavigationEnd, NavigationError, Router, RouterOutlet, Scroll} from '@angular/router';
 import {Location, ViewportScroller} from '@angular/common';
@@ -46,7 +49,14 @@ export class AppComponent {
     this._scroller.scrollToAnchor('store-content');
   }
 
+  private readonly _cart: CartService = inject(CartService);
+  private readonly _guest: GuestCheckoutService = inject(GuestCheckoutService);
+
   constructor() {
+    this._authenticationService.currentUser$.pipe(takeUntilDestroyed(this._destroyRef)).subscribe((user: User | null): void => {
+      try { this._cart.useAccount(user?.id ?? null); } catch { /* keep the current basket recoverable when storage is unavailable */ }
+      if (user) this._guest.$active.set(false);
+    });
     this._router.events.pipe(
       takeUntilDestroyed(this._destroyRef)
     ).subscribe((event: Event): void => {

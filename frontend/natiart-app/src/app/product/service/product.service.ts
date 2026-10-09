@@ -1,3 +1,4 @@
+import {GuestCheckoutService} from './guest-checkout.service';
 import {inject, Injectable} from '@angular/core';
 import {HttpClient} from "@angular/common/http";
 import {Observable, Subject, throwError} from "rxjs";
@@ -14,6 +15,7 @@ export interface CustomerUploadResponse {
   providedIn: 'root'
 })
 export class ProductService {
+  private readonly _guest: GuestCheckoutService = inject(GuestCheckoutService);
   private readonly apiUrl: string = `${environment.api.product.url}${environment.api.product.endpoints.product}`;
   private readonly apiUrlImages: string = `${environment.api.product.url}`;
 
@@ -107,6 +109,6 @@ export class ProductService {
   uploadCustomerImage(file: File): Observable<CustomerUploadResponse> {
     const form = new FormData();
     form.append('file', file, file.name);
-    return this._http.post<CustomerUploadResponse>(`${this.apiUrlImages}/customer/uploads`, form);
+    return this._http.post<CustomerUploadResponse>(`${this.apiUrlImages}${this._guest.$active() ? "/guest" : ""}/customer/uploads`, form, this._guest.$active() ? this._guest.options() : {});
   }
 }

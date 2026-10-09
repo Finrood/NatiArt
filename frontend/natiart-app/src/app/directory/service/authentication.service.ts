@@ -353,7 +353,7 @@ export class AuthenticationService implements OnDestroy {
   public resetAuthStateAndRedirect() {
     this.clearLocalAuthState();
     const pathname = window.location.pathname.replace(/^\/(?:en|pt-BR)(?=\/|$)/, '').replace(/\/+$/, '') || '/';
-    if (!['/forgot-password', '/reset-password'].includes(pathname) && !window.location.pathname.includes('/login') && !window.location.pathname.includes('/register') && !window.location.pathname.includes('/checkout')) {
+    if (!['/forgot-password', '/reset-password', '/claim-orders', '/guest-orders'].includes(pathname) && !window.location.pathname.includes('/login') && !window.location.pathname.includes('/register') && !window.location.pathname.includes('/checkout') && !window.location.pathname.includes('/pix-payment')) {
       this._router.navigate(['/login']);
     }
   }

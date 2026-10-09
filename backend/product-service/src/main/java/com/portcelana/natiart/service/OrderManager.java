@@ -36,6 +36,10 @@ public interface OrderManager {
      */
     CustomerOrder createOrder(OrderDto order, String ownerExternalId, String idempotencyKey);
 
+    /** Creates a guest order with a server-validated customer identity. */
+    CustomerOrder createGuestOrder(
+            OrderDto order, String ownerExternalId, String guestCustomerId, String idempotencyKey);
+
     default CustomerOrder createOrder(OrderDto order, String ownerExternalId) {
         return createOrder(order, ownerExternalId, null);
     }

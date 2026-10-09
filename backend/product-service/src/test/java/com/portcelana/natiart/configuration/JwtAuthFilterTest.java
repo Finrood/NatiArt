@@ -419,4 +419,36 @@ class JwtAuthFilterTest {
         assertNotNull(cachedChain.getRequest());
         verify(cache).put(eq("test-token"), any(AuthenticationResponseDto.class));
     }
+
+    @Test
+    void claimedAccountHistoryRejectsRevokedTokensEvenWhenTheyRemainInTheSharedCache() throws Exception {
+        final AuthenticationResponseDto old =
+                new ObjectMapper().readValue(VALID_AUTH_JSON, AuthenticationResponseDto.class);
+        final TokenValidationCache cache = mock(TokenValidationCache.class);
+        when(cache.get("test-token")).thenReturn(Optional.of(old));
+        server.createContext("/validate-token", exchange -> {
+            exchange.sendResponseHeaders(401, -1);
+            exchange.close();
+        });
+        server.start();
+        final JwtAuthFilter filter = new JwtAuthFilter(WebClient.builder(), "http://localhost:" + port, cache);
+        final MockHttpServletResponse response = new MockHttpServletResponse();
+        final MockFilterChain chain = new MockFilterChain();
+        filter.doFilter(requestWithToken("GET", "/account/orders"), response, chain);
+        assertEquals(401, response.getStatus());
+        assertNull(chain.getRequest());
+        verify(cache, org.mockito.Mockito.never()).get(anyString());
+    }
+
+    @Test
+    void guestRequestsDoNotInheritAnAccountSecurityContextOrValidateItsBearerToken() throws Exception {
+        final JwtAuthFilter filter = filterWithHandler(401, null);
+        SecurityContextHolder.getContext()
+                .setAuthentication(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                        "account", "credentials"));
+        final MockFilterChain chain = new MockFilterChain();
+        filter.doFilter(requestWithToken("GET", "/guest/orders/guest-order"), new MockHttpServletResponse(), chain);
+        assertNotNull(chain.getRequest());
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
 }

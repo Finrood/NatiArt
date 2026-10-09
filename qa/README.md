@@ -162,3 +162,23 @@ Use `docker compose down` to stop QA while retaining its asset archive. After a
 reset, refresh the browser and sign in with the seeded password; client-held
 tokens from a discarded database are no longer valid. If a restart interrupts
 an open checkout, begin a fresh order after the stack becomes healthy.
+
+## Guest checkout and previous purchases
+
+Checkout now works without signing in or creating an account. Choose **Remember
+my details** to retain the disposable guest session in that browser for 30 days;
+otherwise it expires after 24 hours and uses a browser-session cookie. Restarting
+H2 still clears all new guest data, orders and verification links.
+
+From the PIX screen or sign-in page, open **Find an order placed as a guest**.
+Request a secure email link, then retrieve it from the QA notification inbox.
+The link offers read-only order tracking without registration, or explicit
+account activation/linking. Existing verified QA accounts use their ordinary
+`password`; an unverified/new account must choose a password meeting the normal
+password rules. No account is created by ordinary guest checkout.
+
+Both authentication and shipping/guest commerce QA limits default to 100
+requests per minute for complete journeys. Production defaults remain unchanged.
+The Compose smoke test also checks cross-guest access denial, replay-safe guest
+payments, read-only email verification and account linking with unchanged
+payment/artwork ownership. See the [protocol and rollout notes](../backend/directory-service/docs/guest-checkout.md).

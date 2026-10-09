@@ -26,7 +26,7 @@ describe('AppComponent', () => {
       imports: [AppComponent],
       providers: [
         {provide: APP_BASE_HREF, useValue: '/en/'},
-        {provide: AuthenticationService, useValue: {isLoggedIn$: of(false), resetInactivityTimer: () => undefined}},
+        {provide: AuthenticationService, useValue: {isLoggedIn$: of(false), currentUser$: of(null), resetInactivityTimer: () => undefined}},
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([{path: 'first', component: FirstPage}, {path: 'loaded', component: LoadingPage},

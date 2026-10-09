@@ -11,6 +11,7 @@ import {RedirectService} from '../directory/service/redirect.service';
 import {environment} from '../../environments/environment';
 import {DashboardComponent} from './components/customer/dashboard/dashboard.component';
 import {ProductDetailComponent} from './components/customer/product-detail/product-detail.component';
+import {CheckoutComponent} from './components/customer/checkout/checkout.component';
 import {CartComponent} from './components/customer/cart/cart.component';
 import {CartService} from './service/cart.service';
 import {Product} from './models/product.model';
@@ -19,7 +20,7 @@ import {Product} from './models/product.model';
 class SignInDestination {}
 
 describe('Guest shopping routes', () => {
-  it('allows discovery and a local basket, then preserves checkout for sign-in', async () => {
+  it('allows discovery, a local basket and checkout without sign-in', async () => {
     localStorage.removeItem('natiart-cart');
     const testRoutes: Routes = routes.map(route => route.path === 'login'
       ? {path: 'login', component: SignInDestination} : route);
@@ -50,9 +51,10 @@ describe('Guest shopping routes', () => {
     harness.detectChanges();
     expect(harness.routeNativeElement!.textContent).toContain('Guest porcelain');
 
-    await harness.navigateByUrl('/checkout', SignInDestination);
-    expect(TestBed.inject(Router).url).toBe('/login');
-    expect(TestBed.inject(RedirectService).getRedirectUrl()).toBe('/checkout');
+    await harness.navigateByUrl('/checkout', CheckoutComponent);
+    http.expectOne(environment.api.directory.url + '/guest/session').flush({id: 'guest-session', csrfToken: 'proof', profile: null, remembered: false});
+    expect(TestBed.inject(Router).url).toBe('/checkout');
+    expect(harness.routeNativeElement!.textContent).toContain('Continue as a guest');
     expect(JSON.parse(localStorage.getItem('natiart-cart') || '{}').items.length).toBe(1);
     harness.fixture.destroy();
     http.verify();

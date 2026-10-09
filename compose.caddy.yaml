@@ -6,9 +6,11 @@ services:
   natiart-directory:
     environment:
       SAAS_SECURITY_PASSWORD_RESET_FRONTEND_URL: ${QA_PUBLIC_URL:-https://natiart.samuelpetre.com}/en/reset-password
+      NATIART_GUEST_SECURE_COOKIE: "true"
       CORS_ALLOWED_ORIGINS: ${QA_PUBLIC_URL:-https://natiart.samuelpetre.com}
   natiart-product:
     environment:
+      NATIART_GUEST_SECURE_COOKIE: "true"
       CORS_ALLOWED_ORIGINS: ${QA_PUBLIC_URL:-https://natiart.samuelpetre.com}
   natiart-web:
     environment:

@@ -13,6 +13,10 @@ import com.portcelana.natiart.model.support.OrderStatus;
 
 @Entity
 @Table(
+        indexes = {
+            @Index(name = "ix_order_account_owner", columnList = "accountOwnerId"),
+            @Index(name = "ix_order_guest_email_date", columnList = "email,orderDate")
+        },
         uniqueConstraints =
                 @UniqueConstraint(
                         name = "uk_customer_order_owner_idempotency",
@@ -81,6 +85,30 @@ public class CustomerOrder {
 
     @Column(nullable = false)
     private String ownerExternalId;
+
+    @Column(length = 36)
+    private String guestCustomerId;
+
+    @Column(length = 36)
+    private String accountOwnerId;
+
+    public String getGuestCustomerId() {
+        return guestCustomerId;
+    }
+
+    public CustomerOrder setGuestCustomerId(String value) {
+        guestCustomerId = value;
+        return this;
+    }
+
+    public String getAccountOwnerId() {
+        return accountOwnerId;
+    }
+
+    public CustomerOrder setAccountOwnerId(String value) {
+        accountOwnerId = value;
+        return this;
+    }
 
     @Column(length = 64)
     private String idempotencyKey;

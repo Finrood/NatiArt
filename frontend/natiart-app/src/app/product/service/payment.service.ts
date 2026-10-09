@@ -1,3 +1,4 @@
+import {GuestCheckoutService} from './guest-checkout.service';
 import {inject, Injectable} from '@angular/core';
 import {HttpClient} from "@angular/common/http";
 import {map, Observable} from 'rxjs';
@@ -5,24 +6,32 @@ import {PaymentCreationRequest} from "../models/paymentCreationRequest.model";
 import {PaymentCreationResponse} from "../models/paymentCreationResonse.model";
 import {environment} from "../../../environments/environment";
 
+export type PaymentAccess = 'account' | 'guest' | 'tracking';
+
 @Injectable({
   providedIn: 'root'
 })
 export class PaymentService {
   private apiUrl = `${environment.api.product.url}`;
 
+  private readonly _guest: GuestCheckoutService = inject(GuestCheckoutService);
+  private paymentAccess(): PaymentAccess { return this._guest.$tracking() ? 'tracking' : this._guest.$active() ? 'guest' : 'account'; }
+  private paymentUrl(scope: PaymentAccess = this.paymentAccess()): string {
+    return this.apiUrl + (scope === 'tracking' ? '/guest/tracking/payments' : scope === 'guest' ? '/guest/payments' : '/account/payments');
+  }
   private readonly _http = inject(HttpClient);
 
   createPixPayment(
     paymentCreationRequest: PaymentCreationRequest,
     idempotencyKey: string = crypto.randomUUID(),
   ): Observable<PaymentCreationResponse> {
-    return this._http.post<PaymentCreationResponse>(`${this.apiUrl}/payments/create`, paymentCreationRequest, {
-      headers: {'Idempotency-Key': idempotencyKey},
+    return this._http.post<PaymentCreationResponse>(`${this.paymentUrl()}/create`, paymentCreationRequest, {
+      ...((this._guest.$active() || this._guest.$tracking()) ? this._guest.options() : {}),
+      headers: {...((this._guest.$active() || this._guest.$tracking()) ? this._guest.options().headers : {}), 'Idempotency-Key': idempotencyKey},
     });
   }
 
-  getPixQrCode(paymentId: string): Observable<{
+  getPixQrCode(paymentId: string, scope: PaymentAccess = this.paymentAccess()): Observable<{
     encodedImage: string;
     payload: string;
     expirationDate: Date;
@@ -33,7 +42,7 @@ export class PaymentService {
         encodedImage: string;
         payload: string;
         expirationDate: string | [number, number, number, number, number, number];
-      }>(`${this.apiUrl}/payments/${paymentId}/pix-qr-code`)
+      }>(`${this.paymentUrl(scope)}/${encodeURIComponent(paymentId)}/pix-qr-code`, scope !== 'account' ? this._guest.options() : {})
       .pipe(
         map((response) => {
           if (response?.success !== true || typeof response.encodedImage !== 'string'
@@ -51,12 +60,12 @@ export class PaymentService {
       );
   }
 
-  getPaymentStatus(paymentId: string): Observable<{ paymentId: string; status: string; orderId?: string }> {
+  getPaymentStatus(paymentId: string, scope: PaymentAccess = this.paymentAccess()): Observable<{ paymentId: string; status: string; orderId?: string }> {
     return this._http.get<{
       paymentId: string;
       status: string;
       orderId?: string;
-    }>(`${this.apiUrl}/payments/${paymentId}/status`);
+    }>(`${this.paymentUrl(scope)}/${encodeURIComponent(paymentId)}/status`, scope !== 'account' ? this._guest.options() : {});
   }
 }
 

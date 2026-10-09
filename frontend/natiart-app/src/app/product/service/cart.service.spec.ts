@@ -267,4 +267,89 @@ describe('CartService', () => {
     expect(service.getCartItemsSnapshot()).toEqual([]);
   });
 
+  it('isolates account baskets and merges guest quantities exactly once', () => {
+    localStorage.removeItem('natiart-cart:account:account-a'); localStorage.removeItem('natiart-cart:account:account-b');
+    service.useAccount('account-a'); service.addToCart(product({stockQuantity: 10}), 2).subscribe();
+    service.useAccount(null); expect(service.getCartItemsSnapshot()).toEqual([]);
+    service.addToCart(product({stockQuantity: 10}), 3).subscribe(); service.useAccount('account-a');
+    expect(service.getCartItemsSnapshot()[0].quantity).toBe(5);
+    service.useAccount('account-b'); expect(service.getCartItemsSnapshot()).toEqual([]);
+    service.useAccount('account-a'); expect(service.getCartItemsSnapshot()[0].quantity).toBe(5);
+    expect(localStorage.getItem('natiart-cart')).toBeNull();
+    localStorage.removeItem('natiart-cart:account:account-a'); localStorage.removeItem('natiart-cart:account:account-b');
+  });
+  it('replays a partially completed merge without doubling the guest basket', () => {
+    localStorage.removeItem('natiart-cart:account:merge-account');
+    service.addToCart(product({stockQuantity: 10}), 2).subscribe();
+    const source: string = localStorage.getItem('natiart-cart')!;
+    const remove: jasmine.Spy = spyOn(localStorage, 'removeItem').and.throwError('storage busy');
+    expect(() => service.useAccount('merge-account')).toThrow();
+    const journal: string = localStorage.getItem('natiart-cart')!;
+    expect(JSON.parse(journal).transferId).toBeTruthy();
+    const replay: CartService = new CartService(); remove.and.callThrough(); replay.useAccount('merge-account');
+    expect(replay.getCartItemsSnapshot()[0].quantity).toBe(2);
+    expect(localStorage.getItem('natiart-cart')).toBeNull();
+    localStorage.removeItem('natiart-cart:account:merge-account');
+  });
+  it('preserves account artwork and clears only guest upload ownership during a merge', () => {
+    localStorage.removeItem('natiart-cart:account:art-account');
+    service.useAccount('art-account'); service.addToCart(product({stockQuantity: 10}), 1).subscribe();
+    service.setCustomImageUploadId(service.getCartItemsSnapshot()[0].cartItemId, 'account-artwork').subscribe();
+    service.useAccount(null); service.addToCart(product({stockQuantity: 10}), 1).subscribe();
+    service.setCustomImageUploadId(service.getCartItemsSnapshot()[0].cartItemId, 'guest-artwork').subscribe();
+    service.useAccount('art-account');
+    expect(service.getCartItemsSnapshot().find(item => item.customImageUploadId === 'account-artwork')).toBeTruthy();
+    expect(service.getCartItemsSnapshot().find(item => item.requiresArtworkReselection)).toBeTruthy();
+    expect(service.getCartItemsSnapshot().some(item => item.customImageUploadId === 'guest-artwork')).toBeFalse();
+    localStorage.removeItem('natiart-cart:account:art-account');
+  });
+  it('keeps a pending guest purchase separate and removes only its purchased units after sign-in', () => {
+    localStorage.removeItem('natiart-cart:account:paid-account');
+    service.useAccount('paid-account'); service.addToCart(product({stockQuantity: 10}), 2).subscribe();
+    service.useAccount(null); service.addToCart(product({stockQuantity: 10}), 3).subscribe();
+    service.rememberPurchase('guest-order', 'cus_guest', [{cartItemId: service.getCartItemsSnapshot()[0].cartItemId, quantity: 3}]);
+    service.useAccount('paid-account'); expect(service.getCartItemsSnapshot().length).toBe(2);
+    service.completeVerifiedPurchase('guest-order'); expect(service.getCartItemsSnapshot()[0].quantity).toBe(2);
+    service.completeVerifiedPurchase('guest-order'); expect(service.getCartItemsSnapshot()[0].quantity).toBe(2);
+    localStorage.removeItem('natiart-cart:account:paid-account');
+  });
+
+  it('does not transfer a stale guest basket twice from two open tabs', () => {
+    localStorage.removeItem('natiart-cart:account:two-tabs');
+    service.addToCart(product({stockQuantity: 10}), 2).subscribe();
+    const otherTab: CartService = new CartService();
+    service.useAccount('two-tabs'); otherTab.useAccount('two-tabs');
+    expect(otherTab.getCartItemsSnapshot()[0].quantity).toBe(2);
+    localStorage.removeItem('natiart-cart:account:two-tabs');
+  });
+  it('adds new guest selections after another tab consumed the earlier guest basket', () => {
+    localStorage.removeItem('natiart-cart:account:two-tabs-new');
+    service.addToCart(product({stockQuantity: 10}), 2).subscribe();
+    const otherTab: CartService = new CartService(); service.useAccount('two-tabs-new');
+    otherTab.addToCart(product({stockQuantity: 10}), 1).subscribe(); otherTab.useAccount('two-tabs-new');
+    expect(otherTab.getCartItemsSnapshot()[0].quantity).toBe(3);
+    localStorage.removeItem('natiart-cart:account:two-tabs-new');
+  });
+
+  it('settles a transferred purchase when a different tab confirmed its payment', () => {
+    localStorage.removeItem('natiart-cart:account:paid-other-tab');
+    service.addToCart(product({stockQuantity: 10}), 2).subscribe();
+    service.rememberPurchase('paid-elsewhere', 'cus_guest', [{cartItemId: service.getCartItemsSnapshot()[0].cartItemId, quantity: 2}]);
+    const signedIn: CartService = new CartService(); signedIn.useAccount('paid-other-tab');
+    service.completeVerifiedPurchase('paid-elsewhere'); signedIn.useAccount(null); signedIn.useAccount('paid-other-tab');
+    expect(signedIn.getCartItemsSnapshot()).toEqual([]);
+    localStorage.removeItem('natiart-cart:account:paid-other-tab');
+  });
+  it('remaps colliding line IDs without settling another account selection', () => {
+    localStorage.setItem('natiart-cart:account:collision', JSON.stringify({version: 1, items: [
+      {cartItemId: 'same-id', product: product({stockQuantity: 10}), quantity: 2, goldBorder: false}], purchases: []}));
+    localStorage.setItem('natiart-cart', JSON.stringify({version: 1, items: [
+      {cartItemId: 'same-id', product: product({stockQuantity: 10}), quantity: 1, goldBorder: true}],
+      purchases: [{orderId: 'guest-collision', customerId: 'cus_guest', lines: [{cartItemId: 'same-id', quantity: 1}], completed: false}]}));
+    const restored: CartService = new CartService(); restored.useAccount('collision');
+    restored.completeVerifiedPurchase('guest-collision');
+    expect(restored.getCartItemsSnapshot().length).toBe(1); expect(restored.getCartItemsSnapshot()[0].goldBorder).toBeFalse();
+    expect(restored.getCartItemsSnapshot()[0].quantity).toBe(2); localStorage.removeItem('natiart-cart:account:collision');
+  });
+
 });

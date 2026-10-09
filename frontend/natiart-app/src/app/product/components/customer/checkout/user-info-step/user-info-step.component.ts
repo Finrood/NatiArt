@@ -1,4 +1,4 @@
-import {ChangeDetectionStrategy, Component, Input} from '@angular/core';
+import {ChangeDetectionStrategy, Component, Input, input} from '@angular/core';
 import {RouterLink} from '@angular/router';
 
 import {FormGroup, ReactiveFormsModule} from "@angular/forms";
@@ -22,6 +22,7 @@ import {PhoneFormatBrazilDirective} from "../../../../../directory/directive/pho
 })
 export class UserInfoStepComponent {
   @Input({ required: true }) checkoutForm!: FormGroup;
+  readonly accountCheckout = input<boolean>(false);
 
   get userInfoGroup(): FormGroup {
     return this.checkoutForm.get('userInfo') as FormGroup;

@@ -42,6 +42,17 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.PATCH, "/admin/users/*/account-state")
                         .hasRole("ADMIN")
+                        .requestMatchers(
+                                "/guest/session",
+                                "/guest/session/details",
+                                "/guest/session/attempt",
+                                "/internal/guest/validate",
+                                "/checkout-claim/request",
+                                "/checkout-claim/inspect",
+                                "/checkout-claim/confirm",
+                                "/checkout-claim/track",
+                                "/internal/guest/tracking/validate")
+                        .permitAll()
                         .anyRequest()
                         .authenticated());
 

@@ -19,7 +19,7 @@
       @if ($cartUpdateFailed()) { <p role="alert" i18n>Payment confirmed. Your cart could not be updated; refresh this page to retry.</p> }
       @if ($checkoutUpdateFailed()) { <p role="alert" i18n>Payment confirmed. Your saved checkout could not be cleared; refresh this page to retry.</p> }
       <p role="status" aria-live="polite" class="text-text-muted mb-6" i18n>Thank you for your purchase. Your order is confirmed.</p>
-      @if ($orderId()) {
+      @if ($orderId() && isAccountPayment) {
         <a routerLink="/account" [queryParams]="{orderId: $orderId()}"
           class="pix-order-link art-link mb-3" i18n>View order</a>
       }
@@ -73,5 +73,12 @@
     }
   }
 
+  @if (isGuestPayment && paymentId) {
+    <aside class="mt-6 border-t pt-5 text-left">
+      <h2 class="text-xl mb-2" i18n>Keep your order close</h2>
+      <p class="mb-3" i18n>Verify your email to save this purchase and earlier guest orders to an account.</p>
+      <a routerLink="/claim-orders" class="art-link" i18n>Save my orders</a>
+    </aside>
+  }
 </div>
 </div>

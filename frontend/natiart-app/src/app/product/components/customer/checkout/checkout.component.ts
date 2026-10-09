@@ -1,15 +1,17 @@
+import {CheckoutBuyer, GuestCheckoutService, GuestSession} from '../../../service/guest-checkout.service';
+import {Profile} from '../../../../directory/models/profile.model';
 import {HttpErrorResponse} from '@angular/common/http';
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, inject, OnDestroy, OnInit, signal, ViewChild, WritableSignal} from '@angular/core';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from '@angular/forms';
-import {EmptyError, firstValueFrom, map, Observable, Subject, throwError} from 'rxjs';
+import {EmptyError, firstValueFrom, take, map, Observable, Subject, throwError} from 'rxjs';
 import {CartItem} from '../../../models/CartItem.model';
 import {OrderDto} from '../../../models/order.model';
 import {OrderItemDto} from '../../../models/orderItem.model';
 import {CartService, PurchasedCartLine} from '../../../service/cart.service';
 import {ProductService} from '../../../service/product.service';
 import {OrderService} from '../../../service/order.service';
-import {Router} from '@angular/router';
+import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {PaymentService} from "../../../service/payment.service";
 import {PaymentCreationRequest} from "../../../models/paymentCreationRequest.model";
 import {OrderSummaryComponent} from "./order-summary/order-summary.component";
@@ -44,6 +46,7 @@ interface CheckoutAttempt {
 @Component({
   selector: 'app-checkout',
   imports: [
+    RouterLink,
     AsyncPipe,
     CommonModule,
     ReactiveFormsModule,
@@ -61,12 +64,20 @@ interface CheckoutAttempt {
 export class CheckoutComponent implements OnInit, OnDestroy {
   readonly calculatingShipping: string = $localize`Calculating shipping...`;
   readonly nextPayment: string = $localize`Next: Payment`;
+  readonly guest: GuestCheckoutService = inject(GuestCheckoutService);
+  rememberDetails: boolean = false;
+  private identityEpoch: number = 0;
+  private buyerIdentity: string | null = null;
+  private guestStarted: boolean = false;
   private readonly _fb: FormBuilder = inject(FormBuilder);
   private readonly _cartService: CartService = inject(CartService);
   private readonly _authenticationService: AuthenticationService = inject(AuthenticationService);
   private readonly _orderService: OrderService = inject(OrderService);
   private readonly _paymentService: PaymentService = inject(PaymentService);
   private readonly _router: Router = inject(Router);
+  readonly resumeGuest: boolean = inject(ActivatedRoute).snapshot.queryParamMap.get('guest') === '1';
+  readonly guestResumeUrl: string = new URL('checkout?guest=1', document.baseURI).toString();
+  get hasGuestAttempt(): boolean { return !!this.guest.$session()?.attemptJson; }
   private readonly _cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
   private readonly $focusChangedStep: WritableSignal<boolean> = signal<boolean>(false);
 
@@ -187,15 +198,29 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this._authenticationService.fetchCurrentUser()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe();
-
     this.currentUser$
       .pipe(
         takeUntil(this.destroy$),
         tap(user => {
+          if (this.resumeGuest) user = null;
+          const identity: string = user ? 'account:' + user.id : 'guest';
+          if (this.buyerIdentity !== null && identity !== this.buyerIdentity) {
+            this.identityEpoch++; this.resetAttempt(); this.shippingQuote = null; this.shippingQuoteFingerprint = null;
+            this.restoredForUsername = null; this.hasPrefilledCurrentUser = false; this.guestStarted = false;
+          }
+          this.buyerIdentity = identity;
+          if (!user && !this.guestStarted) {
+            this.guestStarted = true;
+            const startedFor: number = this.identityEpoch;
+            this.guest.start().pipe(takeUntil(this.destroy$)).subscribe({
+              next: (session: GuestSession): void => { if (startedFor === this.identityEpoch) this.restoreGuest(session); },
+              error: (): void => this.setErrorMessage($localize`Guest checkout could not be started. Please retry.`)
+            });
+          } else if (user) this.guest.$active.set(false);
+          if (user && !this.guest.$session()) this.guest.restore().pipe(takeUntil(this.destroy$)).subscribe();
           if (user && this.restoredForUsername !== user.username) {
+            // A guest draft belongs to its guest capability, even after sign-in.
+            this.resetAttempt();
             this.restoredForUsername = user.username;
             this.hasPrefilledCurrentUser = false;
             this.restoreAttempt(user.username);
@@ -220,6 +245,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       )
       .subscribe();
 
+    this.checkoutForm.get('userInfo')?.valueChanges.pipe(takeUntil(this.destroy$)).subscribe((): void => {
+      if (!this.hasSavedAttempt) { this.shippingQuote = null; this.shippingQuoteFingerprint = null; }
+    });
     this.checkoutForm.get('shippingInfo')?.valueChanges
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
@@ -241,12 +269,12 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     // The storefront currently offers only the server-backed PIX flow.
   }
 
-  createUserIfGuestCheckout(): Observable<User> {
+  resolveCheckoutBuyer(): Observable<CheckoutBuyer> {
     return this.isLoggedIn$.pipe(
       switchMap(isLoggedIn => {
-        if (!isLoggedIn) {
-          this.setErrorMessage($localize`Please sign in or register before checking out.`);
-          return throwError(() => new Error($localize`Guest checkout requires an authenticated account.`));
+        if (!isLoggedIn || this.resumeGuest) {
+          try { return new Observable<CheckoutBuyer>(subscriber => { subscriber.next(this.guest.identity()); subscriber.complete(); }); }
+          catch (error) { return throwError(() => error); }
         } else {
           return this.currentUser$.pipe(map(user => {
             if (!user) throw new Error($localize`No logged-in user found.`);
@@ -257,17 +285,19 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     );
   }
 
-  async onProcessPixPayment(user: User): Promise<void> {
+  async onProcessPixPayment(user: CheckoutBuyer): Promise<void> {
+    const epoch: number = this.identityEpoch;
     this.clearErrorMessage();
     try {
-      if (this.destroyed || this.attemptStorageFailed) {
+      if (this.destroyed || epoch !== this.identityEpoch || this.attemptStorageFailed) {
         return;
       }
       // Provisioning can complete after login; retrieve the latest caller state.
-      const paymentUser: User = user?.externalId
+      const paymentUser: CheckoutBuyer = user?.externalId
         ? user
+        : user.username.startsWith('guest:') ? this.guest.identity()
         : await firstValueFrom(this._authenticationService.fetchCurrentUser().pipe(takeUntil(this.destroy$)));
-      if (this.destroyed) return;
+      if (this.destroyed || epoch !== this.identityEpoch) return;
       if (!paymentUser.externalId) {
         if (paymentUser.provisioningStatus === 'PENDING' || paymentUser.provisioningStatus === 'IN_PROGRESS') {
           this.setErrorMessage($localize`Your payment account is being prepared. Please try again shortly.`);
@@ -296,7 +326,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         return;
       }
         const orderRequest = await this.buildOrderRequest();
-        if (this.destroyed) return;
+        if (this.destroyed || epoch !== this.identityEpoch) return;
         this.orderRequest = orderRequest;
         this.purchasedCartLines = this._cartService.getCartItemsSnapshot().map(
           (item: CartItem) => ({cartItemId: item.cartItemId, quantity: item.quantity}));
@@ -305,7 +335,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         this.paymentIdempotencyKey = crypto.randomUUID();
         // Save the immutable payload and keys before sending anything. A lost
         // response can then replay the same order without reserving stock again.
-        if (!this.persistAttempt(user.username)) {
+        if (!(await this.persistAttemptForBuyer(user.username))) {
           this.orderRequest = null;
           this.checkoutFingerprint = null;
           this.setErrorMessage($localize`Could not save your checkout. Please free browser storage and try again.`);
@@ -313,11 +343,13 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         }
       }
 
+      if (this.destroyed || epoch !== this.identityEpoch) return;
+      this.guest.$active.set(user.username.startsWith('guest:')); this.guest.$tracking.set(false);
       this.setInfoMessage(this.currentOrder ? $localize`Checking your saved order...` : $localize`Creating your order...`);
       const order = await firstValueFrom(this._orderService
         .createOrder(this.orderRequest, this.orderIdempotencyKey)
         .pipe(takeUntil(this.destroy$)));
-      if (this.destroyed) {
+      if (this.destroyed || epoch !== this.identityEpoch) {
         return;
       }
       this.clearInfoMessage();
@@ -327,10 +359,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       }
       this._cartService.rememberPurchase(order.id, paymentUser.externalId, this.purchasedCartLines);
       this.currentOrder = order;
-      this.persistAttempt(user.username);
+      await this.persistAttemptForBuyer(user.username);
+      if (this.destroyed || epoch !== this.identityEpoch) return;
 
       if (order.status === 'CANCELLED' || ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED'].includes(order.status ?? '')) {
-        if (this.clearPersistedAttempt(user.username)) {
+        if (await this.clearAttemptForBuyer(user.username)) {
           this.startNewCheckout(paymentUser);
         }
         this.setInfoMessage(order.status === 'CANCELLED'
@@ -343,11 +376,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         const payment = await firstValueFrom(this._paymentService
           .getPaymentStatus(this.paymentId)
           .pipe(takeUntil(this.destroy$)));
-        if (this.destroyed) {
+        if (this.destroyed || epoch !== this.identityEpoch) {
           return;
         }
         if (payment.status === 'COMPLETED') {
-          if (this.clearPersistedAttempt(user.username)) {
+          if (await this.clearAttemptForBuyer(user.username)) {
             this.startNewCheckout(paymentUser);
           }
           this.setInfoMessage($localize`Your PIX payment has already completed.`);
@@ -365,12 +398,13 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         value: order.totalAmount,
       };
 
+      this.guest.$active.set(user.username.startsWith('guest:'));
       const paymentResponse = await firstValueFrom(
         this._paymentService.createPixPayment(pixPaymentData, this.paymentIdempotencyKey)
           .pipe(takeUntil(this.destroy$))
       );
 
-      if (this.destroyed) {
+      if (this.destroyed || epoch !== this.identityEpoch) {
         return;
       }
 
@@ -379,17 +413,18 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         this.setErrorMessage($localize`Could not process PIX payment. Please try again.`);
         return;
       }
-      this.persistAttempt(user.username);
+      await this.persistAttemptForBuyer(user.username);
+      if (this.destroyed || epoch !== this.identityEpoch) return;
       await this.navigateToPix(this.paymentId);
 
     } catch (error) {
-      if (this.destroyed) {
+      if (this.destroyed || epoch !== this.identityEpoch) {
         return;
       }
       if (error instanceof EmptyError) {
         return;
       }
-      if (this.recoverRejectedOrder(error, user.username)) return;
+      if (await this.recoverRejectedOrder(error, user.username)) return;
       reportError('payment', error);
       this.setErrorMessage($localize`Could not confirm your saved checkout. Please retry; your attempt has been kept.`);
     }
@@ -402,17 +437,19 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     if (this.destroyed) {
       return;
     }
-    const navigated = await this._router.navigate(['/pix-payment', paymentId]);
+    const navigated: boolean = this.guest.$active()
+      ? await this._router.navigate(['/pix-payment', paymentId], {queryParams: {guest: 1}})
+      : await this._router.navigate(['/pix-payment', paymentId]);
     if (!this.destroyed && !navigated) {
       this.setErrorMessage($localize`Could not open the payment page. Your checkout is saved; please try again.`);
     }
   }
 
-  private recoverRejectedOrder(error: unknown, username: string): boolean {
+  private async recoverRejectedOrder(error: unknown, username: string): Promise<boolean> {
     if (this.currentOrder || this.paymentId || !(error instanceof HttpErrorResponse) || error.status !== 400 ||
         error.error?.orderCreated !== false ||
         !['ORDER_CREATION_REJECTED', 'CUSTOM_ARTWORK_UNAVAILABLE'].includes(error.error?.code)) return false;
-    if (!this.clearPersistedAttempt(username)) return true;
+    if (!(await this.clearAttemptForBuyer(username))) return true;
     if (error.error.code === 'CUSTOM_ARTWORK_UNAVAILABLE' && typeof error.error.uploadId === 'string') {
       this._cartService.invalidateArtwork(error.error.uploadId);
     }
@@ -509,7 +546,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   private async loadShippingQuote(): Promise<boolean> {
     this.isLoadingQuote = true;
+    const epoch: number = this.identityEpoch;
     try {
+      if (this.resumeGuest || !(await firstValueFrom(this.currentUser$.pipe(take(1))))) await this.prepareGuest();
+      if (this.destroyed || epoch !== this.identityEpoch) return false;
       const items = await this.buildOrderItems();
       const request = this.buildShippingQuoteRequest(items);
       const fingerprint = JSON.stringify(request);
@@ -580,9 +620,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.isSubmitting = true;
 
     try {
-      let user: User;
+      let user: CheckoutBuyer;
       try {
-        user = await firstValueFrom(this.createUserIfGuestCheckout().pipe(takeUntil(this.destroy$)));
+        user = await firstValueFrom(this.resolveCheckoutBuyer().pipe(takeUntil(this.destroy$)));
       } catch (error) {
         if (error instanceof EmptyError) {
           return;
@@ -672,11 +712,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     }
   }
 
-  private restoreAttempt(username: string): void {
+  private restoreAttempt(username: string, guestRaw?: string): void {
     this.resetAttempt();
     this.attemptStorageFailed = false;
     try {
-      const raw = localStorage.getItem(this.storageKey(username))
+      const raw = guestRaw ?? localStorage.getItem(this.storageKey(username))
         ?? localStorage.getItem('natiart-checkout-attempt');
       if (!raw) {
         return;
@@ -720,10 +760,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         paymentInfo: {paymentMethod: PaymentMethod.PIX},
       });
       this.setInfoMessage($localize`A saved PIX checkout is ready to resume. Its order details are fixed.`);
-      if (!this.persistAttempt(username)) {
+      if (!guestRaw && !this.persistAttempt(username)) {
         throw new Error($localize`Saved checkout could not be migrated`);
       }
-      localStorage.removeItem('natiart-checkout-attempt');
+      if (!guestRaw) localStorage.removeItem('natiart-checkout-attempt');
     } catch (error) {
       this.resetAttempt();
       this.attemptStorageFailed = true;
@@ -779,13 +819,66 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.paymentIdempotencyKey = crypto.randomUUID();
   }
 
-  private startNewCheckout(user: User): void {
+  private startNewCheckout(user: CheckoutBuyer): void {
     this.resetAttempt();
     this.changeStep(1);
     this.shippingQuote = null;
     this.shippingQuoteFingerprint = null;
     if (user.profile) this.checkoutForm.get('userInfo.cpf')?.setValue(this.formatCpf(user.profile.cpf));
     this._cdr.markForCheck();
+  }
+
+  private restoreGuest(session: GuestSession): void {
+    if (this.destroyed) return;
+    this.rememberDetails = session.remembered;
+    if (session.profile) {
+      if (this.checkoutForm.get('userInfo')?.pristine) this.checkoutForm.get('userInfo')?.patchValue({...session.profile, email: session.email});
+      if (this.checkoutForm.get('shippingInfo')?.pristine) this.checkoutForm.get('shippingInfo')?.patchValue(session.profile);
+    }
+    if (session.attemptJson) this.restoreAttempt('guest:' + session.id, session.attemptJson);
+    this._cdr.markForCheck();
+  }
+
+  private async prepareGuest(): Promise<void> {
+    if (!this.guest.$session()) await firstValueFrom(this.guest.start());
+    const contact: {firstname: string; lastname: string; cpf: string; email: string; phone: string} = this.checkoutForm.get('userInfo')!.getRawValue();
+    const address: Profile = this.checkoutForm.get('shippingInfo')!.getRawValue();
+    const profile: Profile = {...address, firstname: contact.firstname, lastname: contact.lastname,
+      cpf: contact.cpf.replace(/\D/g, ''), phone: contact.phone};
+    const previousOwner: string | null = this.guest.$session()?.externalId ?? null;
+    const session: GuestSession = await firstValueFrom(this.guest.details(contact.email, profile, this.rememberDetails));
+    if (previousOwner && previousOwner !== session.externalId) {
+      for (const item of this._cartService.getCartItemsSnapshot()) if (item.customImageUploadId) this._cartService.invalidateArtwork(item.customImageUploadId);
+      this.shippingQuote = null;
+      this.shippingQuoteFingerprint = null;
+    }
+    if (!session.externalId) throw new Error('Guest payment profile is being prepared');
+  }
+
+  private async persistAttemptForBuyer(username: string): Promise<boolean> {
+    if (!username.startsWith('guest:')) return this.persistAttempt(username);
+    if (!this.orderRequest || !this.checkoutFingerprint) return false;
+    try {
+      await firstValueFrom(this.guest.saveAttempt(JSON.stringify({username, fingerprint: this.checkoutFingerprint,
+        orderRequest: this.orderRequest, purchasedCartLines: this.purchasedCartLines,
+        orderIdempotencyKey: this.orderIdempotencyKey, paymentIdempotencyKey: this.paymentIdempotencyKey,
+        currentOrder: this.currentOrder, paymentId: this.paymentId})));
+      return true;
+    } catch { this.setErrorMessage($localize`Your checkout could not be saved. Please retry.`); return false; }
+  }
+
+  private async clearAttemptForBuyer(username: string): Promise<boolean> {
+    if (!username.startsWith('guest:')) return this.clearPersistedAttempt(username);
+    try { await firstValueFrom(this.guest.saveAttempt(null, undefined, this.orderIdempotencyKey)); return true; }
+    catch { this.setErrorMessage($localize`Your saved checkout could not be cleared. Please retry.`); return false; }
+  }
+
+  forgetGuestDetails(): void {
+    this.guest.forget().pipe(takeUntil(this.destroy$)).subscribe({next: (): void => {
+      this.checkoutForm.reset({paymentInfo: {paymentMethod: PaymentMethod.PIX}});
+      this.resetAttempt(); this.shippingQuote = null; this.shippingQuoteFingerprint = null;
+      this.guest.start().pipe(takeUntil(this.destroy$)).subscribe({next: (): void => this._cdr.markForCheck()});
+    }, error: (): void => this.setErrorMessage($localize`Your details could not be forgotten. Please retry.`)});
   }
 
   ngOnDestroy(): void {

@@ -27,6 +27,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         final String path = request.getServletPath().isEmpty() ? request.getRequestURI() : request.getServletPath();
+        if (path.equals("/guest/session")
+                || path.equals("/guest/session/details")
+                || path.equals("/guest/session/attempt")
+                || path.equals("/internal/guest/validate")
+                || path.equals("/checkout-claim/request")
+                || path.equals("/checkout-claim/inspect")
+                || path.equals("/checkout-claim/confirm")
+                || path.equals("/checkout-claim/track")
+                || path.equals("/internal/guest/tracking/validate")) {
+            SecurityContextHolder.clearContext();
+            filterChain.doFilter(request, response);
+            return;
+        }
         if (HttpMethod.POST.matches(request.getMethod())
                 && ("/password-reset/request".equals(path) || "/password-reset".equals(path))) {
             SecurityContextHolder.clearContext();

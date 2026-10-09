@@ -9,6 +9,7 @@ import {PixPaymentConfirmationComponent} from './pix-payment-confirmation/pix-pa
 import {CartService} from '../../../service/cart.service';
 import {AuthenticationService} from '../../../../directory/service/authentication.service';
 import {RoleName, User} from '../../../../directory/models/user.model';
+import {GuestCheckoutService, GuestSession} from '../../../service/guest-checkout.service';
 import {CartItem} from '../../../models/CartItem.model';
 
 @Component({imports: [RouterOutlet], template: '<router-outlet />'})
@@ -18,6 +19,8 @@ class JourneyHostComponent {}
 describe('Rendered checkout HTTP journey', (): void => {
   let fixture: ComponentFixture<JourneyHostComponent>;
   let http: HttpTestingController;
+  let currentUser: BehaviorSubject<User | null>;
+  let loggedIn: BehaviorSubject<boolean>;
   const user: User = {
     id: 'u1', username: 'user@example.test', externalId: 'cus_1', role: RoleName.USER,
     profile: {firstname: 'Ada', lastname: 'Lovelace', cpf: '52998224725', phone: '11999999999',
@@ -33,13 +36,14 @@ describe('Rendered checkout HTTP journey', (): void => {
     localStorage.removeItem('natiart-cart');
     localStorage.removeItem('natiart-purchases');
     localStorage.removeItem('natiart-checkout-attempt:user%40example.test');
-    const currentUser: BehaviorSubject<User | null> = new BehaviorSubject<User | null>(user);
+    currentUser = new BehaviorSubject<User | null>(user);
+    loggedIn = new BehaviorSubject<boolean>(true);
     await TestBed.configureTestingModule({
       imports: [JourneyHostComponent], providers: [provideHttpClient(), provideHttpClientTesting(),
         provideRouter([{path: 'checkout', component: CheckoutComponent},
           {path: 'pix-payment/:paymentId', component: PixPaymentConfirmationComponent}]),
         {provide: AuthenticationService, useValue: {
-          currentUser$: currentUser.asObservable(), isLoggedIn$: new BehaviorSubject<boolean>(true).asObservable(),
+          authResolved$: new BehaviorSubject<boolean>(true).asObservable(), currentUser$: currentUser.asObservable(), isLoggedIn$: loggedIn.asObservable(),
           fetchCurrentUser: (): BehaviorSubject<User | null> => currentUser,
         }},
 
@@ -50,7 +54,12 @@ describe('Rendered checkout HTTP journey', (): void => {
     fixture = TestBed.createComponent(JourneyHostComponent);
   });
 
-  afterEach((): void => { fixture.destroy(); http.verify(); });
+  afterEach((): void => {
+    for (const restore of http.match(request => request.url.endsWith('/guest/session') && request.method === 'GET')) {
+      if (!restore.cancelled) restore.flush({}, {status: 403, statusText: 'No saved guest session'});
+    }
+    fixture.destroy(); http.verify();
+  });
 
   function click(label: string): void {
     const button: HTMLButtonElement | undefined = Array.from(
@@ -154,4 +163,74 @@ describe('Rendered checkout HTTP journey', (): void => {
     expect((fixture.nativeElement as HTMLElement).querySelector('[role="alert"]')).not.toBeNull();
     http.expectNone((request): boolean => request.url.endsWith('/payments/create'));
   }));
+  function guestReady(pendingLookup: boolean = false): GuestSession {
+    currentUser.next(null); loggedIn.next(false);
+    void TestBed.inject(Router).navigateByUrl('/checkout'); flushMicrotasks(); fixture.detectChanges();
+    const session: GuestSession = {id: 'guest-session', customerId: 'guest-customer', email: 'guest@example.test',
+      profile: {...user.profile, houseNumber: '10'}, csrfToken: 'guest-proof', externalId: 'cus_guest',
+      provisioningStatus: 'SUCCEEDED', remembered: false, expiresAt: '2030-01-01T00:00:00Z', attemptJson: null};
+    http.expectOne(request => request.method === 'POST' && request.url.endsWith('/guest/session')).flush(session);
+    flushMicrotasks(); fixture.detectChanges(); click('Next: Shipping');
+    if (pendingLookup) {
+      const zipCode: HTMLInputElement = (fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>('input[formControlName="zipCode"]')!;
+      zipCode.value = '01001000'; zipCode.dispatchEvent(new Event('input', {bubbles: true})); tick(400);
+    }
+    click('Next: Payment'); flushMicrotasks();
+    const details: TestRequest = http.expectOne(request => request.url.endsWith('/guest/session/details'));
+    expect(details.request.body.email).toBe('guest@example.test'); expect(details.request.body.remember).toBeFalse();
+    expect(details.request.headers.get('X-Guest-CSRF')).toBe('guest-proof'); details.flush(session); flushMicrotasks();
+    http.expectOne(request => request.url.endsWith('/guest/shipping/quote')).flush({quoteId: 'guest-quote',
+      destinationPostalCode: '01001000', serviceId: 'fixture', serviceName: 'Fixture', expiresAt: '2099-01-01T00:00:00Z',
+      itemAmount: 80, shippingAmount: 7.5, totalAmount: 87.5,
+      items: [{productId: 'product-1', quantity: 1, unitPrice: 80, lineAmount: 80}]});
+    flushMicrotasks(); fixture.detectChanges(); return session;
+  }
+  it('keeps the reviewed guest shipping total when advancing cancels a pending address lookup', fakeAsync((): void => {
+    guestReady(true);
+    const lookup: TestRequest = http.expectOne(request => request.url.includes('viacep'));
+    expect(lookup.cancelled).toBeTrue();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Payment Details');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('R$87.50');
+    click('Place Order'); flushMicrotasks();
+    http.expectOne(request => request.url.endsWith('/guest/session/attempt')).flush(null); flushMicrotasks();
+    http.expectOne(request => request.url.endsWith('/guest/orders/create')).flush({message: 'Try again'}, {status: 503, statusText: 'Unavailable'});
+    flushMicrotasks();
+  }));
+  it('saves guest retry keys before order creation and completes PIX without login or registration', fakeAsync((): void => {
+    const session: GuestSession = guestReady(); click('Place Order'); flushMicrotasks();
+    const saved: TestRequest = http.expectOne(request => request.url.endsWith('/guest/session/attempt'));
+    const attempt: {orderIdempotencyKey: string; currentOrder: unknown; paymentId: string | null} = JSON.parse(saved.request.body.attemptJson);
+    http.expectNone(request => request.url.endsWith('/guest/orders/create'));
+    expect(attempt.orderIdempotencyKey).toMatch(/^[a-f0-9-]{36}$/); saved.flush(null); flushMicrotasks();
+    const order: TestRequest = http.expectOne(request => request.url.endsWith('/guest/orders/create'));
+    expect(order.request.headers.get('Idempotency-Key')).toBe(attempt.orderIdempotencyKey);
+    expect(order.request.withCredentials).toBeTrue(); expect(order.request.body.shippingQuoteId).toBe('guest-quote');
+    const accepted = {...order.request.body, id: 'guest-order', status: 'PENDING', totalAmount: 87.5};
+    order.flush(accepted); flushMicrotasks();
+    http.expectOne(request => request.url.endsWith('/guest/session/attempt')).flush(null); flushMicrotasks();
+    const payment: TestRequest = http.expectOne(request => request.url.endsWith('/guest/payments/create'));
+    expect(payment.request.body.customerId).toBe('cus_guest'); expect(payment.request.body.value).toBe(87.5);
+    payment.flush({paymentId: 'guest-payment', status: 'PENDING'}); flushMicrotasks();
+    const progress: TestRequest = http.expectOne(request => request.url.endsWith('/guest/session/attempt'));
+    const finalDraft: string = progress.request.body.attemptJson; progress.flush(null); flushMicrotasks(); fixture.detectChanges();
+    expect(TestBed.inject(Router).url).toBe('/pix-payment/guest-payment?guest=1');
+    http.expectOne(request => request.method === 'POST' && request.url.endsWith('/guest/session')).flush({...session, attemptJson: finalDraft});
+    flushMicrotasks();
+    http.expectOne(request => request.url.endsWith('/guest/payments/guest-payment/status')).flush({paymentId: 'guest-payment', status: 'COMPLETED', orderId: 'guest-order'});
+    flushMicrotasks(); fixture.detectChanges();
+    const completion: TestRequest = http.expectOne(request => request.url.endsWith('/guest/session/attempt'));
+    expect(completion.request.body.expectedOrderId).toBe('guest-order'); completion.flush(null);
+    expect(TestBed.inject(CartService).getCartItemsSnapshot()).toEqual([]);
+    http.expectNone(request => request.url.endsWith('/register-user') || request.url.endsWith('/login'));
+  }));
+  it('stops an in-flight guest checkout on sign-in and preserves its guest recovery draft', fakeAsync((): void => {
+    guestReady(); click('Place Order'); flushMicrotasks();
+    const draft: TestRequest = http.expectOne(request => request.url.endsWith('/guest/session/attempt'));
+    const preserved: string = draft.request.body.attemptJson;
+    currentUser.next(user); loggedIn.next(true); draft.flush(null); flushMicrotasks(); fixture.detectChanges();
+    http.expectNone(request => request.url.endsWith('/orders/create') || request.url.endsWith('/payments/create'));
+    expect(TestBed.inject(GuestCheckoutService).$session()!.attemptJson).toBe(preserved);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Resume guest checkout');
+  }));
+
 });

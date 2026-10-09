@@ -28,15 +28,21 @@ public class AsaasProvisioningStateService {
     private final ExternalUserRepository externalUserRepository;
     private final AsaasProvisioningJobRepository jobRepository;
     private final Duration lease;
+    private final com.saas.directory.repository.GuestCustomerRepository guestCustomers;
+    private final GuestCheckoutManager guestCheckout;
 
     public AsaasProvisioningStateService(
             UserManager userManager,
             ExternalUserRepository externalUserRepository,
             AsaasProvisioningJobRepository jobRepository,
+            com.saas.directory.repository.GuestCustomerRepository guestCustomers,
+            GuestCheckoutManager guestCheckout,
             @Value("${saas.asaas.provisioning.lease-millis:120000}") long leaseMillis) {
         if (leaseMillis < 30_000) {
             throw new IllegalArgumentException("Asaas provisioning lease must exceed the provider HTTP timeout");
         }
+        this.guestCustomers = guestCustomers;
+        this.guestCheckout = guestCheckout;
         this.userManager = userManager;
         this.externalUserRepository = externalUserRepository;
         this.jobRepository = jobRepository;
@@ -53,6 +59,17 @@ public class AsaasProvisioningStateService {
                 .orElseGet(() -> jobRepository.saveAndFlush(
                         new AsaasProvisioningJob(user, PaymentProcessor.ASAAS, Instant.now())));
         return claim(job);
+    }
+
+    @Transactional
+    public Claim claimForGuest(String customerId) {
+        final com.saas.directory.model.GuestCustomer customer = guestCustomers
+                .findByIdForUpdate(customerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+        final AsaasProvisioningJob job = jobRepository
+                .findByGuestCustomerIdAndPaymentProcessor(customer.getId(), PaymentProcessor.ASAAS)
+                .orElseThrow(() -> new ResourceNotFoundException("Provisioning job not found"));
+        return jobRepository.findByIdForUpdate(job.getId()).map(this::claim).orElse(null);
     }
 
     @Transactional
@@ -80,15 +97,26 @@ public class AsaasProvisioningStateService {
     @Transactional
     public void succeeded(Claim claim, String customerId) {
         // Account edits take the user lock before the job lock; keep the same order for FK writes.
-        userManager
-                .getUserForUpdate(claim.username())
-                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
+        if (claim.username() != null) {
+            userManager
+                    .getUserForUpdate(claim.username())
+                    .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
+        } else {
+            guestCustomers
+                    .findByIdForUpdate(claim.userId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+        }
         final AsaasProvisioningJob job =
                 jobRepository.findByIdForUpdate(claim.jobId()).orElse(null);
         if (!ownsClaim(job, claim)) {
             return;
         }
-        userManager.addAsaasCustomerIdToUser(claim.username(), customerId);
+        if (claim.username() != null) {
+            userManager.addAsaasCustomerIdToUser(claim.username(), customerId);
+        } else {
+            job.getGuestCustomer().setProviderCustomerId(customerId);
+            guestCustomers.saveAndFlush(job.getGuestCustomer());
+        }
         job.markSucceeded(customerId);
         jobRepository.saveAndFlush(job);
     }
@@ -123,6 +151,26 @@ public class AsaasProvisioningStateService {
                 || job.getStatus() == AsaasProvisioningStatus.FAILED
                 || job.getNextAttemptAt().isAfter(now)) {
             return null;
+        }
+        if (job.getGuestCustomer() != null) {
+            final com.saas.directory.model.GuestCustomer customer = job.getGuestCustomer();
+            if (customer.getProviderCustomerId() != null) {
+                job.markSucceeded(customer.getProviderCustomerId());
+                jobRepository.saveAndFlush(job);
+                return null;
+            }
+            job.claim(now, now.plus(lease));
+            jobRepository.saveAndFlush(job);
+            return new Claim(
+                    job.getId(),
+                    job.getAttemptCount(),
+                    customer.getId(),
+                    null,
+                    new UserDto()
+                            .setId(customer.getId())
+                            .setUsername(customer.getEmail())
+                            .setProfile(guestCheckout.readProfile(customer.getProfileJson())),
+                    job.ensureCorrelationId());
         }
         final User user = job.getUser();
         final Optional<ExternalUser> mapped =
