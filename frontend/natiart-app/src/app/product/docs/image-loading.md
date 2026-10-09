@@ -10,7 +10,7 @@ Verification: HTTP tests cover concurrent owners/repeated emissions, last-owner 
 
 When combining CA13/CA21, use the persisted custom-art reference through its authorized API rather than falling back to public product art; extend the source contract with an authorized resolver if required. Preserve CA26 server image ordering, CA34 keyboard controls, CA36 route/zoom recovery, and CA23 catalog pagination. Keep existing admin preview upload lifetimes independent; these collections own only storefront image URLs.
 
-Home selects four featured products and four new products excluding the
+Home selects three featured products and four new products excluding the
 featured IDs, retaining API order. ProductList's default limit remains unlimited
 for other callers. It retains the response so changed limits/exclusions can
 reselect without another request; its image collection owns only selected
@@ -19,3 +19,16 @@ viewport (200px root margin), fall back to eager loading without
 IntersectionObserver, and disconnect the observer on activation/destruction.
 Retry/destruction cancel pending list requests. Home-only Nginx responses preload
 the existing approved hero asset; other routes do not preload that photograph.
+
+The first featured card loads eagerly with a high image priority hint because it
+is visible on the initial phone screen and was the measured LCP element. Other
+cards retain lazy decoding/loading, and lower-page new arrivals retain their
+observer. This hint applies to the rendered image; product/image API requests
+still precede its blob URL and are not discoverable in the initial HTML.
+
+The comparison table creates its own ImageCollection on open and destroys it on
+every close, route change and owner destruction. Each opening refetches product
+details before resolving their image paths. A retry changes only the failed
+piece; the checked neighbor retains its image. Cancelling the table releases
+both unfinished product requests and image subscriptions/URLs. No completed
+image bytes or artwork files are stored in its selection service.

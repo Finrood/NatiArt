@@ -1,4 +1,4 @@
-<section class="home-products">
+<section class="home-products" [class.viewing-room]="type === 'featured'">
   <div class="section-heading">
     <div class="section-intro">
       <p class="art-eyebrow">@if (type === 'featured') { <span i18n>Selected pieces</span> } @else { <span i18n>Fresh from the atelier</span> }</p>
@@ -17,7 +17,7 @@
       @for (product of products | async; track (product.id ?? product)) {
         <app-product-card [product]="product" [imageUrl]="imageUrls[product.id ?? 'card-' + $index] || emptyImage"
           [imageLoading]="images.states()[product.id ?? 'card-' + $index] === 'loading'"
-          (imageFailed)="images.failed(product.id ?? 'card-' + $index)"></app-product-card>
+          (imageFailed)="images.failed(product.id ?? 'card-' + $index)" [compareEnabled]="true" [imagePriority]="type === 'featured' && $first"></app-product-card>
       } @empty { <p class="text-text-muted" i18n>No products match this selection.</p> }
     </div>
   }

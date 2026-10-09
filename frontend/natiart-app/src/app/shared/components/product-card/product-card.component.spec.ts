@@ -1,11 +1,46 @@
-import {TestBed} from '@angular/core/testing';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 import {provideRouter} from '@angular/router';
 import {ProductCardComponent} from './product-card.component';
 import {EMPTY_PRODUCT_IMAGE} from '../../../product/service/image-loader.service';
 import {PersonalizationOption} from '../../../product/models/support/personalization-option';
 import {Product} from '../../../product/models/product.model';
+import {ProductComparisonService} from '../../../product/service/product-comparison.service';
 
 describe('Product card image recovery', () => {
+  it('selects comparison separately from the product link and leaves selected pieces removable at the limit', async (): Promise<void> => {
+    sessionStorage.removeItem('natiart-comparison-v1');
+    await TestBed.configureTestingModule({imports: [ProductCardComponent], providers: [provideRouter([])]}).compileComponents();
+    const fixture: ComponentFixture<ProductCardComponent> = TestBed.createComponent(ProductCardComponent);
+    const product: Product = {id: 'a', label: 'Porcelain', markedPrice: 8, originalPrice: 10,
+      categoryId: 'c', stockQuantity: 1, images: [], tags: [], availablePersonalizations: []};
+    fixture.componentRef.setInput('product', product);
+    fixture.componentRef.setInput('compareEnabled', true);
+    fixture.componentRef.setInput('catalogContext', {categoryId: 'c', query: 'gift', page: 1});
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    const button: HTMLButtonElement = root.querySelector('.product-compare')!;
+    expect(button.closest('a')).toBeNull();
+    expect(button.getAttribute('aria-label')).toBe('Compare Porcelain');
+    button.click();
+    fixture.detectChanges();
+    const comparison: ProductComparisonService = TestBed.inject(ProductComparisonService);
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+    expect(comparison.$pieces()[0].context.query).toBe('gift');
+    comparison.toggle({...product, id: 'b'}, {});
+    fixture.detectChanges();
+    expect(button.disabled).toBeFalse();
+    fixture.componentRef.setInput('product', {...product, id: 'c'});
+    fixture.detectChanges();
+    expect(button.disabled).toBeTrue();
+    fixture.componentRef.setInput('product', product);
+    fixture.detectChanges();
+    button.click();
+    fixture.detectChanges();
+    expect(comparison.isSelected('a')).toBeFalse();
+    fixture.destroy();
+    sessionStorage.removeItem('natiart-comparison-v1');
+  });
+
   it('prioritizes availability over sale and new badges, then restores merchandising when stock returns', async () => {
     await TestBed.configureTestingModule({imports: [ProductCardComponent], providers: [provideRouter([])]}).compileComponents();
     const fixture = TestBed.createComponent(ProductCardComponent);

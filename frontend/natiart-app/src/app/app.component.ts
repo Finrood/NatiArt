@@ -5,15 +5,18 @@ import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {TopMenuComponent} from './product/components/customer/top-menu/top-menu.component';
 import {FooterComponent} from "./shared/components/shared/footer/footer.component";
 import {AuthenticationService} from "./directory/service/authentication.service";
+import {ProductComparisonComponent} from './shared/components/product-comparison/product-comparison.component';
+import {ProductComparisonService} from './product/service/product-comparison.service';
 
 @Component({
     selector: 'app-root',
-  imports: [RouterOutlet, FooterComponent, TopMenuComponent],
+  imports: [RouterOutlet, FooterComponent, TopMenuComponent, ProductComparisonComponent],
     templateUrl: './app.component.html',
     styleUrl: './app.component.css'
 })
 export class AppComponent {
   readonly title: string = 'NatiArt';
+  readonly comparison: ProductComparisonService = inject(ProductComparisonService);
 
   private readonly _element = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly _router = inject(Router);

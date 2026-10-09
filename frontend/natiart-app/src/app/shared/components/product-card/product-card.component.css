@@ -4,6 +4,11 @@
 .product-overview:focus-visible { outline: none; }
 .product-overview:focus-visible::after { outline: 2px solid rgb(var(--primary)); outline-offset: 4px; }
 .product-card app-add-to-cart-button { position: relative; z-index: 1; }
+.product-compare { position: relative; z-index: 1; display: flex; align-items: center; gap: .5rem; min-height: 2.75rem; text-align: left; color: rgb(var(--text-muted)); font-size: .6875rem; }
+.product-compare svg { width: 1rem; height: 1rem; flex-shrink: 0; }
+.product-compare[aria-pressed="true"] { color: rgb(var(--primary)); font-weight: 500; }
+.product-compare:disabled { opacity: .6; cursor: default; }
+.product-compare:hover:enabled span { text-decoration: underline; text-underline-offset: .25em; }
 .product-photo { display: block; position: relative; aspect-ratio: 1; overflow: hidden; background: rgb(var(--surface-variant)); border-radius: .25rem; border: 1px solid rgb(var(--primary-light) / .25); }
 .product-photo img { width: 100%; height: 100%; object-fit: contain; transition: transform 200ms ease; }
 .product-overview:hover img, .product-overview:focus-visible img { transform: scale(1.035); }

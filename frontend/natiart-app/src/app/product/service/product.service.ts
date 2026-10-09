@@ -62,11 +62,11 @@ export class ProductService {
     return this._http.get<Product[]>(`${this.apiUrl}/new`);
   }
 
-  getProduct(productId: string | null): Observable<Product> {
+  getProduct(productId: string | null, fresh: boolean = false): Observable<Product> {
     if (!productId || productId.trim().length === 0) {
       return throwError(() => new Error('Missing product id'));
     }
-    return this._http.get<Product>(`${this.apiUrl}/${productId}`);
+    return this._http.get<Product>(`${this.apiUrl}/${productId}`, fresh ? {cache: 'no-store'} : {});
   }
 
   addProduct(newProduct: FormData): Observable<Product> {

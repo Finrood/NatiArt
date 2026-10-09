@@ -15,4 +15,6 @@
     <router-outlet></router-outlet>
   </div>
   <app-footer></app-footer>
+  <p class="sr-only" role="status">{{ comparison.$announcement() }}</p>
+  @defer (when comparison.$pieces().length > 0) { <app-product-comparison></app-product-comparison> }
 </div>

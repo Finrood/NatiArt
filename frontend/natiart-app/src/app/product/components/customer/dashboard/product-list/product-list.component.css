@@ -9,6 +9,12 @@
 .section-heading a span:last-child { font-size: 1.25rem; }
 .loading-card { min-height: 0; }
 @media (min-width: 1024px) { .home-products .art-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1024px) {
+  .viewing-room .art-grid { grid-template-columns: 1.45fr 1fr 1fr; align-items: start; gap: 2.5rem; }
+  .viewing-room app-product-card { height: auto; }
+  .viewing-room app-product-card:nth-child(2) { margin-top: 5rem; }
+  .viewing-room app-product-card:nth-child(3) { margin-top: 1.5rem; }
+}
 @media (max-width: 379px) { .home-products .art-grid { grid-template-columns: 1fr; } }
 @media (max-width: 639px) {
   .home-products { padding-top: 0; }

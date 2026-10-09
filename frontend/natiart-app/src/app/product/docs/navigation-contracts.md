@@ -109,3 +109,32 @@ remain readable outside the link. Quick-add stays a separate sibling control
 above that hit area. Do not nest its button inside the product anchor or restore
 duplicate photo/title/action tab stops. The whole-card focus outline and image
 scale retain the global reduced-motion override.
+
+Home and Collections expose a separate, named Compare toggle on each identified
+piece. It is a sibling above the stretched product link, never nested inside it.
+Two selections form a viewing table. Selected pieces remain removable at the
+limit; other toggles disable until one is removed. The global tray appears only
+on Home, Collections and product detail, and is absent during checkout, account,
+authentication and administration. Its reserved footer space keeps the bottom
+of each shopping page reachable.
+
+The root comparison service retains at most two public IDs, labels and whitelisted
+catalog contexts in sessionStorage for this tab. It restores a sanitized pair
+through Back, pagination, reload and locale navigation. It stores no price,
+availability, customer identity, file or payment data. Blocked/malformed storage
+falls back to an in-memory selection. Clearing affects comparison only.
+
+The modal uses the shared native dialog and a semantic table. Opening checks
+each product independently with Fetch `cache: 'no-store'`; ordinary product reads
+retain their existing cache behavior. Failed columns show a retry without a cached price
+or purchase link. Product links keep that piece's category, search and page.
+Stock and options come from the new server response; purchases still use the
+product/detail/cart validation paths. Escape restores Compare; removing a piece
+closes the dialog and focuses the surviving tray heading. Clearing focuses the
+routed page heading. Navigation closes the dialog and releases its work.
+Retry focuses the corresponding column heading when replacing its button with
+loading feedback, without moving focus if the shopper has already moved elsewhere.
+
+The heavier comparison panel is deferred until the first selection. The root's
+polite status region is present before selections change, so this loading step
+does not create the announcement region after the event it needs to report.

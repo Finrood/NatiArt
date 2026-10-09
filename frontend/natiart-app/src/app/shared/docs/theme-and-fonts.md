@@ -80,3 +80,13 @@ and bounds the desktop frame to 24rem; all
 commercial photography, font delivery, image priority and deferred loading
 remain intact. Keyboard photo focus uses the same subtle scale as hover and
 the existing reduced-motion override. See the latest gallery review for evidence.
+
+The viewing-room continuation uses a three-piece editorial featured grid at
+desktop widths, with a 1.45:1:1 image rhythm and restrained vertical offsets.
+Cards keep their intrinsic height in this layout; mobile keeps the familiar
+one/two-column grid. New arrivals remain a four-piece grid. API order and the
+existing approved product imagery are preserved. The dark comparison tray uses
+the semantic ink/ivory pair, and the comparison table uses the same type, ruled
+rows, contained photography and 44px controls. A 320px table gives its row labels
+30% of the available width so Portuguese labels wrap at words. The board's
+maximum width includes the native dialog's scrollbar rather than overflowing it.

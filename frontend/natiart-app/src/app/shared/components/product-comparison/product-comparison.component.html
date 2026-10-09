@@ -1,0 +1,41 @@
+@if ($shopping() && comparison.$pieces().length) {
+  <div class="comparison-space" aria-hidden="true"></div>
+  <section class="comparison-tray" aria-label="Your viewing table" i18n-aria-label>
+    <div class="tray-copy"><h2 #trayHeading tabindex="-1" i18n>Your viewing table</h2>
+      @if (comparison.$pieces().length === 1) { <p i18n>Choose one more piece to compare.</p> }
+      @else { <p i18n>Two pieces selected. Remove one to change your pair.</p> }
+    </div>
+    <button type="button" class="tray-clear" (click)="clear()" aria-label="Clear comparison" i18n-aria-label><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m6 6 12 12M6 18 18 6"/></svg></button>
+    <button type="button" class="art-action tray-compare" [disabled]="comparison.$pieces().length !== 2" (click)="open()" i18n>Compare pieces</button>
+  </section>
+}
+@if ($open()) {
+  <app-accessible-dialog label="Compare pieces" i18n-label [showClose]="true" (dismiss)="close()">
+    <section class="viewing-table">
+      <header class="table-intro"><p class="art-eyebrow" i18n>Your viewing table</p><h2 i18n>See them together.</h2><p i18n>A little space to decide which piece feels right.</p></header>
+      <table>
+        <caption class="sr-only" i18n>Compare artwork, prices, availability and personalization options.</caption>
+        <thead><tr><td></td>
+          @for (detail of $details(); track detail.piece.id) {
+            <th scope="col">
+              <div class="comparison-photo"><img [src]="image(detail.piece.id)" alt="" width="480" height="480" (error)="imageFailed(detail.piece.id)"></div>
+              <h3 [id]="'comparison-piece-' + detail.piece.id" tabindex="-1">{{ detail.product?.label ?? detail.piece.label }}</h3>
+              <button type="button" class="remove-piece" (click)="remove(detail.piece.id)" [attr.aria-label]="removeLabel(detail.product?.label ?? detail.piece.label)"><span i18n>Remove piece</span><span aria-hidden="true">×</span></button>
+              @if (detail.state === 'loading') { <p role="status" class="piece-feedback" i18n>Checking this piece...</p> }
+              @else if (detail.state === 'error') { <p role="alert" class="piece-feedback" i18n>This piece could not be checked.</p><button type="button" class="art-link retry-piece" (click)="retry(detail.piece.id)" i18n>Retry page</button> }
+            </th>
+          }
+        </tr></thead>
+        <tbody>
+          <tr><th scope="row" i18n>Price</th>@for (detail of $details(); track detail.piece.id) { <td class="comparison-price">@if (detail.product) { {{ detail.product.markedPrice | currency:'BRL' }} } @else { — }</td> }</tr>
+          <tr><th scope="row" i18n>Stock</th>@for (detail of $details(); track detail.piece.id) { <td>@if (detail.product) { @if (detail.product.active === false || detail.product.stockQuantity <= 0) { <span i18n>Out of Stock</span> } @else { <span i18n>In stock</span> } } @else { — }</td> }</tr>
+          <tr><th scope="row" i18n>Category</th>@for (detail of $details(); track detail.piece.id) { <td>{{ detail.product?.categoryLabel || '—' }}</td> }</tr>
+          <tr><th scope="row" i18n>Gold border</th>@for (detail of $details(); track detail.piece.id) { <td>@if (detail.product) { @if (detail.product.hasFixedGoldenBorder) { <span i18n>Included</span> } @else if (detail.product.availablePersonalizations.includes(goldBorder)) { <span i18n>Optional</span> } @else { <span i18n>Not available</span> } } @else { — }</td> }</tr>
+          <tr><th scope="row" i18n>Your artwork</th>@for (detail of $details(); track detail.piece.id) { <td>@if (detail.product) { @if (detail.product.availablePersonalizations.includes(customImage)) { <span i18n>Required</span> } @else { <span i18n>Not available</span> } } @else { — }</td> }</tr>
+          <tr class="piece-actions"><th scope="row"><span class="sr-only" i18n>Product details</span></th>@for (detail of $details(); track detail.piece.id) { <td>@if (detail.product && detail.product.active !== false) { <a [routerLink]="['/product', detail.piece.id]" [queryParams]="detail.piece.context" (click)="close()" class="art-link"><span i18n>View product</span><span aria-hidden="true">↗</span></a> }</td> }</tr>
+        </tbody>
+      </table>
+      <footer class="table-footer"><p i18n>Prices shown for each piece. Shipping is calculated at checkout.</p><button type="button" class="art-link" (click)="close()" i18n>Keep exploring</button></footer>
+    </section>
+  </app-accessible-dialog>
+}

@@ -29,7 +29,7 @@
         <div class="art-grid">
           @for (product of $items(); track product.id) {
             <app-product-card [product]="product" [imageUrl]="product.images[0] ? imageUrl(product.images[0]) : emptyImage"
-              [catalogContext]="{categoryId: $categoryId(), query: $query() || null, page: pages.$page()}"></app-product-card>
+              [catalogContext]="{categoryId: $categoryId(), query: $query() || null, page: pages.$page()}" [compareEnabled]="true"></app-product-card>
           }
         </div>
       }
