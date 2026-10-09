@@ -1,0 +1,106 @@
+[
+  {
+    "path": "account-security-en-320.png",
+    "captureWidth": 305,
+    "captureHeight": 371,
+    "requestedViewportWidth": 320,
+    "requestedViewportHeight": 900,
+    "reason": "Stale or scaled browser frame after responsive resize; excluded from visual evidence."
+  },
+  {
+    "path": "account-security-pt-BR-320.png",
+    "captureWidth": 305,
+    "captureHeight": 191,
+    "requestedViewportWidth": 320,
+    "requestedViewportHeight": 900,
+    "reason": "Stale or scaled browser frame after responsive resize; excluded from visual evidence."
+  },
+  {
+    "path": "final/account-profile-pt-320.jpg",
+    "captureWidth": 305,
+    "captureHeight": 191,
+    "requestedViewportWidth": 320,
+    "requestedViewportHeight": 900,
+    "reason": "Stale or scaled browser frame after responsive resize; excluded from visual evidence."
+  },
+  {
+    "path": "final/cart-drawer-en-320.jpg",
+    "captureWidth": 320,
+    "captureHeight": 200,
+    "requestedViewportWidth": 320,
+    "requestedViewportHeight": 900,
+    "reason": "Stale or scaled browser frame after responsive resize; excluded from visual evidence."
+  },
+  {
+    "path": "final/cart-pt-320.jpg",
+    "captureWidth": 305,
+    "captureHeight": 191,
+    "requestedViewportWidth": 320,
+    "requestedViewportHeight": 900,
+    "reason": "Stale or scaled browser frame after responsive resize; excluded from visual evidence."
+  },
+  {
+    "path": "final/catalog-en-320.jpg",
+    "captureWidth": 305,
+    "captureHeight": 191,
+    "requestedViewportWidth": 320,
+    "requestedViewportHeight": 900,
+    "reason": "Stale or scaled browser frame after responsive resize; excluded from visual evidence."
+  },
+  {
+    "path": "final/home-pt-320.jpg",
+    "captureWidth": 68,
+    "captureHeight": 191,
+    "requestedViewportWidth": 320,
+    "requestedViewportHeight": 900,
+    "reason": "Stale or scaled browser frame after responsive resize; excluded from visual evidence."
+  },
+  {
+    "path": "final/login-en-320.jpg",
+    "captureWidth": 305,
+    "captureHeight": 191,
+    "requestedViewportWidth": 320,
+    "requestedViewportHeight": 900,
+    "reason": "Stale or scaled browser frame after responsive resize; excluded from visual evidence."
+  },
+  {
+    "path": "final/navigation-recovery-en-320.jpg",
+    "captureWidth": 305,
+    "captureHeight": 191,
+    "requestedViewportWidth": 320,
+    "requestedViewportHeight": 900,
+    "reason": "Stale or scaled browser frame after responsive resize; excluded from visual evidence."
+  },
+  {
+    "path": "forgot-password-en-320.png",
+    "captureWidth": 305,
+    "captureHeight": 191,
+    "requestedViewportWidth": 320,
+    "requestedViewportHeight": 900,
+    "reason": "Stale or scaled browser frame after responsive resize; excluded from visual evidence."
+  },
+  {
+    "path": "forgot-password-pt-BR-320.png",
+    "captureWidth": 305,
+    "captureHeight": 191,
+    "requestedViewportWidth": 320,
+    "requestedViewportHeight": 900,
+    "reason": "Stale or scaled browser frame after responsive resize; excluded from visual evidence."
+  },
+  {
+    "path": "invalid-reset-link-en-320.png",
+    "captureWidth": 305,
+    "captureHeight": 191,
+    "requestedViewportWidth": 320,
+    "requestedViewportHeight": 900,
+    "reason": "Stale or scaled browser frame after responsive resize; excluded from visual evidence."
+  },
+  {
+    "path": "invalid-reset-link-pt-BR-320.png",
+    "captureWidth": 305,
+    "captureHeight": 191,
+    "requestedViewportWidth": 320,
+    "requestedViewportHeight": 900,
+    "reason": "Stale or scaled browser frame after responsive resize; excluded from visual evidence."
+  }
+]

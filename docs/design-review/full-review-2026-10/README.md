@@ -47,6 +47,13 @@ These DOM checks supplement visual inspection; they are not a screen-reader or
 whole-app accessibility certification. A Portuguese empty-search phone capture
 was made before the browser tool timed out; it has no completed five-width group.
 
+Final capture inspection excluded **13 stale/scaled phone frames** produced by
+the browser tool during viewport resizing. [excluded-captures.json](excluded-captures.json)
+records their dimensions and exclusions; those images were removed. The DOM
+layout measurements remain separate evidence. Retained screenshots support
+only the views they actually show; the 160 measurements must not be presented
+as 160 visually confirmed screens. JPEG captures use their correct extension.
+
 Native interaction checks completed before the tool interruption included:
 
 - Catalog filtering, search, category switching and locale query preservation.
