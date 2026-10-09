@@ -25,7 +25,9 @@ other reporting changes. No API origin runtime override is assumed here: API
 routing remains on the storefront origin.
 
 The shell, including Angular deep links, uses `no-store`. Only content-hashed
-build filenames receive immutable caching. Other static files revalidate;
+build filenames receive immutable caching. Hash matching accepts the generated
+URL-safe alphabet, including hyphens and underscores, in both nginx and the
+archive publisher; keep those two rules aligned. Other static files revalidate;
 missing static files return 404. A missing runtime config never becomes HTML.
 The stable public `/fonts/` files and their locale copies always revalidate and
 are excluded from the immutable archive. Descriptive names such as `playfair-display-variable.woff2`
@@ -74,7 +76,8 @@ with Docker available. It builds two fixture release images using the shipped
 nginx template and publisher, replaces A with B on the same port/volume, checks
 deep links, shell/config cache headers, retained and missing chunks, both API
 proxies with POST/auth/cookies/query/status, rollback, and rejected missing/
-invalid configuration and immutable collisions. It cleans up only its uniquely
+invalid configuration and immutable collisions. It checks URL-safe hash names
+at the root and in both locale directories across replacement and rollback. It cleans up only its uniquely
 named test resources. `--interactive` pauses before and after replacement for
 an old browser tab that imports its lazy module only after the switch.
 

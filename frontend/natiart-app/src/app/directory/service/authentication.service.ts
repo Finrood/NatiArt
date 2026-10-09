@@ -138,12 +138,14 @@ export class AuthenticationService implements OnDestroy {
     const generation = this.sessionGeneration;
     this.updateState(null);
     return this._http.post<void>(`${this.apiUrl}${environment.api.directory.endpoints.logout}`, {}).pipe(
+      timeout({first: this.authInitializationTimeout}),
       tap(() => { if (generation === this.sessionGeneration) this.clearLocalAuthState(); }),
       catchError(error => {
         reportError('logout', error);
         if (generation === this.sessionGeneration) this.clearLocalAuthState();
         return throwError(() => error);
-      })
+      }),
+      finalize(() => { if (generation === this.sessionGeneration) this.clearLocalAuthState(); })
     );
   }
 

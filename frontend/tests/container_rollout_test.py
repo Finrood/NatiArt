@@ -81,11 +81,14 @@ HTTPServer(('0.0.0.0',8080),Handler).serve_forever()
                 (context / 'html/runtime-config.js').write_text('window.__NATIART_CONFIG__ = {release:"image-default"};')
                 (context / 'html/fonts').mkdir()
                 (context / 'html/fonts/playfair-display-variable.woff2').write_text(f'font-{release}')
+                urlsafe_hash = 'A_A-A_A-' if release == 'A' else 'B_B-B_B_'
+                (context / f'html/chunk-{urlsafe_hash}.js').write_text(f'export const release = "{release}";')
                 for language in ['en', 'pt-BR']:
                     (context / 'html' / language).mkdir()
                     shutil.copytree(context / 'html/fonts', context / 'html' / language / 'fonts')
                     shutil.copy(context / 'html/index.html', context / 'html' / language / 'index.html')
                     shutil.copy(context / f'html/chunk-{hash_value}.js', context / 'html' / language / f'chunk-{hash_value}.js')
+                    shutil.copy(context / f'html/chunk-{urlsafe_hash}.js', context / 'html' / language / f'chunk-{urlsafe_hash}.js')
                 (context / 'Dockerfile').write_text('''FROM nginx:1.27-alpine
 ENV NATIART_PUBLIC_SCHEME=http
 COPY nginx.conf /etc/nginx/templates/default.conf.template
@@ -109,6 +112,8 @@ COPY html /usr/share/nginx/html
             assert 'Release A' in request(port, '/products/deep/link')[2]
             assert request(port, '/chunk-AAAAAAAA.js')[0] == 200
             assert 'immutable' in request(port, '/chunk-AAAAAAAA.js')[1]['Cache-Control']
+            for locale_prefix in ['', '/en', '/pt-BR']:
+                assert 'immutable' in request(port, f'{locale_prefix}/chunk-A_A-A_A-.js')[1]['Cache-Control'], 'URL-safe hashes must receive immutable caching'
             assert 'no-store' in request(port, '/runtime-config.js')[1]['Cache-Control']
             for font_prefix in ['', '/en', '/pt-BR']:
                 assert request(port, f'{font_prefix}/fonts/playfair-display-variable.woff2')[1]['Cache-Control'] == 'no-cache'
@@ -144,6 +149,11 @@ COPY html /usr/share/nginx/html
                 assert '"A"' in request(port, f'/{language}/chunk-AAAAAAAA.js')[2]
                 assert 'immutable' in request(port, f'/{language}/chunk-AAAAAAAA.js')[1]['Cache-Control']
                 assert '"B"' in request(port, f'/{language}/chunk-BBBBBBBB.js')[2]
+            for locale_prefix in ['', '/en', '/pt-BR']:
+                for hash_value, release in [('A_A-A_A-', 'A'), ('B_B-B_B_', 'B')]:
+                    status, headers, body = request(port, f'{locale_prefix}/chunk-{hash_value}.js')
+                    assert status == 200 and f'"{release}"' in body, 'URL-safe old chunks must survive replacement'
+                    assert 'immutable' in headers['Cache-Control']
             assert request(port, '/chunk-MISSING0.js')[0] == 404
             assert request(port, '/missing.js')[0] == 404
             assert request(port, '/server/unknown')[0] == 404
@@ -181,6 +191,8 @@ COPY html /usr/share/nginx/html
             ready(rollback_port)
             assert 'Release A' in request(rollback_port, '/products/rollback')[2]
             assert request(rollback_port, '/chunk-BBBBBBBB.js')[0] == 200
+            for locale_prefix in ['', '/en', '/pt-BR']:
+                assert request(rollback_port, f'{locale_prefix}/chunk-B_B-B_B_.js')[0] == 200, 'URL-safe new chunks must survive rollback'
             assert request(rollback_port, '/runtime-config.js')[1]['Cache-Control'] == 'no-store'
             for font_prefix in ['', '/en', '/pt-BR']:
                 assert request(rollback_port, f'{font_prefix}/fonts/playfair-display-variable.woff2')[1]['Cache-Control'] == 'no-cache'

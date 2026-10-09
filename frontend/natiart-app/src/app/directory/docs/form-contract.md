@@ -76,3 +76,11 @@ our APIs. v1 avoids unnecessary coordinates/timezone dependencies.
 Changing CEP cancels the full lookup chain immediately. Returning to the same CEP
 after deletion restarts a cancelled lookup even if it happens inside the debounce
 window. Manual fields, house number and apartment remain editable throughout.
+
+Password recovery rejects missing, malformed or duplicated fragment tokens as
+soon as the screen opens. It removes the fragment, shows an immediate alert and
+a link to request a new reset, and hides the unusable password form. Definitive
+invalid/expired responses clear the token and password fields. Temporary service
+failures keep a valid token and entered values for retry without claiming that
+the link expired. Successful recovery retains the existing session-revocation
+and sign-in contract.

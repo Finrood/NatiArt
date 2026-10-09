@@ -650,6 +650,19 @@
     "basketShippingExplanation": "Esta estimativa considera as peças do seu carrinho e seus pacotes. O frete final é confirmado no checkout.",
     "basketShippingDelivery": "{$START_TAG_STRONG}Prazo estimado da transportadora:{$CLOSE_TAG_STRONG} {$INTERPOLATION} dias úteis após a postagem",
     "basketShippingPreparation": "O tempo de preparação é adicional.",
-    "basketShippingRetry": "Tentar calcular o frete novamente"
+    "basketShippingRetry": "Tentar calcular o frete novamente",
+    "3681033023073067150": "Excluir o produto \"{$PRODUCT_LABEL}\"?",
+    "1743873629892020542": "Escolha uma quantidade inteira dentro do estoque disponível.",
+    "475602438586127706": "Informe uma quantidade inteira de 1 a {$INTERPOLATION}.",
+    "7844706011418789951": "Administração",
+    "3755998293913581225": "Não foi possível abrir essa página.",
+    "6451264454806140840": "A loja pode ter sido atualizada ou sua conexão foi interrompida. Tente acessar o link novamente ou recarregue esta página.",
+    "4770447869437764623": "Após recarregar, selecione novamente qualquer imagem enviada para personalização.",
+    "6942914903641996670": "Recarregar página",
+    "6008489739592125163": "Use no máximo {$INTERPOLATION} caracteres.",
+    "2438884892472511812": "Informe um valor de {$INTERPOLATION} ou maior.",
+    "8834461668904942536": "Informe um valor de {$INTERPOLATION} ou menor.",
+    "4912656900117933030": "Solicitar um novo link de recuperação",
+    "2664715401753421790": "Não foi possível atualizar sua senha. Tente novamente."
   }
 }

@@ -1,0 +1,2582 @@
+[
+  {
+    "label": "admin-orders",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Painel administrativo",
+      "Preparação de pedidos"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/admin/orders",
+    "width": 320
+  },
+  {
+    "label": "admin-orders",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Painel administrativo",
+      "Preparação de pedidos"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/admin/orders",
+    "width": 390
+  },
+  {
+    "label": "admin-orders",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Painel administrativo",
+      "Preparação de pedidos"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/admin/orders",
+    "width": 768
+  },
+  {
+    "label": "admin-orders",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Painel administrativo",
+      "Preparação de pedidos"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/admin/orders",
+    "width": 1280
+  },
+  {
+    "label": "admin-orders",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Painel administrativo",
+      "Preparação de pedidos"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/admin/orders",
+    "width": 1440
+  },
+  {
+    "label": "admin-orders",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Admin Dashboard",
+      "Order fulfillment"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/admin/orders",
+    "width": 320
+  },
+  {
+    "label": "admin-orders",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Admin Dashboard",
+      "Order fulfillment"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/admin/orders",
+    "width": 390
+  },
+  {
+    "label": "admin-orders",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Admin Dashboard",
+      "Order fulfillment"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/admin/orders",
+    "width": 768
+  },
+  {
+    "label": "admin-orders",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Admin Dashboard",
+      "Order fulfillment"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/admin/orders",
+    "width": 1280
+  },
+  {
+    "label": "admin-orders",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Admin Dashboard",
+      "Order fulfillment"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/admin/orders",
+    "width": 1440
+  },
+  {
+    "label": "login",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Welcome Back"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/login",
+    "width": 320
+  },
+  {
+    "label": "login",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Welcome Back"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/login",
+    "width": 390
+  },
+  {
+    "label": "login",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Welcome Back"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/login",
+    "width": 768
+  },
+  {
+    "label": "login",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Welcome Back"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/login",
+    "width": 1280
+  },
+  {
+    "label": "login",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Welcome Back"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/login",
+    "width": 1440
+  },
+  {
+    "label": "login",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Boas-vindas de volta"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/login",
+    "width": 320
+  },
+  {
+    "label": "login",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Boas-vindas de volta"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/login",
+    "width": 390
+  },
+  {
+    "label": "login",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Boas-vindas de volta"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/login",
+    "width": 768
+  },
+  {
+    "label": "login",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Boas-vindas de volta"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/login",
+    "width": 1280
+  },
+  {
+    "label": "login",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Boas-vindas de volta"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/login",
+    "width": 1440
+  },
+  {
+    "label": "home",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "A arte da porcelana",
+      "Produtos em destaque",
+      "Blush Botanical Dinner Plate",
+      "Blush Wedding Keepsake Plate",
+      "Decorative Porcelain Vase",
+      "Porcelain Dinner Plate",
+      "Um pouco de você.",
+      "Novidades",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Personalized Anniversary Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/dashboard",
+    "width": 320
+  },
+  {
+    "label": "home",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "A arte da porcelana",
+      "Produtos em destaque",
+      "Blush Botanical Dinner Plate",
+      "Blush Wedding Keepsake Plate",
+      "Decorative Porcelain Vase",
+      "Porcelain Dinner Plate",
+      "Um pouco de você.",
+      "Novidades",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Personalized Anniversary Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/dashboard",
+    "width": 390
+  },
+  {
+    "label": "home",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "A arte da porcelana",
+      "Produtos em destaque",
+      "Blush Botanical Dinner Plate",
+      "Blush Wedding Keepsake Plate",
+      "Decorative Porcelain Vase",
+      "Porcelain Dinner Plate",
+      "Um pouco de você.",
+      "Novidades",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Personalized Anniversary Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/dashboard",
+    "width": 768
+  },
+  {
+    "label": "home",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "A arte da porcelana",
+      "Produtos em destaque",
+      "Blush Botanical Dinner Plate",
+      "Blush Wedding Keepsake Plate",
+      "Decorative Porcelain Vase",
+      "Porcelain Dinner Plate",
+      "Um pouco de você.",
+      "Novidades",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Personalized Anniversary Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/dashboard",
+    "width": 1280
+  },
+  {
+    "label": "home",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "A arte da porcelana",
+      "Produtos em destaque",
+      "Blush Botanical Dinner Plate",
+      "Blush Wedding Keepsake Plate",
+      "Decorative Porcelain Vase",
+      "Porcelain Dinner Plate",
+      "Um pouco de você.",
+      "Novidades",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Personalized Anniversary Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/dashboard",
+    "width": 1440
+  },
+  {
+    "label": "home",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "The Art of Porcelain",
+      "Featured Products",
+      "Blush Botanical Dinner Plate",
+      "Blush Wedding Keepsake Plate",
+      "Decorative Porcelain Vase",
+      "Porcelain Dinner Plate",
+      "A piece of you.",
+      "New Arrivals",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Personalized Anniversary Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/dashboard",
+    "width": 320
+  },
+  {
+    "label": "home",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "The Art of Porcelain",
+      "Featured Products",
+      "Blush Botanical Dinner Plate",
+      "Blush Wedding Keepsake Plate",
+      "Decorative Porcelain Vase",
+      "Porcelain Dinner Plate",
+      "A piece of you.",
+      "New Arrivals",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Personalized Anniversary Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/dashboard",
+    "width": 390
+  },
+  {
+    "label": "home",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "The Art of Porcelain",
+      "Featured Products",
+      "Blush Botanical Dinner Plate",
+      "Blush Wedding Keepsake Plate",
+      "Decorative Porcelain Vase",
+      "Porcelain Dinner Plate",
+      "A piece of you.",
+      "New Arrivals",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Personalized Anniversary Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/dashboard",
+    "width": 768
+  },
+  {
+    "label": "home",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "The Art of Porcelain",
+      "Featured Products",
+      "Blush Botanical Dinner Plate",
+      "Blush Wedding Keepsake Plate",
+      "Decorative Porcelain Vase",
+      "Porcelain Dinner Plate",
+      "A piece of you.",
+      "New Arrivals",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Personalized Anniversary Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/dashboard",
+    "width": 1280
+  },
+  {
+    "label": "home",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "The Art of Porcelain",
+      "Featured Products",
+      "Blush Botanical Dinner Plate",
+      "Blush Wedding Keepsake Plate",
+      "Decorative Porcelain Vase",
+      "Porcelain Dinner Plate",
+      "A piece of you.",
+      "New Arrivals",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Personalized Anniversary Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/dashboard",
+    "width": 1440
+  },
+  {
+    "label": "account-orders",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Your account",
+      "Order history"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/account",
+    "width": 320
+  },
+  {
+    "label": "account-orders",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Your account",
+      "Order history"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/account",
+    "width": 390
+  },
+  {
+    "label": "account-orders",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Your account",
+      "Order history"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/account",
+    "width": 768
+  },
+  {
+    "label": "account-orders",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Your account",
+      "Order history"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/account",
+    "width": 1280
+  },
+  {
+    "label": "account-orders",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Your account",
+      "Order history"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/account",
+    "width": 1440
+  },
+  {
+    "label": "account-orders",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Sua conta",
+      "Histórico de pedidos"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/account",
+    "width": 320
+  },
+  {
+    "label": "account-orders",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Sua conta",
+      "Histórico de pedidos"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/account",
+    "width": 390
+  },
+  {
+    "label": "account-orders",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Sua conta",
+      "Histórico de pedidos"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/account",
+    "width": 768
+  },
+  {
+    "label": "account-orders",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Sua conta",
+      "Histórico de pedidos"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/account",
+    "width": 1280
+  },
+  {
+    "label": "account-orders",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Sua conta",
+      "Histórico de pedidos"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/account",
+    "width": 1440
+  },
+  {
+    "label": "account-profile",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Sua conta",
+      "Dados pessoais"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/account/profile",
+    "width": 320
+  },
+  {
+    "label": "account-profile",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Sua conta",
+      "Dados pessoais"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/account/profile",
+    "width": 390
+  },
+  {
+    "label": "account-profile",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Sua conta",
+      "Dados pessoais"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/account/profile",
+    "width": 768
+  },
+  {
+    "label": "account-profile",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Sua conta",
+      "Dados pessoais"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/account/profile",
+    "width": 1280
+  },
+  {
+    "label": "account-profile",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Sua conta",
+      "Dados pessoais"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/account/profile",
+    "width": 1440
+  },
+  {
+    "label": "account-profile",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Your account",
+      "Personal details"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/account/profile",
+    "width": 320
+  },
+  {
+    "label": "account-profile",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Your account",
+      "Personal details"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/account/profile",
+    "width": 390
+  },
+  {
+    "label": "account-profile",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Your account",
+      "Personal details"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/account/profile",
+    "width": 768
+  },
+  {
+    "label": "account-profile",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Your account",
+      "Personal details"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/account/profile",
+    "width": 1280
+  },
+  {
+    "label": "account-profile",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Your account",
+      "Personal details"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/account/profile",
+    "width": 1440
+  },
+  {
+    "label": "navigation-recovery",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "We could not open that page.",
+      "Your account",
+      "Personal details"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/account/profile",
+    "width": 320
+  },
+  {
+    "label": "navigation-recovery",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "We could not open that page.",
+      "Your account",
+      "Personal details"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/account/profile",
+    "width": 390
+  },
+  {
+    "label": "navigation-recovery",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "We could not open that page.",
+      "Your account",
+      "Personal details"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/account/profile",
+    "width": 768
+  },
+  {
+    "label": "navigation-recovery",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "We could not open that page.",
+      "Your account",
+      "Personal details"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/account/profile",
+    "width": 1280
+  },
+  {
+    "label": "navigation-recovery",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "We could not open that page.",
+      "Your account",
+      "Personal details"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/account/profile",
+    "width": 1440
+  },
+  {
+    "label": "navigation-recovery",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Não foi possível abrir essa página.",
+      "Sua conta",
+      "Dados pessoais"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/account/profile",
+    "width": 320
+  },
+  {
+    "label": "navigation-recovery",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Não foi possível abrir essa página.",
+      "Sua conta",
+      "Dados pessoais"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/account/profile",
+    "width": 390
+  },
+  {
+    "label": "navigation-recovery",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Não foi possível abrir essa página.",
+      "Sua conta",
+      "Dados pessoais"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/account/profile",
+    "width": 768
+  },
+  {
+    "label": "navigation-recovery",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Não foi possível abrir essa página.",
+      "Sua conta",
+      "Dados pessoais"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/account/profile",
+    "width": 1280
+  },
+  {
+    "label": "navigation-recovery",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Não foi possível abrir essa página.",
+      "Sua conta",
+      "Dados pessoais"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/account/profile",
+    "width": 1440
+  },
+  {
+    "label": "care-instructions",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Cuidados com a peça"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/care-instructions",
+    "width": 320
+  },
+  {
+    "label": "care-instructions",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Cuidados com a peça"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/care-instructions",
+    "width": 390
+  },
+  {
+    "label": "care-instructions",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Cuidados com a peça"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/care-instructions",
+    "width": 768
+  },
+  {
+    "label": "care-instructions",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Cuidados com a peça"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/care-instructions",
+    "width": 1280
+  },
+  {
+    "label": "care-instructions",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Cuidados com a peça"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/care-instructions",
+    "width": 1440
+  },
+  {
+    "label": "care-instructions",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Care instructions"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/care-instructions",
+    "width": 320
+  },
+  {
+    "label": "care-instructions",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Care instructions"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/care-instructions",
+    "width": 390
+  },
+  {
+    "label": "care-instructions",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Care instructions"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/care-instructions",
+    "width": 768
+  },
+  {
+    "label": "care-instructions",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Care instructions"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/care-instructions",
+    "width": 1280
+  },
+  {
+    "label": "care-instructions",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Care instructions"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/care-instructions",
+    "width": 1440
+  },
+  {
+    "label": "catalog",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Collections",
+      "Blush Botanical Dinner Plate",
+      "Blush Guest Bathroom Dish",
+      "Blush Scalloped Soap Dish",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Collector’s Porcelain Gift Set",
+      "Decorative Porcelain Vase",
+      "Indigo Bloom Vase",
+      "Indigo Small Bud Vase",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Lavender Tea Set — Limited Edition",
+      "Personalized Anniversary Plate",
+      "Personalized Family Portrait Plate",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate",
+      "Porcelain Saucer",
+      "Porcelain Soap Dish",
+      "Porcelain Teacup"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/products",
+    "width": 320
+  },
+  {
+    "label": "catalog",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Collections",
+      "Blush Botanical Dinner Plate",
+      "Blush Guest Bathroom Dish",
+      "Blush Scalloped Soap Dish",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Collector’s Porcelain Gift Set",
+      "Decorative Porcelain Vase",
+      "Indigo Bloom Vase",
+      "Indigo Small Bud Vase",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Lavender Tea Set — Limited Edition",
+      "Personalized Anniversary Plate",
+      "Personalized Family Portrait Plate",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate",
+      "Porcelain Saucer",
+      "Porcelain Soap Dish",
+      "Porcelain Teacup"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/products",
+    "width": 390
+  },
+  {
+    "label": "catalog",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Collections",
+      "Blush Botanical Dinner Plate",
+      "Blush Guest Bathroom Dish",
+      "Blush Scalloped Soap Dish",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Collector’s Porcelain Gift Set",
+      "Decorative Porcelain Vase",
+      "Indigo Bloom Vase",
+      "Indigo Small Bud Vase",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Lavender Tea Set — Limited Edition",
+      "Personalized Anniversary Plate",
+      "Personalized Family Portrait Plate",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate",
+      "Porcelain Saucer",
+      "Porcelain Soap Dish",
+      "Porcelain Teacup"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/products",
+    "width": 768
+  },
+  {
+    "label": "catalog",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Collections",
+      "Blush Botanical Dinner Plate",
+      "Blush Guest Bathroom Dish",
+      "Blush Scalloped Soap Dish",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Collector’s Porcelain Gift Set",
+      "Decorative Porcelain Vase",
+      "Indigo Bloom Vase",
+      "Indigo Small Bud Vase",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Lavender Tea Set — Limited Edition",
+      "Personalized Anniversary Plate",
+      "Personalized Family Portrait Plate",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate",
+      "Porcelain Saucer",
+      "Porcelain Soap Dish",
+      "Porcelain Teacup"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/products",
+    "width": 1280
+  },
+  {
+    "label": "catalog",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Collections",
+      "Blush Botanical Dinner Plate",
+      "Blush Guest Bathroom Dish",
+      "Blush Scalloped Soap Dish",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Collector’s Porcelain Gift Set",
+      "Decorative Porcelain Vase",
+      "Indigo Bloom Vase",
+      "Indigo Small Bud Vase",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Lavender Tea Set — Limited Edition",
+      "Personalized Anniversary Plate",
+      "Personalized Family Portrait Plate",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate",
+      "Porcelain Saucer",
+      "Porcelain Soap Dish",
+      "Porcelain Teacup"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/products",
+    "width": 1440
+  },
+  {
+    "label": "catalog",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Coleções",
+      "Blush Botanical Dinner Plate",
+      "Blush Guest Bathroom Dish",
+      "Blush Scalloped Soap Dish",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Collector’s Porcelain Gift Set",
+      "Decorative Porcelain Vase",
+      "Indigo Bloom Vase",
+      "Indigo Small Bud Vase",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Lavender Tea Set — Limited Edition",
+      "Personalized Anniversary Plate",
+      "Personalized Family Portrait Plate",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate",
+      "Porcelain Saucer",
+      "Porcelain Soap Dish",
+      "Porcelain Teacup"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/products",
+    "width": 320
+  },
+  {
+    "label": "catalog",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Coleções",
+      "Blush Botanical Dinner Plate",
+      "Blush Guest Bathroom Dish",
+      "Blush Scalloped Soap Dish",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Collector’s Porcelain Gift Set",
+      "Decorative Porcelain Vase",
+      "Indigo Bloom Vase",
+      "Indigo Small Bud Vase",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Lavender Tea Set — Limited Edition",
+      "Personalized Anniversary Plate",
+      "Personalized Family Portrait Plate",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate",
+      "Porcelain Saucer",
+      "Porcelain Soap Dish",
+      "Porcelain Teacup"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/products",
+    "width": 390
+  },
+  {
+    "label": "catalog",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Coleções",
+      "Blush Botanical Dinner Plate",
+      "Blush Guest Bathroom Dish",
+      "Blush Scalloped Soap Dish",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Collector’s Porcelain Gift Set",
+      "Decorative Porcelain Vase",
+      "Indigo Bloom Vase",
+      "Indigo Small Bud Vase",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Lavender Tea Set — Limited Edition",
+      "Personalized Anniversary Plate",
+      "Personalized Family Portrait Plate",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate",
+      "Porcelain Saucer",
+      "Porcelain Soap Dish",
+      "Porcelain Teacup"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/products",
+    "width": 768
+  },
+  {
+    "label": "catalog",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Coleções",
+      "Blush Botanical Dinner Plate",
+      "Blush Guest Bathroom Dish",
+      "Blush Scalloped Soap Dish",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Collector’s Porcelain Gift Set",
+      "Decorative Porcelain Vase",
+      "Indigo Bloom Vase",
+      "Indigo Small Bud Vase",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Lavender Tea Set — Limited Edition",
+      "Personalized Anniversary Plate",
+      "Personalized Family Portrait Plate",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate",
+      "Porcelain Saucer",
+      "Porcelain Soap Dish",
+      "Porcelain Teacup"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/products",
+    "width": 1280
+  },
+  {
+    "label": "catalog",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Coleções",
+      "Blush Botanical Dinner Plate",
+      "Blush Guest Bathroom Dish",
+      "Blush Scalloped Soap Dish",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Collector’s Porcelain Gift Set",
+      "Decorative Porcelain Vase",
+      "Indigo Bloom Vase",
+      "Indigo Small Bud Vase",
+      "Indigo Vase — Sold Out",
+      "Lavender Afternoon Tea Set",
+      "Lavender Sunday Tea Collection",
+      "Lavender Tea Set — Limited Edition",
+      "Personalized Anniversary Plate",
+      "Personalized Family Portrait Plate",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate",
+      "Porcelain Saucer",
+      "Porcelain Soap Dish",
+      "Porcelain Teacup"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/products",
+    "width": 1440
+  },
+  {
+    "label": "product-invalid-quantity",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Blush Botanical Dinner Plate",
+      "Detalhes do produto",
+      "Você também pode gostar",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 320
+  },
+  {
+    "label": "product-invalid-quantity",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Blush Botanical Dinner Plate",
+      "Detalhes do produto",
+      "Você também pode gostar",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 390
+  },
+  {
+    "label": "product-invalid-quantity",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Blush Botanical Dinner Plate",
+      "Detalhes do produto",
+      "Você também pode gostar",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 768
+  },
+  {
+    "label": "product-invalid-quantity",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Blush Botanical Dinner Plate",
+      "Detalhes do produto",
+      "Você também pode gostar",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 1280
+  },
+  {
+    "label": "product-invalid-quantity",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Blush Botanical Dinner Plate",
+      "Detalhes do produto",
+      "Você também pode gostar",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 1440
+  },
+  {
+    "label": "product-invalid-quantity",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Blush Botanical Dinner Plate",
+      "Product Details",
+      "You May Also Like",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 320
+  },
+  {
+    "label": "product-invalid-quantity",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Blush Botanical Dinner Plate",
+      "Product Details",
+      "You May Also Like",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 390
+  },
+  {
+    "label": "product-invalid-quantity",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Blush Botanical Dinner Plate",
+      "Product Details",
+      "You May Also Like",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 768
+  },
+  {
+    "label": "product-invalid-quantity",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Blush Botanical Dinner Plate",
+      "Product Details",
+      "You May Also Like",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 1280
+  },
+  {
+    "label": "product-invalid-quantity",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Blush Botanical Dinner Plate",
+      "Product Details",
+      "You May Also Like",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 1440
+  },
+  {
+    "label": "cart-drawer",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 320,
+    "headings": [
+      "Your Cart",
+      "Blush Botanical Dinner Plate",
+      "Product Details",
+      "You May Also Like",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 320
+  },
+  {
+    "label": "cart-drawer",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 390,
+    "headings": [
+      "Your Cart",
+      "Blush Botanical Dinner Plate",
+      "Product Details",
+      "You May Also Like",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 390
+  },
+  {
+    "label": "cart-drawer",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 768,
+    "headings": [
+      "Your Cart",
+      "Blush Botanical Dinner Plate",
+      "Product Details",
+      "You May Also Like",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 768
+  },
+  {
+    "label": "cart-drawer",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1280,
+    "headings": [
+      "Your Cart",
+      "Blush Botanical Dinner Plate",
+      "Product Details",
+      "You May Also Like",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 1280
+  },
+  {
+    "label": "cart-drawer",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1440,
+    "headings": [
+      "Your Cart",
+      "Blush Botanical Dinner Plate",
+      "Product Details",
+      "You May Also Like",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 1440
+  },
+  {
+    "label": "cart-drawer",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 320,
+    "headings": [
+      "Seu carrinho",
+      "Blush Botanical Dinner Plate",
+      "Detalhes do produto",
+      "Você também pode gostar",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 320
+  },
+  {
+    "label": "cart-drawer",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 390,
+    "headings": [
+      "Seu carrinho",
+      "Blush Botanical Dinner Plate",
+      "Detalhes do produto",
+      "Você também pode gostar",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 390
+  },
+  {
+    "label": "cart-drawer",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 768,
+    "headings": [
+      "Seu carrinho",
+      "Blush Botanical Dinner Plate",
+      "Detalhes do produto",
+      "Você também pode gostar",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 768
+  },
+  {
+    "label": "cart-drawer",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1280,
+    "headings": [
+      "Seu carrinho",
+      "Blush Botanical Dinner Plate",
+      "Detalhes do produto",
+      "Você também pode gostar",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 1280
+  },
+  {
+    "label": "cart-drawer",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1440,
+    "headings": [
+      "Seu carrinho",
+      "Blush Botanical Dinner Plate",
+      "Detalhes do produto",
+      "Você também pode gostar",
+      "Blush Wedding Keepsake Plate",
+      "Botanical Plate — Made to Order",
+      "Porcelain Coffee Mug",
+      "Porcelain Dinner Plate"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/product/7333912d-de76-54a5-8399-fcaef37fd7bc",
+    "width": 1440
+  },
+  {
+    "label": "cart",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Seu carrinho de compras",
+      "Calcular frete",
+      "Resumo do carrinho"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/cart",
+    "width": 320
+  },
+  {
+    "label": "cart",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Seu carrinho de compras",
+      "Calcular frete",
+      "Resumo do carrinho"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/cart",
+    "width": 390
+  },
+  {
+    "label": "cart",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Seu carrinho de compras",
+      "Calcular frete",
+      "Resumo do carrinho"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/cart",
+    "width": 768
+  },
+  {
+    "label": "cart",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Seu carrinho de compras",
+      "Calcular frete",
+      "Resumo do carrinho"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/cart",
+    "width": 1280
+  },
+  {
+    "label": "cart",
+    "locale": "pt",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Seu carrinho de compras",
+      "Calcular frete",
+      "Resumo do carrinho"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/pt-BR/cart",
+    "width": 1440
+  },
+  {
+    "label": "checkout-personal",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Checkout",
+      "Your Information",
+      "Order Summary"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/checkout",
+    "width": 320
+  },
+  {
+    "label": "checkout-personal",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Checkout",
+      "Your Information",
+      "Order Summary"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/checkout",
+    "width": 390
+  },
+  {
+    "label": "checkout-personal",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Checkout",
+      "Your Information",
+      "Order Summary"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/checkout",
+    "width": 768
+  },
+  {
+    "label": "checkout-personal",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Checkout",
+      "Your Information",
+      "Order Summary"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/checkout",
+    "width": 1280
+  },
+  {
+    "label": "checkout-personal",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Checkout",
+      "Your Information",
+      "Order Summary"
+    ],
+    "overflow": [],
+    "unlabelledInputs": [],
+    "url": "/en/checkout",
+    "width": 1440
+  },
+  {
+    "label": "account-security",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Your account",
+      "Password & security"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/account/security",
+    "width": 320
+  },
+  {
+    "label": "account-security",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Your account",
+      "Password & security"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/account/security",
+    "width": 390
+  },
+  {
+    "label": "account-security",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Your account",
+      "Password & security"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/account/security",
+    "width": 768
+  },
+  {
+    "label": "account-security",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Your account",
+      "Password & security"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/account/security",
+    "width": 1280
+  },
+  {
+    "label": "account-security",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Your account",
+      "Password & security"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/account/security",
+    "width": 1440
+  },
+  {
+    "label": "account-security",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Sua conta",
+      "Senha e segurança"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/account/security",
+    "width": 320
+  },
+  {
+    "label": "account-security",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Sua conta",
+      "Senha e segurança"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/account/security",
+    "width": 390
+  },
+  {
+    "label": "account-security",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Sua conta",
+      "Senha e segurança"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/account/security",
+    "width": 768
+  },
+  {
+    "label": "account-security",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Sua conta",
+      "Senha e segurança"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/account/security",
+    "width": 1280
+  },
+  {
+    "label": "account-security",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Sua conta",
+      "Senha e segurança"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/account/security",
+    "width": 1440
+  },
+  {
+    "label": "registration-account",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Create Your Account"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/register",
+    "width": 320
+  },
+  {
+    "label": "registration-account",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Create Your Account"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/register",
+    "width": 320
+  },
+  {
+    "label": "registration-account",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Create Your Account"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/register",
+    "width": 768
+  },
+  {
+    "label": "registration-account",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Create Your Account"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/register",
+    "width": 1280
+  },
+  {
+    "label": "registration-account",
+    "locale": "en",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Create Your Account"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/register",
+    "width": 1440
+  },
+  {
+    "label": "registration-account",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Crie sua conta"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/register",
+    "width": 320
+  },
+  {
+    "label": "registration-account",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Crie sua conta"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/register",
+    "width": 390
+  },
+  {
+    "label": "registration-account",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Crie sua conta"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/register",
+    "width": 768
+  },
+  {
+    "label": "registration-account",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Crie sua conta"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/register",
+    "width": 1280
+  },
+  {
+    "label": "registration-account",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Crie sua conta"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/register",
+    "width": 1440
+  },
+  {
+    "label": "forgot-password",
+    "locale": "en",
+    "requestedWidth": 320,
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Reset your password"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/forgot-password",
+    "width": 320
+  },
+  {
+    "label": "forgot-password",
+    "locale": "en",
+    "requestedWidth": 390,
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Reset your password"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/forgot-password",
+    "width": 390
+  },
+  {
+    "label": "forgot-password",
+    "locale": "en",
+    "requestedWidth": 768,
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Reset your password"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/forgot-password",
+    "width": 768
+  },
+  {
+    "label": "forgot-password",
+    "locale": "en",
+    "requestedWidth": 1280,
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Reset your password"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/forgot-password",
+    "width": 1280
+  },
+  {
+    "label": "forgot-password",
+    "locale": "en",
+    "requestedWidth": 1440,
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Reset your password"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/forgot-password",
+    "width": 1440
+  },
+  {
+    "label": "forgot-password",
+    "locale": "pt-BR",
+    "requestedWidth": 320,
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Redefina sua senha"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/forgot-password",
+    "width": 320
+  },
+  {
+    "label": "forgot-password",
+    "locale": "pt-BR",
+    "requestedWidth": 390,
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Redefina sua senha"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/forgot-password",
+    "width": 390
+  },
+  {
+    "label": "forgot-password",
+    "locale": "pt-BR",
+    "requestedWidth": 768,
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Redefina sua senha"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/forgot-password",
+    "width": 768
+  },
+  {
+    "label": "forgot-password",
+    "locale": "pt-BR",
+    "requestedWidth": 1280,
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Redefina sua senha"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/forgot-password",
+    "width": 1280
+  },
+  {
+    "label": "forgot-password",
+    "locale": "pt-BR",
+    "requestedWidth": 1440,
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Redefina sua senha"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/forgot-password",
+    "width": 1440
+  },
+  {
+    "label": "invalid-reset-link",
+    "locale": "en",
+    "requestedWidth": 320,
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Choose a new password"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/reset-password",
+    "width": 320
+  },
+  {
+    "label": "invalid-reset-link",
+    "locale": "en",
+    "requestedWidth": 390,
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Choose a new password"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/reset-password",
+    "width": 390
+  },
+  {
+    "label": "invalid-reset-link",
+    "locale": "en",
+    "requestedWidth": 768,
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Choose a new password"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/reset-password",
+    "width": 768
+  },
+  {
+    "label": "invalid-reset-link",
+    "locale": "en",
+    "requestedWidth": 1280,
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Choose a new password"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/reset-password",
+    "width": 1280
+  },
+  {
+    "label": "invalid-reset-link",
+    "locale": "en",
+    "requestedWidth": 1440,
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Choose a new password"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/reset-password",
+    "width": 1440
+  },
+  {
+    "label": "invalid-reset-link",
+    "locale": "pt-BR",
+    "requestedWidth": 320,
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Escolha uma nova senha"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/reset-password",
+    "width": 320
+  },
+  {
+    "label": "invalid-reset-link",
+    "locale": "pt-BR",
+    "requestedWidth": 390,
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Escolha uma nova senha"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/reset-password",
+    "width": 390
+  },
+  {
+    "label": "invalid-reset-link",
+    "locale": "pt-BR",
+    "requestedWidth": 768,
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Escolha uma nova senha"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/reset-password",
+    "width": 768
+  },
+  {
+    "label": "invalid-reset-link",
+    "locale": "pt-BR",
+    "requestedWidth": 1280,
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Escolha uma nova senha"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/reset-password",
+    "width": 1280
+  },
+  {
+    "label": "invalid-reset-link",
+    "locale": "pt-BR",
+    "requestedWidth": 1440,
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Escolha uma nova senha"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/pt-BR/reset-password",
+    "width": 1440
+  },
+  {
+    "label": "registration-account",
+    "locale": "en",
+    "requestedWidth": 320,
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Create Your Account"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/register",
+    "width": 320
+  },
+  {
+    "label": "registration-account",
+    "locale": "en",
+    "requestedWidth": 390,
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Create Your Account"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/register",
+    "width": 390
+  },
+  {
+    "label": "registration-account",
+    "locale": "en",
+    "requestedWidth": 768,
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Create Your Account"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/register",
+    "width": 768
+  },
+  {
+    "label": "registration-account",
+    "locale": "en",
+    "requestedWidth": 1280,
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Create Your Account"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/register",
+    "width": 1280
+  },
+  {
+    "label": "registration-account",
+    "locale": "en",
+    "requestedWidth": 1440,
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Create Your Account"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/register",
+    "width": 1440
+  },
+  {
+    "label": "empty-catalog",
+    "locale": "en",
+    "requestedWidth": 320,
+    "brokenImages": [],
+    "documentWidth": 305,
+    "headings": [
+      "Collections"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/products?query=unavailable-review-item-20261008&page=0",
+    "width": 320
+  },
+  {
+    "label": "empty-catalog",
+    "locale": "en",
+    "requestedWidth": 390,
+    "brokenImages": [],
+    "documentWidth": 375,
+    "headings": [
+      "Collections"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/products?query=unavailable-review-item-20261008&page=0",
+    "width": 390
+  },
+  {
+    "label": "empty-catalog",
+    "locale": "en",
+    "requestedWidth": 768,
+    "brokenImages": [],
+    "documentWidth": 753,
+    "headings": [
+      "Collections"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/products?query=unavailable-review-item-20261008&page=0",
+    "width": 768
+  },
+  {
+    "label": "empty-catalog",
+    "locale": "en",
+    "requestedWidth": 1280,
+    "brokenImages": [],
+    "documentWidth": 1265,
+    "headings": [
+      "Collections"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/products?query=unavailable-review-item-20261008&page=0",
+    "width": 1280
+  },
+  {
+    "label": "empty-catalog",
+    "locale": "en",
+    "requestedWidth": 1440,
+    "brokenImages": [],
+    "documentWidth": 1425,
+    "headings": [
+      "Collections"
+    ],
+    "unlabelledInputs": [],
+    "url": "http://localhost:4400/en/products?query=unavailable-review-item-20261008&page=0",
+    "width": 1440
+  }
+]

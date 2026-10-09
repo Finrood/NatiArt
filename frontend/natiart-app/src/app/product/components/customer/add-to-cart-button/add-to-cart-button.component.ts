@@ -15,7 +15,7 @@ import {ButtonComponent} from '../../../../shared/components/button.component';
   imports: [PersonalizationModalComponent, ButtonComponent, RouterLink],
   template: `
     <app-button (click)="addToCartOrPersonalize(product, $event)"
-      [disabled]="product.stockQuantity <= 0 || isAdding" [block]="true" color="primary">
+      [disabled]="product.stockQuantity <= 0 || !validQuantity || isAdding" [block]="true" color="primary">
       @if (product.stockQuantity <= 0) { <span i18n>Out of Stock</span> }
       @else if (isAdding) { <span i18n>Adding...</span> }
       @else if (needsPersonalization) { <span i18n>Choose options</span> }
@@ -48,15 +48,24 @@ export class AddToCartButtonComponent {
   private readonly _elRef: ElementRef<HTMLElement> = inject(ElementRef);
   private readonly _destroyRef: DestroyRef = inject(DestroyRef);
 
+  get validQuantity(): boolean {
+    return Number.isSafeInteger(this.quantity) && this.quantity >= 1
+      && this.quantity <= Math.min(this.product.stockQuantity, 100);
+  }
+
   get needsPersonalization(): boolean {
     return this.product.availablePersonalizations?.some((option: PersonalizationOption): boolean =>
       option === PersonalizationOption.GOLDEN_BORDER || option === PersonalizationOption.CUSTOM_IMAGE) ?? false;
   }
 
   addToCartOrPersonalize(product: Product, _event: MouseEvent): void {
-    if (!Number.isSafeInteger(this.quantity) || this.quantity < 1 || this.isAdding || product.stockQuantity <= 0) return;
+    if (this.isAdding || product.stockQuantity <= 0) return;
     this.$added.set(false);
     this.$error.set('');
+    if (!this.validQuantity) {
+      this.$error.set($localize`Choose a whole-number quantity within the available stock.`);
+      return;
+    }
     if (this.needsPersonalization) this.openPersonalizationModal(product);
     else this.addProduct(product, this.quantity);
   }
@@ -88,7 +97,7 @@ export class AddToCartButtonComponent {
           this.$error.set($localize`This piece is no longer available. Choose another piece from Collections.`);
           return;
         }
-        if (this.addProduct(currentProduct, Math.min(this.quantity, currentProduct.stockQuantity), result.goldBorder, result.customImage)) {
+        if (this.addProduct(currentProduct, this.quantity, result.goldBorder, result.customImage)) {
           this.closePersonalizationModal();
         }
       },
@@ -101,6 +110,11 @@ export class AddToCartButtonComponent {
       .filter((item: CartItem): boolean => item.product.id === product.id)
       .reduce((total: number, item: CartItem): number => total + item.quantity, 0);
     const previous: number = count();
+    if (!Number.isSafeInteger(quantity) || quantity < 1
+      || quantity + previous > Math.min(product.stockQuantity, 100)) {
+      this.$error.set($localize`This quantity could not be added. Review your cart to adjust it.`);
+      return false;
+    }
     this._cartService.addToCart(product, quantity, goldBorder, image);
     if (count() <= previous) {
       this.$error.set($localize`This quantity could not be added. Review your cart to adjust it.`);

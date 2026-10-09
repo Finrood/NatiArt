@@ -67,6 +67,15 @@
         <p i18n>Minimum length {{ control!.errors!['minlength'].requiredLength }} characters
         </p>
       }
+      @if (control?.errors?.['maxlength']) {
+        <p i18n>Use at most {{ control!.errors!['maxlength'].requiredLength }} characters.</p>
+      }
+      @if (control?.errors?.['min']) {
+        <p i18n>Enter a value of {{ control!.errors!['min'].min }} or greater.</p>
+      }
+      @if (control?.errors?.['max']) {
+        <p i18n>Enter a value of {{ control!.errors!['max'].max }} or less.</p>
+      }
       @if (control?.errors?.['pattern']) {
         <p i18n>Invalid format</p>
       }

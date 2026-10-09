@@ -33,6 +33,7 @@
         <!-- User Account -->
         <div class="hidden lg:block">
           @if ($isLoggedIn()) {
+            @if ($isAdmin()) { <a routerLink="/admin" routerLinkActive="current" ariaCurrentWhenActive="page" class="mr-4 text-secondary hover:text-primary transition-colors" i18n>Administration</a> }
             <a routerLink="/account" class="text-secondary hover:text-primary transition-colors" i18n>My Account</a>
             <a routerLink="/logout" class="ml-4 text-secondary hover:text-primary transition-colors" i18n>Logout</a>
           } @else {
@@ -61,6 +62,7 @@
         <a routerLink="/products" class="text-secondary hover:text-primary transition-colors duration-200" i18n>Collections</a>
         <hr class="border-primary-lighter/50">
         @if ($isLoggedIn()) {
+          @if ($isAdmin()) { <a routerLink="/admin" routerLinkActive="current" ariaCurrentWhenActive="page" class="text-secondary hover:text-primary transition-colors" i18n>Administration</a> }
           <a routerLink="/account" class="text-secondary hover:text-primary transition-colors" i18n>My Account</a>
           <a routerLink="/logout" class="text-secondary hover:text-primary transition-colors" i18n>Logout</a>
         } @else {

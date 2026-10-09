@@ -85,3 +85,14 @@ another page, a previous page, loading or error recovery needs it.
 The desktop category host stretches to the result list height so its sticky
 rail remains within the page and below the header. The rail scrolls internally
 when categories exceed the available viewport. Phones retain native Filters.
+
+The skip link includes the current locale, path and query string in its native
+href. Activation focuses and scrolls the content wrapper without navigating or
+losing filters. A NavigationError retains the current screen and drafts, shows
+a focused recovery alert and offers an explicit reload. Successful navigation
+clears the alert. Reload guidance explains that local artwork files need
+reselection; reload is never automatic.
+
+Administration appears in both header variants only for an authenticated admin.
+Role visibility follows authentication state; server authorization and route
+guards remain responsible for access control.

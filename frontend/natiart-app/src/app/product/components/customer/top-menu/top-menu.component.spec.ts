@@ -31,6 +31,26 @@ describe('TopMenuComponent', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
+  it('exposes administration on desktop and mobile only for an authenticated administrator', () => {
+    const loggedIn: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(true);
+    let administrator: boolean = true;
+    TestBed.overrideProvider(AuthenticationService, {useValue: {
+      isLoggedIn$: loggedIn.asObservable(), get isAdmin(): boolean { return administrator; }
+    }});
+    const fixture = TestBed.createComponent(TopMenuComponent);
+    fixture.detectChanges();
+    const host: HTMLElement = fixture.nativeElement;
+    expect(host.querySelector('a[href="/admin"]')).not.toBeNull();
+    host.querySelector<HTMLButtonElement>('button[aria-label="Toggle navigation"]')!.click();
+    fixture.detectChanges();
+    expect(host.querySelector('nav.flex-col a[href="/admin"]')).not.toBeNull();
+    administrator = false; loggedIn.next(true); fixture.detectChanges();
+    expect(host.querySelector('a[href="/admin"]')).toBeNull();
+    administrator = true; loggedIn.next(false); fixture.detectChanges();
+    expect(host.querySelector('a[href="/admin"]')).toBeNull();
+    fixture.destroy();
+  });
+
   it('offers matching account/logout destinations on desktop and mobile and closes the mobile navigation', () => {
     const fixture = TestBed.createComponent(TopMenuComponent);
     fixture.detectChanges();

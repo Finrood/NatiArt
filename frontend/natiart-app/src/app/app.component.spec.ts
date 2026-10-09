@@ -2,8 +2,8 @@ import {Component, signal} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
 import {provideHttpClient} from '@angular/common/http';
 import {provideHttpClientTesting} from '@angular/common/http/testing';
-import {Event, NavigationEnd, provideRouter, Router, Scroll} from '@angular/router';
-import {ViewportScroller} from '@angular/common';
+import {Event, NavigationEnd, NavigationError, provideRouter, Router, Scroll} from '@angular/router';
+import {APP_BASE_HREF, ViewportScroller} from '@angular/common';
 
 import {of, Subject} from 'rxjs';
 import {AuthenticationService} from './directory/service/authentication.service';
@@ -25,6 +25,7 @@ describe('AppComponent', () => {
     await TestBed.configureTestingModule({
       imports: [AppComponent],
       providers: [
+        {provide: APP_BASE_HREF, useValue: '/en/'},
         {provide: AuthenticationService, useValue: {isLoggedIn$: of(false), resetInactivityTimer: () => undefined}},
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -51,6 +52,29 @@ describe('AppComponent', () => {
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('router-outlet')).not.toBeNull();
+  });
+
+  it('skips the header without changing the current route or filters under a localized base URL', async () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    const router: Router = TestBed.inject(Router);
+    const scroll: jasmine.Spy = spyOn(TestBed.inject(ViewportScroller), 'scrollToAnchor');
+    fixture.detectChanges();
+    await router.navigateByUrl('/search?query=plate&categoryId=tableware#old-anchor');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const host: HTMLElement = fixture.nativeElement;
+    const link: HTMLAnchorElement = host.querySelector('.skip-link')!;
+    expect(link.getAttribute('href')).toBe('/en/search?query=plate&categoryId=tableware#store-content');
+    const navigation: jasmine.Spy = spyOn(router, 'navigateByUrl').and.callThrough();
+    const click: MouseEvent = new MouseEvent('click', {bubbles: true, cancelable: true});
+    link.dispatchEvent(click);
+    await fixture.whenStable();
+    expect(click.defaultPrevented).toBeTrue();
+    expect(navigation).not.toHaveBeenCalled();
+    expect(router.url).toBe('/search?query=plate&categoryId=tableware#old-anchor');
+    expect(document.activeElement).toBe(host.querySelector('#store-content'));
+    expect(scroll).toHaveBeenCalledWith('store-content');
+    fixture.destroy();
   });
   it('focuses each routed heading once, including a heading loaded asynchronously', async () => {
     const fixture = TestBed.createComponent(AppComponent);
@@ -106,6 +130,29 @@ describe('AppComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(scroll.calls.mostRecent().args).toEqual([[0, 0]]);
+    fixture.destroy();
+  });
+
+  it('offers visible recovery when a route cannot load and clears it after a successful navigation', async () => {
+    const router: Router = TestBed.inject(Router);
+    const events: Subject<Event> = new Subject<Event>();
+    spyOnProperty(router, 'events', 'get').and.returnValue(events);
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    await router.navigateByUrl('/first');
+    fixture.detectChanges();
+    events.next(new NavigationError(2, '/loaded', new TypeError('Failed to fetch dynamically imported module')));
+    fixture.detectChanges(); await fixture.whenStable();
+    const host: HTMLElement = fixture.nativeElement;
+    const alert: HTMLElement = host.querySelector('[data-navigation-error]')!;
+    expect(alert.textContent).toContain('shop may have been updated');
+    expect(alert.textContent).toContain('select any uploaded artwork again');
+    expect(alert.querySelector('button')!.textContent).toContain('Reload page');
+    expect(document.activeElement).toBe(alert);
+    expect(host.querySelector('h1')!.textContent).toBe('First page');
+    events.next(new NavigationEnd(3, '/first', '/first'));
+    fixture.detectChanges(); await fixture.whenStable();
+    expect(host.querySelector('[data-navigation-error]')).toBeNull();
     fixture.destroy();
   });
 

@@ -1,5 +1,5 @@
 import {AccessibleDialogComponent} from '../../../../shared/components/accessible-dialog.component';
-import {ChangeDetectorRef, DestroyRef, AfterViewInit, Component, HostListener, inject, signal, OnDestroy, OnInit, ViewChild} from '@angular/core';
+import {ChangeDetectorRef, DestroyRef, AfterViewInit, Component, HostListener, inject, signal, OnDestroy, OnInit, ViewChild, WritableSignal} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {ProductService} from '../../../service/product.service';
@@ -9,6 +9,7 @@ import {Category} from '../../../models/category.model';
 import {Package} from '../../../models/package.model';
 import {Product} from '../../../models/product.model';
 import {BehaviorSubject, finalize, Subscription} from 'rxjs';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 import {CdkDragDrop, DragDropModule, moveItemInArray} from '@angular/cdk/drag-drop';
 import {PersonalizationOption} from '../../../models/support/personalization-option';
@@ -42,9 +43,11 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   categories = new BehaviorSubject<Category[]>([]);
   packages = new BehaviorSubject<Package[]>([]);
 
-  // Use plain booleans for modal and editing state
   isEditingProduct: boolean = false;
-  modalVisible: boolean = false;
+  readonly $modalVisible: WritableSignal<boolean> = signal(false);
+  get modalVisible(): boolean { return this.$modalVisible(); }
+  set modalVisible(value: boolean) { this.$modalVisible.set(value); }
+  readonly $writePending: WritableSignal<ReadonlySet<string>> = signal<ReadonlySet<string>>(new Set<string>());
 
   productForm: FormGroup;
   imagePreviews: ImagePreview[] = [];
@@ -53,7 +56,9 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   isTouch: boolean = false;
   isDragging: boolean = false;
   isLoadingImages: boolean = false;
-  isSubmitting: boolean = false;
+  readonly $isSubmitting: WritableSignal<boolean> = signal(false);
+  get isSubmitting(): boolean { return this.$isSubmitting(); }
+  set isSubmitting(value: boolean) { this.$isSubmitting.set(value); }
 
   @ViewChild('alertMessages') alertMessageComponent!: AlertMessageComponent;
 
@@ -69,6 +74,7 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   private pendingAlertsTimer: ReturnType<typeof setTimeout> | undefined = undefined;
   private imageSessionGeneration = 0;
   private readonly _cdr = inject(ChangeDetectorRef);
+  private readonly _destroyRef: DestroyRef = inject(DestroyRef);
   private readonly previewSubscriptions = new Map<string, Subscription>();
   private readonly coverSubscriptions = new Map<string, Subscription>();
   private readonly coverObjectUrls = new Map<string, string>();
@@ -161,6 +167,9 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
     const sessionGeneration = ++this.imageSessionGeneration;
     this.isEditingProduct = !!product;
     this.$editingProduct.set(product ?? null);
+    this.productForm.reset({originalPrice: null, markedPrice: null, weightKg: 0, stockQuantity: 0,
+      active: true, newProduct: false, featuredProduct: false, hasFixedGoldenBorder: false,
+      GOLDEN_BORDER: false, CUSTOM_IMAGE: false, images: [], tags: []});
     if (product) {
       this.productForm.patchValue(product);
 
@@ -180,15 +189,6 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
       }));
       this.loadExistingImages(this.imagePreviews.map((preview: ImagePreview) => preview.originalUrl!), sessionGeneration);
     } else {
-      this.productForm.reset({
-        originalPrice: null,
-        markedPrice: null,
-        weightKg: 0,
-        stockQuantity: 0,
-        active: true,
-        newProduct: false,
-        featuredProduct: false,
-      });
       this.imagePreviews = [];
     }
     this.imageFiles = [];
@@ -249,9 +249,9 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
         });
 
       if (this.isEditingProduct) {
-        this.updateProduct(product.id!, formData);
+        this.updateProduct(product.id!, formData, this.imageSessionGeneration);
       } else {
-        this.addProduct(formData);
+        this.addProduct(formData, this.imageSessionGeneration);
       }
     } else {
       this.validateAllFormFields(this.productForm);
@@ -259,7 +259,12 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   }
 
   deleteProduct(id: string): void {
-    this.productService.deleteProduct(id).subscribe({
+    const product: Product | undefined = this._products$.value.find((item: Product): boolean => item.id === id);
+    if (!product || this.isWritePending(id)
+      || !window.confirm($localize`Delete product "${product.label}:PRODUCT_LABEL:"?`)) return;
+    this.setWritePending(id, true);
+    this.productService.deleteProduct(id).pipe(takeUntilDestroyed(this._destroyRef),
+      finalize((): void => this.setWritePending(id, false))).subscribe({
       next: () => {
         this.pages.load(this.pages.$page());
         this._products$.next(this._products$.value.filter(prod => prod.id !== id));
@@ -273,7 +278,11 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
   }
 
   toggleProductVisibility(product: Product): void {
-    this.productService.inverseProductVisibility(product.id!).subscribe({
+    const id: string | undefined = product.id;
+    if (!id || this.isWritePending(id)) return;
+    this.setWritePending(id, true);
+    this.productService.inverseProductVisibility(id).pipe(takeUntilDestroyed(this._destroyRef),
+      finalize((): void => this.setWritePending(id, false))).subscribe({
       next: (response: Product) => {
         this.pages.load(this.pages.$page());
         this._products$.next(this._products$.value.map(prod => prod.id === response.id ? response : prod));
@@ -285,38 +294,47 @@ export class ProductManagementComponent implements OnInit, AfterViewInit, OnDest
     });
   }
 
-  private addProduct(formData: FormData): void {
-    this.productService.addProduct(formData).subscribe({
+  isWritePending(id: string | undefined): boolean { return !!id && this.$writePending().has(id); }
+
+  private setWritePending(id: string, pending: boolean): void {
+    this.$writePending.update((current: ReadonlySet<string>): ReadonlySet<string> => {
+      const next: Set<string> = new Set(current);
+      if (pending) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  private addProduct(formData: FormData, generation: number): void {
+    this.productService.addProduct(formData).pipe(takeUntilDestroyed(this._destroyRef),
+      finalize((): void => { this.isSubmitting = false; })).subscribe({
       next: (response) => {
         this.pages.load(this.pages.$page());
         this._products$.next([...this._products$.value, response]);
         this.updateProductImage(response);
-        this.closeModal();
+        if (generation === this.imageSessionGeneration) this.closeModal();
         this.showAlert($localize`Product added successfully`, 'success');
-        this.isSubmitting = false;
       },
       error: (error) => {
         reportError('product-management', error);
         this.showAlert($localize`Error adding product`, 'error');
-        this.isSubmitting = false;
       }
     });
   }
 
-  private updateProduct(productId: string, formData: FormData): void {
-    this.productService.updateProduct(productId, formData).subscribe({
+  private updateProduct(productId: string, formData: FormData, generation: number): void {
+    this.productService.updateProduct(productId, formData).pipe(takeUntilDestroyed(this._destroyRef),
+      finalize((): void => { this.isSubmitting = false; })).subscribe({
       next: (response: Product) => {
         this.pages.load(this.pages.$page());
         this._products$.next(this._products$.value.map(prod => prod.id === response.id ? response : prod));
         this.updateProductImage(response);
-        this.closeModal();
+        if (generation === this.imageSessionGeneration) this.closeModal();
         this.showAlert($localize`Product updated successfully`, 'success');
-        this.isSubmitting = false;
       },
       error: (error) => {
         reportError('product-management', error);
         this.showAlert($localize`Error updating product`, 'error');
-        this.isSubmitting = false;
       }
     });
   }

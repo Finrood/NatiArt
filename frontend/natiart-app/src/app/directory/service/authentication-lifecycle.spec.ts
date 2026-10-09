@@ -74,6 +74,44 @@ describe('Authentication session generation', () => {
     service.ngOnDestroy();
   }));
 
+  it('clears local credentials when a pending logout is cancelled', fakeAsync(() => {
+    service = TestBed.inject(AuthenticationService); tick();
+    tokens.accessToken = jwt('a'); tokens.refreshToken = jwt('r');
+    const subscription = service.logout().subscribe();
+    const pending = http.expectOne(base + environment.api.directory.endpoints.logout);
+    subscription.unsubscribe();
+    expect(pending.cancelled).toBeTrue();
+    expect(tokens.accessToken).toBeNull(); expect(tokens.refreshToken).toBeNull();
+    service.ngOnDestroy();
+  }));
+
+  it('does not clear a newer login when an older logout is cancelled', fakeAsync(() => {
+    service = TestBed.inject(AuthenticationService); tick();
+    tokens.accessToken = jwt('a'); tokens.refreshToken = jwt('r');
+    const subscription = service.logout().subscribe();
+    const pending = http.expectOne(base + environment.api.directory.endpoints.logout);
+    const bAccess: string = jwt('B-access'); const bRefresh: string = jwt('B-refresh');
+    service.login({username: 'B@example.test', password: 'Password123'}).subscribe();
+    http.expectOne(base + environment.api.directory.endpoints.login).flush({accessToken: bAccess, refreshToken: bRefresh});
+    http.expectOne(currentUrl).flush(user('B'));
+    subscription.unsubscribe();
+    expect(pending.cancelled).toBeTrue();
+    expect(tokens.accessToken).toBe(bAccess); expect(tokens.refreshToken).toBe(bRefresh);
+    service.ngOnDestroy();
+  }));
+
+  it('bounds an unavailable logout and clears local credentials', fakeAsync(() => {
+    service = TestBed.inject(AuthenticationService); tick();
+    tokens.accessToken = jwt('a'); tokens.refreshToken = jwt('r');
+    let failed: boolean = false;
+    service.logout().subscribe({error: (): void => { failed = true; }});
+    const pending = http.expectOne(base + environment.api.directory.endpoints.logout);
+    tick(10000);
+    expect(pending.cancelled).toBeTrue(); expect(failed).toBeTrue();
+    expect(tokens.accessToken).toBeNull(); expect(tokens.refreshToken).toBeNull();
+    service.ngOnDestroy();
+  }));
+
   it('clears definitively rejected refresh credentials', fakeAsync(() => {
     service = TestBed.inject(AuthenticationService);
     tick();
