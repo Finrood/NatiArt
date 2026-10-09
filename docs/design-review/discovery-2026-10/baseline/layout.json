@@ -1,0 +1,82 @@
+[
+  {
+    "locale": "en",
+    "screen": "home",
+    "docWidth": 305,
+    "firstPhoto": 919.921875,
+    "hero": 581.59375,
+    "width": 320
+  },
+  {
+    "locale": "en",
+    "screen": "home",
+    "docWidth": 375,
+    "firstPhoto": 896.828125,
+    "hero": 581.59375,
+    "width": 390
+  },
+  {
+    "locale": "en",
+    "screen": "home",
+    "docWidth": 753,
+    "firstPhoto": 701.59375,
+    "hero": 430.359375,
+    "width": 768
+  },
+  {
+    "locale": "en",
+    "screen": "home",
+    "docWidth": 1265,
+    "firstPhoto": 889.78125,
+    "hero": 576.796875,
+    "width": 1280
+  },
+  {
+    "locale": "en",
+    "screen": "home",
+    "docWidth": 1425,
+    "firstPhoto": 893.625,
+    "hero": 576.796875,
+    "width": 1440
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "home",
+    "docWidth": 305,
+    "firstPhoto": 979.015625,
+    "hero": 604.6875,
+    "width": 320
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "home",
+    "docWidth": 375,
+    "firstPhoto": 919.921875,
+    "hero": 581.59375,
+    "width": 390
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "home",
+    "docWidth": 753,
+    "firstPhoto": 719.984375,
+    "hero": 448.75,
+    "width": 768
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "home",
+    "docWidth": 1265,
+    "firstPhoto": 889.78125,
+    "hero": 576.796875,
+    "width": 1280
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "home",
+    "docWidth": 1425,
+    "firstPhoto": 893.625,
+    "hero": 576.796875,
+    "width": 1440
+  }
+]

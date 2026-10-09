@@ -1,0 +1,66 @@
+{
+  "baseline": {
+    "fetchTime": "2026-10-09T12:40:26.514Z",
+    "lighthouseVersion": "13.5.0",
+    "performanceScore": 80,
+    "accessibilityScore": 100,
+    "metrics": {
+      "largest-contentful-paint": 5049.3145,
+      "cumulative-layout-shift": 3.037658113027546e-05,
+      "total-blocking-time": 40,
+      "speed-index": 2074.6572499999997
+    },
+    "config": {
+      "formFactor": "mobile",
+      "throttling": {
+        "rttMs": 150,
+        "throughputKbps": 1638.4,
+        "requestLatencyMs": 562.5,
+        "downloadThroughputKbps": 1474.5600000000002,
+        "uploadThroughputKbps": 675,
+        "cpuSlowdownMultiplier": 4
+      },
+      "throttlingMethod": "simulate",
+      "screenEmulation": {
+        "mobile": true,
+        "width": 412,
+        "height": 823,
+        "deviceScaleFactor": 1.75,
+        "disabled": false
+      },
+      "disableStorageReset": false
+    }
+  },
+  "final": {
+    "fetchTime": "2026-10-09T13:23:14.939Z",
+    "lighthouseVersion": "13.5.0",
+    "performanceScore": 79,
+    "accessibilityScore": 100,
+    "metrics": {
+      "largest-contentful-paint": 4972.748,
+      "cumulative-layout-shift": 3.037658113027546e-05,
+      "total-blocking-time": 74,
+      "speed-index": 2085.374
+    },
+    "config": {
+      "formFactor": "mobile",
+      "throttling": {
+        "rttMs": 150,
+        "throughputKbps": 1638.4,
+        "requestLatencyMs": 562.5,
+        "downloadThroughputKbps": 1474.5600000000002,
+        "uploadThroughputKbps": 675,
+        "cpuSlowdownMultiplier": 4
+      },
+      "throttlingMethod": "simulate",
+      "screenEmulation": {
+        "mobile": true,
+        "width": 412,
+        "height": 823,
+        "deviceScaleFactor": 1.75,
+        "disabled": false
+      },
+      "disableStorageReset": false
+    }
+  }
+}
