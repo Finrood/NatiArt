@@ -96,3 +96,16 @@ reselection; reload is never automatic.
 Administration appears in both header variants only for an authenticated admin.
 Role visibility follows authentication state; server authorization and route
 guards remain responsible for access control.
+
+Catalog cards pass only `categoryId`, `query` and `page` to product detail.
+The visible Collections return link and related-product links carry this same
+context, including after a locale switch. A category link still deliberately
+selects that category rather than inheriting a different category filter.
+Browser Back continues to use the shell's stored scroll position.
+
+Each shared product card exposes one product link with category and full title.
+Its stretched hit area includes the visible View product cue; price and stock
+remain readable outside the link. Quick-add stays a separate sibling control
+above that hit area. Do not nest its button inside the product anchor or restore
+duplicate photo/title/action tab stops. The whole-card focus outline and image
+scale retain the global reduced-motion override.

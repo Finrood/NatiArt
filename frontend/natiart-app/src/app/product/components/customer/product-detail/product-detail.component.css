@@ -3,10 +3,14 @@
 .detail-back svg { width: 1.125rem; height: 1.125rem; }
 .detail-back:hover span { text-decoration: underline; text-underline-offset: .3em; }
 .detail-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2rem; }
+.product-heading { grid-area: heading; }
+.gallery-column { grid-area: gallery; }
+.product-information { grid-area: information; }
+.detail-layout { grid-template-areas: 'heading' 'gallery' 'information'; }
 .product-gallery { background: rgb(var(--surface-variant)); border: 1px solid rgb(var(--primary-light) / .4); border-radius: .25rem; }
 .product-information { padding-top: .25rem; }
 .category-link { display: inline-flex; align-items: center; min-height: 2.75rem; font-size: .6875rem; letter-spacing: .08em; text-transform: uppercase; text-decoration: underline; text-underline-offset: .3em; }
-.product-information h1 { margin-bottom: 1.25rem; font-size: clamp(2.125rem, 3.9vw, 3.5rem); letter-spacing: -.045em; line-height: 1.12; text-wrap: pretty; }
+.product-heading h1 { margin-bottom: 0; font-size: clamp(2.125rem, 3.9vw, 3.5rem); letter-spacing: -.045em; line-height: 1.12; text-wrap: pretty; }
 .gallery-zoom-affordance { position: absolute; bottom: 1rem; right: 1rem; display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border: 1px solid rgb(var(--primary-light)); border-radius: 50%; background: rgb(var(--surface)); color: rgb(var(--primary)); pointer-events: none; }
 .purchase-panel { padding: clamp(1.25rem, 2vw, 1.5rem); background: rgb(var(--surface)); border: 1px solid rgb(var(--primary-light) / .6); border-top: 2px solid rgb(var(--primary)); border-radius: .25rem; }
 .purchase-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .75rem 1.25rem; }
@@ -35,6 +39,7 @@
 .personalization-options { display: flex; flex-wrap: wrap; gap: .625rem 1rem; color: rgb(var(--primary-dark)); font-size: .75rem; }
 .personalization-options li { display: inline-flex; align-items: center; gap: .5rem; }
 .personalization-options svg { width: 1.375rem; height: 1.375rem; flex-shrink: 0; }
+.artwork-requirement { flex-basis: 100%; color: rgb(var(--text-muted)); font-size: .8125rem; line-height: 1.65; }
 .piece-care { display: flex; align-items: center; gap: .75rem; min-height: 3.5rem; margin-top: 1.5rem; padding: .75rem 1rem; background: rgb(var(--background-variant)); border-radius: .25rem; color: rgb(var(--primary)); font-size: .8125rem; }
 .piece-care svg { width: 1.25rem; height: 1.25rem; flex-shrink: 0; }
 .piece-care span:last-child { margin-left: auto; font-size: 1.25rem; }
@@ -44,5 +49,7 @@
 .related-heading .art-eyebrow { font-size: .6875rem; letter-spacing: .1em; text-transform: uppercase; }
 .related-heading h2 { font-size: clamp(1.875rem, 3vw, 2.75rem); letter-spacing: -.035em; }
 .related-heading > a { display: inline-flex; align-items: center; min-height: 2.75rem; font-size: .8125rem; }
-@media (min-width: 768px) { .detail-layout { grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); gap: clamp(2rem, 4vw, 3.5rem); } }
+@media (min-width: 768px) {
+  .detail-layout { grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); grid-template-areas: 'gallery heading' 'gallery information'; grid-template-rows: auto 1fr; column-gap: clamp(2rem, 4vw, 3.5rem); row-gap: 1.25rem; }
+}
 @media (min-width: 1024px) and (min-height: 900px) { .gallery-composition { position: sticky; top: 7rem; } }

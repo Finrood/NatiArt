@@ -7,6 +7,7 @@ import {Location} from '@angular/common';
 import {provideLocationMocks} from '@angular/common/testing';
 import {of, firstValueFrom, filter, take} from 'rxjs';
 import {CatalogComponent} from './catalog.component';
+import {ProductDetailComponent} from '../product-detail/product-detail.component';
 import {AuthenticationService} from '../../../../directory/service/authentication.service';
 import {environment} from '../../../../../environments/environment';
 
@@ -19,7 +20,8 @@ describe('Catalog URL-backed pagination', () => {
   beforeEach(async () => {
     localStorage.removeItem('natiart-cart');
     await TestBed.configureTestingModule({imports: [CatalogComponent], providers: [
-      provideHttpClient(), provideHttpClientTesting(), provideRouter([{path: 'products', component: CatalogComponent}]),
+      provideHttpClient(), provideHttpClientTesting(), provideRouter([{path: 'products', component: CatalogComponent},
+        {path: 'product/:id', component: ProductDetailComponent}]),
       provideLocationMocks(), {provide: AuthenticationService, useValue: {isLoggedIn$: of(true)}},
     ]}).compileComponents();
     http = TestBed.inject(HttpTestingController);
@@ -29,6 +31,36 @@ describe('Catalog URL-backed pagination', () => {
     http.expectOne((r) => r.url === `${api}/categories/page`).flush({items: [
       {id: 'A', label: 'Category A'}, {id: 'B', label: 'Category B'}], page: 0, size: 20, total: 2, hasNext: false});
   }
+
+  it('keeps category, search and page through product navigation and the visible Collections return link', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/products?categoryId=A&page=1&query=print', CatalogComponent);
+    flushCategories();
+    http.expectOne((r): boolean => r.url === `${api}/products/page`).flush({items: [product('21', 'A')], page: 1, size: 20, total: 21, hasNext: false});
+    harness.detectChanges();
+    const card: HTMLElement = harness.routeNativeElement!.querySelector('app-product-card')!;
+    expect(card.querySelectorAll('a').length).toBe(1);
+    card.querySelector<HTMLAnchorElement>('a')!.click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(TestBed.inject(Router).url).toContain('/product/21?categoryId=A&query=print&page=1');
+    http.expectOne((r): boolean => r.url === `${api}/products/21`).flush(product('21', 'A'));
+    http.expectOne((r): boolean => r.url === `${api}/products`).flush([]);
+    harness.detectChanges();
+    const back: HTMLAnchorElement = harness.routeNativeElement!.querySelector('.detail-back')!;
+    expect(back.href).toContain('/products?categoryId=A&query=print&page=1');
+    back.click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    flushCategories();
+    const request = http.expectOne((r): boolean => r.url === `${api}/products/page`);
+    expect(request.request.params.get('categoryId')).toBe('A');
+    expect(request.request.params.get('query')).toBe('print');
+    expect(request.request.params.get('page')).toBe('1');
+    request.flush({items: [product('21', 'A')], page: 1, size: 20, total: 21, hasNext: false});
+    harness.fixture.destroy();
+    http.verify();
+  });
 
   it('loads the requested filtered page from the URL and restores it on Back after a rendered category click', async () => {
     const harness = await RouterTestingHarness.create();

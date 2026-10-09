@@ -38,7 +38,7 @@ describe('ProductDetailComponent', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-                { provide: ActivatedRoute, useValue: { paramMap: paramMap$.asObservable() } },
+                { provide: ActivatedRoute, useValue: { paramMap: paramMap$.asObservable(), queryParamMap: of(convertToParamMap({})) } },
         {
           provide: ProductService,
           useValue: {
@@ -169,7 +169,7 @@ describe('ProductDetailComponent stale main images', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-                {provide: ActivatedRoute, useValue: {paramMap: paramMap$.asObservable()}},
+                {provide: ActivatedRoute, useValue: {paramMap: paramMap$.asObservable(), queryParamMap: of(convertToParamMap({}))}},
         {
           provide: ProductService,
           useValue: {
@@ -234,7 +234,7 @@ describe('ProductDetailComponent stale related images (AA5)', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-                {provide: ActivatedRoute, useValue: {paramMap: paramMap$.asObservable()}},
+                {provide: ActivatedRoute, useValue: {paramMap: paramMap$.asObservable(), queryParamMap: of(convertToParamMap({}))}},
         {
           provide: ProductService,
           useValue: {

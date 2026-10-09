@@ -75,7 +75,8 @@ The bold gallery pass reuses these assets and tokens: fluid display type up to
 footer wordmark, restrained quarter-rem corners, and a labelled white purchase
 panel. Home's four-piece grids use one column below 380px, two through tablet
 widths and four from 1024px. Collections retains its paginated responsive grid.
-The hero uses a smaller 208px phone artwork frame alongside stronger type; all
+The discovery refinement places a 104–176px phone artwork frame beside the title
+and bounds the desktop frame to 24rem; all
 commercial photography, font delivery, image priority and deferred loading
 remain intact. Keyboard photo focus uses the same subtle scale as hover and
 the existing reduced-motion override. See the latest gallery review for evidence.

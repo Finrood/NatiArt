@@ -24,3 +24,15 @@ duplicate submission, dismissal cancellation and full-stock feedback. The local
 browser verified gold selection retained across a real 503 and successful retry.
 Live file-chooser/upload verification was blocked by the Chrome extension's
 file-URL permission; it is not claimed passed.
+
+Custom-image products explain the required artwork and 5 MB limit before Choose
+options. The dialog initially uses neutral required-field guidance; invalid
+selection introduces the associated error and `aria-invalid`. A valid selected
+File is previewed through the existing ImageCollection, with a filename and
+explicit original-image wording. It is not a finished-product mockup.
+
+Preview ownership follows the File signal: replacement, dismissal and component
+destruction release object URLs. A browser that cannot decode the preview shows
+a neutral fallback and retains the original valid File for server validation.
+Submission failure retains that same File and the gold-border choice. Regression
+tests exercise replacement, decoding failure, failed acceptance and cleanup.

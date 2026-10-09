@@ -116,6 +116,8 @@ describe('Rendered checkout HTTP journey', (): void => {
     payment.flush({paymentId: 'pay_1', status: 'PENDING', billingType: 'PIX'});
     flushMicrotasks(); fixture.detectChanges();
     expect(TestBed.inject(Router).url).toBe('/pix-payment/pay_1');
+    http.expectOne((request): boolean => request.url.endsWith('/payments/pay_1/status'))
+      .flush({paymentId: 'pay_1', status: 'PENDING'});
     http.expectOne((request): boolean => request.url.endsWith('/payments/pay_1/pix-qr-code'))
       .flush({success: true, encodedImage: 'iVBORw0KGgo=', payload: 'fixture-pix', expirationDate: '2030-01-01T00:00:00Z'});
     fixture.detectChanges();

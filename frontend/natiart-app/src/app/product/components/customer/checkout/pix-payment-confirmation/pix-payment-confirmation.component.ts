@@ -19,6 +19,7 @@ import {ButtonComponent} from "../../../../../shared/components/button.component
     ButtonComponent
 ],
   templateUrl: './pix-payment-confirmation.component.html',
+  styleUrl: './pix-payment-confirmation.component.css',
 })
 export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
   paymentId: string | null = null;
@@ -66,9 +67,7 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
       this.$copied.set(false);
       if (routedId) {
         this.paymentId = routedId;
-        this.paymentStatus = 'PENDING';
-        this.startPolling(routedId);
-        this.loadQrCode(routedId);
+        this.retryPayment();
       } else {
         this.paymentId = null;
         this.paymentStatus = 'ERROR';
@@ -271,9 +270,10 @@ export class PixPaymentConfirmationComponent implements OnInit, OnDestroy {
 
   triggerFireworks(): void {
     this.stopFireworks();
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const duration = 5 * 1000; // 5 seconds
     const animationEnd = Date.now() + duration;
-    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0, disableForReducedMotion: true };
 
     function randomInRange(min: number, max: number) {
       return Math.random() * (max - min) + min;

@@ -5,3 +5,6 @@
 .gold-option { padding: .75rem 1rem; background: rgb(var(--background-variant)); border: 1px solid rgb(var(--primary-light) / .5); border-radius: .375rem; }
 .gold-option label { flex: 1; padding-block: .25rem; cursor: pointer; }
 input[type=file] { padding: .75rem; background: rgb(var(--background-variant)); }
+.artwork-preview { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; padding: 1rem; border: 1px solid rgb(var(--primary-light) / .5); border-radius: .375rem; }
+.artwork-preview img { width: 5rem; height: 5rem; object-fit: contain; background: rgb(var(--surface-variant)); flex-shrink: 0; }
+.artwork-preview figcaption { flex: 1 1 8rem; min-width: 0; overflow-wrap: anywhere; }

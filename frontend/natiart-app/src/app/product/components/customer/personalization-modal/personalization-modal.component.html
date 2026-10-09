@@ -16,17 +16,20 @@
 
         @if (canAddCustomImage) {
           <div>
-            <label for="customImage" class="block text-sm font-medium text-gray-700 mb-1" i18n>Upload Custom Image:</label>
+            <label for="customImage" class="block text-sm font-medium text-gray-700 mb-1" i18n="@@requiredArtworkLabel">Your artwork (required)</label>
+            <p id="artwork-guidance" class="text-xs text-text-muted mb-3" i18n="@@artworkFileGuidance">Choose an image up to 5 MB. You can replace it before adding this piece.</p>
             <input type="file" id="customImage" name="customImage" (change)="onFileSelected($event)" [disabled]="pending" accept="image/*"
+              required aria-required="true" [attr.aria-invalid]="$fileError() ? true : null"
+              [attr.aria-describedby]="$fileError() ? 'artwork-guidance artwork-draft artwork-error' : 'artwork-guidance artwork-draft'"
               class="block w-full text-sm text-gray-500 border border-gray-300 rounded-md p-1 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-light file:text-primary hover:file:bg-primary-lighter cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary">
-            <p class="mt-3 text-xs text-text-muted" data-artwork-draft i18n>Artwork stays in this browser until checkout uploads it. If you reload, select the file again.</p>
+            <p id="artwork-draft" class="mt-3 text-xs text-text-muted" data-artwork-draft i18n>Artwork stays in this browser until checkout uploads it. If you reload, select the file again.</p>
             @if (customImage) {
-              <p class="text-xs text-text-muted mt-1" i18n>Selected: {{ customImage.name }}</p>
-            }
-
-            @if (!isValid() && canAddCustomImage && !customImage) {
-              <p class="text-xs text-error mt-1" i18n>Custom image is required for this product.
-              </p>
+              <figure class="artwork-preview">
+                @if (artwork.states()['artwork'] === 'loaded') {
+                  <img [src]="artwork.urls()['artwork']" (error)="artwork.failed('artwork')" alt="Your selected artwork" i18n-alt="@@selectedArtworkAlt" width="160" height="160">
+                } @else { <p class="text-xs text-text-muted" i18n="@@artworkPreviewUnavailable">Preview unavailable. Your image is still selected.</p> }
+                <figcaption><p class="text-xs text-text-muted" i18n>Selected: {{ customImage.name }}</p><p class="text-xs text-text-muted mt-2" i18n="@@artworkPreviewDisclaimer">Your original image, not a preview of the finished piece.</p></figcaption>
+              </figure>
             }
           </div>
         }
@@ -37,7 +40,7 @@
         }
       </div>
 
-      @if ($fileError()) { <p role="alert" class="text-error text-sm mb-4">{{ $fileError() }}</p> }
+      @if ($fileError()) { <p id="artwork-error" role="alert" class="text-error text-sm mb-4">{{ $fileError() }}</p> }
       @if (errorMessage) { <p role="alert" class="text-error text-sm mb-4">{{ errorMessage }}</p> }
       <div class="flex flex-wrap justify-end gap-3 border-t border-primary-light/40 pt-4">
         <app-button (click)="onCancel()" type="button" color="secondary" size="md" i18n>Cancel

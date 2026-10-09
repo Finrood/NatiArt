@@ -15,6 +15,8 @@ import {PersonalizationModalComponent} from "../personalization-modal/personaliz
 import {AddToCartButtonComponent} from "../add-to-cart-button/add-to-cart-button.component";
 import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportError} from '../../../../shared/service/error-reporting.service';
+import {CatalogContext} from '../../../../shared/models/catalog-context';
+import {toSignal} from '@angular/core/rxjs-interop';
 
 interface DetailImage { key: string; url: string | null; state: ImageState; }
 
@@ -84,6 +86,9 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   readonly packageUnavailable: string = $localize`Package unavailable`;
 
   private readonly _route: ActivatedRoute = inject(ActivatedRoute);
+  readonly $catalogContext: Signal<CatalogContext> = toSignal(this._route.queryParamMap.pipe(
+    map((params: ParamMap): CatalogContext => ({categoryId: params.get('categoryId'), query: params.get('query'), page: params.get('page')}))
+  ), {initialValue: {}});
   private readonly _productService: ProductService = inject(ProductService);
   private readonly _renderer: Renderer2 = inject(Renderer2);
   private readonly _cartService: CartService = inject(CartService);

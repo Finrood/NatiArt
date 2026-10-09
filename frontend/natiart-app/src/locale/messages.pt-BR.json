@@ -671,6 +671,13 @@
     "1795399662349931903": "Conheça de perto as peças que dão vida à NatiArt.",
     "4111736691771340109": "Novas peças para levar um pouco de arte ao seu dia.",
     "6062699516144357620": "Do seu jeito",
-    "233475429155664846": "Continue explorando"
+    "233475429155664846": "Continue explorando",
+    "artworkBeforePurchase": "Esta peça precisa da sua arte. Escolha uma imagem de até 5 MB na próxima etapa.",
+    "requiredArtworkLabel": "Sua arte (obrigatória)",
+    "artworkFileGuidance": "Escolha uma imagem de até 5 MB. Você pode trocá-la antes de adicionar a peça.",
+    "selectedArtworkAlt": "Sua arte selecionada",
+    "artworkPreviewUnavailable": "Prévia indisponível. Sua imagem continua selecionada.",
+    "artworkPreviewDisclaimer": "Sua imagem original, não uma prévia da peça pronta.",
+    "pixRecoveryHeading": "Confira seu pagamento PIX"
   }
 }

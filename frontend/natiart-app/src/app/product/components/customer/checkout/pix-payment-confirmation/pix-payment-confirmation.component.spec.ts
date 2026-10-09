@@ -38,7 +38,8 @@ describe('PixPaymentConfirmationComponent', () => {
   function createAndFlushQr() {
     const fixture = TestBed.createComponent(PixPaymentConfirmationComponent);
     const component = fixture.componentInstance;
-    fixture.detectChanges(); // ngOnInit -> loadQrCode + startPolling
+    fixture.detectChanges();
+    http.expectOne(statusUrl).flush({status: 'PENDING'});
     http.expectOne(qrUrl).flush({success: true, encodedImage: 'abc', payload: 'x', expirationDate: '2030-01-01T00:00:00Z'});
     return {fixture, component};
   }
@@ -150,6 +151,7 @@ describe('PixPaymentConfirmationComponent', () => {
     tick(0);
 
     expect(component.paymentId).toBe('pay_456');
+    http.expectOne(newStatusUrl).flush({status: 'PENDING'});
     http.expectOne(newQrUrl).flush({success: true, encodedImage: 'def', payload: 'y', expirationDate: '2030-01-01T00:00:00Z'});
 
     // Old payment is no longer polled; the new one is.
@@ -185,7 +187,8 @@ describe('PixPaymentConfirmationComponent', () => {
     const fixture = TestBed.createComponent(PixPaymentConfirmationComponent);
     const component = fixture.componentInstance;
     const newQrUrl = `${environment.api.product.url}/payments/pay_456/pix-qr-code`;
-    fixture.detectChanges(); // QR request for pay_123 is in flight
+    fixture.detectChanges();
+    http.expectOne(statusUrl).flush({status: 'PENDING'});
 
     paramMap$.next(convertToParamMap({paymentId: 'pay_456'}));
     tick(0);
@@ -196,6 +199,7 @@ describe('PixPaymentConfirmationComponent', () => {
     const stale: TestRequest[] = http.match(qrUrl);
     expect(stale.length).toBe(1);
     expect(stale[0].cancelled).toBeTrue();
+    http.expectOne(`${environment.api.product.url}/payments/pay_456/status`).flush({status: 'PENDING'});
     http.expectOne(newQrUrl).flush({success: true, encodedImage: 'def', payload: 'y', expirationDate: '2030-01-01T00:00:00Z'});
 
     component.ngOnDestroy();
@@ -207,6 +211,7 @@ describe('PixPaymentConfirmationComponent', () => {
     paramMap$.next(convertToParamMap({paymentId: 'pay_456'}));
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('img')).toBeNull();
+    http.expectOne(`${environment.api.product.url}/payments/pay_456/status`).flush({status: 'PENDING'});
     http.expectOne(`${environment.api.product.url}/payments/pay_456/pix-qr-code`)
       .flush('bad', {status: 502, statusText: 'Bad Gateway'});
     fixture.detectChanges();
@@ -219,6 +224,7 @@ describe('PixPaymentConfirmationComponent', () => {
   it('hides an expired QR on time even while a status request is outstanding', fakeAsync(() => {
     const fixture = TestBed.createComponent(PixPaymentConfirmationComponent);
     fixture.detectChanges();
+    http.expectOne(statusUrl).flush({status: 'PENDING'});
     http.expectOne(qrUrl).flush({success: true, encodedImage: 'abc', payload: 'x',
       expirationDate: new Date(Date.now() + 6000).toISOString()});
     tick(5000);
@@ -259,6 +265,54 @@ describe('PixPaymentConfirmationComponent', () => {
     http.expectNone(qrUrl);
     http.expectNone(`${environment.api.product.url}/payments/create`);
     component.ngOnDestroy();
+    http.verify();
+  }));
+
+  it('reconciles a completed route before requesting any QR or starting polling', fakeAsync(() => {
+    const fixture = TestBed.createComponent(PixPaymentConfirmationComponent);
+    const complete: jasmine.Spy = spyOn(TestBed.inject(CartService), 'completePurchase');
+    fixture.detectChanges();
+    http.expectNone(qrUrl);
+    http.expectOne(statusUrl).flush({status: 'COMPLETED', orderId: 'ord-1'});
+    fixture.detectChanges();
+    expect(complete).toHaveBeenCalledOnceWith('ord-1', 'cus_MINE');
+    expect(fixture.nativeElement.querySelector('h1').textContent).toContain('Payment Successful!');
+    expect(fixture.nativeElement.querySelector('img')).toBeNull();
+    tick(5000);
+    http.expectNone(statusUrl);
+    http.expectNone(qrUrl);
+    http.expectNone(`${environment.api.product.url}/payments/create`);
+    fixture.destroy();
+    http.verify();
+  }));
+
+  it('cancels the initial status lookup when the routed payment changes', fakeAsync(() => {
+    const fixture = TestBed.createComponent(PixPaymentConfirmationComponent);
+    fixture.detectChanges();
+    const stale: TestRequest = http.expectOne(statusUrl);
+    paramMap$.next(convertToParamMap({paymentId: 'pay_456'}));
+    expect(stale.cancelled).toBeTrue();
+    http.expectOne(`${environment.api.product.url}/payments/pay_456/status`)
+      .flush('unavailable', {status: 503, statusText: 'Service Unavailable'});
+    fixture.detectChanges();
+    expect(fixture.componentInstance.paymentStatus).toBe('ERROR');
+    expect(fixture.nativeElement.querySelector('img')).toBeNull();
+    http.expectNone(qrUrl);
+    fixture.destroy();
+    http.verify();
+  }));
+
+  it('confirms payment without a celebration timer when reduced motion is requested', fakeAsync(() => {
+    spyOn(window, 'matchMedia').and.returnValue({matches: true} as MediaQueryList);
+    const fixture = TestBed.createComponent(PixPaymentConfirmationComponent);
+    fixture.detectChanges();
+    http.expectOne(statusUrl).flush({status: 'COMPLETED', orderId: 'ord-1'});
+    fixture.detectChanges();
+    const internals: {fireworksTimer: ReturnType<typeof setInterval> | null} =
+      fixture.componentInstance as unknown as {fireworksTimer: ReturnType<typeof setInterval> | null};
+    expect(internals.fireworksTimer).toBeNull();
+    expect(fixture.nativeElement.querySelector('[role="status"]').textContent).toContain('Your order is confirmed.');
+    fixture.destroy();
     http.verify();
   }));
 
@@ -315,6 +369,7 @@ describe('PixPaymentConfirmationComponent', () => {
     const fixture = TestBed.createComponent(PixPaymentConfirmationComponent);
     const component = fixture.componentInstance;
     fixture.detectChanges();
+    http.expectOne(statusUrl).flush({status: 'PENDING'});
     http.expectOne(qrUrl).flush('boom', {status: 500, statusText: 'Server Error'});
     tick(0);
 

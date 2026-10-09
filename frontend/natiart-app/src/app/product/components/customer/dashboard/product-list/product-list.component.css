@@ -1,6 +1,6 @@
 .home-products { padding-block: 1rem 3.5rem; }
 .home-products .art-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem 1.5rem; }
-.section-heading { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: .75rem 2rem; margin-bottom: 2rem; padding-top: 1rem; }
+.section-heading { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: .75rem 2rem; margin-bottom: 1.5rem; }
 .section-intro { flex: 1 1 16rem; }
 .section-intro .art-eyebrow { font-size: .6875rem; letter-spacing: .1em; text-transform: uppercase; }
 .section-heading h2 { font-size: clamp(1.875rem, 3.5vw, 3rem); font-weight: 400; letter-spacing: -.035em; }
@@ -10,3 +10,10 @@
 .loading-card { min-height: 0; }
 @media (min-width: 1024px) { .home-products .art-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 379px) { .home-products .art-grid { grid-template-columns: 1fr; } }
+@media (max-width: 639px) {
+  .home-products { padding-top: 0; }
+  .section-heading { gap: .5rem 1rem; margin-bottom: 1rem; }
+  .section-intro { flex-basis: 100%; }
+  .section-intro .art-eyebrow { margin-bottom: .5rem; }
+  .section-description { margin-top: .5rem; }
+}

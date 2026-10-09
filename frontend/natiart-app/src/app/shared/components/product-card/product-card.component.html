@@ -1,15 +1,19 @@
 @let product = $product();
 <article class="product-card group">
-  <a [routerLink]="product.id ? ['/product', product.id] : null" class="product-photo">
-    <img [src]="$displayImage()" [alt]="product.label" (error)="onImageError()" [attr.aria-busy]="$imageLoading()"
-      width="640" height="640" loading="lazy" decoding="async">
-    @if (product.stockQuantity <= 0) { <span class="product-badge product-badge-unavailable" i18n>Out of Stock</span> }
-    @else if (product.originalPrice > product.markedPrice) { <span class="product-badge" i18n>Sale</span> }
-    @else if (product.newProduct) { <span class="product-badge" i18n>New</span> }
+  <a [routerLink]="product.id ? ['/product', product.id] : null" [queryParams]="$catalogContext()" class="product-overview">
+    <div class="product-photo" [attr.aria-busy]="$imageLoading()">
+      <img [src]="$displayImage()" alt="" (error)="onImageError()"
+        width="640" height="640" loading="lazy" decoding="async">
+      @if (product.stockQuantity <= 0) { <span class="product-badge product-badge-unavailable" aria-hidden="true" i18n>Out of Stock</span> }
+      @else if (product.originalPrice > product.markedPrice) { <span class="product-badge" aria-hidden="true" i18n>Sale</span> }
+      @else if (product.newProduct) { <span class="product-badge" i18n>New</span> }
+    </div>
+    <div class="product-caption">
+      @if (product.categoryLabel) { <p class="product-category">{{ product.categoryLabel }}</p> }
+      <h2 [title]="product.label">{{ product.label }}</h2>
+    </div>
   </a>
-  <div class="product-caption">
-    @if (product.categoryLabel) { <p class="product-category">{{ product.categoryLabel }}</p> }
-    <h2 [title]="product.label"><a [routerLink]="product.id ? ['/product', product.id] : null">{{ product.label }}</a></h2>
+  <div class="product-caption product-commerce">
     <div class="product-price">
       <span>{{ product.markedPrice | currency:'BRL' }}</span>
       @if (product.originalPrice > product.markedPrice) { <del>{{ product.originalPrice | currency:'BRL' }}</del> }
@@ -20,7 +24,7 @@
       @else { <span i18n>In stock</span> }
       @if ($personalizable()) { <span aria-hidden="true"> · </span><span i18n>Personalizable</span> }
     </p>
-    @if ($quickAdd()) { <app-add-to-cart-button [product]="product" (itemAdded)="itemAdded.emit($event)"></app-add-to-cart-button> }
-    @else { <a [routerLink]="product.id ? ['/product', product.id] : null" class="product-detail-link"><span i18n>View product</span><svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M4 12h15m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.5"/></svg></a> }
+    @if (!$quickAdd()) { <span class="product-detail-link" aria-hidden="true"><span i18n>View product</span><svg viewBox="0 0 24 24" fill="none"><path d="M4 12h15m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.5"/></svg></span> }
   </div>
+  @if ($quickAdd()) { <app-add-to-cart-button [product]="product" (itemAdded)="itemAdded.emit($event)"></app-add-to-cart-button> }
 </article>

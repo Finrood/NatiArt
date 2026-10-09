@@ -1,5 +1,5 @@
 :host { display: block; background: #f4e8e2; border-bottom: 1px solid rgb(var(--primary-light) / .5); }
-.atelier-hero { display: grid; grid-template-columns: 1.2fr 1fr; align-items: center; gap: 3rem; max-width: 86rem; margin: auto; padding: 3rem clamp(1.25rem, 5vw, 4rem); }
+.atelier-hero { display: grid; grid-template-columns: 1.2fr 1fr; align-items: center; gap: 3rem; max-width: 86rem; margin: auto; padding: 2.5rem clamp(1.25rem, 5vw, 4rem); }
 .hero-copy { padding-block: 1rem; }
 .art-eyebrow { letter-spacing: .12em; text-transform: uppercase; font-size: .6875rem; }
 h1 { font: 400 clamp(3rem, 6.8vw, 6.75rem)/.98 var(--font-serif); letter-spacing: -.05em; color: rgb(var(--secondary-dark)); max-width: 8em; }
@@ -7,16 +7,17 @@ h1 span { display: block; color: rgb(var(--primary-dark)); }
 .hero-description { max-width: 27rem; margin: 1.75rem 0 2rem; color: rgb(var(--secondary)); font-size: 1rem; }
 .art-action { gap: 1.5rem; }
 .art-action svg { width: 1.25rem; height: 1.25rem; }
-.hero-figure { justify-self: center; width: min(100%, 27rem); min-width: 0; }
+.hero-figure { justify-self: center; width: min(100%, 24rem); min-width: 0; }
 .hero-art { position: relative; width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: 14rem 14rem .25rem .25rem; background: #f6ebe7; }
 .hero-art img { position: absolute; height: 100%; width: auto; max-width: none; right: 0; }
 .hero-figure figcaption { padding-top: .875rem; border-bottom: 1px solid rgb(var(--primary-light)); padding-bottom: .875rem; color: rgb(var(--primary-dark)); font-size: .75rem; letter-spacing: .04em; }
 @media (max-width: 767px) {
-  .atelier-hero { grid-template-columns: 1fr; gap: 1.75rem; padding: 1.75rem 1rem; }
-  .hero-copy { padding: 0; }
-  h1 { max-width: 10em; font-size: clamp(2.8rem, 11vw, 4rem); line-height: 1.02; }
-  .art-eyebrow { letter-spacing: .08em; margin-bottom: .625rem; }
-  .hero-description { margin: .875rem 0 1.25rem; font-size: .875rem; max-width: 24rem; }
-  .hero-figure { width: min(100%, 13rem); }
-  .hero-figure figcaption { padding-block: .625rem; text-align: center; }
+  .atelier-hero { grid-template-columns: minmax(0, 1fr) minmax(6.5rem, .65fr); gap: 1rem; padding: 1.5rem 1rem; }
+  .hero-copy { display: contents; }
+  .art-eyebrow { grid-column: 1 / -1; letter-spacing: .08em; margin-bottom: 0; }
+  h1 { grid-column: 1; grid-row: 2; max-width: 10em; font-size: clamp(2.25rem, 8.5vw, 3.5rem); line-height: 1.04; }
+  .hero-description { grid-column: 1 / -1; grid-row: 3; margin: .25rem 0; font-size: .875rem; max-width: 30rem; }
+  .art-action { grid-column: 1 / -1; grid-row: 4; justify-self: start; }
+  .hero-figure { grid-column: 2; grid-row: 2; width: min(100%, 11rem); }
+  .hero-figure figcaption { display: none; }
 }

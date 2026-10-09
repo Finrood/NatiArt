@@ -41,3 +41,16 @@ query parameter returns to paged history without changing the order.
 Customer receipts display the saved gold-border/custom-image choices per line.
 Only the literal `true` border flag is selected; artwork is identified by its
 presence, without exposing the private upload identifier in the receipt.
+
+Initial route entry and payment-ID changes now share the same status-first
+lookup as Refresh payment. A confirmed payment renders its authorized receipt
+without fetching a QR code; failed lookup exposes recovery without displaying a
+code. This prevents a completed reload from briefly inviting another payment or
+being blocked by its old QR expiry. The original account-scoped reconciliation,
+bounded polling, receipt settlement and request cancellation remain intact.
+
+Pending, loading, success and recovery use the shared atelier page, display
+heading, field and button foundations. The loading message and confirmation have
+polite status semantics. The decorative success icon is hidden from assistive
+technology. Reduced motion skips the celebration timer; confetti also opts into
+the library's reduced-motion suppression if the preference changes while active.

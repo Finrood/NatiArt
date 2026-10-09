@@ -19,9 +19,11 @@
   .catalog-results { width: 100%; }
 }
 @media (max-width: 639px) {
-  .catalog-intro { padding-bottom: 1.5rem; margin-bottom: 1rem; gap: 1rem; }
+  .catalog-page { padding-top: 1.5rem; }
+  .catalog-intro { padding-bottom: 1rem; margin-bottom: .75rem; gap: .75rem; }
   .catalog-description { font-size: .875rem; }
-  .catalog-layout { gap: 1.25rem; }
+  .catalog-layout { gap: .75rem; }
+  .results-context { margin-block: .75rem 1rem; }
   .search-field svg { left: .75rem; width: 1rem; }
   .search-field input { padding-left: 2.25rem; }
 }

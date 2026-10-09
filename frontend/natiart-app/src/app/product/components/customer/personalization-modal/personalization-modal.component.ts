@@ -1,11 +1,12 @@
 import {AccessibleDialogComponent} from '../../../../shared/components/accessible-dialog.component';
-import {Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, signal} from '@angular/core';
+import {Component, EventEmitter, inject, Input, OnChanges, OnDestroy, Output, SimpleChanges, signal, WritableSignal} from '@angular/core';
 
 import {FormsModule} from '@angular/forms';
 import {Product} from '../../../models/product.model';
 import {PersonalizationOption} from "../../../models/support/personalization-option";
 import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportWarning} from '../../../../shared/service/error-reporting.service';
+import {ImageCollection, ImageLoaderService} from '../../../service/image-loader.service';
 
 @Component({
   selector: 'app-personalization-modal',
@@ -13,25 +14,31 @@ import {reportWarning} from '../../../../shared/service/error-reporting.service'
   templateUrl: './personalization-modal.component.html',
   styleUrl: './personalization-modal.component.css'
 })
-export class PersonalizationModalComponent implements OnChanges {
+export class PersonalizationModalComponent implements OnChanges, OnDestroy {
+  private readonly _imageLoader: ImageLoaderService = inject(ImageLoaderService);
+  readonly artwork: ImageCollection = this._imageLoader.create();
   @Input() show: boolean = false;
   @Input() closeOnSubmit: boolean = true;
   @Input() pending: boolean = false;
   @Input() errorMessage: string = '';
-  readonly $fileError = signal('');
+  readonly $fileError: WritableSignal<string> = signal('');
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['show'] && !this.show) this.resetForm();
   }
+  ngOnDestroy(): void { this.artwork.destroy(); }
   @Input() product: Product | null = null;
   @Output() close = new EventEmitter<void>();
   @Output() personalize = new EventEmitter<{ goldBorder?: boolean, customImage?: File }>();
 
-  // Internal state for the form elements
-  goldBorder = false;
-  customImage: File | null = null;
+  goldBorder: boolean = false;
+  private readonly $customImage: WritableSignal<File | null> = signal<File | null>(null);
+  get customImage(): File | null { return this.$customImage(); }
+  set customImage(file: File | null) {
+    this.$customImage.set(file);
+    this.artwork.update(file ? [{key: 'artwork', source: file}] : []);
+  }
 
-  // Helper getters to check available personalizations
   get canAddGoldBorder(): boolean {
     return !!this.product?.availablePersonalizations?.includes(PersonalizationOption.GOLDEN_BORDER);
   }
@@ -50,7 +57,6 @@ export class PersonalizationModalComponent implements OnChanges {
     } else if (file) {
       this.customImage = file;
     } else {
-      // Handle case where user cancels file selection
       this.customImage = null;
     }
   }
@@ -62,14 +68,12 @@ export class PersonalizationModalComponent implements OnChanges {
 
   onSubmit(): void {
     if (this.pending || !this.isValid()) {
-      // Optional: Add some user feedback if they somehow click submit when invalid
       reportWarning('invalid-input');
       return;
     }
     this.personalize.emit({
-      // Only include options if they are available for the product
       goldBorder: this.canAddGoldBorder ? this.goldBorder : undefined,
-      customImage: this.canAddCustomImage ? this.customImage ?? undefined : undefined // Use nullish coalescing for clarity
+      customImage: this.canAddCustomImage ? this.customImage ?? undefined : undefined
     });
     if (this.closeOnSubmit) {
       this.close.emit();
@@ -79,12 +83,9 @@ export class PersonalizationModalComponent implements OnChanges {
 
   isValid(): boolean {
     if (this.$fileError()) return false;
-    // If custom image is an available personalization for this product,
-    // then the customImage file MUST be selected.
     if (this.canAddCustomImage) {
-      return !!this.customImage; // Must have a file selected
+      return !!this.customImage;
     }
-    // Otherwise (only gold border available, or no options), it's always valid.
     return true;
   }
 
@@ -92,10 +93,5 @@ export class PersonalizationModalComponent implements OnChanges {
     this.$fileError.set('');
     this.goldBorder = false;
     this.customImage = null;
-    // Reset file input visually if needed (more complex, often not necessary if modal is destroyed/recreated)
-    // const fileInput = document.getElementById('customImage') as HTMLInputElement;
-    // if (fileInput) {
-    //   fileInput.value = '';
-    // }
   }
 }

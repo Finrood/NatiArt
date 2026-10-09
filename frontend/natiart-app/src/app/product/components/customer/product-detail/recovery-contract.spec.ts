@@ -3,7 +3,7 @@ import {ComponentFixture, TestBed} from '@angular/core/testing';
 import {provideHttpClient} from '@angular/common/http';
 import {HttpTestingController, provideHttpClientTesting} from '@angular/common/http/testing';
 import {ActivatedRoute, convertToParamMap, provideRouter} from '@angular/router';
-import {BehaviorSubject} from 'rxjs';
+import {BehaviorSubject, of} from 'rxjs';
 import {ProductDetailComponent} from './product-detail.component';
 import {TopMenuComponent} from '../top-menu/top-menu.component';
 import {LeftMenuComponent} from '../left-menu/left-menu.component';
@@ -26,7 +26,7 @@ describe('Product detail rendered HTTP recovery contract', (): void => {
   beforeEach((): void => {
     params = new BehaviorSubject(convertToParamMap({id: 'first'}));
     TestBed.configureTestingModule({imports: [ProductDetailComponent], providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
-      {provide: ActivatedRoute, useValue: {paramMap: params.asObservable()}}]});
+      {provide: ActivatedRoute, useValue: {paramMap: params.asObservable(), queryParamMap: of(convertToParamMap({}))}}]});
     TestBed.overrideComponent(ProductDetailComponent, {remove: {imports: [TopMenuComponent, LeftMenuComponent]}, add: {imports: [HeaderStub, SidebarStub]}});
     http = TestBed.inject(HttpTestingController); fixture = TestBed.createComponent(ProductDetailComponent);
     document.body.appendChild(fixture.nativeElement); fixture.autoDetectChanges();

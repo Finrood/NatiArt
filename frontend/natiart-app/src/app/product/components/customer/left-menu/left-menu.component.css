@@ -1,5 +1,12 @@
 :host { display: block; min-width: 0; }
 aside { width: 100%; }
+@media (max-width: 639px) {
+  aside { border-bottom: 0; }
+  .filter-heading { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: 0; }
+  .filter-heading a { margin-top: 0; border-radius: .25rem; }
+  .filter-heading button { flex-shrink: 0; }
+  nav { margin-top: .75rem; border-bottom: 1px solid rgb(var(--primary-light) / .4); }
+}
 @media (min-width: 1024px) {
   :host { flex: 0 0 14rem; align-self: stretch; }
   aside { position: sticky; top: 6.5rem; max-height: calc(100dvh - 8rem); overflow-y: auto; border-right: 1px solid rgb(var(--primary-light) / .45); }
