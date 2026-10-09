@@ -6,6 +6,27 @@ import {PersonalizationOption} from '../../../product/models/support/personaliza
 import {Product} from '../../../product/models/product.model';
 
 describe('Product card image recovery', () => {
+  it('prioritizes availability over sale and new badges, then restores merchandising when stock returns', async () => {
+    await TestBed.configureTestingModule({imports: [ProductCardComponent], providers: [provideRouter([])]}).compileComponents();
+    const fixture = TestBed.createComponent(ProductCardComponent);
+    const product: Product = {id: 'p', label: 'Porcelain', markedPrice: 8, originalPrice: 10,
+      categoryId: 'c', categoryLabel: 'Tableware', stockQuantity: 0, newProduct: true,
+      images: [], tags: [], availablePersonalizations: []};
+    fixture.componentRef.setInput('product', product);
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    expect(root.querySelector('.product-badge')?.textContent).toBe('Out of Stock');
+    expect(root.querySelector('.product-category')?.textContent).toBe('Tableware');
+    fixture.componentRef.setInput('product', {...product, stockQuantity: 2});
+    fixture.detectChanges();
+    expect(root.querySelector('.product-badge')?.textContent).toBe('Sale');
+    fixture.componentRef.setInput('product', {...product, stockQuantity: 2, originalPrice: 8, categoryLabel: null});
+    fixture.detectChanges();
+    expect(root.querySelector('.product-badge')?.textContent).toBe('New');
+    expect(root.querySelector('.product-category')).toBeNull();
+    fixture.destroy();
+  });
+
   it('falls back after an image fails and allows a replacement image to load', async () => {
     await TestBed.configureTestingModule({imports: [ProductCardComponent], providers: [provideRouter([])]}).compileComponents();
     const fixture = TestBed.createComponent(ProductCardComponent);
