@@ -1,6 +1,9 @@
 # NatiArt atelier redesign
 
-**Latest:** the [bold gallery refinement](bold-refinement/README.md) strengthens
+**Latest:** the [shopping design review](../shopping-design-2026-10/README.md)
+refines home storytelling, cards, product presentation and personalized receipts,
+with 438 tests and two complete native local payment/artwork journeys. The
+[bold gallery refinement](bold-refinement/README.md) strengthens
 Home, Collections, product purchase panels and brand typography, with fresh
 responsive evidence and search/focus repairs. The [earlier October 8 pass](refinement/README.md) adds a more
 distinctive composition across the shop, fixes mini-cart/checkout behavior,
