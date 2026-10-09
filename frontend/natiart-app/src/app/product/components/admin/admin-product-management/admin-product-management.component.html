@@ -48,11 +48,11 @@
           @if (product.originalPrice > product.markedPrice) { <span class="text-sm text-gray-500 line-through">{{ product.originalPrice | currency:'BRL' }}</span> }
         </div>
         <div class="flex flex-wrap justify-between gap-2">
-          <app-button (click)="openModal(product)" color="primary" size="sm" i18n>Edit
+          <app-button (click)="openModal(product)" [disabled]="isWritePending(product.id)" color="primary" size="sm" i18n>Edit
           </app-button>
-          <app-button (click)="deleteProduct(product.id!)" color="link" customClass="text-error" size="sm" i18n>Delete
+          <app-button (click)="deleteProduct(product.id!)" [disabled]="isWritePending(product.id)" color="link" customClass="text-error" size="sm" i18n>Delete
           </app-button>
-          <app-button (click)="toggleProductVisibility(product)" color="light" size="sm">
+          <app-button (click)="toggleProductVisibility(product)" [disabled]="isWritePending(product.id)" color="light" size="sm">
             <span i18n>{product.active, select, true {Hide} other {Show}}</span>
             <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
               @if (product.active) {

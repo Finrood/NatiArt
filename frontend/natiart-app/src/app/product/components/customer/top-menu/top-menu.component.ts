@@ -24,6 +24,7 @@ import {Event, NavigationSkipped, NavigationStart, Router, RouterLink, RouterLin
 })
 export class TopMenuComponent implements OnInit {
   readonly $isLoggedIn: WritableSignal<boolean> = signal(false);
+  readonly $isAdmin: WritableSignal<boolean> = signal(false);
   get isLoggedIn(): boolean { return this.$isLoggedIn(); }
   set isLoggedIn(value: boolean) { this.$isLoggedIn.set(value); }
   readonly cartItemCount$: Observable<number>;
@@ -48,6 +49,7 @@ export class TopMenuComponent implements OnInit {
   ngOnInit(): void {
     this._authService.isLoggedIn$.pipe(takeUntilDestroyed(this._destroyRef)).subscribe((isLoggedIn: boolean): void => {
       this.isLoggedIn = isLoggedIn;
+      this.$isAdmin.set(isLoggedIn && this._authService.isAdmin === true);
     });
   }
 

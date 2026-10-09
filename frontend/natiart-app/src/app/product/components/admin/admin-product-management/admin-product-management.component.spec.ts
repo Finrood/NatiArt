@@ -11,6 +11,7 @@ import { PackageService } from '../../../service/package.service';
 import { AlertMessageComponent } from '../../../../shared/components/alert-message/alert-message.component';
 import { ImageService } from '../../../service/image.service';
 import { Product } from '../../../models/product.model';
+import {PersonalizationOption} from '../../../models/support/personalization-option';
 
 describe('ProductManagementComponent', () => {
   beforeEach(async () => {
@@ -23,6 +24,80 @@ describe('ProductManagementComponent', () => {
   it('should create', () => {
     const fixture = TestBed.createComponent(ProductManagementComponent);
     expect(fixture.componentInstance).toBeTruthy();
+  });
+
+  function editableProduct(id: string): Product {
+    return {id, label: id, originalPrice: 30, markedPrice: 25, stockQuantity: 10, weightKg: 0.5,
+      categoryId: 'cat', images: [], tags: [], availablePersonalizations: []};
+  }
+
+  it('keeps a newly opened draft when an earlier product save completes', () => {
+    const fixture = TestBed.createComponent(ProductManagementComponent);
+    const component: ProductManagementComponent = fixture.componentInstance;
+    const pending: Subject<Product> = new Subject<Product>();
+    spyOn(TestBed.inject(ProductService), 'updateProduct').and.returnValue(pending);
+    spyOn(component.pages, 'load');
+    const first: Product = editableProduct('first');
+    component.openModal(first); component.submitForm();
+    expect(pending.observed).toBeTrue();
+    component.closeModal(); component.openModal(editableProduct('second'));
+    component.productForm.get('label')!.setValue('Unsaved second draft');
+    pending.next(first); pending.complete();
+    expect(component.modalVisible).toBeTrue();
+    expect(component.productForm.get('id')!.value).toBe('second');
+    expect(component.productForm.get('label')!.value).toBe('Unsaved second draft');
+    expect(component.isSubmitting).toBeFalse();
+    fixture.destroy();
+  });
+
+  it('cancels product writes on destruction and prevents duplicate visibility requests', () => {
+    const fixture = TestBed.createComponent(ProductManagementComponent);
+    const component: ProductManagementComponent = fixture.componentInstance;
+    const save: Subject<Product> = new Subject<Product>();
+    const toggle: Subject<Product> = new Subject<Product>();
+    spyOn(TestBed.inject(ProductService), 'updateProduct').and.returnValue(save);
+    const visibility: jasmine.Spy = spyOn(TestBed.inject(ProductService), 'inverseProductVisibility').and.returnValue(toggle);
+    const product: Product = editableProduct('first');
+    component.openModal(product); component.submitForm(); component.submitForm();
+    component.toggleProductVisibility(product); component.toggleProductVisibility(product);
+    expect(visibility).toHaveBeenCalledTimes(1);
+    expect(component.isWritePending(product.id)).toBeTrue();
+    fixture.destroy();
+    expect(save.observed).toBeFalse(); expect(toggle.observed).toBeFalse();
+    expect(component.isSubmitting).toBeFalse(); expect(component.isWritePending(product.id)).toBeFalse();
+  });
+
+  it('resets personalization choices between products and a new draft', () => {
+    const fixture = TestBed.createComponent(ProductManagementComponent);
+    const component: ProductManagementComponent = fixture.componentInstance;
+    component.openModal({...editableProduct('custom'), availablePersonalizations: [PersonalizationOption.CUSTOM_IMAGE, PersonalizationOption.GOLDEN_BORDER]});
+    expect(component.productForm.get('CUSTOM_IMAGE')!.value).toBeTrue();
+    component.openModal(editableProduct('plain'));
+    expect(component.productForm.get('CUSTOM_IMAGE')!.value).toBeFalse();
+    expect(component.productForm.get('GOLDEN_BORDER')!.value).toBeFalse();
+    component.openModal();
+    expect(component.productForm.get('CUSTOM_IMAGE')!.value).toBeFalse();
+    fixture.destroy();
+  });
+
+  it('names the product before deletion and blocks another write while deletion is pending', () => {
+    const fixture = TestBed.createComponent(ProductManagementComponent);
+    const component: ProductManagementComponent = fixture.componentInstance;
+    const product: Product = editableProduct('first');
+    spyOn(TestBed.inject(ProductService), 'getProductsPage').and.returnValue(of({items: [product], page: 0, size: 20, total: 1, hasNext: false}));
+    component.pages.load(0);
+    const pending: Subject<void> = new Subject<void>();
+    const deletion: jasmine.Spy = spyOn(TestBed.inject(ProductService), 'deleteProduct').and.returnValue(pending);
+    const confirmation: jasmine.Spy = spyOn(window, 'confirm').and.returnValue(false);
+    component.deleteProduct('first');
+    expect(confirmation).toHaveBeenCalledWith('Delete product "first"?');
+    expect(deletion).not.toHaveBeenCalled();
+    confirmation.and.returnValue(true); component.deleteProduct('first'); component.deleteProduct('first');
+    expect(deletion).toHaveBeenCalledTimes(1);
+    expect(component.isWritePending('first')).toBeTrue();
+    pending.error(new Error('unavailable'));
+    expect(component.isWritePending('first')).toBeFalse();
+    fixture.destroy();
   });
 
   it('keeps catalog price and text boundaries aligned with the server', () => {

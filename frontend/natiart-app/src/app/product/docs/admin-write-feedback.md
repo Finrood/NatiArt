@@ -22,3 +22,11 @@ Product editors retain an option for each original category/package outside the 
 page, using the product response's reference label. Loading that reference's page
 replaces the retained option without duplication; loaded inactive references are
 identified explicitly. Closing/reopening resets the selected reference snapshot.
+
+Product writes now use the same pending, generation and destruction contract.
+A late save may refresh the list but cannot close a different editor opened
+afterward. Visibility/delete requests share a per-product pending guard,
+disabling conflicting row actions until completion. Product deletion names the
+row and requires confirmation. Every editor starts from explicit defaults,
+including personalization flags, before patching a selected product. Cancelling
+a subscription does not undo a server write already accepted.
