@@ -3,8 +3,13 @@
   <main class="art-page">
     <app-product-list type="featured" title="Featured Products" i18n-title [limit]="4" (visibleProductIds)="$featuredIds.set($event)"></app-product-list>
     <section class="personalization-story">
-      <div><p class="art-eyebrow" i18n>Personalization</p><h2 i18n>A piece of you.</h2></div>
-      <div><p i18n>Discover pieces with gold borders and your own artwork.</p><ul class="story-options"><li i18n>Gold borders</li><li i18n>Your artwork</li></ul><p class="story-note" i18n>Available options are shown on each product.</p><a routerLink="/products" class="story-link"><span i18n>Explore Collections</span><span aria-hidden="true">↗</span></a></div>
+      <div class="story-title"><p class="art-eyebrow" i18n>Personalization</p><h2 i18n>A piece of you.</h2><p class="story-introduction" i18n>Discover pieces with gold borders and your own artwork.</p>
+        <svg class="story-mark" aria-hidden="true" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="1"><circle cx="60" cy="60" r="54"/><circle cx="60" cy="60" r="46"/><path d="M45 83c22-21 30-36 30-49M60 65c-13 0-20-9-19-20 12 0 21 10 19 20ZM69 51c1-11 10-18 21-16-1 11-10 19-21 16ZM52 74c-11 1-19-6-20-16 11-2 20 5 20 16Z"/></svg>
+      </div>
+      <div class="story-details"><ul class="story-options">
+        <li><span class="story-number" aria-hidden="true">01</span><div><h3 i18n>Gold borders</h3><p i18n>A finishing touch with a little extra shine.</p></div></li>
+        <li><span class="story-number" aria-hidden="true">02</span><div><h3 i18n>Your artwork</h3><p i18n>Bring your image to a piece you love.</p></div></li>
+      </ul><p class="story-note" i18n>Available options are shown on each product.</p><a routerLink="/products" class="story-link"><span i18n>Explore Collections</span><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></a></div>
     </section>
     <app-product-list type="new" title="New Arrivals" i18n-title [limit]="4" [excludeProductIds]="$featuredIds()" [deferImages]="true"></app-product-list>
   </main>

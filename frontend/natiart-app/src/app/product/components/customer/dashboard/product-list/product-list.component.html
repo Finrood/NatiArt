@@ -1,5 +1,12 @@
 <section class="home-products">
-  <div class="section-heading"><h2>{{ title }}</h2><a routerLink="/products" class="art-link"><span i18n>All Products</span><span aria-hidden="true">↗</span></a></div>
+  <div class="section-heading">
+    <div class="section-intro">
+      <p class="art-eyebrow">@if (type === 'featured') { <span i18n>Selected pieces</span> } @else { <span i18n>Fresh from the atelier</span> }</p>
+      <h2>{{ title }}</h2>
+      <p class="section-description">@if (type === 'featured') { <span i18n>A closer look at the pieces that make NatiArt.</span> } @else { <span i18n>New pieces to bring a little art into your day.</span> }</p>
+    </div>
+    <a routerLink="/products" class="art-link"><span i18n>All Products</span><span aria-hidden="true">↗</span></a>
+  </div>
   @if ($loading()) {
     <p class="mb-4 text-sm" role="status" i18n>Loading products...</p>
     <div class="art-grid" aria-hidden="true">@for (slot of [1,2,3,4]; track slot) { <div class="loading-card"><div class="aspect-square art-skeleton"></div><div class="art-skeleton h-6 mt-4 w-3/4"></div><div class="art-skeleton h-4 mt-3 w-1/2"></div></div> }</div>
