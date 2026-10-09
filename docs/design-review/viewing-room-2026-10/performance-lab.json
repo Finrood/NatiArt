@@ -1,0 +1,149 @@
+{
+  "baseline": {
+    "fetchTime": "2026-10-09T13:23:14.939Z",
+    "lighthouseVersion": "13.5.0",
+    "performanceScore": 79,
+    "accessibilityScore": 100,
+    "metrics": {
+      "largest-contentful-paint": 4972.748,
+      "cumulative-layout-shift": 3.037658113027546e-05,
+      "total-blocking-time": 74,
+      "speed-index": 2085.374
+    },
+    "config": {
+      "formFactor": "mobile",
+      "throttling": {
+        "rttMs": 150,
+        "throughputKbps": 1638.4,
+        "requestLatencyMs": 562.5,
+        "downloadThroughputKbps": 1474.5600000000002,
+        "uploadThroughputKbps": 675,
+        "cpuSlowdownMultiplier": 4
+      },
+      "throttlingMethod": "simulate",
+      "screenEmulation": {
+        "mobile": true,
+        "width": 412,
+        "height": 823,
+        "deviceScaleFactor": 1.75,
+        "disabled": false
+      },
+      "disableStorageReset": false
+    }
+  },
+  "current": [
+    {
+      "fetchTime": "2026-10-09T15:50:58.544Z",
+      "lighthouseVersion": "13.5.0",
+      "performanceScore": 80,
+      "accessibilityScore": 100,
+      "metrics": {
+        "largest-contentful-paint": 4845.705750000001,
+        "cumulative-layout-shift": 3.037658113027546e-05,
+        "total-blocking-time": 40,
+        "speed-index": 2148.02345
+      },
+      "config": {
+        "formFactor": "mobile",
+        "throttling": {
+          "rttMs": 150,
+          "throughputKbps": 1638.4,
+          "requestLatencyMs": 562.5,
+          "downloadThroughputKbps": 1474.5600000000002,
+          "uploadThroughputKbps": 675,
+          "cpuSlowdownMultiplier": 4
+        },
+        "throttlingMethod": "simulate",
+        "screenEmulation": {
+          "mobile": true,
+          "width": 412,
+          "height": 823,
+          "deviceScaleFactor": 1.75,
+          "disabled": false
+        },
+        "disableStorageReset": false
+      },
+      "productReads": [
+        {
+          "url": "http://localhost:4400/server/product/products/featured",
+          "statusCode": 200
+        },
+        {
+          "url": "http://localhost:4400/server/product/products/new",
+          "statusCode": 200
+        }
+      ],
+      "lcpDiscovery": {
+        "priorityHinted": {
+          "label": "fetchpriority=high applied",
+          "value": true
+        },
+        "requestDiscoverable": {
+          "label": "Request is discoverable in initial document",
+          "value": false
+        },
+        "eagerlyLoaded": {
+          "label": "LCP resources should not use loading=lazy",
+          "value": true
+        }
+      }
+    },
+    {
+      "fetchTime": "2026-10-09T15:52:11.276Z",
+      "lighthouseVersion": "13.5.0",
+      "performanceScore": 80,
+      "accessibilityScore": 100,
+      "metrics": {
+        "largest-contentful-paint": 4865.1505,
+        "cumulative-layout-shift": 3.037658113027546e-05,
+        "total-blocking-time": 42,
+        "speed-index": 2092.32525
+      },
+      "config": {
+        "formFactor": "mobile",
+        "throttling": {
+          "rttMs": 150,
+          "throughputKbps": 1638.4,
+          "requestLatencyMs": 562.5,
+          "downloadThroughputKbps": 1474.5600000000002,
+          "uploadThroughputKbps": 675,
+          "cpuSlowdownMultiplier": 4
+        },
+        "throttlingMethod": "simulate",
+        "screenEmulation": {
+          "mobile": true,
+          "width": 412,
+          "height": 823,
+          "deviceScaleFactor": 1.75,
+          "disabled": false
+        },
+        "disableStorageReset": false
+      },
+      "productReads": [
+        {
+          "url": "http://localhost:4400/server/product/products/featured",
+          "statusCode": 200
+        },
+        {
+          "url": "http://localhost:4400/server/product/products/new",
+          "statusCode": 200
+        }
+      ],
+      "lcpDiscovery": {
+        "priorityHinted": {
+          "label": "fetchpriority=high applied",
+          "value": true
+        },
+        "requestDiscoverable": {
+          "label": "Request is discoverable in initial document",
+          "value": false
+        },
+        "eagerlyLoaded": {
+          "label": "LCP resources should not use loading=lazy",
+          "value": true
+        }
+      }
+    }
+  ],
+  "note": "Comparable cold simulated-mobile lab audits, not field percentiles or INP. The earlier audit overlapping a failed build was excluded."
+}

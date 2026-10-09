@@ -1,0 +1,925 @@
+[
+  {
+    "state": "home",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "clientWidth": 305,
+    "documentWidth": 305,
+    "firstPhoto": 622.84375,
+    "height": 844,
+    "heroHeight": 344.515625,
+    "overflow": false,
+    "smallControls": [],
+    "title": "A arte da porcelana",
+    "titleTop": 137.703125,
+    "unlabelledInputs": [],
+    "width": 320,
+    "modal": null,
+    "screenshot": {
+      "width": 305,
+      "height": 804
+    }
+  },
+  {
+    "state": "home",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "clientWidth": 375,
+    "documentWidth": 375,
+    "firstPhoto": 624.578125,
+    "height": 844,
+    "heroHeight": 346.25,
+    "overflow": false,
+    "smallControls": [],
+    "title": "A arte da porcelana",
+    "titleTop": 150.109375,
+    "unlabelledInputs": [],
+    "width": 390,
+    "modal": null,
+    "screenshot": {
+      "width": 375,
+      "height": 812
+    }
+  },
+  {
+    "state": "home",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "clientWidth": 753,
+    "documentWidth": 753,
+    "firstPhoto": 679.984375,
+    "height": 1000,
+    "heroHeight": 432.75,
+    "overflow": false,
+    "smallControls": [],
+    "title": "A arte da porcelana",
+    "titleTop": 151.140625,
+    "unlabelledInputs": [],
+    "width": 768,
+    "modal": null,
+    "screenshot": {
+      "width": 753,
+      "height": 980
+    }
+  },
+  {
+    "state": "home",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "clientWidth": 1265,
+    "documentWidth": 1265,
+    "firstPhoto": 801.78125,
+    "height": 1000,
+    "heroHeight": 512.796875,
+    "overflow": false,
+    "smallControls": [],
+    "title": "A arte da porcelana",
+    "titleTop": 194.234375,
+    "unlabelledInputs": [],
+    "width": 1280,
+    "modal": null,
+    "screenshot": {
+      "width": 1265,
+      "height": 988
+    }
+  },
+  {
+    "state": "home",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "clientWidth": 1425,
+    "documentWidth": 1425,
+    "firstPhoto": 805.625,
+    "height": 1000,
+    "heroHeight": 512.796875,
+    "overflow": false,
+    "smallControls": [],
+    "title": "A arte da porcelana",
+    "titleTop": 183.578125,
+    "unlabelledInputs": [],
+    "width": 1440,
+    "modal": null,
+    "screenshot": {
+      "width": 1425,
+      "height": 990
+    }
+  },
+  {
+    "state": "home",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 305,
+    "documentWidth": 305,
+    "firstPhoto": 599.75,
+    "height": 844,
+    "heroHeight": 321.421875,
+    "overflow": false,
+    "smallControls": [],
+    "title": "The Art of Porcelain",
+    "titleTop": 137.703125,
+    "unlabelledInputs": [],
+    "width": 320,
+    "modal": null,
+    "screenshot": {
+      "width": 305,
+      "height": 804
+    }
+  },
+  {
+    "state": "home",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 375,
+    "documentWidth": 375,
+    "firstPhoto": 601.484375,
+    "height": 844,
+    "heroHeight": 346.25,
+    "overflow": false,
+    "smallControls": [],
+    "title": "The Art of Porcelain",
+    "titleTop": 150.109375,
+    "unlabelledInputs": [],
+    "width": 390,
+    "modal": null,
+    "screenshot": {
+      "width": 375,
+      "height": 812
+    }
+  },
+  {
+    "state": "home",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 753,
+    "documentWidth": 753,
+    "firstPhoto": 661.59375,
+    "height": 1000,
+    "heroHeight": 414.359375,
+    "overflow": false,
+    "smallControls": [],
+    "title": "The Art of Porcelain",
+    "titleTop": 155.140625,
+    "unlabelledInputs": [],
+    "width": 768,
+    "modal": null,
+    "screenshot": {
+      "width": 753,
+      "height": 980
+    }
+  },
+  {
+    "state": "home",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 1265,
+    "documentWidth": 1265,
+    "firstPhoto": 801.78125,
+    "height": 1000,
+    "heroHeight": 512.796875,
+    "overflow": false,
+    "smallControls": [],
+    "title": "The Art of Porcelain",
+    "titleTop": 194.234375,
+    "unlabelledInputs": [],
+    "width": 1280,
+    "modal": null,
+    "screenshot": {
+      "width": 1265,
+      "height": 988
+    }
+  },
+  {
+    "state": "home",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 1425,
+    "documentWidth": 1425,
+    "firstPhoto": 805.625,
+    "height": 1000,
+    "heroHeight": 512.796875,
+    "overflow": false,
+    "smallControls": [],
+    "title": "The Art of Porcelain",
+    "titleTop": 183.578125,
+    "unlabelledInputs": [],
+    "width": 1440,
+    "modal": null,
+    "screenshot": {
+      "width": 1425,
+      "height": 990
+    }
+  },
+  {
+    "state": "catalog",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 305,
+    "documentWidth": 305,
+    "firstPhoto": 441.53125,
+    "height": 844,
+    "overflow": false,
+    "smallControls": [],
+    "title": "Collections",
+    "titleTop": 119.140625,
+    "unlabelledInputs": [],
+    "width": 320,
+    "modal": null,
+    "screenshot": {
+      "width": 305,
+      "height": 804
+    }
+  },
+  {
+    "state": "catalog",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 375,
+    "documentWidth": 375,
+    "firstPhoto": 416.34375,
+    "height": 844,
+    "overflow": false,
+    "smallControls": [],
+    "title": "Collections",
+    "titleTop": 119.140625,
+    "unlabelledInputs": [],
+    "width": 390,
+    "modal": null,
+    "screenshot": {
+      "width": 375,
+      "height": 812
+    }
+  },
+  {
+    "state": "catalog",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 753,
+    "documentWidth": 753,
+    "firstPhoto": 451.609375,
+    "height": 1000,
+    "overflow": false,
+    "smallControls": [],
+    "title": "Collections",
+    "titleTop": 125.859375,
+    "unlabelledInputs": [],
+    "width": 768,
+    "modal": null,
+    "screenshot": {
+      "width": 753,
+      "height": 980
+    }
+  },
+  {
+    "state": "catalog",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 1265,
+    "documentWidth": 1265,
+    "firstPhoto": 435.96875,
+    "height": 1000,
+    "overflow": false,
+    "smallControls": [],
+    "title": "Collections",
+    "titleTop": 170.328125,
+    "unlabelledInputs": [],
+    "width": 1280,
+    "modal": null,
+    "screenshot": {
+      "width": 1265,
+      "height": 988
+    }
+  },
+  {
+    "state": "catalog",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 1425,
+    "documentWidth": 1425,
+    "firstPhoto": 451.171875,
+    "height": 1000,
+    "overflow": false,
+    "smallControls": [],
+    "title": "Collections",
+    "titleTop": 175.140625,
+    "unlabelledInputs": [],
+    "width": 1440,
+    "modal": null,
+    "screenshot": {
+      "width": 1425,
+      "height": 990
+    }
+  },
+  {
+    "state": "catalog",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "clientWidth": 305,
+    "documentWidth": 305,
+    "firstPhoto": 441.53125,
+    "height": 844,
+    "overflow": false,
+    "smallControls": [],
+    "title": "Coleções",
+    "titleTop": 119.140625,
+    "unlabelledInputs": [],
+    "width": 320,
+    "modal": null,
+    "screenshot": {
+      "width": 305,
+      "height": 804
+    }
+  },
+  {
+    "state": "catalog",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "clientWidth": 375,
+    "documentWidth": 375,
+    "firstPhoto": 416.34375,
+    "height": 844,
+    "overflow": false,
+    "smallControls": [],
+    "title": "Coleções",
+    "titleTop": 119.140625,
+    "unlabelledInputs": [],
+    "width": 390,
+    "modal": null,
+    "screenshot": {
+      "width": 375,
+      "height": 812
+    }
+  },
+  {
+    "state": "catalog",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "clientWidth": 753,
+    "documentWidth": 753,
+    "firstPhoto": 451.609375,
+    "height": 1000,
+    "overflow": false,
+    "smallControls": [],
+    "title": "Coleções",
+    "titleTop": 125.859375,
+    "unlabelledInputs": [],
+    "width": 768,
+    "modal": null,
+    "screenshot": {
+      "width": 753,
+      "height": 980
+    }
+  },
+  {
+    "state": "catalog",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "clientWidth": 1265,
+    "documentWidth": 1265,
+    "firstPhoto": 435.96875,
+    "height": 1000,
+    "overflow": false,
+    "smallControls": [],
+    "title": "Coleções",
+    "titleTop": 170.328125,
+    "unlabelledInputs": [],
+    "width": 1280,
+    "modal": null,
+    "screenshot": {
+      "width": 1265,
+      "height": 988
+    }
+  },
+  {
+    "state": "catalog",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "clientWidth": 1425,
+    "documentWidth": 1425,
+    "firstPhoto": 451.171875,
+    "height": 1000,
+    "overflow": false,
+    "smallControls": [],
+    "title": "Coleções",
+    "titleTop": 175.140625,
+    "unlabelledInputs": [],
+    "width": 1440,
+    "modal": null,
+    "screenshot": {
+      "width": 1425,
+      "height": 990
+    }
+  },
+  {
+    "state": "comparison-offline",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 390,
+    "documentWidth": 390,
+    "firstPhoto": -543.65625,
+    "height": 844,
+    "overflow": false,
+    "smallControls": [],
+    "title": "Collections",
+    "titleTop": -840.859375,
+    "unlabelledInputs": [],
+    "width": 390,
+    "modal": {
+      "overflow": false,
+      "scrollWidth": 343,
+      "width": 343
+    },
+    "screenshot": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "state": "comparison-error",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 390,
+    "documentWidth": 390,
+    "firstPhoto": 440.90625,
+    "height": 844,
+    "overflow": false,
+    "smallControls": [],
+    "title": "Collections",
+    "titleTop": 119.140625,
+    "unlabelledInputs": [],
+    "width": 390,
+    "modal": {
+      "overflow": false,
+      "scrollWidth": 343,
+      "width": 343
+    },
+    "screenshot": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "state": "comparison-recovered",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 390,
+    "documentWidth": 390,
+    "firstPhoto": 440.90625,
+    "height": 844,
+    "overflow": false,
+    "smallControls": [],
+    "title": "Collections",
+    "titleTop": 119.140625,
+    "unlabelledInputs": [],
+    "width": 390,
+    "modal": {
+      "overflow": false,
+      "scrollWidth": 343,
+      "width": 343
+    },
+    "screenshot": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "state": "comparison-return-context",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 375,
+    "documentWidth": 375,
+    "firstPhoto": 440.90625,
+    "height": 844,
+    "overflow": false,
+    "smallControls": [],
+    "title": "Collections",
+    "titleTop": 119.140625,
+    "unlabelledInputs": [],
+    "width": 390,
+    "modal": null,
+    "screenshot": {
+      "width": 375,
+      "height": 812
+    }
+  },
+  {
+    "state": "one-piece-tray",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 305,
+    "documentWidth": 305,
+    "firstPhoto": 499.53125,
+    "height": 844,
+    "overflow": false,
+    "smallControls": [],
+    "title": "Collections",
+    "titleTop": 119.140625,
+    "unlabelledInputs": [],
+    "width": 320,
+    "modal": null,
+    "screenshot": {
+      "width": 305,
+      "height": 804
+    }
+  },
+  {
+    "state": "one-piece-tray",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 375,
+    "documentWidth": 375,
+    "firstPhoto": 440.90625,
+    "height": 844,
+    "overflow": false,
+    "smallControls": [],
+    "title": "Collections",
+    "titleTop": 119.140625,
+    "unlabelledInputs": [],
+    "width": 390,
+    "modal": null,
+    "screenshot": {
+      "width": 375,
+      "height": 812
+    }
+  },
+  {
+    "state": "one-piece-tray",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 1425,
+    "documentWidth": 1425,
+    "firstPhoto": 475.734375,
+    "height": 1000,
+    "overflow": false,
+    "smallControls": [],
+    "title": "Collections",
+    "titleTop": 175.140625,
+    "unlabelledInputs": [],
+    "width": 1440,
+    "modal": null,
+    "screenshot": {
+      "width": 1425,
+      "height": 990
+    }
+  },
+  {
+    "state": "comparison",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 320,
+    "documentWidth": 320,
+    "firstPhoto": -1295.109375,
+    "height": 844,
+    "heroHeight": 324.5625,
+    "overflow": false,
+    "smallControls": [],
+    "title": "The Art of Porcelain",
+    "titleTop": -1758.734375,
+    "unlabelledInputs": [],
+    "width": 320,
+    "modal": {
+      "overflow": false,
+      "scrollWidth": 273,
+      "width": 273
+    },
+    "screenshot": {
+      "width": 320,
+      "height": 844
+    }
+  },
+  {
+    "state": "comparison",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 390,
+    "documentWidth": 390,
+    "firstPhoto": -660.609375,
+    "height": 844,
+    "heroHeight": 352.15625,
+    "overflow": false,
+    "smallControls": [],
+    "title": "The Art of Porcelain",
+    "titleTop": -1114.9375,
+    "unlabelledInputs": [],
+    "width": 390,
+    "modal": {
+      "overflow": false,
+      "scrollWidth": 343,
+      "width": 343
+    },
+    "screenshot": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "state": "comparison",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 768,
+    "documentWidth": 768,
+    "firstPhoto": -71.59375,
+    "height": 1000,
+    "heroHeight": 421.171875,
+    "overflow": false,
+    "smallControls": [],
+    "title": "The Art of Porcelain",
+    "titleTop": -581.453125,
+    "unlabelledInputs": [],
+    "width": 768,
+    "modal": {
+      "overflow": false,
+      "scrollWidth": 736,
+      "width": 736
+    },
+    "screenshot": {
+      "width": 768,
+      "height": 1000
+    }
+  },
+  {
+    "state": "comparison",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 1280,
+    "documentWidth": 1280,
+    "firstPhoto": 61.78125,
+    "height": 1000,
+    "heroHeight": 512.796875,
+    "overflow": false,
+    "smallControls": [],
+    "title": "The Art of Porcelain",
+    "titleTop": -545.765625,
+    "unlabelledInputs": [],
+    "width": 1280,
+    "modal": {
+      "overflow": false,
+      "scrollWidth": 992,
+      "width": 992
+    },
+    "screenshot": {
+      "width": 1280,
+      "height": 1000
+    }
+  },
+  {
+    "state": "comparison",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 1440,
+    "documentWidth": 1440,
+    "firstPhoto": 65.625,
+    "height": 1000,
+    "heroHeight": 512.796875,
+    "overflow": false,
+    "smallControls": [],
+    "title": "The Art of Porcelain",
+    "titleTop": -556.421875,
+    "unlabelledInputs": [],
+    "width": 1440,
+    "modal": {
+      "overflow": false,
+      "scrollWidth": 992,
+      "width": 992
+    },
+    "screenshot": {
+      "width": 1440,
+      "height": 1000
+    }
+  },
+  {
+    "state": "comparison",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "clientWidth": 320,
+    "documentWidth": 320,
+    "firstPhoto": 625.984375,
+    "height": 844,
+    "heroHeight": 347.65625,
+    "overflow": false,
+    "smallControls": [],
+    "title": "A arte da porcelana",
+    "titleTop": 139.265625,
+    "unlabelledInputs": [],
+    "width": 320,
+    "modal": {
+      "overflow": false,
+      "scrollWidth": 273,
+      "width": 273
+    },
+    "screenshot": {
+      "width": 320,
+      "height": 844
+    }
+  },
+  {
+    "state": "comparison",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "clientWidth": 390,
+    "documentWidth": 390,
+    "firstPhoto": 630.484375,
+    "height": 844,
+    "heroHeight": 352.15625,
+    "overflow": false,
+    "smallControls": [],
+    "title": "A arte da porcelana",
+    "titleTop": 153.0625,
+    "unlabelledInputs": [],
+    "width": 390,
+    "modal": {
+      "overflow": false,
+      "scrollWidth": 343,
+      "width": 343
+    },
+    "screenshot": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "state": "comparison",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "clientWidth": 768,
+    "documentWidth": 768,
+    "firstPhoto": 668.40625,
+    "height": 1000,
+    "heroHeight": 421.171875,
+    "overflow": false,
+    "smallControls": [],
+    "title": "A arte da porcelana",
+    "titleTop": 158.546875,
+    "unlabelledInputs": [],
+    "width": 768,
+    "modal": {
+      "overflow": false,
+      "scrollWidth": 736,
+      "width": 736
+    },
+    "screenshot": {
+      "width": 768,
+      "height": 1000
+    }
+  },
+  {
+    "state": "comparison",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "clientWidth": 1280,
+    "documentWidth": 1280,
+    "firstPhoto": 801.78125,
+    "height": 1000,
+    "heroHeight": 512.796875,
+    "overflow": false,
+    "smallControls": [],
+    "title": "A arte da porcelana",
+    "titleTop": 194.234375,
+    "unlabelledInputs": [],
+    "width": 1280,
+    "modal": {
+      "overflow": false,
+      "scrollWidth": 992,
+      "width": 992
+    },
+    "screenshot": {
+      "width": 1280,
+      "height": 1000
+    }
+  },
+  {
+    "state": "comparison",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "clientWidth": 1440,
+    "documentWidth": 1440,
+    "firstPhoto": 805.625,
+    "height": 1000,
+    "heroHeight": 512.796875,
+    "overflow": false,
+    "smallControls": [],
+    "title": "A arte da porcelana",
+    "titleTop": 183.578125,
+    "unlabelledInputs": [],
+    "width": 1440,
+    "modal": {
+      "overflow": false,
+      "scrollWidth": 992,
+      "width": 992
+    },
+    "screenshot": {
+      "width": 1440,
+      "height": 1000
+    }
+  },
+  {
+    "state": "one-piece-tray",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "clientWidth": 305,
+    "documentWidth": 305,
+    "firstPhoto": 622.84375,
+    "height": 844,
+    "heroHeight": 344.515625,
+    "overflow": false,
+    "smallControls": [],
+    "title": "A arte da porcelana",
+    "titleTop": 137.703125,
+    "unlabelledInputs": [],
+    "width": 320,
+    "modal": null,
+    "screenshot": {
+      "width": 305,
+      "height": 804
+    }
+  },
+  {
+    "state": "one-piece-tray",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "clientWidth": 375,
+    "documentWidth": 375,
+    "firstPhoto": 624.578125,
+    "height": 844,
+    "heroHeight": 346.25,
+    "overflow": false,
+    "smallControls": [],
+    "title": "A arte da porcelana",
+    "titleTop": 150.109375,
+    "unlabelledInputs": [],
+    "width": 390,
+    "modal": null,
+    "screenshot": {
+      "width": 375,
+      "height": 812
+    }
+  },
+  {
+    "state": "one-piece-tray",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "clientWidth": 1425,
+    "documentWidth": 1425,
+    "firstPhoto": 805.625,
+    "height": 1000,
+    "heroHeight": 512.796875,
+    "overflow": false,
+    "smallControls": [],
+    "title": "A arte da porcelana",
+    "titleTop": 183.578125,
+    "unlabelledInputs": [],
+    "width": 1440,
+    "modal": null,
+    "screenshot": {
+      "width": 1425,
+      "height": 990
+    }
+  },
+  {
+    "state": "comparison-large-price",
+    "locale": "pt-BR",
+    "brokenImages": [],
+    "clientWidth": 320,
+    "documentWidth": 320,
+    "firstPhoto": -3272.46875,
+    "height": 844,
+    "overflow": false,
+    "smallControls": [],
+    "title": "Coleções",
+    "titleTop": -3594.859375,
+    "unlabelledInputs": [],
+    "width": 320,
+    "modal": {
+      "overflow": false,
+      "scrollWidth": 273,
+      "width": 273
+    },
+    "screenshot": {
+      "width": 320,
+      "height": 844
+    }
+  },
+  {
+    "state": "comparison-large-price",
+    "locale": "en",
+    "brokenImages": [],
+    "clientWidth": 320,
+    "documentWidth": 320,
+    "firstPhoto": 416.34375,
+    "height": 844,
+    "overflow": false,
+    "smallControls": [],
+    "title": "Collections",
+    "titleTop": 119.140625,
+    "unlabelledInputs": [],
+    "width": 320,
+    "modal": {
+      "overflow": false,
+      "scrollWidth": 273,
+      "width": 273
+    },
+    "screenshot": {
+      "width": 320,
+      "height": 844
+    }
+  }
+]
