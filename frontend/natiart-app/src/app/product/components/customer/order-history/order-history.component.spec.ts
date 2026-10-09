@@ -13,6 +13,26 @@ describe('Customer order history pages', (): void => {
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([{path: 'account', component: OrderHistoryComponent}])]}).compileComponents();
   });
   afterEach((): void => {TestBed.inject(HttpTestingController).verify(); localStorage.clear();});
+  it('shows only confirmed personalization choices without exposing the artwork storage identifier', (): void => {
+    const fixture = TestBed.createComponent(OrderHistoryComponent); fixture.detectChanges();
+    const http: HttpTestingController = TestBed.inject(HttpTestingController);
+    http.expectOne(request => request.url.endsWith('/orders') && request.params.get('page') === '0').flush([{
+      id: 'personalized', status: 'PAID', totalAmount: 30, items: [
+        {id: 'plain', productId: 'p1', productLabel: 'Plain piece', quantity: 1, price: 10},
+        {id: 'declined', productId: 'p2', productLabel: 'Declined border', quantity: 1, price: 10,
+          personalization: {personalizationOptions: {GOLDEN_BORDER: 'false'}}},
+        {id: 'chosen', productId: 'p3', productLabel: 'Personalized piece', quantity: 1, price: 10,
+          personalization: {personalizationOptions: {GOLDEN_BORDER: 'true', CUSTOM_IMAGE: 'private-artwork-id'}}}
+      ]}]);
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    const choices: NodeListOf<HTMLElement> = root.querySelectorAll('[data-order-personalization]');
+    expect(choices.length).toBe(1);
+    expect(choices[0].textContent).toContain('Gold Border');
+    expect(choices[0].textContent).toContain('Custom Image');
+    expect(root.textContent).not.toContain('private-artwork-id');
+    fixture.destroy();
+  });
   it('renders HTTP results and lets a customer load the older 21st order', (): void => {
     const fixture = TestBed.createComponent(OrderHistoryComponent); fixture.detectChanges();
     const http: HttpTestingController = TestBed.inject(HttpTestingController);

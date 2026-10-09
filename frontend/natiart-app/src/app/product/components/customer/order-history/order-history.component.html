@@ -35,7 +35,16 @@
             <ul class="divide-y divide-primary-lighter/40">
               @for (item of order.items; track item.id || item.productId) {
                 <li class="grid grid-cols-[minmax(0,1fr)_auto] gap-4 py-3 text-sm">
-                  <span class="min-w-0 break-words text-secondary">{{ item.quantity }} × <a [routerLink]="['/product', item.productId]" class="art-link">{{ item.productLabel || item.productSku || item.productId }}</a></span>
+                  <div class="min-w-0 break-words text-secondary">
+                    {{ item.quantity }} × <a [routerLink]="['/product', item.productId]" class="art-link">{{ item.productLabel || item.productSku || item.productId }}</a>
+                    @let options = item.personalization?.personalizationOptions;
+                    @if (options?.[PersonalizationOption.GOLDEN_BORDER] === 'true' || options?.[PersonalizationOption.CUSTOM_IMAGE]) {
+                      <p data-order-personalization class="mt-2 flex flex-wrap gap-2 text-xs text-primary-dark">
+                        @if (options?.[PersonalizationOption.GOLDEN_BORDER] === 'true') { <span class="rounded border border-primary-light/60 bg-background-variant px-2 py-1" i18n>Gold Border</span> }
+                        @if (options?.[PersonalizationOption.CUSTOM_IMAGE]) { <span class="rounded border border-primary-light/60 bg-background-variant px-2 py-1" i18n>Custom Image</span> }
+                      </p>
+                    }
+                  </div>
                   <span class="text-secondary-light">{{ (item.price || 0) * item.quantity | currency:'BRL' }}</span>
                 </li>
               }

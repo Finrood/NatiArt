@@ -6,6 +6,7 @@ import {catchError, map, merge, Observable, of, Subject, Subscription, switchMap
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {OrderDto} from '../../../models/order.model';
 import {OrderService} from '../../../service/order.service';
+import {PersonalizationOption} from '../../../models/support/personalization-option';
 
 @Component({
   selector: 'app-order-history',
@@ -13,6 +14,7 @@ import {OrderService} from '../../../service/order.service';
   templateUrl: './order-history.component.html'
 })
 export class OrderHistoryComponent implements OnInit {
+  protected readonly PersonalizationOption: typeof PersonalizationOption = PersonalizationOption;
   readonly loadingLabel: string = $localize`Loading…`;
   readonly loadMoreLabel: string = $localize`Load more orders`;
   readonly $selectedOrderId = signal<string | null>(null);
