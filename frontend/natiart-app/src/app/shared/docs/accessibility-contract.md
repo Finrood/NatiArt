@@ -57,3 +57,11 @@ and all five requested widths; sixteen additional cart/account/checkout/care
 layouts cover 320/1440px. The latest evidence is under
 `docs/design-review/atelier-2026-10/bold-refinement/`. Earlier payment/provider
 journeys remain prior-pass evidence, not new transactions in this visual pass.
+
+Shared fields describe minimum/maximum numeric bounds and maximum text length
+with the actual validator limit. Their existing error IDs connect the explanation
+to the input; correcting the value clears invalid state and the description.
+The fresh whole-store review has 435 passing specs and saved responsive/browser
+evidence in `docs/design-review/full-review-2026-10/`. It includes filtered-route
+skip navigation, immediate invalid-link recovery and deployment failure alerts.
+This evidence does not establish whole-app WCAG conformance.
