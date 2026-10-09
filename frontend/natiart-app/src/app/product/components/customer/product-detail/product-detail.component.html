@@ -80,7 +80,10 @@
                       [(ngModel)]="quantity"
                       [max]="maxSelectableQuantity(product)"
                       min="1"
+                      step="1"
                       type="number"
+                      [attr.aria-invalid]="!validQuantity(product)"
+                      [attr.aria-describedby]="!validQuantity(product) ? 'quantity-error' : null"
                       aria-label="Current quantity"
                       class="w-16 min-h-11 text-center border-l border-r border-gray-300 py-1 focus:outline-none focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                        i18n-aria-label>
@@ -90,6 +93,9 @@
                   </div>
                   <span class="min-w-0 text-sm text-gray-500" i18n>({{ product.stockQuantity }} in stock)</span>
                 </div>
+                @if (!validQuantity(product)) {
+                  <p id="quantity-error" role="alert" class="text-sm text-error mt-2" i18n>Enter a whole-number quantity from 1 to {{ maxSelectableQuantity(product) }}.</p>
+                }
               </div>
               <app-add-to-cart-button
                 [product]="product"

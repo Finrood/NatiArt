@@ -69,6 +69,26 @@ describe('ProductDetailComponent', () => {
     expect(component.quantity).toBe(100);
   });
 
+  it('explains invalid typed quantities and disables purchase until a whole available quantity is entered', async () => {
+    const root: HTMLElement = fixture.nativeElement;
+    const input: HTMLInputElement = root.querySelector('#quantityInput')!;
+    for (const value of ['', '0', '-1', '1.5', '11']) {
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(root.querySelector('#quantity-error')?.textContent).withContext(value).toContain('from 1 to 10');
+      expect(input.getAttribute('aria-invalid')).toBe('true');
+      expect(input.getAttribute('aria-describedby')).toBe('quantity-error');
+      expect(root.querySelector<HTMLButtonElement>('app-add-to-cart-button button')!.disabled).toBeTrue();
+    }
+    input.value = '2'; input.dispatchEvent(new Event('input'));
+    fixture.detectChanges(); await fixture.whenStable();
+    expect(root.querySelector('#quantity-error')).toBeNull();
+    expect(root.querySelector<HTMLButtonElement>('app-add-to-cart-button button')!.disabled).toBeFalse();
+    fixture.destroy();
+  });
+
   it('loads the routed product on init', () => {
     expect(getProduct).toHaveBeenCalledWith('p1');
     expect(component.product$.value?.id).toBe('p1');

@@ -26,3 +26,10 @@ and available personalization in one labelled Purchase options section. Product
 facts remain below it. The always-visible corner zoom icon is decorative inside
 the existing keyboard-operable gallery button; it adds no nested control or
 change to the lens dimensions. Sold-out and large-price states fit at 320px.
+
+Purchase quantities must be safe whole numbers between one and the smaller of
+stock and 100. Empty, zero, negative, fractional and excessive values show a
+described error and disable purchase. Personalized additions revalidate stock
+and the aggregate quantity already in the cart before mutation. If the full
+request cannot be fulfilled, preserve options/artwork and explain the failure;
+never silently add fewer pieces or announce success for a rejected addition.

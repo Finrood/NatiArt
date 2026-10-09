@@ -202,6 +202,11 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     return Math.min(product.stockQuantity, this.maxPerOrder);
   }
 
+  validQuantity(product: Product): boolean {
+    return Number.isSafeInteger(this.quantity) && this.quantity >= 1
+      && this.quantity <= this.maxSelectableQuantity(product);
+  }
+
   decrementQuantity(): void {
     if (this.quantity > 1) {
       this.quantity--;

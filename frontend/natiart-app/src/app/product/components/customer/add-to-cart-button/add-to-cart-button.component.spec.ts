@@ -36,6 +36,7 @@ describe('AddToCartButtonComponent', () => {
     };
     const currentProduct: Product = {...staleProduct, markedPrice: 95, stockQuantity: 2};
     const getProductSpy: jasmine.Spy = spyOn(productService, 'getProduct').and.returnValue(of(currentProduct));
+    spyOn(cartService, 'getCartItemsSnapshot').and.returnValue([]);
     const addToCartSpy: jasmine.Spy = spyOn(cartService, 'addToCart').and.returnValue(of(undefined));
     component.product = staleProduct;
 
@@ -117,6 +118,39 @@ describe('Personalization request recovery', () => {
     expect(fixture.componentInstance.$added()).toBeFalse();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Review your cart');
     expect(TestBed.inject(CartService).getCartItemsSnapshot()[0].quantity).toBe(3);
+    fixture.destroy();
+  });
+
+  it('keeps artwork and the requested quantity when fresh stock cannot fulfill it', () => {
+    const fixture = TestBed.createComponent(AddToCartButtonComponent);
+    fixture.componentInstance.product = product;
+    fixture.componentInstance.quantity = 3;
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    root.querySelector('button')!.click(); fixture.detectChanges();
+    const modal: PersonalizationModalComponent = fixture.debugElement.query(By.directive(PersonalizationModalComponent)).componentInstance;
+    const artwork: File = new File(['artwork'], 'portrait.png', {type: 'image/png'});
+    modal.goldBorder = true; modal.customImage = artwork; modal.onSubmit();
+    http.expectOne((request): boolean => request.url.endsWith('/products/atelier-recovery')).flush({...product, stockQuantity: 2});
+    fixture.detectChanges();
+    expect(root.querySelector('dialog')).not.toBeNull();
+    expect(root.textContent).toContain('Review your cart');
+    expect(modal.customImage).toBe(artwork);
+    expect(fixture.componentInstance.quantity).toBe(3);
+    expect(TestBed.inject(CartService).getCartItemsSnapshot()).toEqual([]);
+    expect(fixture.componentInstance.$added()).toBeFalse();
+    fixture.destroy();
+  });
+
+  it('does not silently add only part of a requested quantity already partly present in the cart', () => {
+    const fixture = TestBed.createComponent(AddToCartButtonComponent);
+    const plain: Product = {...product, availablePersonalizations: []};
+    fixture.componentInstance.product = plain; fixture.componentInstance.quantity = 2;
+    TestBed.inject(CartService).addToCart(plain, 2);
+    fixture.detectChanges(); (fixture.nativeElement as HTMLElement).querySelector('button')!.click(); fixture.detectChanges();
+    expect(fixture.componentInstance.$added()).toBeFalse();
+    expect(TestBed.inject(CartService).getCartItemsSnapshot()[0].quantity).toBe(2);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Review your cart');
     fixture.destroy();
   });
 });
