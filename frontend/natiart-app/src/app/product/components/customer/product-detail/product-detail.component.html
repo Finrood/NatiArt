@@ -1,57 +1,59 @@
 <div class="art-page product-detail">
-  <a routerLink="/products" class="art-link inline-flex min-h-11 items-center mb-4 text-sm" i18n>Collections</a>
+  <a routerLink="/products" class="detail-back"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 12H4m6-6-6 6 6 6"/></svg><span i18n>Collections</span></a>
   <main class="min-w-0" [attr.aria-busy]="isLoading">
     @if (product$ | async; as product) {
       <div class="product-content">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-14">
+        <div class="detail-layout">
 
-          <div class="min-w-0">
+          <div class="gallery-column min-w-0">
+            <div class="gallery-composition">
 
-            <div #imageContainer
-              class="product-gallery relative aspect-square overflow-hidden rounded-md mb-4"
-              [class.cursor-zoom-in]="!isZoomed"
-              [class.cursor-zoom-out]="isZoomed"
-              (mousemove)="updateZoomPosition($event)"
-              (mouseleave)="isZoomed = false"
-              (click)="toggleZoom($event)" tabindex="0" role="button" aria-label="Toggle image zoom" i18n-aria-label [attr.aria-pressed]="isZoomed" (keydown.space)="$event.preventDefault(); zoomKey($event)" (keydown.enter)="zoomKey($event)">
-              <img (error)="imageFailed($productImages()[selectedImageIndex]?.key || '')" #mainImage
-                [src]="imageUrls[selectedImageIndex] || emptyImage"
-                width="800" height="800" alt="{{product.label}} - Main Image" i18n-alt
-                class="w-full h-full object-contain transition-transform duration-200 ease-in-out block"
-                 [ngStyle]="{
-                         'transform': isZoomed ? transformScale : 'scale(1)',
-                         'transform-origin': isZoomed ? $zoomOrigin() : 'center center'
-                     }">
+              <div #imageContainer
+                class="product-gallery relative aspect-square overflow-hidden mb-4"
+                [class.cursor-zoom-in]="!isZoomed"
+                [class.cursor-zoom-out]="isZoomed"
+                (mousemove)="updateZoomPosition($event)"
+                (mouseleave)="isZoomed = false"
+                (click)="toggleZoom($event)" tabindex="0" role="button" aria-label="Toggle image zoom" i18n-aria-label [attr.aria-pressed]="isZoomed" (keydown.space)="$event.preventDefault(); zoomKey($event)" (keydown.enter)="zoomKey($event)">
+                <img (error)="imageFailed($productImages()[selectedImageIndex]?.key || '')" #mainImage
+                  [src]="imageUrls[selectedImageIndex] || emptyImage"
+                  width="800" height="800" alt="{{product.label}} - Main Image" i18n-alt
+                  class="w-full h-full object-contain transition-transform duration-200 ease-in-out block"
+                   [ngStyle]="{
+                           'transform': isZoomed ? transformScale : 'scale(1)',
+                           'transform-origin': isZoomed ? $zoomOrigin() : 'center center'
+                       }">
 
-                <div #zoomLens [hidden]="!isZoomed"
-                  class="absolute border-2 border-primary rounded-md pointer-events-none"
-                  [style.width.px]="lensSize"
-                  [style.height.px]="lensSize">
-                </div>
+                  <div #zoomLens [hidden]="!isZoomed"
+                    class="absolute border-2 border-primary rounded-md pointer-events-none"
+                    [style.width.px]="lensSize"
+                    [style.height.px]="lensSize">
+                  </div>
 
-              @if (!isZoomed) {
-                <div
-                  aria-hidden="true" class="gallery-zoom-affordance">
-                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
-                  </svg>
-                </div>
+                @if (!isZoomed) {
+                  <div
+                    aria-hidden="true" class="gallery-zoom-affordance">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
+                    </svg>
+                  </div>
+                }
+              </div>
+
+              @if ($productImages().length > 1) {
+              <div class="gallery-thumbnails">
+                @for (imgEntry of $productImages(); track imgEntry.key; let i = $index) {
+                  <button type="button" (click)="selectImage(imgEntry.key)" [attr.aria-label]="imageLabel(i + 1)" [attr.aria-pressed]="selectedImageIndex === i" class="gallery-thumbnail" [class.selected]="selectedImageIndex === i">
+                  <img (error)="imageFailed(imgEntry.key)"
+                    [src]="imgEntry.url || emptyImage"
+                    alt="{{product.label}} Thumbnail {{ i + 1 }}" i18n-alt
+                    class="w-20 h-20 object-contain cursor-pointer">
+                  </button>
+                }
+              </div>
               }
+              <p class="gallery-hint"><span i18n>Select the image to zoom.</span><span aria-hidden="true">NatiArt</span></p>
             </div>
-
-            @if ($productImages().length > 1) {
-            <div class="gallery-thumbnails">
-              @for (imgEntry of $productImages(); track imgEntry.key; let i = $index) {
-                <button type="button" (click)="selectImage(imgEntry.key)" [attr.aria-label]="imageLabel(i + 1)" [attr.aria-pressed]="selectedImageIndex === i" class="gallery-thumbnail" [class.selected]="selectedImageIndex === i">
-                <img (error)="imageFailed(imgEntry.key)"
-                  [src]="imgEntry.url || emptyImage"
-                  alt="{{product.label}} Thumbnail {{ i + 1 }}" i18n-alt
-                  class="w-20 h-20 object-contain cursor-pointer">
-                </button>
-              }
-            </div>
-            }
-            <p class="gallery-hint" i18n>Select the image to zoom.</p>
           </div>
 
           <div class="product-information min-w-0 [overflow-wrap:anywhere]">
@@ -59,95 +61,102 @@
             <h1 class="art-title mb-4">{{ product.label }}</h1>
 
             <section class="purchase-panel" aria-label="Purchase options" i18n-aria-label>
-              <div class="purchase-price mb-6">
-                <span class="current-price">{{ product.markedPrice | currency:'BRL' }}</span>
-                @if (product.originalPrice > product.markedPrice) {
-                  <span class="text-text-muted text-sm line-through">
-                    {{ product.originalPrice | currency:'BRL' }}
-                  </span>
-                }
+              <div class="purchase-heading">
+                <div class="purchase-price">
+                  <span class="current-price">{{ product.markedPrice | currency:'BRL' }}</span>
+                  @if (product.originalPrice > product.markedPrice) {
+                    <span class="text-text-muted text-sm line-through">
+                      {{ product.originalPrice | currency:'BRL' }}
+                    </span>
+                  }
+                </div>
+                <p class="purchase-availability" [class.unavailable]="product.stockQuantity <= 0">
+                  <span class="availability-dot" aria-hidden="true"></span>
+                  @if (product.stockQuantity <= 0) { <span i18n>Out of Stock</span> }
+                  @else if (product.stockQuantity === 1) { <span i18n>Only 1 left</span> }
+                  @else { <span i18n>In stock</span> }
+                </p>
               </div>
 
-              <div class="mb-6 space-y-2">
-                <label for="quantityInput" class="block text-sm font-medium text-gray-700" i18n>Quantity</label>
-                <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-                  <div class="flex shrink-0 items-center border border-gray-300 rounded">
-                    <app-button (click)="decrementQuantity()" [disabled]="quantity <= 1" aria-label="Decrease quantity" color="light" size="sm" customClass="min-h-11" i18n-aria-label>
-                      <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-width="2" d="M5 12h14"/></svg>
-                    </app-button>
-                    <input
-                      id="quantityInput"
-                      [(ngModel)]="quantity"
-                      [max]="maxSelectableQuantity(product)"
-                      min="1"
-                      step="1"
-                      type="number"
-                      [attr.aria-invalid]="!validQuantity(product)"
-                      [attr.aria-describedby]="!validQuantity(product) ? 'quantity-error' : null"
-                      aria-label="Current quantity"
-                      class="w-16 min-h-11 text-center border-l border-r border-gray-300 py-1 focus:outline-none focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                       i18n-aria-label>
-                    <app-button (click)="incrementQuantity(product)" [disabled]="quantity >= maxSelectableQuantity(product)" aria-label="Increase quantity" color="light" size="sm" customClass="min-h-11" i18n-aria-label>
-                      <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-width="2" d="M12 5v14m-7-7h14"/></svg>
-                    </app-button>
-                  </div>
-                  <span class="min-w-0 text-sm text-gray-500" i18n>({{ product.stockQuantity }} in stock)</span>
+              @if (product.availablePersonalizations.includes(PersonalizationOption.GOLDEN_BORDER) || product.availablePersonalizations.includes(PersonalizationOption.CUSTOM_IMAGE)) {
+                <div class="personalization-preview">
+                  <p class="personalization-title" i18n>Make it yours</p>
+                  <ul class="personalization-options">
+                    @if (product.availablePersonalizations.includes(PersonalizationOption.GOLDEN_BORDER)) { <li><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4L12 3Z"/></svg><span i18n>Add Golden Border</span></li> }
+                    @if (product.availablePersonalizations.includes(PersonalizationOption.CUSTOM_IMAGE)) { <li><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1.5"/><path d="m4 19 6-6 4 3 3-5 4 6"/></svg><span i18n>Upload Custom Image</span></li> }
+                  </ul>
                 </div>
-                @if (!validQuantity(product)) {
-                  <p id="quantity-error" role="alert" class="text-sm text-error mt-2" i18n>Enter a whole-number quantity from 1 to {{ maxSelectableQuantity(product) }}.</p>
-                }
-              </div>
+              }
+
+              @if (product.stockQuantity > 0) {
+                <div class="purchase-quantity space-y-2">
+                  <label for="quantityInput" class="block text-sm font-medium" i18n>Quantity</label>
+                  <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <div class="flex shrink-0 items-center border border-gray-300 rounded">
+                      <app-button (click)="decrementQuantity()" [disabled]="quantity <= 1" aria-label="Decrease quantity" color="light" size="sm" customClass="min-h-11" i18n-aria-label>
+                        <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-width="2" d="M5 12h14"/></svg>
+                      </app-button>
+                      <input
+                        id="quantityInput"
+                        [(ngModel)]="quantity"
+                        [max]="maxSelectableQuantity(product)"
+                        min="1"
+                        step="1"
+                        type="number"
+                        [attr.aria-invalid]="!validQuantity(product)"
+                        [attr.aria-describedby]="!validQuantity(product) ? 'quantity-error' : null"
+                        aria-label="Current quantity"
+                        class="w-16 min-h-11 text-center border-l border-r border-gray-300 py-1 focus:outline-none focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                         i18n-aria-label>
+                      <app-button (click)="incrementQuantity(product)" [disabled]="quantity >= maxSelectableQuantity(product)" aria-label="Increase quantity" color="light" size="sm" customClass="min-h-11" i18n-aria-label>
+                        <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-width="2" d="M12 5v14m-7-7h14"/></svg>
+                      </app-button>
+                    </div>
+                    <span class="min-w-0 text-sm text-gray-500" i18n>({{ product.stockQuantity }} in stock)</span>
+                  </div>
+                  @if (!validQuantity(product)) {
+                    <p id="quantity-error" role="alert" class="text-sm text-error mt-2" i18n>Enter a whole-number quantity from 1 to {{ maxSelectableQuantity(product) }}.</p>
+                  }
+                </div>
+              }
               <app-add-to-cart-button
                 [product]="product"
                 [quantity]="quantity"
                 (itemAdded)="triggerFlyAnimation($event)">
               </app-add-to-cart-button>
 
-              @if (product.availablePersonalizations.length > 0) {
-                <div class="personalization-preview">
-                  <p class="font-medium text-sm" i18n>Personalization Options:</p>
-                  <p class="text-sm">
-                    @if (product.availablePersonalizations.includes(PersonalizationOption.GOLDEN_BORDER)) { <span i18n>Add Golden Border</span> }
-                    @if (product.availablePersonalizations.includes(PersonalizationOption.GOLDEN_BORDER) && product.availablePersonalizations.includes(PersonalizationOption.CUSTOM_IMAGE)) { <span aria-hidden="true"> · </span> }
-                    @if (product.availablePersonalizations.includes(PersonalizationOption.CUSTOM_IMAGE)) { <span i18n>Upload Custom Image</span> }
-                  </p>
-                </div>
-              }
-
             </section>
 
-            <div class="product-facts mt-8 border-t pt-6">
+            <div class="product-facts">
               <h2 class="text-2xl font-normal mb-4" i18n>Product Details</h2>
               <p class="text-secondary mb-5 whitespace-pre-line leading-relaxed">{{ product.description }}</p>
-              <ul class="space-y-2 text-gray-600">
+              <ul class="product-fact-list">
 
                 <li><strong class="font-medium" i18n>Category:</strong> {{ product.categoryLabel || categoryUnavailable }}</li>
-                <li><strong class="font-medium" i18n>Stock:</strong> <ng-container i18n>{{ product.stockQuantity }} available</ng-container></li>
-
                 @if (product.tags && product.tags.length > 0) {
                   <li>
-                    <strong class="font-medium" i18n>Tags:</strong>
-                    @for (tag of product.tags; track tag; let isLast = $last) {
-                      <span class="ml-1 inline-block bg-gray-200 rounded-full px-2 py-0.5 text-xs font-semibold text-gray-700">
-                        {{ tag }}{{ !isLast ? ',' : '' }}
+                    <strong class="font-medium" i18n>Tags:</strong><span class="product-tags">
+                    @for (tag of product.tags; track tag) {
+                      <span class="product-tag">
+                        {{ tag }}
                       </span>
                     }
+                    </span>
                   </li>
                 }
 
-                  @if (product.hasFixedGoldenBorder) {
-                    <li>
-                      <strong class="font-medium text-warning" i18n>Includes Golden Border</strong>
-                    </li>
-                  }
-                </ul>
-              </div>
+                @if (product.hasFixedGoldenBorder) {
+                  <li><strong class="fixed-border" i18n>Includes Golden Border</strong></li>
+                }
+              </ul>
+            </div>
+              <a routerLink="/care-instructions" class="piece-care"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 21s-8-5-8-12a4 4 0 0 1 8-2 4 4 0 0 1 8 2c0 7-8 12-8 12Z"/></svg><span i18n>Care Instructions</span><span aria-hidden="true">↗</span></a>
             </div>
           </div>
 
           @if ((relatedProducts$ | async)?.length) {
-            <section class="mt-12 border-t border-primary-light/40 pt-8">
-              <h2 class="text-3xl font-normal mb-6" i18n>You May Also Like</h2>
+            <section class="related-pieces">
+              <div class="related-heading"><div><p class="art-eyebrow" i18n>Keep exploring</p><h2 i18n>You May Also Like</h2></div><a routerLink="/products" class="art-link" i18n>All Products</a></div>
               <div class="art-grid">
                 @for (relatedProduct of relatedProducts$ | async; track (relatedProduct.id ?? relatedProduct)) {
                   <app-product-card [product]="relatedProduct"
@@ -177,9 +186,9 @@
       </main>
     </div>
 
-    <app-personalization-modal
-      (close)="closePersonalizationModal()"
-      (personalize)="onPersonalizationComplete($event)"
-      [product]="selectedProductForModal"
-      [show]="showPersonalizationModal">
-  </app-personalization-modal>
+<app-personalization-modal
+  (close)="closePersonalizationModal()"
+  (personalize)="onPersonalizationComplete($event)"
+  [product]="selectedProductForModal"
+  [show]="showPersonalizationModal">
+</app-personalization-modal>

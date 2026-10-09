@@ -3,17 +3,19 @@
   <a [routerLink]="product.id ? ['/product', product.id] : null" class="product-photo">
     <img [src]="$displayImage()" [alt]="product.label" (error)="onImageError()" [attr.aria-busy]="$imageLoading()"
       width="640" height="640" loading="lazy" decoding="async">
-    @if (product.originalPrice > product.markedPrice) { <span class="product-badge" i18n>Sale</span> }
+    @if (product.stockQuantity <= 0) { <span class="product-badge product-badge-unavailable" i18n>Out of Stock</span> }
+    @else if (product.originalPrice > product.markedPrice) { <span class="product-badge" i18n>Sale</span> }
     @else if (product.newProduct) { <span class="product-badge" i18n>New</span> }
   </a>
   <div class="product-caption">
+    @if (product.categoryLabel) { <p class="product-category">{{ product.categoryLabel }}</p> }
     <h2 [title]="product.label"><a [routerLink]="product.id ? ['/product', product.id] : null">{{ product.label }}</a></h2>
     <div class="product-price">
       <span>{{ product.markedPrice | currency:'BRL' }}</span>
       @if (product.originalPrice > product.markedPrice) { <del>{{ product.originalPrice | currency:'BRL' }}</del> }
     </div>
     <p class="product-availability">
-      @if (product.stockQuantity <= 0) { <span class="text-error" i18n>Out of Stock</span> }
+      @if (product.stockQuantity <= 0) { <span i18n>Out of Stock</span> }
       @else if (product.stockQuantity === 1) { <span i18n>Only 1 left</span> }
       @else { <span i18n>In stock</span> }
       @if ($personalizable()) { <span aria-hidden="true"> · </span><span i18n>Personalizable</span> }

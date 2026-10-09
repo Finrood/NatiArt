@@ -1,0 +1,68 @@
+[
+  {
+    "file": "artwork-order-confirmed.jpg",
+    "width": 1265,
+    "height": 712,
+    "sha256": "56b7a4d189d13108b585f320532cd1b22c15cb85b439f2c440c58469817ed4a0"
+  },
+  {
+    "file": "baseline-product.jpg",
+    "width": 1265,
+    "height": 712,
+    "sha256": "b1f95d253166f6bc3f841a0c00ec9bad97bb870f11926f7116bf3225777bfcff"
+  },
+  {
+    "file": "checkout-quote.jpg",
+    "width": 1265,
+    "height": 712,
+    "sha256": "0a10b9fe2de3139439e38a42f24cdbfc11496c73c8b45fdc2769111e1bcc7dc8"
+  },
+  {
+    "file": "collections-desktop.jpg",
+    "width": 1425,
+    "height": 891,
+    "sha256": "989e5c40934e434f4da36f32824b210878d7c7b99163f459c2a48f13652e62a8"
+  },
+  {
+    "file": "home-desktop.jpg",
+    "width": 1425,
+    "height": 3227,
+    "sha256": "59972cb4d9d1053900dbd5f7ff16c7883dd4029f504435938a5524a0bc2baddc"
+  },
+  {
+    "file": "home-phone.jpg",
+    "width": 375,
+    "height": 865,
+    "sha256": "b2473fbd49e6291f9f215c8fadfc0b3ef5bbf994b46919cd5f9047fb636bf7aa"
+  },
+  {
+    "file": "home-story-desktop.jpg",
+    "width": 1425,
+    "height": 891,
+    "sha256": "afd235cd0324cf2d0673029edc256cecb80ef62c4f468672b6f19db7b1c24a9a"
+  },
+  {
+    "file": "local-payment-confirmed.jpg",
+    "width": 1265,
+    "height": 712,
+    "sha256": "a330b36720c38a5668f6787ec67a8dade77c117a8d1446f1f800be4829f6d672"
+  },
+  {
+    "file": "personalization-phone.jpg",
+    "width": 390,
+    "height": 900,
+    "sha256": "14613277fe626789428577b9eaa9ba1ea94195c064a8e0d693c98d4f0a2dcba8"
+  },
+  {
+    "file": "product-desktop.jpg",
+    "width": 1425,
+    "height": 891,
+    "sha256": "ef7ca68cd21286647db0163b73a6caacccbf21c6de8259a42f161fa60be7225d"
+  },
+  {
+    "file": "product-phone.jpg",
+    "width": 375,
+    "height": 2985,
+    "sha256": "79bc91ee31087a6705700ea520d7f1de1ebaf781d0d6e5b9f882eb5cea082822"
+  }
+]

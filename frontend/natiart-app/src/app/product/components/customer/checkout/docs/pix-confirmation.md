@@ -37,3 +37,7 @@ and delivery charges. Copy has a named control and separate success/error
 feedback; expiry shows its local time. The completed screen links to the
 authorized single-order lookup in account history using orderId. Removing that
 query parameter returns to paged history without changing the order.
+
+Customer receipts display the saved gold-border/custom-image choices per line.
+Only the literal `true` border flag is selected; artwork is identified by its
+presence, without exposing the private upload identifier in the receipt.

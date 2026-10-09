@@ -69,6 +69,24 @@ describe('ProductDetailComponent', () => {
     expect(component.quantity).toBe(100);
   });
 
+  it('shows sold-out availability without an impossible quantity range and restores controls for an available piece', () => {
+    getProduct.and.returnValue(of({...makeProduct('sold-out'), stockQuantity: 0}));
+    paramMap$.next(convertToParamMap({id: 'sold-out'}));
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    expect(root.querySelector('.purchase-availability')?.textContent).toContain('Out of Stock');
+    expect(root.querySelector('#quantityInput')).toBeNull();
+    expect(root.querySelector('#quantity-error')).toBeNull();
+    expect(root.querySelector<HTMLButtonElement>('app-add-to-cart-button button')!.disabled).toBeTrue();
+    getProduct.and.returnValue(of({...makeProduct('last-piece'), stockQuantity: 1}));
+    paramMap$.next(convertToParamMap({id: 'last-piece'}));
+    fixture.detectChanges();
+    expect(root.querySelector('.purchase-availability')?.textContent).toContain('Only 1 left');
+    expect(root.querySelector('#quantityInput')).not.toBeNull();
+    expect(root.querySelector('#quantity-error')).toBeNull();
+    expect(root.querySelector<HTMLButtonElement>('app-add-to-cart-button button')!.disabled).toBeFalse();
+  });
+
   it('explains invalid typed quantities and disables purchase until a whole available quantity is entered', async () => {
     const root: HTMLElement = fixture.nativeElement;
     const input: HTMLInputElement = root.querySelector('#quantityInput')!;

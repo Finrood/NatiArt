@@ -33,3 +33,11 @@ described error and disable purchase. Personalized additions revalidate stock
 and the aggregate quantity already in the cart before mutation. If the full
 request cannot be fulfilled, preserve options/artwork and explain the failure;
 never silently add fewer pieces or announce success for a rejected addition.
+
+The shopping design pass puts availability beside the price and lists the
+supported personalization choices before quantity and purchase. Sold-out pieces
+show a disabled purchase action without a quantity field or an impossible
+validation range. The shared card gives Out of Stock precedence over Sale/New;
+category captions use display labels only. Product care has a direct route below
+the facts. On desktop viewports at least 900px tall, the contained gallery stays
+visible while the shopper reads the facts; shorter screens use normal flow.
