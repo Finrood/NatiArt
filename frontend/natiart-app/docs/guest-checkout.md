@@ -22,9 +22,20 @@ UUID in separate keys. Signing out restores the guest basket and hides the
 account basket. Signing in transfers guest selections into that account,
 merging plain matching variants within stock limits and keeping artwork lines
 separate. A journal in source and destination prevents duplicate transfer
-following a storage interruption. Before a guest basket changes or transfers, it
-refreshes selections consumed or edited by another tab to prevent duplicate merges. Pending purchases keep separate line identity
-and are settled only after an authorized server response confirms payment.
+following a storage interruption. Before either basket changes or transfers, it
+refreshes selections consumed or edited by another tab to prevent duplicate merges.
+Recording and settling a purchase also refresh the basket and its receipts, so
+an older payment tab preserves later additions and respects a completion already
+recorded by another tab. If the latest basket cannot be read, purchase recording
+or settlement stops before writing stale data and can be retried. A payment
+completed after another tab transfers its guest basket retains a completed receipt
+for the next account transfer without restoring old guest selections.
+Pending purchases keep separate line identity and are settled only after an
+authorized server response confirms payment. Each write retains its own storage
+version, preserving live artwork files across subsequent changes in that tab.
+Checkout replay also settles these receipts when the server reports an already
+paid order or completed payment, before clearing the saved attempt. A cart storage
+failure retains that attempt for retry; a cancelled order keeps its cart selections.
 Only guest artwork uploads are invalidated on transfer to an account; existing
 account artwork is preserved. Files still in memory can be re-uploaded; closed
 browser files need reselection. A storage failure hides the prior account's

@@ -14,6 +14,11 @@ again. Missing receipts leave the cart untouched; storage failure leaves both ca
 and receipt untouched and displays a recovery message. Uploaded files remain only
 in memory as in the existing contract; ordinary cart lines are still persisted.
 
+When checkout replay finds an order already paid, or its saved payment already
+completed, it settles the saved cart receipt before clearing that checkout attempt.
+If cart storage fails, the attempt stays available to retry settlement; cancelled
+orders clear the attempt without removing selections.
+
 Refresh reads the existing payment status before requesting its QR. It never posts
 a new payment. Polling uses one outstanding request, a 10-second request timeout,
 a five-minute elapsed limit, 60-result limit, and five consecutive error limit.

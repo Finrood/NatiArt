@@ -17,7 +17,7 @@ export class CartService {
   private cartItems: CartItem[] = [];
   private purchases: CartPurchase[] = [];
   private mergedGuestTransfers: string[] = [];
-  private lastGuestStorage: string | null = null;
+  private lastStorage: string | null = null;
   private localStorageKey = 'natiart-cart';
   private cartItemsSubject = new BehaviorSubject<CartItem[]>([]);
   private cartTotalSubject = new BehaviorSubject<number>(0);
@@ -32,7 +32,7 @@ export class CartService {
     const nextKey: string = accountId ? 'natiart-cart:account:' + encodeURIComponent(accountId) : 'natiart-cart';
     if (nextKey === this.localStorageKey) return;
     try {
-      this.synchronizeGuestBasket();
+      this.synchronizeBasket();
       const fromGuest: boolean = this.localStorageKey === 'natiart-cart' && !!accountId;
       const guestItems: CartItem[] = fromGuest ? this.cartItems.map((item: CartItem): CartItem => ({...item})) : [];
       const guestPurchases: CartPurchase[] = fromGuest ? this.purchases : [];
@@ -84,8 +84,10 @@ export class CartService {
           }
         }
         this.mergedGuestTransfers = [...this.mergedGuestTransfers, transferId].slice(-100);
-        localStorage.setItem(nextKey, JSON.stringify({version: 1, items: this.serializableItems(this.cartItems),
-          purchases: this.purchases, mergedGuestTransfers: this.mergedGuestTransfers}));
+        const raw: string = JSON.stringify({version: 1, items: this.serializableItems(this.cartItems),
+          purchases: this.purchases, mergedGuestTransfers: this.mergedGuestTransfers});
+        localStorage.setItem(nextKey, raw);
+        this.lastStorage = raw;
       }
       if (fromGuest && transferId) localStorage.removeItem('natiart-cart');
       this.cartItemsSubject.next([...this.cartItems]); this.calculateAndEmitTotal();
@@ -103,13 +105,12 @@ export class CartService {
     if (purchase) this.completePurchase(orderId, purchase.customerId);
   }
 
-  /** Refresh a guest basket consumed or edited by another tab before mutating it. */
-  private synchronizeGuestBasket(): void {
-    if (this.localStorageKey !== 'natiart-cart') return;
+  /** Refresh this basket before a stale tab can overwrite a newer selection or receipt. */
+  private synchronizeBasket(strict: boolean = false): void {
     let current: string | null;
-    try { current = localStorage.getItem('natiart-cart'); }
-    catch (error) { reportError('storage', error); return; }
-    if (current === this.lastGuestStorage) return;
+    try { current = localStorage.getItem(this.localStorageKey); }
+    catch (error) { if (strict) throw error; reportError('storage', error); return; }
+    if (current === this.lastStorage) return;
     this.cartItems = []; this.purchases = []; this.mergedGuestTransfers = [];
     this.loadCartFromLocalStorage(true);
     this.cartItemsSubject.next([...this.cartItems]); this.calculateAndEmitTotal();
@@ -124,7 +125,7 @@ export class CartService {
   }
 
   addToCart(product: Product, quantity: number, goldBorder?: boolean, image?: File): Observable<void> {
-    this.synchronizeGuestBasket();
+    this.synchronizeBasket();
     if (!Number.isSafeInteger(quantity) || quantity < 1 ||
         typeof product.id !== 'string' || product.id.trim().length === 0 ||
         !Number.isFinite(product.markedPrice) || product.markedPrice < 0 ||
@@ -165,7 +166,7 @@ export class CartService {
   }
 
   setCustomImageUploadId(cartItemId: string, uploadId: string): Observable<void> {
-    this.synchronizeGuestBasket();
+    this.synchronizeBasket();
     if (!uploadId || uploadId.trim().length === 0) {
       reportWarning('cart');
       return of(undefined);
@@ -181,7 +182,7 @@ export class CartService {
   }
 
   invalidateArtwork(uploadId: string): void {
-    this.synchronizeGuestBasket();
+    this.synchronizeBasket();
     for (const item of this.cartItems) {
       if (item.customImageUploadId !== uploadId) continue;
       delete item.customImageUploadId;
@@ -191,7 +192,7 @@ export class CartService {
   }
 
   reselectArtwork(cartItemId: string, file: File): void {
-    this.synchronizeGuestBasket();
+    this.synchronizeBasket();
     if (!file.type.startsWith('image/') || file.size > 5_000_000 || file.size === 0) return;
     const item: CartItem | undefined = this.cartItems.find((candidate: CartItem) => candidate.cartItemId === cartItemId);
     if (!item) return;
@@ -207,14 +208,14 @@ export class CartService {
   }
 
   removeFromCart(cartItemId: string): Observable<void> {
-    this.synchronizeGuestBasket();
+    this.synchronizeBasket();
     this.cartItems = this.cartItems.filter(item => item.cartItemId !== cartItemId);
     this.updateCart();
     return of(undefined);
   }
 
   updateItemQuantity(cartItemId: string, quantity: number): Observable<void> {
-    this.synchronizeGuestBasket();
+    this.synchronizeBasket();
     const itemIndex = this.cartItems.findIndex(item => item.cartItemId === cartItemId);
     if (itemIndex < 0 || !Number.isSafeInteger(quantity)) {
       reportWarning('cart');
@@ -237,7 +238,7 @@ export class CartService {
   }
 
   clearCart(): Observable<void> {
-    this.synchronizeGuestBasket();
+    this.synchronizeBasket();
     this.cartItems = [];
     this.updateCart();
     return of(undefined);
@@ -269,30 +270,39 @@ export class CartService {
   }
 
   rememberPurchase(orderId: string, customerId: string, lines: PurchasedCartLine[]): void {
+    this.synchronizeBasket(true);
     if (this.purchases.some((purchase: CartPurchase) => purchase.orderId === orderId)) return;
     const purchases: CartPurchase[] = [...this.purchases,
       {orderId, customerId, lines: lines.map((line: PurchasedCartLine) => ({...line})), completed: false}];
-    localStorage.setItem(this.localStorageKey, JSON.stringify({
-      version: 1, items: this.serializableItems(this.cartItems), purchases, mergedGuestTransfers: this.mergedGuestTransfers}));
-    if (this.localStorageKey === 'natiart-cart') this.lastGuestStorage = localStorage.getItem(this.localStorageKey);
+    const raw: string = JSON.stringify({
+      version: 1, items: this.serializableItems(this.cartItems), purchases, mergedGuestTransfers: this.mergedGuestTransfers});
+    localStorage.setItem(this.localStorageKey, raw);
+    this.lastStorage = raw;
     this.purchases = purchases;
   }
 
   completePurchase(orderId: string, customerId: string): void {
-    const purchase: CartPurchase | undefined = this.purchases.find((entry: CartPurchase) =>
+    const remembered: CartPurchase | undefined = this.purchases.find((entry: CartPurchase): boolean =>
       entry.orderId === orderId && entry.customerId === customerId);
+    this.synchronizeBasket(true);
+    const purchase: CartPurchase | undefined = this.purchases.find((entry: CartPurchase) =>
+      entry.orderId === orderId && entry.customerId === customerId) ?? remembered;
     if (!purchase || purchase.completed) return;
     const updated: CartItem[] = this.cartItems.map((item: CartItem) => {
       const purchased: PurchasedCartLine | undefined = purchase.lines.find((line: PurchasedCartLine) =>
         line.cartItemId === item.cartItemId);
       return {...item, quantity: Math.max(0, item.quantity - (purchased?.quantity ?? 0))};
     }).filter((item: CartItem) => item.quantity > 0);
-    const purchases: CartPurchase[] = this.purchases.map((entry: CartPurchase) =>
-      entry === purchase ? {...entry, completed: true} : entry);
+    // A sign-in in another tab may have transferred the source receipt. Keep its
+    // completion for the transfer journal without restoring its old cart items.
+    const purchases: CartPurchase[] = this.purchases.includes(purchase)
+      ? this.purchases.map((entry: CartPurchase): CartPurchase => entry === purchase ? {...entry, completed: true} : entry)
+      : [...this.purchases, {...purchase, completed: true}];
     // Persist the deduction and its receipt in one write before publishing either.
-    localStorage.setItem(this.localStorageKey, JSON.stringify({version: 1, items: this.serializableItems(updated), purchases, mergedGuestTransfers: this.mergedGuestTransfers}));
+    const raw: string = JSON.stringify({version: 1, items: this.serializableItems(updated), purchases, mergedGuestTransfers: this.mergedGuestTransfers});
+    localStorage.setItem(this.localStorageKey, raw);
     this.cartItems = updated;
-    if (this.localStorageKey === 'natiart-cart') this.lastGuestStorage = localStorage.getItem(this.localStorageKey);
+    this.lastStorage = raw;
     this.purchases = purchases;
     this.cartItemsSubject.next([...updated]);
     this.calculateAndEmitTotal();
@@ -319,7 +329,7 @@ export class CartService {
       const serializableCart = this.serializableItems(this.cartItems);
       const raw: string = JSON.stringify({version: 1, items: serializableCart, purchases: this.purchases, mergedGuestTransfers: this.mergedGuestTransfers});
       localStorage.setItem(this.localStorageKey, raw);
-      if (this.localStorageKey === 'natiart-cart') this.lastGuestStorage = raw;
+      this.lastStorage = raw;
     } catch (e) {
       reportError('storage', e);
     }
@@ -328,7 +338,7 @@ export class CartService {
   private loadCartFromLocalStorage(strict: boolean = false): void {
     try {
       const savedCart = localStorage.getItem(this.localStorageKey);
-      if (this.localStorageKey === 'natiart-cart') this.lastGuestStorage = savedCart;
+      this.lastStorage = savedCart;
       if (savedCart) {
         const parsed: unknown = JSON.parse(savedCart);
         // AS1: drop corrupt-but-parseable shape before emit — a missing or

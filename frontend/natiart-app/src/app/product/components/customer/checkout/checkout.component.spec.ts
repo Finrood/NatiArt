@@ -127,6 +127,7 @@ describe('CheckoutComponent', () => {
               }
             },
             rememberPurchase: jasmine.createSpy('rememberPurchase'),
+            completeVerifiedPurchase: jasmine.createSpy('completeVerifiedPurchase'),
           },
         },
         {
@@ -687,11 +688,44 @@ describe('CheckoutComponent', () => {
     await component.onProcessPixPayment(loggedInUser);
 
     expect(localStorage.getItem(attemptKey)).toBeNull();
+    expect(TestBed.inject(CartService).completeVerifiedPurchase).toHaveBeenCalledOnceWith('order-123');
     expect(createPixPaymentSpy).toHaveBeenCalledTimes(1);
     expect(component.infoMessage).toContain('already completed');
     expect(component.currentStep).toBe(1);
     expect(component.shippingQuote).toBeNull();
     expect(component.checkoutForm.get('userInfo.cpf')?.valid).toBeTrue();
+  });
+
+  it('settles purchased cart lines when replay discovers an already paid order', async (): Promise<void> => {
+    await component.onProcessPixPayment(loggedInUser);
+    createOrderSpy.and.returnValue(of({...createdOrder, status: 'SHIPPED'}));
+    await component.onProcessPixPayment(loggedInUser);
+    expect(TestBed.inject(CartService).completeVerifiedPurchase).toHaveBeenCalledOnceWith('order-123');
+    expect(localStorage.getItem(attemptKey)).toBeNull();
+    expect(createPixPaymentSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('retains a paid recovery attempt when cart settlement fails and retries without another payment', async (): Promise<void> => {
+    await component.onProcessPixPayment(loggedInUser);
+    createOrderSpy.and.returnValue(of({...createdOrder, status: 'PAID'}));
+    const complete: jasmine.Spy = TestBed.inject(CartService).completeVerifiedPurchase as jasmine.Spy;
+    complete.and.throwError('storage blocked');
+    await component.onProcessPixPayment(loggedInUser);
+    expect(localStorage.getItem(attemptKey)).not.toBeNull();
+    expect(component.errorMessage).toContain('attempt has been kept');
+    complete.and.stub();
+    await component.onProcessPixPayment(loggedInUser);
+    expect(localStorage.getItem(attemptKey)).toBeNull();
+    expect(createPixPaymentSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves cart selections when replay discovers a cancelled order', async (): Promise<void> => {
+    await component.onProcessPixPayment(loggedInUser);
+    createOrderSpy.and.returnValue(of({...createdOrder, status: 'CANCELLED'}));
+    await component.onProcessPixPayment(loggedInUser);
+    expect(TestBed.inject(CartService).completeVerifiedPurchase).not.toHaveBeenCalled();
+    expect(localStorage.getItem(attemptKey)).toBeNull();
+    expect(component.infoMessage).toContain('cancelled');
   });
 
   it('keeps one account’s saved attempt separate when another account signs in', async () => {

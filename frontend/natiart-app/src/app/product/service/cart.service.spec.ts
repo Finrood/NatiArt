@@ -340,6 +340,85 @@ describe('CartService', () => {
     expect(signedIn.getCartItemsSnapshot()).toEqual([]);
     localStorage.removeItem('natiart-cart:account:paid-other-tab');
   });
+
+  it('preserves guest additions from another tab when an earlier payment completes', (): void => {
+    service.addToCart(product({stockQuantity: 10}), 2).subscribe();
+    service.rememberPurchase('guest-cross-tab', 'cus_guest', [{cartItemId: service.getCartItemsSnapshot()[0].cartItemId, quantity: 2}]);
+    const otherTab: CartService = new CartService();
+    otherTab.addToCart(product({stockQuantity: 10}), 3).subscribe();
+    otherTab.addToCart(product({id: 'later-piece'}), 1).subscribe();
+    service.completeVerifiedPurchase('guest-cross-tab');
+    const restored: CartService = new CartService();
+    expect(restored.getCartItemsSnapshot().map((item: CartItem): number => item.quantity)).toEqual([3, 1]);
+    otherTab.completeVerifiedPurchase('guest-cross-tab');
+    expect(new CartService().getCartItemsSnapshot().map((item: CartItem): number => item.quantity)).toEqual([3, 1]);
+  });
+
+  it('preserves account additions and settles a purchase only once across payment tabs', (): void => {
+    const key: string = 'natiart-cart:account:account-payment-tabs';
+    localStorage.removeItem(key);
+    try {
+      service.useAccount('account-payment-tabs'); service.addToCart(product({stockQuantity: 10}), 2).subscribe();
+      service.rememberPurchase('account-cross-tab', 'cus_account', [{cartItemId: service.getCartItemsSnapshot()[0].cartItemId, quantity: 2}]);
+      const otherTab: CartService = new CartService(); otherTab.useAccount('account-payment-tabs');
+      otherTab.addToCart(product({stockQuantity: 10}), 3).subscribe();
+      service.completeVerifiedPurchase('account-cross-tab');
+      otherTab.completeVerifiedPurchase('account-cross-tab');
+      const restored: CartService = new CartService(); restored.useAccount('account-payment-tabs');
+      expect(restored.getCartItemsSnapshot().map((item: CartItem): number => item.quantity)).toEqual([3]);
+    } finally { localStorage.removeItem(key); }
+  });
+
+  it('retains a new guest basket while forwarding a completed receipt for transferred selections', (): void => {
+    const key: string = 'natiart-cart:account:transferred-payment-tabs';
+    localStorage.removeItem(key);
+    try {
+      service.addToCart(product({stockQuantity: 10}), 2).subscribe();
+      service.rememberPurchase('transferred-cross-tab', 'cus_guest', [{cartItemId: service.getCartItemsSnapshot()[0].cartItemId, quantity: 2}]);
+      const signedIn: CartService = new CartService(); signedIn.useAccount('transferred-payment-tabs');
+      const newGuest: CartService = new CartService(); newGuest.addToCart(product({id: 'new-guest-piece'}), 1).subscribe();
+      service.completeVerifiedPurchase('transferred-cross-tab');
+      expect(new CartService().getCartItemsSnapshot().map((item: CartItem): string | undefined => item.product.id)).toEqual(['new-guest-piece']);
+      signedIn.useAccount(null); signedIn.useAccount('transferred-payment-tabs');
+      expect(signedIn.getCartItemsSnapshot().map((item: CartItem): string | undefined => item.product.id)).toEqual(['new-guest-piece']);
+      signedIn.completeVerifiedPurchase('transferred-cross-tab');
+      expect(signedIn.getCartItemsSnapshot()[0].quantity).toBe(1);
+    } finally { localStorage.removeItem(key); }
+  });
+
+  it('records a checkout receipt without discarding another tab\'s newer selections', (): void => {
+    service.addToCart(product(), 1).subscribe();
+    const line: CartItem = service.getCartItemsSnapshot()[0];
+    const otherTab: CartService = new CartService(); otherTab.addToCart(product({id: 'new-piece'}), 1).subscribe();
+    service.rememberPurchase('recorded-cross-tab', 'cus_guest', [{cartItemId: line.cartItemId, quantity: 1}]);
+    expect(new CartService().getCartItemsSnapshot().map((item: CartItem): string | undefined => item.product.id)).toEqual(['p1', 'new-piece']);
+  });
+
+  it('refuses stale cart settlement when the latest basket cannot be read and permits a safe retry', (): void => {
+    service.addToCart(product(), 2).subscribe();
+    service.rememberPurchase('read-blocked', 'cus_guest', [{cartItemId: service.getCartItemsSnapshot()[0].cartItemId, quantity: 2}]);
+    const before: string = localStorage.getItem('natiart-cart')!;
+    const read: jasmine.Spy = spyOn(localStorage, 'getItem').and.throwError('storage blocked');
+    expect((): void => service.completeVerifiedPurchase('read-blocked')).toThrow();
+    expect(service.getCartItemsSnapshot()[0].quantity).toBe(2);
+    read.and.callThrough();
+    expect(localStorage.getItem('natiart-cart')).toBe(before);
+    service.completeVerifiedPurchase('read-blocked');
+    expect(service.getCartItemsSnapshot()).toEqual([]);
+  });
+
+  it('keeps the live artwork file after a guest transfer and another mutation in the same account tab', (): void => {
+    const key: string = 'natiart-cart:account:artwork-transfer';
+    localStorage.removeItem(key);
+    try {
+      const artwork: File = new File(['test-artwork'], 'test.png', {type: 'image/png'});
+      service.addToCart(product(), 1, false, artwork).subscribe();
+      service.useAccount('artwork-transfer');
+      service.addToCart(product({id: 'another-piece'}), 1).subscribe();
+      expect(service.getCartItemsSnapshot()[0].image).toBe(artwork);
+      expect(service.getCartItemsSnapshot()[0].requiresArtworkReselection).toBeFalsy();
+    } finally { localStorage.removeItem(key); }
+  });
   it('remaps colliding line IDs without settling another account selection', () => {
     localStorage.setItem('natiart-cart:account:collision', JSON.stringify({version: 1, items: [
       {cartItemId: 'same-id', product: product({stockQuantity: 10}), quantity: 2, goldBorder: false}], purchases: []}));

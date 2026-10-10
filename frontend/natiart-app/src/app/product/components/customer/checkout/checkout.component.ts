@@ -363,6 +363,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       if (this.destroyed || epoch !== this.identityEpoch) return;
 
       if (order.status === 'CANCELLED' || ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED'].includes(order.status ?? '')) {
+        if (order.status !== 'CANCELLED') this._cartService.completeVerifiedPurchase(order.id);
         if (await this.clearAttemptForBuyer(user.username)) {
           this.startNewCheckout(paymentUser);
         }
@@ -380,6 +381,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
           return;
         }
         if (payment.status === 'COMPLETED') {
+          this._cartService.completeVerifiedPurchase(order.id);
           if (await this.clearAttemptForBuyer(user.username)) {
             this.startNewCheckout(paymentUser);
           }

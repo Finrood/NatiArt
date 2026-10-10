@@ -233,4 +233,19 @@ describe('Rendered checkout HTTP journey', (): void => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Resume guest checkout');
   }));
 
+  it('settles a paid guest replay while retaining another tab\'s later addition and creating no payment', fakeAsync((): void => {
+    guestReady(); click('Place Order'); flushMicrotasks();
+    http.expectOne(request => request.url.endsWith('/guest/session/attempt')).flush(null); flushMicrotasks();
+    const order: TestRequest = http.expectOne(request => request.url.endsWith('/guest/orders/create'));
+    const otherTab: CartService = new CartService(); otherTab.addToCart(items[0].product, 1).subscribe();
+    order.flush({...order.request.body, id: 'paid-guest-order', status: 'PAID', totalAmount: 87.5}); flushMicrotasks();
+    http.expectOne(request => request.url.endsWith('/guest/session/attempt')).flush(null); flushMicrotasks();
+    const cleared: TestRequest = http.expectOne(request => request.url.endsWith('/guest/session/attempt'));
+    expect(cleared.request.body.attemptJson).toBeNull(); cleared.flush(null); flushMicrotasks(); fixture.detectChanges();
+    expect(TestBed.inject(CartService).getCartItemsSnapshot()[0].quantity).toBe(1);
+    expect(new CartService().getCartItemsSnapshot()[0].quantity).toBe(1);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('already been paid');
+    http.expectNone(request => request.url.endsWith('/guest/payments/create'));
+  }));
+
 });
