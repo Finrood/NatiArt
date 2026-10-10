@@ -97,3 +97,7 @@ outputs, Git metadata and local/secret configuration. Run
 identical clean/dirty production artifacts and lockfile-drift rejection. The
 fixture also checks nested generated directories outside `natiart-app` so
 recursive exclusions cannot regress to app-root-only patterns.
+
+The public runtime file also accepts `supportEmail`, a monitored shop mailbox.
+The customer help center uses it for the contact link and rejects malformed values.
+It is public contact information; never include SMTP credentials in this file.

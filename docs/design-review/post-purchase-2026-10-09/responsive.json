@@ -1,0 +1,1152 @@
+[
+  {
+    "page": "admin",
+    "locale": "en",
+    "buttons": [
+      {
+        "height": 44,
+        "label": "1"
+      },
+      {
+        "height": 44,
+        "label": ""
+      },
+      {
+        "height": 44,
+        "label": "Refresh"
+      },
+      {
+        "height": 119,
+        "label": "7Ready to prepare"
+      },
+      {
+        "height": 119,
+        "label": "6In the atelier"
+      },
+      {
+        "height": 119,
+        "label": "7With the carrier"
+      },
+      {
+        "height": 119,
+        "label": "2Awaiting payment"
+      },
+      {
+        "height": 145,
+        "label": "0Emails needing attention"
+      },
+      {
+        "height": 44,
+        "label": "All orders"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      }
+    ],
+    "scrollWidth": 305,
+    "title": "Order fulfillment",
+    "width": 320
+  },
+  {
+    "page": "admin",
+    "locale": "en",
+    "buttons": [
+      {
+        "height": 44,
+        "label": "1"
+      },
+      {
+        "height": 44,
+        "label": ""
+      },
+      {
+        "height": 44,
+        "label": "Refresh"
+      },
+      {
+        "height": 119,
+        "label": "7Ready to prepare"
+      },
+      {
+        "height": 119,
+        "label": "6In the atelier"
+      },
+      {
+        "height": 119,
+        "label": "7With the carrier"
+      },
+      {
+        "height": 119,
+        "label": "2Awaiting payment"
+      },
+      {
+        "height": 119,
+        "label": "0Emails needing attention"
+      },
+      {
+        "height": 44,
+        "label": "All orders"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 44,
+        "label": "View custom artwork"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      }
+    ],
+    "scrollWidth": 375,
+    "title": "Order fulfillment",
+    "width": 390
+  },
+  {
+    "page": "admin",
+    "locale": "en",
+    "buttons": [
+      {
+        "height": 44,
+        "label": "1"
+      },
+      {
+        "height": 44,
+        "label": ""
+      },
+      {
+        "height": 44,
+        "label": "Refresh"
+      },
+      {
+        "height": 92,
+        "label": "7Ready to prepare"
+      },
+      {
+        "height": 92,
+        "label": "6In the atelier"
+      },
+      {
+        "height": 92,
+        "label": "7With the carrier"
+      },
+      {
+        "height": 92,
+        "label": "2Awaiting payment"
+      },
+      {
+        "height": 92,
+        "label": "0Emails needing attention"
+      },
+      {
+        "height": 44,
+        "label": "All orders"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 44,
+        "label": "View custom artwork"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      }
+    ],
+    "scrollWidth": 753,
+    "title": "Order fulfillment",
+    "width": 768
+  },
+  {
+    "page": "admin",
+    "locale": "en",
+    "buttons": [
+      {
+        "height": 44,
+        "label": "1"
+      },
+      {
+        "height": 44,
+        "label": "Refresh"
+      },
+      {
+        "height": 119,
+        "label": "7Ready to prepare"
+      },
+      {
+        "height": 119,
+        "label": "6In the atelier"
+      },
+      {
+        "height": 119,
+        "label": "7With the carrier"
+      },
+      {
+        "height": 119,
+        "label": "2Awaiting payment"
+      },
+      {
+        "height": 119,
+        "label": "0Emails needing attention"
+      },
+      {
+        "height": 44,
+        "label": "All orders"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 44,
+        "label": "View custom artwork"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      }
+    ],
+    "scrollWidth": 1265,
+    "title": "Order fulfillment",
+    "width": 1280
+  },
+  {
+    "page": "admin",
+    "locale": "en",
+    "buttons": [
+      {
+        "height": 44,
+        "label": "1"
+      },
+      {
+        "height": 44,
+        "label": "Refresh"
+      },
+      {
+        "height": 119,
+        "label": "7Ready to prepare"
+      },
+      {
+        "height": 119,
+        "label": "6In the atelier"
+      },
+      {
+        "height": 119,
+        "label": "7With the carrier"
+      },
+      {
+        "height": 119,
+        "label": "2Awaiting payment"
+      },
+      {
+        "height": 119,
+        "label": "0Emails needing attention"
+      },
+      {
+        "height": 44,
+        "label": "All orders"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 44,
+        "label": "View custom artwork"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      },
+      {
+        "height": 49,
+        "label": "Record shipment"
+      }
+    ],
+    "scrollWidth": 1425,
+    "title": "Order fulfillment",
+    "width": 1440
+  },
+  {
+    "page": "admin",
+    "locale": "pt-BR",
+    "buttons": [
+      {
+        "height": 44,
+        "label": "1"
+      },
+      {
+        "height": 44,
+        "label": ""
+      },
+      {
+        "height": 44,
+        "label": "Atualizar"
+      },
+      {
+        "height": 145,
+        "label": "7Prontos para preparar"
+      },
+      {
+        "height": 145,
+        "label": "6No ateliê"
+      },
+      {
+        "height": 119,
+        "label": "7Com a transportadora"
+      },
+      {
+        "height": 119,
+        "label": "2Aguardando pagamento"
+      },
+      {
+        "height": 145,
+        "label": "0E-mails que precisam de atenção"
+      },
+      {
+        "height": 44,
+        "label": "Todos os pedidos"
+      },
+      {
+        "height": 72,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 44,
+        "label": "Ver arte personalizada"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 72,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 72,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 72,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 44,
+        "label": "Carregar mais pedidos"
+      }
+    ],
+    "scrollWidth": 305,
+    "title": "Preparação de pedidos",
+    "width": 320
+  },
+  {
+    "page": "admin",
+    "locale": "pt-BR",
+    "buttons": [
+      {
+        "height": 44,
+        "label": "1"
+      },
+      {
+        "height": 44,
+        "label": ""
+      },
+      {
+        "height": 44,
+        "label": "Atualizar"
+      },
+      {
+        "height": 119,
+        "label": "7Prontos para preparar"
+      },
+      {
+        "height": 119,
+        "label": "6No ateliê"
+      },
+      {
+        "height": 119,
+        "label": "7Com a transportadora"
+      },
+      {
+        "height": 119,
+        "label": "2Aguardando pagamento"
+      },
+      {
+        "height": 145,
+        "label": "0E-mails que precisam de atenção"
+      },
+      {
+        "height": 44,
+        "label": "Todos os pedidos"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 44,
+        "label": "Ver arte personalizada"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 44,
+        "label": "Carregar mais pedidos"
+      }
+    ],
+    "scrollWidth": 375,
+    "title": "Preparação de pedidos",
+    "width": 390
+  },
+  {
+    "page": "admin",
+    "locale": "pt-BR",
+    "buttons": [
+      {
+        "height": 44,
+        "label": "1"
+      },
+      {
+        "height": 44,
+        "label": ""
+      },
+      {
+        "height": 44,
+        "label": "Atualizar"
+      },
+      {
+        "height": 92,
+        "label": "7Prontos para preparar"
+      },
+      {
+        "height": 92,
+        "label": "6No ateliê"
+      },
+      {
+        "height": 92,
+        "label": "7Com a transportadora"
+      },
+      {
+        "height": 92,
+        "label": "2Aguardando pagamento"
+      },
+      {
+        "height": 92,
+        "label": "0E-mails que precisam de atenção"
+      },
+      {
+        "height": 44,
+        "label": "Todos os pedidos"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 44,
+        "label": "Ver arte personalizada"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 44,
+        "label": "Carregar mais pedidos"
+      }
+    ],
+    "scrollWidth": 753,
+    "title": "Preparação de pedidos",
+    "width": 768
+  },
+  {
+    "page": "admin",
+    "locale": "pt-BR",
+    "buttons": [
+      {
+        "height": 44,
+        "label": "1"
+      },
+      {
+        "height": 44,
+        "label": "Atualizar"
+      },
+      {
+        "height": 119,
+        "label": "7Prontos para preparar"
+      },
+      {
+        "height": 119,
+        "label": "6No ateliê"
+      },
+      {
+        "height": 119,
+        "label": "7Com a transportadora"
+      },
+      {
+        "height": 119,
+        "label": "2Aguardando pagamento"
+      },
+      {
+        "height": 119,
+        "label": "0E-mails que precisam de atenção"
+      },
+      {
+        "height": 44,
+        "label": "Todos os pedidos"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 44,
+        "label": "Ver arte personalizada"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 44,
+        "label": "Carregar mais pedidos"
+      }
+    ],
+    "scrollWidth": 1265,
+    "title": "Preparação de pedidos",
+    "width": 1280
+  },
+  {
+    "page": "admin",
+    "locale": "pt-BR",
+    "buttons": [
+      {
+        "height": 44,
+        "label": "1"
+      },
+      {
+        "height": 44,
+        "label": "Atualizar"
+      },
+      {
+        "height": 119,
+        "label": "7Prontos para preparar"
+      },
+      {
+        "height": 119,
+        "label": "6No ateliê"
+      },
+      {
+        "height": 119,
+        "label": "7Com a transportadora"
+      },
+      {
+        "height": 119,
+        "label": "2Aguardando pagamento"
+      },
+      {
+        "height": 119,
+        "label": "0E-mails que precisam de atenção"
+      },
+      {
+        "height": 44,
+        "label": "Todos os pedidos"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 44,
+        "label": "Ver arte personalizada"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como entregue"
+      },
+      {
+        "height": 49,
+        "label": "Marcar como em preparação"
+      },
+      {
+        "height": 49,
+        "label": "Registrar envio"
+      },
+      {
+        "height": 44,
+        "label": "Carregar mais pedidos"
+      }
+    ],
+    "scrollWidth": 1425,
+    "title": "Preparação de pedidos",
+    "width": 1440
+  },
+  {
+    "page": "help",
+    "locale": "en",
+    "controls": [],
+    "scrollWidth": 305,
+    "title": "Here for your piece.",
+    "width": 320
+  },
+  {
+    "page": "help",
+    "locale": "en",
+    "controls": [],
+    "scrollWidth": 375,
+    "title": "Here for your piece.",
+    "width": 390
+  },
+  {
+    "page": "help",
+    "locale": "en",
+    "controls": [],
+    "scrollWidth": 753,
+    "title": "Here for your piece.",
+    "width": 768
+  },
+  {
+    "page": "help",
+    "locale": "en",
+    "controls": [],
+    "scrollWidth": 1265,
+    "title": "Here for your piece.",
+    "width": 1280
+  },
+  {
+    "page": "help",
+    "locale": "en",
+    "controls": [],
+    "scrollWidth": 1425,
+    "title": "Here for your piece.",
+    "width": 1440
+  },
+  {
+    "page": "help",
+    "locale": "pt-BR",
+    "controls": [],
+    "scrollWidth": 305,
+    "title": "Aqui pela sua peça.",
+    "width": 320
+  },
+  {
+    "page": "help",
+    "locale": "pt-BR",
+    "controls": [],
+    "scrollWidth": 375,
+    "title": "Aqui pela sua peça.",
+    "width": 390
+  },
+  {
+    "page": "help",
+    "locale": "pt-BR",
+    "controls": [],
+    "scrollWidth": 753,
+    "title": "Aqui pela sua peça.",
+    "width": 768
+  },
+  {
+    "page": "help",
+    "locale": "pt-BR",
+    "controls": [],
+    "scrollWidth": 1265,
+    "title": "Aqui pela sua peça.",
+    "width": 1280
+  },
+  {
+    "page": "help",
+    "locale": "pt-BR",
+    "controls": [],
+    "scrollWidth": 1425,
+    "title": "Aqui pela sua peça.",
+    "width": 1440
+  },
+  {
+    "page": "customer",
+    "locale": "en",
+    "carrier": [
+      {
+        "href": "https://www.correios.com.br/",
+        "rel": "noopener noreferrer",
+        "text": "Track with the carrier ↗"
+      }
+    ],
+    "dates": [
+      "Oct 1, 2026",
+      "Oct 2, 2026",
+      "Oct 3, 2026"
+    ],
+    "journey": "Your piece’s journey",
+    "scrollWidth": 305,
+    "title": "Your account",
+    "width": 320
+  },
+  {
+    "page": "customer",
+    "locale": "en",
+    "carrier": [
+      {
+        "href": "https://www.correios.com.br/",
+        "rel": "noopener noreferrer",
+        "text": "Track with the carrier ↗"
+      }
+    ],
+    "dates": [
+      "Oct 1, 2026",
+      "Oct 2, 2026",
+      "Oct 3, 2026"
+    ],
+    "journey": "Your piece’s journey",
+    "scrollWidth": 375,
+    "title": "Your account",
+    "width": 390
+  },
+  {
+    "page": "customer",
+    "locale": "en",
+    "carrier": [
+      {
+        "href": "https://www.correios.com.br/",
+        "rel": "noopener noreferrer",
+        "text": "Track with the carrier ↗"
+      }
+    ],
+    "dates": [
+      "Oct 1, 2026",
+      "Oct 2, 2026",
+      "Oct 3, 2026"
+    ],
+    "journey": "Your piece’s journey",
+    "scrollWidth": 753,
+    "title": "Your account",
+    "width": 768
+  },
+  {
+    "page": "customer",
+    "locale": "en",
+    "carrier": [
+      {
+        "href": "https://www.correios.com.br/",
+        "rel": "noopener noreferrer",
+        "text": "Track with the carrier ↗"
+      }
+    ],
+    "dates": [
+      "Oct 1, 2026",
+      "Oct 2, 2026",
+      "Oct 3, 2026"
+    ],
+    "journey": "Your piece’s journey",
+    "scrollWidth": 1265,
+    "title": "Your account",
+    "width": 1280
+  },
+  {
+    "page": "customer",
+    "locale": "en",
+    "carrier": [
+      {
+        "href": "https://www.correios.com.br/",
+        "rel": "noopener noreferrer",
+        "text": "Track with the carrier ↗"
+      }
+    ],
+    "dates": [
+      "Oct 1, 2026",
+      "Oct 2, 2026",
+      "Oct 3, 2026"
+    ],
+    "journey": "Your piece’s journey",
+    "scrollWidth": 1425,
+    "title": "Your account",
+    "width": 1440
+  },
+  {
+    "page": "customer",
+    "locale": "pt-BR",
+    "carrier": [
+      {
+        "href": "https://www.correios.com.br/",
+        "rel": "noopener noreferrer",
+        "text": "Rastrear na transportadora ↗"
+      }
+    ],
+    "dates": [
+      "1 de out. de 2026",
+      "2 de out. de 2026",
+      "3 de out. de 2026"
+    ],
+    "journey": "A jornada da sua peça",
+    "scrollWidth": 305,
+    "title": "Sua conta",
+    "width": 320
+  },
+  {
+    "page": "customer",
+    "locale": "pt-BR",
+    "carrier": [
+      {
+        "href": "https://www.correios.com.br/",
+        "rel": "noopener noreferrer",
+        "text": "Rastrear na transportadora ↗"
+      }
+    ],
+    "dates": [
+      "1 de out. de 2026",
+      "2 de out. de 2026",
+      "3 de out. de 2026"
+    ],
+    "journey": "A jornada da sua peça",
+    "scrollWidth": 375,
+    "title": "Sua conta",
+    "width": 390
+  },
+  {
+    "page": "customer",
+    "locale": "pt-BR",
+    "carrier": [
+      {
+        "href": "https://www.correios.com.br/",
+        "rel": "noopener noreferrer",
+        "text": "Rastrear na transportadora ↗"
+      }
+    ],
+    "dates": [
+      "1 de out. de 2026",
+      "2 de out. de 2026",
+      "3 de out. de 2026"
+    ],
+    "journey": "A jornada da sua peça",
+    "scrollWidth": 753,
+    "title": "Sua conta",
+    "width": 768
+  },
+  {
+    "page": "customer",
+    "locale": "pt-BR",
+    "carrier": [
+      {
+        "href": "https://www.correios.com.br/",
+        "rel": "noopener noreferrer",
+        "text": "Rastrear na transportadora ↗"
+      }
+    ],
+    "dates": [
+      "1 de out. de 2026",
+      "2 de out. de 2026",
+      "3 de out. de 2026"
+    ],
+    "journey": "A jornada da sua peça",
+    "scrollWidth": 1265,
+    "title": "Sua conta",
+    "width": 1280
+  },
+  {
+    "page": "customer",
+    "locale": "pt-BR",
+    "carrier": [
+      {
+        "href": "https://www.correios.com.br/",
+        "rel": "noopener noreferrer",
+        "text": "Rastrear na transportadora ↗"
+      }
+    ],
+    "dates": [
+      "1 de out. de 2026",
+      "2 de out. de 2026",
+      "3 de out. de 2026"
+    ],
+    "journey": "A jornada da sua peça",
+    "scrollWidth": 1425,
+    "title": "Sua conta",
+    "width": 1440
+  }
+]

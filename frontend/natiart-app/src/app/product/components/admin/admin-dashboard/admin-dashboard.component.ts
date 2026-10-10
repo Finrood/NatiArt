@@ -5,7 +5,7 @@ import {RouterLink, RouterLinkActive, RouterOutlet} from '@angular/router';
   selector: 'app-admin-dashboard',
   imports: [RouterLink, RouterLinkActive, RouterOutlet],
   template: `
-    <div class="art-page">
+    <main class="art-page">
       <h1 data-page-heading class="art-title mb-8"><ng-container i18n>Admin Dashboard</ng-container></h1>
       <nav class="admin-navigation mb-8 flex flex-wrap gap-2">
         @for (item of menuItems; track item) {
@@ -17,7 +17,7 @@ import {RouterLink, RouterLinkActive, RouterOutlet} from '@angular/router';
         }
       </nav>
       <router-outlet></router-outlet>
-    </div>
+    </main>
     `,
   styles: [`
     .admin-navigation { border-bottom: 1px solid rgb(var(--primary-light) / .5); }

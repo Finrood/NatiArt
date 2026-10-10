@@ -1,0 +1,266 @@
+{
+  "kind": "Sequential cold mobile localhost lab; baseline 16c6264 and final source, identical QA backends and fictional catalog; no concurrent builds, tests or browser interaction. Not field performance.",
+  "baselineCommit": "16c62648842d7cf85c41ae96c593e5674c498415",
+  "runs": [
+    {
+      "name": "before-1",
+      "lighthouseVersion": "13.5.0",
+      "fetchTime": "2026-10-10T02:31:41.124Z",
+      "url": "http://localhost:4403/en/dashboard",
+      "configuration": {
+        "formFactor": "mobile",
+        "throttlingMethod": "simulate",
+        "throttling": {
+          "rttMs": 150,
+          "throughputKbps": 1638.4,
+          "requestLatencyMs": 562.5,
+          "downloadThroughputKbps": 1474.5600000000002,
+          "uploadThroughputKbps": 675,
+          "cpuSlowdownMultiplier": 4
+        },
+        "screenEmulation": {
+          "mobile": true,
+          "width": 412,
+          "height": 823,
+          "deviceScaleFactor": 1.75,
+          "disabled": false
+        }
+      },
+      "scores": {
+        "performance": 0.79,
+        "accessibility": 1
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "value": 5098.385500000001,
+          "unit": "millisecond",
+          "display": "5.1\u00a0s"
+        },
+        "cumulative-layout-shift": {
+          "value": 3.037658113027546e-05,
+          "unit": "unitless",
+          "display": "0"
+        },
+        "total-blocking-time": {
+          "value": 53,
+          "unit": "millisecond",
+          "display": "50\u00a0ms"
+        },
+        "speed-index": {
+          "value": 2079.69275,
+          "unit": "millisecond",
+          "display": "2.1\u00a0s"
+        }
+      },
+      "accessibilityFindings": []
+    },
+    {
+      "name": "before-2",
+      "lighthouseVersion": "13.5.0",
+      "fetchTime": "2026-10-10T02:31:51.800Z",
+      "url": "http://localhost:4403/en/dashboard",
+      "configuration": {
+        "formFactor": "mobile",
+        "throttlingMethod": "simulate",
+        "throttling": {
+          "rttMs": 150,
+          "throughputKbps": 1638.4,
+          "requestLatencyMs": 562.5,
+          "downloadThroughputKbps": 1474.5600000000002,
+          "uploadThroughputKbps": 675,
+          "cpuSlowdownMultiplier": 4
+        },
+        "screenEmulation": {
+          "mobile": true,
+          "width": 412,
+          "height": 823,
+          "deviceScaleFactor": 1.75,
+          "disabled": false
+        }
+      },
+      "scores": {
+        "performance": 0.79,
+        "accessibility": 1
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "value": 5098.015,
+          "unit": "millisecond",
+          "display": "5.1\u00a0s"
+        },
+        "cumulative-layout-shift": {
+          "value": 3.037658113027546e-05,
+          "unit": "unitless",
+          "display": "0"
+        },
+        "total-blocking-time": {
+          "value": 44,
+          "unit": "millisecond",
+          "display": "40\u00a0ms"
+        },
+        "speed-index": {
+          "value": 2301.8089999999997,
+          "unit": "millisecond",
+          "display": "2.3\u00a0s"
+        }
+      },
+      "accessibilityFindings": []
+    },
+    {
+      "name": "after-1",
+      "lighthouseVersion": "13.5.0",
+      "fetchTime": "2026-10-10T02:32:02.518Z",
+      "url": "http://localhost:4401/en/dashboard",
+      "configuration": {
+        "formFactor": "mobile",
+        "throttlingMethod": "simulate",
+        "throttling": {
+          "rttMs": 150,
+          "throughputKbps": 1638.4,
+          "requestLatencyMs": 562.5,
+          "downloadThroughputKbps": 1474.5600000000002,
+          "uploadThroughputKbps": 675,
+          "cpuSlowdownMultiplier": 4
+        },
+        "screenEmulation": {
+          "mobile": true,
+          "width": 412,
+          "height": 823,
+          "deviceScaleFactor": 1.75,
+          "disabled": false
+        }
+      },
+      "scores": {
+        "performance": 0.79,
+        "accessibility": 1
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "value": 5093.89275,
+          "unit": "millisecond",
+          "display": "5.1\u00a0s"
+        },
+        "cumulative-layout-shift": {
+          "value": 3.037658113027546e-05,
+          "unit": "unitless",
+          "display": "0"
+        },
+        "total-blocking-time": {
+          "value": 39,
+          "unit": "millisecond",
+          "display": "40\u00a0ms"
+        },
+        "speed-index": {
+          "value": 2072.446375,
+          "unit": "millisecond",
+          "display": "2.1\u00a0s"
+        }
+      },
+      "accessibilityFindings": []
+    },
+    {
+      "name": "after-2",
+      "lighthouseVersion": "13.5.0",
+      "fetchTime": "2026-10-10T02:32:13.142Z",
+      "url": "http://localhost:4401/en/dashboard",
+      "configuration": {
+        "formFactor": "mobile",
+        "throttlingMethod": "simulate",
+        "throttling": {
+          "rttMs": 150,
+          "throughputKbps": 1638.4,
+          "requestLatencyMs": 562.5,
+          "downloadThroughputKbps": 1474.5600000000002,
+          "uploadThroughputKbps": 675,
+          "cpuSlowdownMultiplier": 4
+        },
+        "screenEmulation": {
+          "mobile": true,
+          "width": 412,
+          "height": 823,
+          "deviceScaleFactor": 1.75,
+          "disabled": false
+        }
+      },
+      "scores": {
+        "performance": 0.79,
+        "accessibility": 1
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "value": 5084.20725,
+          "unit": "millisecond",
+          "display": "5.1\u00a0s"
+        },
+        "cumulative-layout-shift": {
+          "value": 3.037658113027546e-05,
+          "unit": "unitless",
+          "display": "0"
+        },
+        "total-blocking-time": {
+          "value": 40,
+          "unit": "millisecond",
+          "display": "40\u00a0ms"
+        },
+        "speed-index": {
+          "value": 2072.603625,
+          "unit": "millisecond",
+          "display": "2.1\u00a0s"
+        }
+      },
+      "accessibilityFindings": []
+    },
+    {
+      "name": "help-after",
+      "lighthouseVersion": "13.5.0",
+      "fetchTime": "2026-10-10T02:32:23.843Z",
+      "url": "http://localhost:4401/en/contact",
+      "configuration": {
+        "formFactor": "mobile",
+        "throttlingMethod": "simulate",
+        "throttling": {
+          "rttMs": 150,
+          "throughputKbps": 1638.4,
+          "requestLatencyMs": 562.5,
+          "downloadThroughputKbps": 1474.5600000000002,
+          "uploadThroughputKbps": 675,
+          "cpuSlowdownMultiplier": 4
+        },
+        "screenEmulation": {
+          "mobile": true,
+          "width": 412,
+          "height": 823,
+          "deviceScaleFactor": 1.75,
+          "disabled": false
+        }
+      },
+      "scores": {
+        "performance": 0.89,
+        "accessibility": 1
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "value": 3548.81385,
+          "unit": "millisecond",
+          "display": "3.5\u00a0s"
+        },
+        "cumulative-layout-shift": {
+          "value": 0,
+          "unit": "unitless",
+          "display": "0"
+        },
+        "total-blocking-time": {
+          "value": 46,
+          "unit": "millisecond",
+          "display": "50\u00a0ms"
+        },
+        "speed-index": {
+          "value": 2075.344875,
+          "unit": "millisecond",
+          "display": "2.1\u00a0s"
+        }
+      },
+      "accessibilityFindings": []
+    }
+  ]
+}

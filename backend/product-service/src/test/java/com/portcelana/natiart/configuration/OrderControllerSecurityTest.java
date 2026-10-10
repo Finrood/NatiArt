@@ -39,11 +39,26 @@ import com.portcelana.natiart.model.CustomerOrder;
 import com.portcelana.natiart.service.OrderManager;
 import com.portcelana.natiart.service.OrderViewService;
 
-@WebMvcTest(controllers = OrderController.class)
+@WebMvcTest(
+        controllers = {
+            OrderController.class,
+            com.portcelana.natiart.controller.ShipmentController.class,
+            com.portcelana.natiart.controller.OrderWorkspaceController.class,
+            com.portcelana.natiart.controller.OrderNotificationController.class
+        })
 @Import({SecurityConfig.class, MvcConfig.class})
 class OrderControllerSecurityTest {
     @org.springframework.test.context.bean.override.mockito.MockitoBean
     private com.portcelana.natiart.service.RateLimitStore shippingRateLimitStore;
+
+    @MockitoBean
+    private com.portcelana.natiart.service.ShipmentManager shipments;
+
+    @MockitoBean
+    private com.portcelana.natiart.service.OrderWorkspaceManager workspace;
+
+    @MockitoBean
+    private com.portcelana.natiart.service.OrderNotificationManager notifications;
 
     @Autowired
     private MockMvc mockMvc;
@@ -219,6 +234,42 @@ class OrderControllerSecurityTest {
                     .andExpect(status().isOk());
 
             verify(orderManager).createOrder(any(OrderDto.class), eq("cus_MINE"), isNull());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void shopWorkspaceAndRecoveryAreAdministratorOnly() throws Exception {
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(
+                        "buyer", null, List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+        try {
+            mockMvc.perform(get("/admin/order-workspace")).andExpect(status().isForbidden());
+            mockMvc.perform(get("/admin/order-workspace/queue").param("status", "PAID"))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(get("/admin/order-notifications/attention")).andExpect(status().isForbidden());
+            mockMvc.perform(post("/admin/order-notifications/order:PAID/retry")).andExpect(status().isForbidden());
+            mockMvc.perform(post("/admin/orders/order/shipment")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"trackingCode\":\"BR123\"}"))
+                    .andExpect(status().isForbidden());
+            org.mockito.Mockito.verifyNoInteractions(shipments, workspace, notifications);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void administratorCanReadWorkspaceAndRequestSafeEmailRecovery() throws Exception {
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(
+                        "shop", null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+        when(workspace.overview()).thenReturn(new com.portcelana.natiart.dto.OrderWorkspaceDto(1, 2, 3, 4, 0));
+        try {
+            mockMvc.perform(get("/admin/order-workspace")).andExpect(status().isOk());
+            mockMvc.perform(post("/admin/order-notifications/order:PAID/retry")).andExpect(status().isOk());
+            verify(notifications).retry("order:PAID");
         } finally {
             SecurityContextHolder.clearContext();
         }

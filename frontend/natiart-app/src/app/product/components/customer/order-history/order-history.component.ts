@@ -1,3 +1,4 @@
+import {OrderJourneyComponent} from '../../../../shared/components/order-journey.component';
 import {CurrencyPipe, DatePipe} from '@angular/common';
 import {ChangeDetectorRef, Component, DestroyRef, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, ParamMap, RouterLink} from '@angular/router';
@@ -10,7 +11,7 @@ import {PersonalizationOption} from '../../../models/support/personalization-opt
 
 @Component({
   selector: 'app-order-history',
-  imports: [CurrencyPipe, DatePipe, RouterLink],
+  imports: [CurrencyPipe, DatePipe, RouterLink, OrderJourneyComponent],
   templateUrl: './order-history.component.html'
 })
 export class OrderHistoryComponent implements OnInit {

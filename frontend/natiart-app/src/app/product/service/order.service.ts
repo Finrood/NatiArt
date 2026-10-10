@@ -46,10 +46,38 @@ export class OrderService {
     );
   }
 
+  getWorkspace(): Observable<OrderWorkspace> {
+    return this._http.get<OrderWorkspace>(`${environment.api.product.url}/admin/order-workspace`);
+  }
+
+  getWorkQueue(status: string, page: number = 0, size: number = 20): Observable<OrderDto[]> {
+    return this._http.get<OrderDto[]>(`${environment.api.product.url}/admin/order-workspace/queue`, {params: {status, page, size}});
+  }
+
+  recordShipment(orderId: string, trackingCode: string, trackingUrl: string): Observable<OrderDto> {
+    return this._http.post<OrderDto>(`${environment.api.product.url}/admin/orders/${encodeURIComponent(orderId)}/shipment`,
+      {trackingCode, trackingUrl: trackingUrl || null});
+  }
+
+  getNotificationAttention(): Observable<OrderNotification[]> {
+    return this._http.get<OrderNotification[]>(`${environment.api.product.url}/admin/order-notifications/attention`);
+  }
+
+  retryNotification(id: string): Observable<void> {
+    return this._http.post<void>(`${environment.api.product.url}/admin/order-notifications/${encodeURIComponent(id)}/retry`, {});
+  }
+
   getFulfillmentArtwork(orderId: string, itemId: string): Observable<Blob> {
     return this._http.get(
       `${environment.api.product.url}/admin/orders/${encodeURIComponent(orderId)}/items/${encodeURIComponent(itemId)}/artwork`,
       {responseType: 'blob'},
     );
   }
+}
+
+export interface OrderWorkspace {
+  awaitingPayment: number; readyToPrepare: number; preparing: number; inTransit: number; failedNotifications: number;
+}
+export interface OrderNotification {
+  id: string; orderId: string; milestone: string; attempts: number; exhausted: boolean; nextAttemptAt: string; retryRequestedAt?: string;
 }

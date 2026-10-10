@@ -245,9 +245,32 @@ class Smoke:
         assert confirmed['items'][0]['personalization']['personalizationOptions']['CUSTOM_IMAGE'] == upload['uploadId']
         artwork = self.request(f"/server/product/admin/orders/{order['id']}/items/{confirmed['items'][0]['id']}/artwork", token=admin, binary=True)
         assert artwork[:4] == b'RIFF'
+        workspace = self.request('/server/product/admin/order-workspace', token=admin)
+        assert workspace['readyToPrepare'] > 0
+        self.request('/server/product/admin/order-workspace', token=customer, expected=403)
+        self.request('/server/product/admin/orders/' + order['id'] + '/shipment', {'trackingCode': 'QA123'}, customer, expected=403)
+        self.request('/server/product/admin/orders/' + order['id'] + '/status', {'status': 'SHIPPED'}, admin, 'PATCH', expected=400)
         for status in ['PROCESSING', 'SHIPPED', 'DELIVERED']:
-            updated = self.request('/server/product/admin/orders/' + order['id'] + '/status', {'status': status}, admin, 'PATCH')
+            if status == 'SHIPPED':
+                updated = self.request('/server/product/admin/orders/' + order['id'] + '/shipment',
+                                       {'trackingCode': 'QA123456789BR', 'trackingUrl': 'https://www.correios.com.br/'}, admin)
+                assert updated['trackingCode'] == 'QA123456789BR' and updated['shippedAt']
+            else:
+                updated = self.request('/server/product/admin/orders/' + order['id'] + '/status', {'status': status}, admin, 'PATCH')
             assert updated['status'] == status
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            updates = self.request('/qa/order-notifications', headers=self.control)
+            purchase_updates = {message['id']: message for message in updates if message['id'].startswith(order['id'] + ':')}
+            if order['id'] + ':PAID' in purchase_updates and order['id'] + ':DELIVERED' in purchase_updates:
+                break
+            time.sleep(1)
+        assert order['id'] + ':PAID' in purchase_updates and order['id'] + ':DELIVERED' in purchase_updates
+        assert '/en/account?orderId=' + order['id'] in purchase_updates[order['id'] + ':PAID']['body']
+        assert updated['paidAt'] and updated['processingAt'] and updated['shippedAt'] and updated['deliveredAt']
+        assert self.request('/server/product/admin/order-notifications/attention', token=admin) == []
+        self.request('/qa/order-notifications', expected=403)
+
         expired_order, expired_payment = self.checkout(customer, product, profile)
         self.request('/qa/expire/' + expired_payment, {}, headers=self.control)
         assert next(value for value in self.request('/qa/payments', headers=self.control) if value['id'] == expired_payment)['status'] == 'OVERDUE'
@@ -291,6 +314,7 @@ class Smoke:
         assert self.request('/server/product/cart', token=customer) == []
         assert {value['id'] for value in self.request('/server/product/orders?size=100', token=customer)} == {value['id'] for value in original_orders}
         assert self.request('/qa/notifications', headers=self.control) == []
+        assert self.request('/qa/order-notifications', headers=self.control) == []
         assert all(value['id'] != payment for value in self.request('/qa/payments', headers=self.control))
         assert next(value for value in self.request('/qa/payments', headers=self.control) if value['id'] == 'pay_qa_seed_maria_0')['status'] == 'PENDING'
         self.request('/server/directory/login', {'username': 'new.qa@example.invalid', 'password': 'NatiArtQa9!'}, expected=401)

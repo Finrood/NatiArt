@@ -96,6 +96,17 @@ class ProviderTest(unittest.TestCase):
         self.request('/review/notifications', expected=403)
         self.request('/notifications/password-reset', {'recipient': 'qa@example.invalid', 'resetLink': 'https://foreign.invalid/#token'}, {'X-NatiArt-QA-Token': provider.CONTROL_TOKEN}, 400)
 
+    def test_order_inbox_is_private_idempotent_and_resets_with_product_data(self):
+        message = {'id': 'order:PAID', 'recipient': 'buyer@example.test', 'subject': 'Payment confirmed', 'body': 'A purchase update'}
+        self.request('/notifications/orders', message, expected=403)
+        self.request('/review/order-notifications', expected=403)
+        headers = {'X-NatiArt-QA-Token': provider.CONTROL_TOKEN}
+        self.request('/notifications/orders', message, headers, 201)
+        self.request('/notifications/orders', message, headers, 201)
+        self.assertEqual(1, len(self.request('/review/order-notifications', headers=headers)))
+        self.request('/internal/reset-payments', {}, {'access_token': provider.API_KEY})
+        self.assertEqual([], self.request('/review/order-notifications', headers=headers))
+
     def test_customer_wire_shape_includes_required_primitives_and_stable_reference(self):
         headers = {'access_token': provider.API_KEY}
         customer = self.request('/customers', {'externalReference': 'wire-shape', 'notificationDisabled': False}, headers)

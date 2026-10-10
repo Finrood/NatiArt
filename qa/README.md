@@ -182,3 +182,14 @@ requests per minute for complete journeys. Production defaults remain unchanged.
 The Compose smoke test also checks cross-guest access denial, replay-safe guest
 payments, read-only email verification and account linking with unchanged
 payment/artwork ownership. See the [protocol and rollout notes](../backend/directory-service/docs/guest-checkout.md).
+
+## Purchase journey and email updates
+
+New purchases, confirmed payments and shop fulfillment changes queue updates in the
+private `/qa/` purchase inbox. Emails never leave this disposable stack. The admin
+Order fulfillment screen has oldest-first work queues and an email recovery panel.
+Record a carrier reference when marking an order shipped; status-only shipping is
+rejected. Customer and verified guest views show the same journey and tracking
+details. Seeded historical milestones are fictional; fresh purchases record actual
+QA instants. Restarting product restores the fixed order history and clears purchase
+updates. See [production setup](../docs/production-setup.md) for real mail and providers.

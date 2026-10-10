@@ -44,6 +44,11 @@ public interface OrderRepository extends JpaRepository<CustomerOrder, String> {
     int scheduleReservationRetry(
             @Param("id") String id, @Param("status") OrderStatus status, @Param("next") Instant next);
 
+    long countByStatus(OrderStatus status);
+
+    @Query("SELECT o.id FROM CustomerOrder o WHERE o.status = :status ORDER BY o.orderDate, o.id")
+    List<String> findFulfillmentIdsByStatus(@Param("status") OrderStatus status, Pageable page);
+
     long countByOwnerExternalIdAndStatus(String ownerExternalId, OrderStatus status);
 
     @EntityGraph(

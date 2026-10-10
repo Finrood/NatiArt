@@ -58,6 +58,9 @@ services:
       NATIART_PAYMENT_ASAAS_PAYMENTS_URL: http://natiart-fixtures:8090/payments
       NATIART_PAYMENT_ASAAS_WEBHOOK_TOKEN: qa-local-webhook-token
       NATIART_PAYMENT_RECONCILIATION_FIXED_DELAY_MILLIS: 5000
+      NATIART_PUBLIC_URL: ${QA_PUBLIC_URL:-http://localhost:4401}
+      NATIART_QA_ORDER_NOTIFICATIONS_URL: http://natiart-fixtures:8090/notifications/orders
+      NATIART_QA_CONTROL_TOKEN: ${NATIART_QA_CONTROL_TOKEN:-qa-control-change-me}
       MELHORENVIO_API_TOKEN: qa-local-provider-key
       MELHORENVIO_API_URL: http://natiart-fixtures:8090/shipping
       MELHORENVIO_FROM_POSTAL_CODE: "88010000"

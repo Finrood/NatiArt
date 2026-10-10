@@ -10,6 +10,7 @@ services:
       CORS_ALLOWED_ORIGINS: ${QA_PUBLIC_URL:-https://natiart.samuelpetre.com}
   natiart-product:
     environment:
+      NATIART_PUBLIC_URL: ${QA_PUBLIC_URL:-https://natiart.samuelpetre.com}
       NATIART_GUEST_SECURE_COOKIE: "true"
       CORS_ALLOWED_ORIGINS: ${QA_PUBLIC_URL:-https://natiart.samuelpetre.com}
   natiart-web:

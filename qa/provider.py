@@ -45,6 +45,7 @@ def initialize():
             CREATE TABLE IF NOT EXISTS customer (id TEXT PRIMARY KEY, external_reference TEXT UNIQUE, data TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS payment (id TEXT PRIMARY KEY, request_key TEXT UNIQUE, fingerprint TEXT, data TEXT NOT NULL, expires_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS notification (id INTEGER PRIMARY KEY, recipient TEXT NOT NULL, reset_link TEXT NOT NULL, created_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS order_notification (id TEXT PRIMARY KEY, recipient TEXT NOT NULL, subject TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS session (token_hash TEXT PRIMARY KEY, csrf TEXT NOT NULL, expires_at INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS login_attempt (peer TEXT PRIMARY KEY, window INTEGER NOT NULL, attempts INTEGER NOT NULL);
         ''')
@@ -70,6 +71,7 @@ def customer_response(data):
 
 def reset_payments(db):
     db.execute('DELETE FROM payment')
+    db.execute('DELETE FROM order_notification')
     for payment in json.loads((ROOT / 'history-payments.json').read_text()):
         db.execute('INSERT INTO payment VALUES (?, NULL, NULL, ?, ?)',
                    (payment['id'], json.dumps(payment), (utc_now() + dt.timedelta(hours=1)).isoformat()))
@@ -199,6 +201,7 @@ class Handler(BaseHTTPRequestHandler):
             with connect() as db:
                 payments = [json.loads(row['data']) for row in db.execute('SELECT data FROM payment ORDER BY rowid DESC')]
                 messages = db.execute('SELECT * FROM notification ORDER BY id DESC LIMIT 100').fetchall()
+                order_messages = db.execute('SELECT * FROM order_notification ORDER BY created_at DESC LIMIT 100').fetchall()
             rows = []
             for payment in payments:
                 pid = html.escape(payment['id'], quote=True)
@@ -209,7 +212,8 @@ class Handler(BaseHTTPRequestHandler):
                         actions += f'<form method="post" action="/qa/{action}/{pid}"><input type="hidden" name="csrf" value="{csrf}"><button>{label}</button></form>'
                 rows.append(f'<tr><td>{pid}</td><td>R$ {Decimal(str(payment["value"])):.2f}</td><td>{status}</td><td>{actions}</td></tr>')
             inbox = ''.join(f'<li><strong>{html.escape(row["recipient"])}</strong><br><a href="{html.escape(row["reset_link"], quote=True)}">Open password reset</a><br><small>{html.escape(row["created_at"])}</small></li>' for row in messages)
-            content = f'<h2>Test PIX payments</h2><div class="table"><table><thead><tr><th>Payment</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody>{"".join(rows)}</tbody></table></div><h2>Recovery inbox</h2><ul>{inbox or "<li>No reset messages yet. Request one from the storefront.</li>"}</ul><form method="post" action="/qa/logout"><input type="hidden" name="csrf" value="{csrf}"><button>Sign out of QA controls</button></form>'
+            order_inbox = ''.join(f'<li><strong>{html.escape(row["subject"])}</strong> - {html.escape(row["recipient"])}<pre style="white-space:pre-wrap;overflow-wrap:anywhere">{html.escape(row["body"])}</pre></li>' for row in order_messages)
+            content = f'<h2>Purchase updates</h2><ul>{order_inbox or "<li>No purchase updates yet. Place or progress an order.</li>"}</ul><h2>Test PIX payments</h2><div class="table"><table><thead><tr><th>Payment</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody>{"".join(rows)}</tbody></table></div><h2>Recovery inbox</h2><ul>{inbox or "<li>No reset messages yet. Request one from the storefront.</li>"}</ul><form method="post" action="/qa/logout"><input type="hidden" name="csrf" value="{csrf}"><button>Sign out of QA controls</button></form>'
         page = '''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NatiArt QA controls</title>
         <style>body{font:16px/1.6 system-ui;margin:0;background:#faf7f1;color:#352e2b}main{max-width:70rem;margin:auto;padding:2rem 1rem}h1,h2{font-family:Georgia,serif;font-weight:400}h1{font-size:2.5rem}.notice{border-left:3px solid #805045;padding:1rem;background:#f2e6df}a{color:#73463b}button,input{font:inherit;min-height:44px;box-sizing:border-box;padding:.5rem .75rem}button{color:#fff;background:#73463b;border:0;border-radius:3px;cursor:pointer}button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #352e2b;outline-offset:3px}label{display:grid;gap:.5rem}form{margin:.75rem 0}.table{overflow:auto}table{width:100%;border-collapse:collapse;font-size:.875rem}td,th{text-align:left;padding:.75rem;border-bottom:1px solid #d8c8bd}td:first-child{overflow-wrap:anywhere}ul{padding-left:1.5rem}li{margin:1rem 0}</style>
         <main><p>NATIART / QA</p><h1>Test the whole journey.</h1><p class="notice">Fictional catalog, simulated shipping, and test-only PIX. No real money or email is sent.</p><p><a href="/en/dashboard">English storefront</a> · <a href="/pt-BR/dashboard">Loja em português</a></p>CONTENT</main></html>'''.replace('CONTENT', content)
@@ -229,6 +233,8 @@ class Handler(BaseHTTPRequestHandler):
             with connect() as db:
                 if path == '/review/payments':
                     return self.respond(200, [json.loads(row['data']) for row in db.execute('SELECT data FROM payment')])
+                if path == '/review/order-notifications':
+                    return self.respond(200, [dict(row) for row in db.execute('SELECT * FROM order_notification ORDER BY created_at DESC LIMIT 100')])
                 if path == '/review/notifications':
                     return self.respond(200, [dict(row) for row in db.execute('SELECT * FROM notification ORDER BY id DESC LIMIT 100')])
             return self.respond(404, {'error': 'Unknown QA endpoint'})
@@ -290,6 +296,16 @@ class Handler(BaseHTTPRequestHandler):
                 return self.redirect() if form is not None else self.respond(200, payment)
             return self.respond(404, {'error': 'Unknown QA action'})
         body = json.loads(raw or b'{}')
+        if path == '/notifications/orders':
+            if not self.is_control():
+                return self.respond(403, {'error': 'QA control token required'})
+            if not all(isinstance(body.get(key), str) and body[key] for key in ('id', 'recipient', 'subject', 'body')) or len(body['body']) > 16000:
+                raise ValueError('Invalid order update')
+            with connect() as db:
+                db.execute('INSERT OR IGNORE INTO order_notification VALUES (?, ?, ?, ?, ?)',
+                           (body['id'], body['recipient'], body['subject'], body['body'], utc_now().isoformat()))
+                db.execute('DELETE FROM order_notification WHERE id NOT IN (SELECT id FROM order_notification ORDER BY created_at DESC LIMIT 100)')
+            return self.respond(201, {'accepted': True})
         if path == '/notifications/password-reset':
             if not self.is_control():
                 return self.respond(403, {'error': 'QA control token required'})

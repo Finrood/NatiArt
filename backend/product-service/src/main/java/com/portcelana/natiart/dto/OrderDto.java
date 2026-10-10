@@ -29,6 +29,77 @@ public class OrderDto {
     private OrderStatus status;
     private String ownerExternalId;
     private String paymentId;
+    private Instant paidAt;
+    private Instant processingAt;
+    private Instant shippedAt;
+    private Instant deliveredAt;
+    private Instant cancelledAt;
+    private String trackingCode;
+    private String trackingUrl;
+
+    public Instant getPaidAt() {
+        return paidAt;
+    }
+
+    public OrderDto setPaidAt(Instant value) {
+        paidAt = value;
+        return this;
+    }
+
+    public Instant getProcessingAt() {
+        return processingAt;
+    }
+
+    public OrderDto setProcessingAt(Instant value) {
+        processingAt = value;
+        return this;
+    }
+
+    public Instant getShippedAt() {
+        return shippedAt;
+    }
+
+    public OrderDto setShippedAt(Instant value) {
+        shippedAt = value;
+        return this;
+    }
+
+    public Instant getDeliveredAt() {
+        return deliveredAt;
+    }
+
+    public OrderDto setDeliveredAt(Instant value) {
+        deliveredAt = value;
+        return this;
+    }
+
+    public Instant getCancelledAt() {
+        return cancelledAt;
+    }
+
+    public OrderDto setCancelledAt(Instant value) {
+        cancelledAt = value;
+        return this;
+    }
+
+    public String getTrackingCode() {
+        return trackingCode;
+    }
+
+    public OrderDto setTrackingCode(String value) {
+        trackingCode = value;
+        return this;
+    }
+
+    public String getTrackingUrl() {
+        return trackingUrl;
+    }
+
+    public OrderDto setTrackingUrl(String value) {
+        trackingUrl = value;
+        return this;
+    }
+
     private String shippingQuoteId;
     private String shippingServiceId;
     private String shippingDestinationPostalCode;
@@ -61,6 +132,13 @@ public class OrderDto {
                 .setShippingServiceId(customerOrder.getShippingServiceId())
                 .setShippingDestinationPostalCode(customerOrder.getShippingDestinationPostalCode())
                 .setShippingQuoteExpiresAt(customerOrder.getShippingQuoteExpiresAt())
+                .setPaidAt(customerOrder.getPaidAt())
+                .setProcessingAt(customerOrder.getProcessingAt())
+                .setShippedAt(customerOrder.getShippedAt())
+                .setDeliveredAt(customerOrder.getDeliveredAt())
+                .setCancelledAt(customerOrder.getCancelledAt())
+                .setTrackingCode(customerOrder.getTrackingCode())
+                .setTrackingUrl(customerOrder.getTrackingUrl())
                 .setStatus(customerOrder.getStatus())
                 .setOwnerExternalId(customerOrder.getOwnerExternalId());
     }

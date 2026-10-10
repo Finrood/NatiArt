@@ -32,6 +32,7 @@
               </div>
               <span class="order-status rounded-full px-3 py-1 text-sm capitalize" [attr.data-status]="order.status">{{ statusLabel(order.status) }}</span>
             </div>
+            <app-order-journey [order]="order"></app-order-journey>
             <ul class="divide-y divide-primary-lighter/40">
               @for (item of order.items; track item.id || item.productId) {
                 <li class="grid grid-cols-[minmax(0,1fr)_auto] gap-4 py-3 text-sm">

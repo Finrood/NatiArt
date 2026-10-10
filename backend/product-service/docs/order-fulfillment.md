@@ -8,6 +8,8 @@ there is no separate unvalidated fulfillment input.
 
 Only provider confirmation may mark an order paid. Administrator commands expose
 PAID -> PROCESSING -> SHIPPED -> DELIVERED, and the backend validates each edge.
+Shipping uses the separate locked shipment command with a carrier reference;
+status-only shipping is rejected.
 A rejected command leaves the list visible with feedback on its order row.
 
 Both history and fulfillment request bounded pages of 20 (server maximum 100).
@@ -28,3 +30,6 @@ caching. The reader verifies line membership, upload readiness/claim and matchin
 order ownership before opening the database-recorded storage URI. Public product
 image routes never expose this namespace. Preview requests and object URLs are
 cancelled/released on replacement, refresh and component destruction.
+
+The customer journey, durable purchase communications and server-filtered shop
+queues extend these views; see [purchase journey](purchase-journey.md).

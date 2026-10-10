@@ -277,6 +277,13 @@ INSERT INTO cart_item (id, username, product_id, quantity) VALUES ('b1361e23-cbb
 INSERT INTO cart_item (id, username, product_id, quantity) VALUES ('e284f3d0-e6cf-54af-bbb6-b5f364fbd8f0', 'ana@natiart.local', '4fd0dcc1-9ef3-52e7-9950-45fb6a1b4af5', 1);
 INSERT INTO cart_item (id, username, product_id, quantity) VALUES ('e334ce87-bdcd-5da7-8611-9a627d0c507c', 'newbuyer@natiart.local', 'b242db44-b7c8-5e11-adad-4b1cc2fc5d16', 1);
 
+-- Curated fictional journey history. H2 rebuilds it on every restart; production is never backfilled.
+UPDATE customer_order SET paid_at = DATEADD('MINUTE', 10, order_date) WHERE status IN ('PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED');
+UPDATE customer_order SET processing_at = DATEADD('HOUR', 1, order_date) WHERE status IN ('PROCESSING', 'SHIPPED', 'DELIVERED');
+UPDATE customer_order SET shipped_at = DATEADD('DAY', 2, order_date), tracking_code = CONCAT('QA-', SUBSTRING(id, 1, 8)), tracking_url = 'https://www.correios.com.br/' WHERE status IN ('SHIPPED', 'DELIVERED');
+UPDATE customer_order SET delivered_at = DATEADD('DAY', 4, order_date) WHERE status = 'DELIVERED';
+UPDATE customer_order SET cancelled_at = DATEADD('MINUTE', 30, order_date) WHERE status = 'CANCELLED';
+
 -- Fixed gallery and LIVE ownership; restored on every QA boot.
 INSERT INTO product_images (product_id, image_position, images) VALUES ('7333912d-de76-54a5-8399-fcaef37fd7bc', 0, 'file:products/7333912d-de76-54a5-8399-fcaef37fd7bc/2bdf3549-000c-591a-92d5-ea0db7ecd9ff.webp');
 INSERT INTO product_image_ownership (id, uri, product_id, state, created_at, next_attempt_at, cleanup_attempts) VALUES ('2bdf3549-000c-591a-92d5-ea0db7ecd9ff', 'file:products/7333912d-de76-54a5-8399-fcaef37fd7bc/2bdf3549-000c-591a-92d5-ea0db7ecd9ff.webp', '7333912d-de76-54a5-8399-fcaef37fd7bc', 'LIVE', CURRENT_TIMESTAMP, TIMESTAMP '1970-01-01 00:00:00', 0);

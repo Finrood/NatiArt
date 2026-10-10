@@ -1,3 +1,4 @@
+import {OrderJourneyComponent} from '../../../../shared/components/order-journey.component';
 import {Component, DestroyRef, inject, OnInit, signal} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {RouterLink} from '@angular/router';
@@ -7,7 +8,7 @@ import {GuestCheckoutService} from '../../../service/guest-checkout.service';
 import {OrderDto} from '../../../models/order.model';
 import {environment} from '../../../../../environments/environment';
 
-@Component({selector: 'app-guest-orders', imports: [RouterLink, CurrencyPipe, DatePipe], template: `
+@Component({selector: 'app-guest-orders', imports: [RouterLink, CurrencyPipe, DatePipe, OrderJourneyComponent], template: `
   <section class="art-page"><div class="art-shell max-w-3xl mx-auto py-10 px-4">
     <h1 class="art-title mb-4" i18n>Your guest orders</h1>
     <p class="mb-6" i18n>This visit is verified by email. You can view your orders without creating an account.</p>
@@ -16,8 +17,9 @@ import {environment} from '../../../../../environments/environment';
     @for (order of $orders(); track order.id) {
       <article class="art-panel p-6 mb-4">
         <p class="text-sm text-gray-600">{{ order.orderDate | date:'mediumDate' }}</p>
-        <h2 class="font-semibold">{{ order.id }}</h2>
+        <h2 class="font-serif text-xl">#{{ order.id?.slice(0, 8) }}</h2>
         <p>{{ statusLabel(order.status) }} · {{ order.totalAmount | currency:'BRL' }}</p>
+        <app-order-journey [order]="order"></app-order-journey>
         @for (item of order.items; track $index) { <p>{{ item.quantity }} × {{ item.productLabel }}</p> }
         @if (order.paymentId && order.status === 'PENDING') {
           <a class="art-link" [routerLink]="['/pix-payment', order.paymentId]" [queryParams]="{guestTracking: 1}" i18n>View PIX payment</a>

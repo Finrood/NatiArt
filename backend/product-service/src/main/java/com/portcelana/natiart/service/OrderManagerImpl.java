@@ -333,6 +333,9 @@ public class OrderManagerImpl implements OrderManager {
             return cancelPendingOrderInternally(orderId);
         }
         final CustomerOrder current = getOrderById(orderId);
+        if (status == OrderStatus.SHIPPED) {
+            throw new IllegalArgumentException("Record carrier tracking through the shipment command");
+        }
         if (current.getStatus() == null
                 || !ALLOWED_TRANSITIONS
                         .getOrDefault(current.getStatus(), Set.of())
@@ -349,7 +352,10 @@ public class OrderManagerImpl implements OrderManager {
     @Override
     @Transactional
     public CustomerOrder advanceFulfillmentStatus(String orderId, OrderStatus status) {
-        if (status != OrderStatus.PROCESSING && status != OrderStatus.SHIPPED && status != OrderStatus.DELIVERED) {
+        if (status == OrderStatus.SHIPPED) {
+            throw new IllegalArgumentException("Record carrier tracking through the shipment command");
+        }
+        if (status != OrderStatus.PROCESSING && status != OrderStatus.DELIVERED) {
             throw new IllegalArgumentException("Administrators may only advance fulfillment status");
         }
         return updateOrderStatus(orderId, status);

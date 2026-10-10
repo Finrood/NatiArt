@@ -34,3 +34,8 @@ as part of `buildAll` and frontend CI.
 
 Address and freight service choices, production setup and dispatch verification
 are documented in [the integration audit](backend/product-service/docs/address-shipping-audit.md).
+
+Purchase emails, shipment tracking and the order workspace are described in
+[the purchase journey guide](backend/product-service/docs/purchase-journey.md).
+Follow [the complete production setup checklist](docs/production-setup.md) to connect
+real payments, freight, mail, storage and customer support.

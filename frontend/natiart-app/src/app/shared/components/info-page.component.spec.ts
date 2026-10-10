@@ -13,7 +13,7 @@ describe('Informational navigation', () => {
   });
   it('updates the reused page for each destination and renders an explicit unknown-page result', async () => {
     const harness = await RouterTestingHarness.create();
-    for (const path of ['about', 'contact', 'faq', 'shipping-returns']) {
+    for (const path of ['about', 'shipping-returns']) {
       await harness.navigateByUrl('/' + path);
       expect(TestBed.inject(Router).url).toBe('/products');
       expect(harness.routeNativeElement!.textContent).toContain('Collections');

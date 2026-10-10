@@ -9,6 +9,9 @@ import java.util.UUID;
 
 import jakarta.persistence.*;
 
+import org.springframework.data.domain.AbstractAggregateRoot;
+
+import com.portcelana.natiart.event.OrderMilestoneEvent;
 import com.portcelana.natiart.model.support.OrderStatus;
 
 @Entity
@@ -21,7 +24,7 @@ import com.portcelana.natiart.model.support.OrderStatus;
                 @UniqueConstraint(
                         name = "uk_customer_order_owner_idempotency",
                         columnNames = {"owner_external_id", "idempotency_key"}))
-public class CustomerOrder {
+public class CustomerOrder extends AbstractAggregateRoot<CustomerOrder> {
     private Instant reservationNextAttemptAt;
 
     @Id
@@ -82,6 +85,53 @@ public class CustomerOrder {
 
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
+
+    private Instant paidAt;
+    private Instant processingAt;
+    private Instant shippedAt;
+    private Instant deliveredAt;
+    private Instant cancelledAt;
+
+    @Column(length = 100)
+    private String trackingCode;
+
+    @Column(length = 500)
+    private String trackingUrl;
+
+    public Instant getPaidAt() {
+        return paidAt;
+    }
+
+    public Instant getProcessingAt() {
+        return processingAt;
+    }
+
+    public Instant getShippedAt() {
+        return shippedAt;
+    }
+
+    public Instant getDeliveredAt() {
+        return deliveredAt;
+    }
+
+    public Instant getCancelledAt() {
+        return cancelledAt;
+    }
+
+    public String getTrackingCode() {
+        return trackingCode;
+    }
+
+    public String getTrackingUrl() {
+        return trackingUrl;
+    }
+
+    /** Captures carrier details only through the validated fulfillment command. */
+    public CustomerOrder setShipment(String code, String url) {
+        trackingCode = code;
+        trackingUrl = url;
+        return this;
+    }
 
     @Column(nullable = false)
     private String ownerExternalId;
@@ -318,7 +368,18 @@ public class CustomerOrder {
     }
 
     public CustomerOrder setStatus(OrderStatus status) {
+        if (this.status == status) return this;
         this.status = status;
+        final Instant now = Instant.now();
+        switch (status) {
+            case PAID -> paidAt = now;
+            case PROCESSING -> processingAt = now;
+            case SHIPPED -> shippedAt = now;
+            case DELIVERED -> deliveredAt = now;
+            case CANCELLED -> cancelledAt = now;
+            case PENDING -> {}
+        }
+        registerEvent(new OrderMilestoneEvent(this, status));
         return this;
     }
 

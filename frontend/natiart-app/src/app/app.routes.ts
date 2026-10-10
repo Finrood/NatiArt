@@ -37,7 +37,7 @@ export const routes: Routes = [
     loadComponent: () => import('./product/components/customer/catalog/catalog.component').then(m => m.CatalogComponent)
   },
   {path: 'about', redirectTo: '/products', pathMatch: 'full'},
-  {path: 'contact', redirectTo: '/products', pathMatch: 'full'},
+  {path: 'contact', loadComponent: () => import('./shared/components/shop-help.component').then(m => m.ShopHelpComponent)},
   {
     path: 'account',
     canActivate: [authGuard],
@@ -50,7 +50,7 @@ export const routes: Routes = [
       {path: 'security', loadComponent: () => import('./directory/components/account/change-password.component').then(m => m.ChangePasswordComponent)}
     ]
   },
-  {path: 'faq', redirectTo: '/products', pathMatch: 'full'},
+  {path: 'faq', loadComponent: () => import('./shared/components/shop-help.component').then(m => m.ShopHelpComponent)},
   {path: 'shipping-returns', redirectTo: '/products', pathMatch: 'full'},
   {
     path: 'care-instructions',

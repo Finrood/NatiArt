@@ -24,4 +24,11 @@ export interface OrderDto {
   shippingQuoteExpiresAt?: string;
   status?: string;
   paymentId?: string;
+  paidAt?: string;
+  processingAt?: string;
+  shippedAt?: string;
+  deliveredAt?: string;
+  cancelledAt?: string;
+  trackingCode?: string;
+  trackingUrl?: string;
 }
