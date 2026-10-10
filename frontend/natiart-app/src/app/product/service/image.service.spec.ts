@@ -15,4 +15,9 @@ describe('ImageService', () => {
   it('should be created', () => {
     expect(service).toBeTruthy();
   });
+
+  it('preserves ordinary image files without requiring conversion', async (): Promise<void> => {
+    const png: File = new File(['art'], 'piece.png', {type: 'image/png'});
+    expect(await service.convertFile(png)).toBe(png);
+  });
 });

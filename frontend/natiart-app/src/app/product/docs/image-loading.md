@@ -32,3 +32,9 @@ details before resolving their image paths. A retry changes only the failed
 piece; the checked neighbor retains its image. Cancelling the table releases
 both unfinished product requests and image subscriptions/URLs. No completed
 image bytes or artwork files are stored in its selection service.
+
+Admin image editing imports the existing HEIC conversion library only when a
+HEIC filename requires conversion. Ordinary image preview preserves the existing
+File and image ownership path. This changes the admin editor's eager dependency
+graph; it is not a change to public product image authorization or a claim that
+Home previously downloaded that codec.
