@@ -14,7 +14,7 @@ QA data. No real payment, shipment or external customer email was made.
 | Admin could mark an order shipped without recording a carrier reference. [Before](screenshots/admin-before.jpg). | Dispatch a paid order. Require an atomic shipment command with a carrier code and optional HTTPS link; preserve idempotent identical replay. | P1 / medium; existing paid → preparing → shipped → delivered progression. | Status-only shipping is rejected; missing carrier details are explained; the customer and shipping email receive the saved reference. |
 | Admin's newest-first mixed list hid older paid work behind completed purchases. [Before](screenshots/admin-before.jpg). | Find the next parcel to prepare. Add real totals and bounded server-filtered oldest-first queues. [After](screenshots/admin-after.jpg). | P1 / medium; database queries and admin authorization. | Queue totals cover the complete database, not the visible page. Transitioning a filtered row reloads from the start, preventing skipped rows after offsets shift. Better prioritization is a usability hypothesis. |
 | Purchases and preparation/shipment milestones had no durable customer notification. | Hear about a purchase without repeatedly opening the shop. Save an immutable email snapshot with the order transaction; retry delivery outside that transaction. | P1 / medium; monitored SMTP in production, private provider double in QA. | Rollbacks leave neither the transition nor its email; failed sends retain the purchase; leases prevent competing workers; outdated unpaid/preparation/shipment messages are suppressed; admins can recover failures. |
-| `/contact` and `/faq` redirected to the catalog. [Before](screenshots/contact-before.jpg). | Find an existing order or get help. Provide order and guest lookup routes, keyboard-operated factual FAQs and a runtime-configured support mailbox. [After](screenshots/contact-after.jpg). | P1 / small; shop owner supplies a real monitored support address. | Both routes show help in both languages. Account creation remains optional for guest viewing. No invented promises, contact details or return policies. |
+| `/contact` and `/faq` redirected to the catalog. [Before](screenshots/contact-before.jpg). | Find an existing order or get help. Provide order and guest lookup routes, keyboard-operated factual FAQs, a permanent footer entry and a runtime-configured support mailbox. [After](screenshots/contact-after.jpg). | P1 / small; shop owner supplies a real monitored support address. | Both routes show help in both languages. The global footer makes help discoverable. Account creation remains optional for guest viewing. No invented promises, contact details or return policies. |
 | Legacy orders can lack dates; decorative completion marks alone would not explain reached milestones to a screen reader. | Understand historical order progression using assistive technology. Add readable milestone announcements and retain textual future states. | P1 / small; shared journey component. | Reached milestones are announced even without dates. Decorative marks are hidden from the accessibility tree. |
 
 ## Design direction and shared decisions
@@ -59,6 +59,10 @@ outline. Its disclosures measured 44px high; the order lookup actions measured
 ordered list, named region, textual reached/future states and safe new-window link
 attributes. This is a scoped browser and automated review, not a complete WCAG
 certification or a screen-reader/device laboratory study.
+The final footer help link was opened with keyboard Enter in both languages and
+measured 44px high at every checked width:
+[English](screenshots/help-footer-en.jpg),
+[Portuguese](screenshots/help-footer-pt-BR.jpg).
 
 In live QA, an empty carrier form showed its validation alert. Recording
 `QA-VISUAL-123` for fictional order `df2eec99` moved the preparation queue from 7
@@ -74,7 +78,7 @@ rollout rehearsal passed. The isolated Docker smoke run passed catalog/gallery
 images, personalized artwork, shipping quotes, order/payment replay, PIX,
 fulfillment, purchase emails, admin authorization, account recovery, guest
 capabilities/verification/claiming and complete fixed-data restoration after
-restart. The final frontend landmark/accessibility polish was rebuilt and its
+restart. The final frontend landmark/accessibility and footer polish was rebuilt and its
 481 tests and production artifact checks passed again.
 
 Tests for this release specifically cover transaction/event rollback, duplicate
@@ -106,6 +110,8 @@ The simulated mobile LCP remains above the 2.5s target. TBT is a laboratory metr
 not field INP. These small local samples do not measure p75 real visits or prove
 good Core Web Vitals. The existing request/image-discovery performance work remains
 a follow-up, along with real-device/visit evidence under the measurement plan.
+These audits precede only the final addition of the localized footer help link;
+they do not measure that navigation-only follow-up.
 
 ## Practical boundaries
 

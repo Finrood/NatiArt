@@ -870,86 +870,6 @@
     "width": 1440
   },
   {
-    "page": "help",
-    "locale": "en",
-    "controls": [],
-    "scrollWidth": 305,
-    "title": "Here for your piece.",
-    "width": 320
-  },
-  {
-    "page": "help",
-    "locale": "en",
-    "controls": [],
-    "scrollWidth": 375,
-    "title": "Here for your piece.",
-    "width": 390
-  },
-  {
-    "page": "help",
-    "locale": "en",
-    "controls": [],
-    "scrollWidth": 753,
-    "title": "Here for your piece.",
-    "width": 768
-  },
-  {
-    "page": "help",
-    "locale": "en",
-    "controls": [],
-    "scrollWidth": 1265,
-    "title": "Here for your piece.",
-    "width": 1280
-  },
-  {
-    "page": "help",
-    "locale": "en",
-    "controls": [],
-    "scrollWidth": 1425,
-    "title": "Here for your piece.",
-    "width": 1440
-  },
-  {
-    "page": "help",
-    "locale": "pt-BR",
-    "controls": [],
-    "scrollWidth": 305,
-    "title": "Aqui pela sua peça.",
-    "width": 320
-  },
-  {
-    "page": "help",
-    "locale": "pt-BR",
-    "controls": [],
-    "scrollWidth": 375,
-    "title": "Aqui pela sua peça.",
-    "width": 390
-  },
-  {
-    "page": "help",
-    "locale": "pt-BR",
-    "controls": [],
-    "scrollWidth": 753,
-    "title": "Aqui pela sua peça.",
-    "width": 768
-  },
-  {
-    "page": "help",
-    "locale": "pt-BR",
-    "controls": [],
-    "scrollWidth": 1265,
-    "title": "Aqui pela sua peça.",
-    "width": 1280
-  },
-  {
-    "page": "help",
-    "locale": "pt-BR",
-    "controls": [],
-    "scrollWidth": 1425,
-    "title": "Aqui pela sua peça.",
-    "width": 1440
-  },
-  {
     "page": "customer",
     "locale": "en",
     "carrier": [
@@ -1147,6 +1067,576 @@
     "journey": "A jornada da sua peça",
     "scrollWidth": 1425,
     "title": "Sua conta",
+    "width": 1440
+  },
+  {
+    "page": "help",
+    "locale": "en",
+    "controls": [
+      {
+        "height": 49,
+        "label": "View my orders"
+      },
+      {
+        "height": 72,
+        "label": "Find my guest orders"
+      },
+      {
+        "height": 53,
+        "label": "When does preparation start?"
+      },
+      {
+        "height": 53,
+        "label": "How do I track my parcel?"
+      },
+      {
+        "height": 53,
+        "label": "Can I keep guest orders in an account?"
+      },
+      {
+        "height": 53,
+        "label": "Who can see my custom artwork?"
+      },
+      {
+        "height": 53,
+        "label": "How should I care for porcelain?"
+      },
+      {
+        "height": 26,
+        "label": "Read care instructions"
+      },
+      {
+        "height": 56,
+        "label": "NatiArt"
+      },
+      {
+        "height": 44,
+        "label": "Collections"
+      },
+      {
+        "height": 44,
+        "label": "Care Instructions"
+      },
+      {
+        "height": 44,
+        "label": "Order help"
+      }
+    ],
+    "scrollWidth": 305,
+    "title": "Here for your piece.",
+    "width": 320
+  },
+  {
+    "page": "help",
+    "locale": "en",
+    "controls": [
+      {
+        "height": 49,
+        "label": "View my orders"
+      },
+      {
+        "height": 49,
+        "label": "Find my guest orders"
+      },
+      {
+        "height": 44,
+        "label": "When does preparation start?"
+      },
+      {
+        "height": 44,
+        "label": "How do I track my parcel?"
+      },
+      {
+        "height": 53,
+        "label": "Can I keep guest orders in an account?"
+      },
+      {
+        "height": 53,
+        "label": "Who can see my custom artwork?"
+      },
+      {
+        "height": 53,
+        "label": "How should I care for porcelain?"
+      },
+      {
+        "height": 26,
+        "label": "Read care instructions"
+      },
+      {
+        "height": 56,
+        "label": "NatiArt"
+      },
+      {
+        "height": 44,
+        "label": "Collections"
+      },
+      {
+        "height": 44,
+        "label": "Care Instructions"
+      },
+      {
+        "height": 44,
+        "label": "Order help"
+      }
+    ],
+    "scrollWidth": 375,
+    "title": "Here for your piece.",
+    "width": 390
+  },
+  {
+    "page": "help",
+    "locale": "en",
+    "controls": [
+      {
+        "height": 49,
+        "label": "View my orders"
+      },
+      {
+        "height": 49,
+        "label": "Find my guest orders"
+      },
+      {
+        "height": 44,
+        "label": "When does preparation start?"
+      },
+      {
+        "height": 44,
+        "label": "How do I track my parcel?"
+      },
+      {
+        "height": 44,
+        "label": "Can I keep guest orders in an account?"
+      },
+      {
+        "height": 44,
+        "label": "Who can see my custom artwork?"
+      },
+      {
+        "height": 44,
+        "label": "How should I care for porcelain?"
+      },
+      {
+        "height": 26,
+        "label": "Read care instructions"
+      },
+      {
+        "height": 61,
+        "label": "NatiArt"
+      },
+      {
+        "height": 44,
+        "label": "Collections"
+      },
+      {
+        "height": 44,
+        "label": "Care Instructions"
+      },
+      {
+        "height": 44,
+        "label": "Order help"
+      }
+    ],
+    "scrollWidth": 753,
+    "title": "Here for your piece.",
+    "width": 768
+  },
+  {
+    "page": "help",
+    "locale": "en",
+    "controls": [
+      {
+        "height": 49,
+        "label": "View my orders"
+      },
+      {
+        "height": 49,
+        "label": "Find my guest orders"
+      },
+      {
+        "height": 44,
+        "label": "When does preparation start?"
+      },
+      {
+        "height": 44,
+        "label": "How do I track my parcel?"
+      },
+      {
+        "height": 44,
+        "label": "Can I keep guest orders in an account?"
+      },
+      {
+        "height": 44,
+        "label": "Who can see my custom artwork?"
+      },
+      {
+        "height": 44,
+        "label": "How should I care for porcelain?"
+      },
+      {
+        "height": 26,
+        "label": "Read care instructions"
+      },
+      {
+        "height": 102,
+        "label": "NatiArt"
+      },
+      {
+        "height": 44,
+        "label": "Collections"
+      },
+      {
+        "height": 44,
+        "label": "Care Instructions"
+      },
+      {
+        "height": 44,
+        "label": "Order help"
+      }
+    ],
+    "scrollWidth": 1265,
+    "title": "Here for your piece.",
+    "width": 1280
+  },
+  {
+    "page": "help",
+    "locale": "en",
+    "controls": [
+      {
+        "height": 49,
+        "label": "View my orders"
+      },
+      {
+        "height": 49,
+        "label": "Find my guest orders"
+      },
+      {
+        "height": 44,
+        "label": "When does preparation start?"
+      },
+      {
+        "height": 44,
+        "label": "How do I track my parcel?"
+      },
+      {
+        "height": 44,
+        "label": "Can I keep guest orders in an account?"
+      },
+      {
+        "height": 44,
+        "label": "Who can see my custom artwork?"
+      },
+      {
+        "height": 44,
+        "label": "How should I care for porcelain?"
+      },
+      {
+        "height": 26,
+        "label": "Read care instructions"
+      },
+      {
+        "height": 112,
+        "label": "NatiArt"
+      },
+      {
+        "height": 44,
+        "label": "Collections"
+      },
+      {
+        "height": 44,
+        "label": "Care Instructions"
+      },
+      {
+        "height": 44,
+        "label": "Order help"
+      }
+    ],
+    "scrollWidth": 1425,
+    "title": "Here for your piece.",
+    "width": 1440
+  },
+  {
+    "page": "help",
+    "locale": "pt-BR",
+    "controls": [
+      {
+        "height": 49,
+        "label": "Ver meus pedidos"
+      },
+      {
+        "height": 95,
+        "label": "Encontrar meus pedidos de visitante"
+      },
+      {
+        "height": 53,
+        "label": "Quando começa a preparação?"
+      },
+      {
+        "height": 53,
+        "label": "Como rastrear minha encomenda?"
+      },
+      {
+        "height": 79,
+        "label": "Posso guardar pedidos de visitante em uma conta?"
+      },
+      {
+        "height": 79,
+        "label": "Quem pode ver minha arte personalizada?"
+      },
+      {
+        "height": 53,
+        "label": "Como cuidar da porcelana?"
+      },
+      {
+        "height": 53,
+        "label": "Ler instruções de cuidado"
+      },
+      {
+        "height": 56,
+        "label": "NatiArt"
+      },
+      {
+        "height": 44,
+        "label": "Coleções"
+      },
+      {
+        "height": 44,
+        "label": "Cuidados com as peças"
+      },
+      {
+        "height": 44,
+        "label": "Ajuda com pedidos"
+      }
+    ],
+    "scrollWidth": 305,
+    "title": "Aqui pela sua peça.",
+    "width": 320
+  },
+  {
+    "page": "help",
+    "locale": "pt-BR",
+    "controls": [
+      {
+        "height": 49,
+        "label": "Ver meus pedidos"
+      },
+      {
+        "height": 72,
+        "label": "Encontrar meus pedidos de visitante"
+      },
+      {
+        "height": 53,
+        "label": "Quando começa a preparação?"
+      },
+      {
+        "height": 53,
+        "label": "Como rastrear minha encomenda?"
+      },
+      {
+        "height": 53,
+        "label": "Posso guardar pedidos de visitante em uma conta?"
+      },
+      {
+        "height": 53,
+        "label": "Quem pode ver minha arte personalizada?"
+      },
+      {
+        "height": 44,
+        "label": "Como cuidar da porcelana?"
+      },
+      {
+        "height": 26,
+        "label": "Ler instruções de cuidado"
+      },
+      {
+        "height": 56,
+        "label": "NatiArt"
+      },
+      {
+        "height": 44,
+        "label": "Coleções"
+      },
+      {
+        "height": 44,
+        "label": "Cuidados com as peças"
+      },
+      {
+        "height": 44,
+        "label": "Ajuda com pedidos"
+      }
+    ],
+    "scrollWidth": 375,
+    "title": "Aqui pela sua peça.",
+    "width": 390
+  },
+  {
+    "page": "help",
+    "locale": "pt-BR",
+    "controls": [
+      {
+        "height": 49,
+        "label": "Ver meus pedidos"
+      },
+      {
+        "height": 72,
+        "label": "Encontrar meus pedidos de visitante"
+      },
+      {
+        "height": 44,
+        "label": "Quando começa a preparação?"
+      },
+      {
+        "height": 44,
+        "label": "Como rastrear minha encomenda?"
+      },
+      {
+        "height": 44,
+        "label": "Posso guardar pedidos de visitante em uma conta?"
+      },
+      {
+        "height": 44,
+        "label": "Quem pode ver minha arte personalizada?"
+      },
+      {
+        "height": 44,
+        "label": "Como cuidar da porcelana?"
+      },
+      {
+        "height": 26,
+        "label": "Ler instruções de cuidado"
+      },
+      {
+        "height": 61,
+        "label": "NatiArt"
+      },
+      {
+        "height": 44,
+        "label": "Coleções"
+      },
+      {
+        "height": 44,
+        "label": "Cuidados com as peças"
+      },
+      {
+        "height": 44,
+        "label": "Ajuda com pedidos"
+      }
+    ],
+    "scrollWidth": 753,
+    "title": "Aqui pela sua peça.",
+    "width": 768
+  },
+  {
+    "page": "help",
+    "locale": "pt-BR",
+    "controls": [
+      {
+        "height": 49,
+        "label": "Ver meus pedidos"
+      },
+      {
+        "height": 49,
+        "label": "Encontrar meus pedidos de visitante"
+      },
+      {
+        "height": 44,
+        "label": "Quando começa a preparação?"
+      },
+      {
+        "height": 44,
+        "label": "Como rastrear minha encomenda?"
+      },
+      {
+        "height": 44,
+        "label": "Posso guardar pedidos de visitante em uma conta?"
+      },
+      {
+        "height": 44,
+        "label": "Quem pode ver minha arte personalizada?"
+      },
+      {
+        "height": 44,
+        "label": "Como cuidar da porcelana?"
+      },
+      {
+        "height": 26,
+        "label": "Ler instruções de cuidado"
+      },
+      {
+        "height": 102,
+        "label": "NatiArt"
+      },
+      {
+        "height": 44,
+        "label": "Coleções"
+      },
+      {
+        "height": 44,
+        "label": "Cuidados com as peças"
+      },
+      {
+        "height": 44,
+        "label": "Ajuda com pedidos"
+      }
+    ],
+    "scrollWidth": 1265,
+    "title": "Aqui pela sua peça.",
+    "width": 1280
+  },
+  {
+    "page": "help",
+    "locale": "pt-BR",
+    "controls": [
+      {
+        "height": 49,
+        "label": "Ver meus pedidos"
+      },
+      {
+        "height": 49,
+        "label": "Encontrar meus pedidos de visitante"
+      },
+      {
+        "height": 44,
+        "label": "Quando começa a preparação?"
+      },
+      {
+        "height": 44,
+        "label": "Como rastrear minha encomenda?"
+      },
+      {
+        "height": 44,
+        "label": "Posso guardar pedidos de visitante em uma conta?"
+      },
+      {
+        "height": 44,
+        "label": "Quem pode ver minha arte personalizada?"
+      },
+      {
+        "height": 44,
+        "label": "Como cuidar da porcelana?"
+      },
+      {
+        "height": 26,
+        "label": "Ler instruções de cuidado"
+      },
+      {
+        "height": 112,
+        "label": "NatiArt"
+      },
+      {
+        "height": 44,
+        "label": "Coleções"
+      },
+      {
+        "height": 44,
+        "label": "Cuidados com as peças"
+      },
+      {
+        "height": 44,
+        "label": "Ajuda com pedidos"
+      }
+    ],
+    "scrollWidth": 1425,
+    "title": "Aqui pela sua peça.",
     "width": 1440
   }
 ]
