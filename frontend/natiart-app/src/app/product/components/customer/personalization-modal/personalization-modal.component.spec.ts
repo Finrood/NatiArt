@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
+import * as axe from 'axe-core';
 
 import { PersonalizationModalComponent } from './personalization-modal.component';
 import { Product } from '../../../models/product.model';
@@ -71,6 +72,19 @@ describe('PersonalizationModalComponent', () => {
   const artworkProduct: Product = {id: 'art', label: 'A personalized piece', originalPrice: 20,
     markedPrice: 20, stockQuantity: 5, categoryId: 'c', images: [], tags: [],
     availablePersonalizations: [PersonalizationOption.CUSTOM_IMAGE, PersonalizationOption.GOLDEN_BORDER]};
+  it('audits required artwork and makes the full gold-option row activate its checkbox', async (): Promise<void> => {
+    const fixture = TestBed.createComponent(PersonalizationModalComponent);
+    fixture.componentRef.setInput('product', artworkProduct); fixture.componentRef.setInput('show', true);
+    fixture.detectChanges(); await fixture.whenStable();
+    const row: HTMLLabelElement = fixture.nativeElement.querySelector('.gold-option');
+    expect(row.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    row.querySelector('span')!.click(); fixture.detectChanges(); await fixture.whenStable();
+    expect(fixture.componentInstance.goldBorder).toBeTrue();
+    const result: axe.AxeResults = await axe.run(fixture.nativeElement.querySelector('dialog'), {runOnly: {
+      type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa', 'best-practice']}});
+    expect(result.violations.map((issue: axe.Result): string => issue.id + ' ' + issue.nodes.map((node: axe.NodeResult): string => node.failureSummary ?? '').join('\n'))).toEqual([]);
+    fixture.destroy();
+  });
 
   it('explains required artwork without a premature error and connects invalid-file feedback to the chooser', () => {
     const fixture = TestBed.createComponent(PersonalizationModalComponent);

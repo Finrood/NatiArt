@@ -51,3 +51,7 @@ tbody th { padding-left: 0; color: rgb(var(--text-muted)); }
   thead td, tbody th { width: 30%; }
   thead th { width: 35%; }
 }
+@media (max-height: 520px) {
+  .comparison-space { display: none; }
+  .comparison-tray { position: static; width: auto; margin: 1rem; }
+}

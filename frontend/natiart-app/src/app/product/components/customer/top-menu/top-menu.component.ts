@@ -1,8 +1,8 @@
 import {LanguageSelectorComponent} from "../../../../shared/components/language-selector/language-selector.component";
 import {AccessibleDialogComponent} from '../../../../shared/components/accessible-dialog.component';
-import {Component, DestroyRef, inject, signal, OnInit, WritableSignal} from '@angular/core';
+import {afterNextRender, Component, DestroyRef, ElementRef, inject, Signal, signal, OnInit, viewChild, WritableSignal} from '@angular/core';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
-import {AsyncPipe} from "@angular/common";
+import {AsyncPipe, DOCUMENT} from "@angular/common";
 import {CartService} from "../../../service/cart.service";
 import {Observable} from "rxjs";
 import {SavedCollectionService} from '../../../service/saved-collection.service';
@@ -37,8 +37,23 @@ export class TopMenuComponent implements OnInit {
   private readonly _authService: AuthenticationService = inject(AuthenticationService);
   private readonly _router: Router = inject(Router);
   private readonly _destroyRef: DestroyRef = inject(DestroyRef);
+  private readonly _document: Document = inject(DOCUMENT);
+  private readonly $headerRow: Signal<ElementRef<HTMLElement>> = viewChild.required<ElementRef<HTMLElement>>('headerRow');
 
   constructor() {
+    afterNextRender((): void => {
+      const row: HTMLElement = this.$headerRow().nativeElement;
+      const root: HTMLElement = this._document.documentElement;
+      const previous: string = root.style.getPropertyValue('--header-clearance');
+      const observer: ResizeObserver = new ResizeObserver((): void =>
+        root.style.setProperty('--header-clearance', Math.ceil(row.getBoundingClientRect().height + 17) + 'px'));
+      observer.observe(row);
+      this._destroyRef.onDestroy((): void => {
+        observer.disconnect();
+        if (previous) root.style.setProperty('--header-clearance', previous);
+        else root.style.removeProperty('--header-clearance');
+      });
+    });
     this.cartItemCount$ = this._cartService.getCartCount();
     this._router.events.pipe(takeUntilDestroyed(this._destroyRef)).subscribe((event: Event): void => {
       if (event instanceof NavigationStart || event instanceof NavigationSkipped) {

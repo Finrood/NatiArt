@@ -5,6 +5,7 @@
   min-width: 2.75rem;
   font-family: var(--font-sans);
   white-space: normal;
+  overflow-wrap: anywhere;
   @apply px-6 py-3 rounded-md font-medium transition-all duration-200 ease-in-out
   focus:outline-none focus:ring-2 focus:ring-offset-2;
 }
@@ -60,3 +61,5 @@
 .btn-block {
   @apply w-full;
 }
+.btn:focus-visible { outline: 2px solid rgb(var(--primary)); outline-offset: 3px; }
+@media (forced-colors: active) { .btn:focus-visible { outline-color: Highlight; } }

@@ -1,6 +1,6 @@
 @if ($shopping() && comparison.$pieces().length) {
-  <div class="comparison-space" aria-hidden="true"></div>
-  <section class="comparison-tray" aria-label="Your viewing table" i18n-aria-label>
+  <div class="comparison-space" [style.height]="$clearance()" aria-hidden="true"></div>
+  <section #tray class="comparison-tray" aria-label="Your viewing table" i18n-aria-label>
     <div class="tray-copy"><h2 #trayHeading tabindex="-1" i18n>Your viewing table</h2>
       @if (comparison.$pieces().length === 1) { <p i18n>Choose one more piece to compare.</p> }
       @else { <p i18n>Two pieces selected. Remove one to change your pair.</p> }
@@ -20,7 +20,7 @@
             <th scope="col">
               <div class="comparison-photo"><img [src]="image(detail.piece.id)" alt="" width="480" height="480" (error)="imageFailed(detail.piece.id)"></div>
               <h3 [id]="'comparison-piece-' + detail.piece.id" tabindex="-1">{{ detail.product?.label ?? detail.piece.label }}</h3>
-              <button type="button" class="remove-piece" (click)="remove(detail.piece.id)" [attr.aria-label]="removeLabel(detail.product?.label ?? detail.piece.label)"><span i18n>Remove piece</span><span aria-hidden="true">×</span></button>
+              <button type="button" class="remove-piece" (click)="remove(detail.piece.id)" [attr.aria-label]="removeLabel(detail.product?.label ?? detail.piece.label)"><span i18n>Remove</span><span aria-hidden="true">×</span></button>
               @if (detail.state === 'loading') { <p role="status" class="piece-feedback" i18n>Checking this piece...</p> }
               @else if (detail.state === 'error') { <p role="alert" class="piece-feedback" i18n>This piece could not be checked.</p><button type="button" class="art-link retry-piece" (click)="retry(detail.piece.id)" i18n>Retry page</button> }
             </th>

@@ -1,8 +1,8 @@
 <header class="bg-background border-b border-primary-light/40 font-sans">
   <div class="max-w-[86rem] mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex items-center justify-between h-16 lg:h-22">
+    <div #headerRow class="store-header-row flex items-center justify-between">
       <!-- Logo -->
-      <div class="flex-shrink-0">
+      <div class="flex-shrink-0 min-w-0 max-w-full">
         <a routerLink="/dashboard" class="store-wordmark" i18n>NatiArt</a>
       </div>
 
@@ -13,7 +13,7 @@
       </nav>
 
       <!-- Icons & Actions -->
-      <div class="flex items-center gap-2 sm:gap-4">
+      <div class="store-header-actions flex items-center gap-2 sm:gap-4">
         <a routerLink="/collection" routerLinkActive="current" ariaCurrentWhenActive="page" class="collection-nav" aria-label="Your saved collection" i18n-aria-label="@@collectionNav">
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3h12v18l-6-4-6 4V3Z"/></svg>
           @if (collection.$pieces().length) { <span aria-hidden="true" class="collection-badge">{{ collection.$pieces().length }}</span> }

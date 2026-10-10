@@ -1,5 +1,5 @@
 
-<div class="art-page font-sans text-secondary">
+<main class="art-page font-sans text-secondary">
   <h1 class="art-title mb-8" i18n>Your Shopping Cart</h1>
 
   @if (error$ | async; as errorMessage) {
@@ -137,7 +137,7 @@
                 </div>
 
                 <div class="min-w-0 flex-1 [overflow-wrap:anywhere]">
-                  <h3 class="mb-1"><a [routerLink]="['/product', item.product.id]" class="cart-product-name">{{ item.product.label }}</a></h3>
+                  <h2 class="mb-1"><a [routerLink]="['/product', item.product.id]" class="cart-product-name">{{ item.product.label }}</a></h2>
                   @if (item.goldBorder) {
                     <div class="text-xs text-warning" i18n>Gold Border</div>
                   }
@@ -155,7 +155,7 @@
                 </div>
               </div>
               <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-                <div class="flex shrink-0 items-center gap-2">
+                <div class="flex max-w-full flex-wrap items-center gap-2">
 
                   <app-button (click)="updateQuantity(item, -1)" [disabled]="item.quantity <= 1" aria-label="Decrease quantity"
                     color="light" size="sm" customClass="min-h-11" i18n-aria-label>
@@ -226,4 +226,4 @@
       <app-confirmation-modal (confirm)="confirmModalAction()" (cancel)="closeModal()">
       </app-confirmation-modal>
 
-    </div>
+    </main>

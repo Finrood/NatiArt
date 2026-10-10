@@ -1,6 +1,6 @@
-<div class="bg-background">
+<main class="bg-background">
   <app-top-banner></app-top-banner>
-  <main class="art-page">
+  <div class="art-page">
     <app-product-list type="featured" title="The viewing room" i18n-title [limit]="3" (visibleProductIds)="$featuredIds.set($event)"></app-product-list>
     <section class="personalization-story">
       <div class="story-title"><p class="art-eyebrow" i18n>Personalization</p><h2 i18n>A piece of you.</h2><p class="story-introduction" i18n>Discover pieces with gold borders and your own artwork.</p>
@@ -12,5 +12,5 @@
       </ul><p class="story-note" i18n>Available options are shown on each product.</p><a routerLink="/products" class="story-link"><span i18n>Explore Collections</span><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></a></div>
     </section>
     <app-product-list type="new" title="New Arrivals" i18n-title [limit]="4" [excludeProductIds]="$featuredIds()" [deferImages]="true"></app-product-list>
-  </main>
-</div>
+  </div>
+</main>

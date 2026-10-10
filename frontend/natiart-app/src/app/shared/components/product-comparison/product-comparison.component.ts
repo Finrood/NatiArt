@@ -1,4 +1,4 @@
-import {afterNextRender, Component, DestroyRef, ElementRef, inject, Injector, OnDestroy, Signal, signal, viewChild, WritableSignal} from '@angular/core';
+import {afterNextRender, Component, DestroyRef, effect, EffectCleanupRegisterFn, ElementRef, inject, Injector, OnDestroy, Signal, signal, viewChild, WritableSignal} from '@angular/core';
 import {CurrencyPipe, DOCUMENT} from '@angular/common';
 import {Event, NavigationEnd, NavigationSkipped, NavigationStart, Router, RouterLink} from '@angular/router';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
@@ -24,6 +24,8 @@ export class ProductComparisonComponent implements OnDestroy {
   private readonly _injector: Injector = inject(Injector);
   private readonly _document: Document = inject(DOCUMENT);
   private readonly $trayHeading: Signal<ElementRef<HTMLElement> | undefined> = viewChild<ElementRef<HTMLElement>>('trayHeading');
+  private readonly $tray: Signal<ElementRef<HTMLElement> | undefined> = viewChild<ElementRef<HTMLElement>>('tray');
+  readonly $clearance: WritableSignal<string> = signal<string>('0px');
   private readonly requests: Map<string, Subscription> = new Map<string, Subscription>();
   private images: ImageCollection | null = null;
   readonly emptyImage: string = EMPTY_PRODUCT_IMAGE;
@@ -34,6 +36,30 @@ export class ProductComparisonComponent implements OnDestroy {
   readonly $details: WritableSignal<PieceDetail[]> = signal<PieceDetail[]>([]);
 
   constructor() {
+    const previousClearance: string = this._document.documentElement.style.getPropertyValue('--comparison-clearance');
+    effect((onCleanup: EffectCleanupRegisterFn): void => {
+      const tray: HTMLElement | undefined = this.$tray()?.nativeElement;
+      const win: Window | null = this._document.defaultView;
+      if (!tray || !win) return;
+      const measure: () => void = (): void => {
+        const style: CSSStyleDeclaration = win.getComputedStyle(tray);
+        const clearance: string = style.position === 'fixed'
+          ? Math.ceil(tray.getBoundingClientRect().height + (parseFloat(style.bottom) || 0) + 16) + 'px' : '0px';
+        this.$clearance.set(clearance);
+        this._document.documentElement.style.setProperty('--comparison-clearance', clearance);
+      };
+      const observer: ResizeObserver = new ResizeObserver(measure);
+      observer.observe(tray);
+      win.addEventListener('resize', measure);
+      measure();
+      onCleanup((): void => {
+        observer.disconnect();
+        win.removeEventListener('resize', measure);
+        this.$clearance.set('0px');
+        if (previousClearance) this._document.documentElement.style.setProperty('--comparison-clearance', previousClearance);
+        else this._document.documentElement.style.removeProperty('--comparison-clearance');
+      });
+    });
     this._router.events.pipe(takeUntilDestroyed(this._destroyed)).subscribe((event: Event): void => {
       if (event instanceof NavigationStart || event instanceof NavigationSkipped) this.close();
       if (event instanceof NavigationEnd) this.$shopping.set(this.isShopping(event.urlAfterRedirects));

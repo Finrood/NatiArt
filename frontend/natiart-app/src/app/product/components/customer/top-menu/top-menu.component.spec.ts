@@ -31,6 +31,33 @@ describe('TopMenuComponent', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
+  it('measures wrapped header height for focus clearance and restores the prior value on destruction', async (): Promise<void> => {
+    const root: HTMLElement = document.documentElement;
+    const previous: string = root.style.getPropertyValue('--header-clearance');
+    root.style.setProperty('--header-clearance', '91px');
+    let notify: ResizeObserverCallback;
+    const observer: jasmine.SpyObj<ResizeObserver> = jasmine.createSpyObj<ResizeObserver>('ResizeObserver', ['observe', 'disconnect', 'unobserve']);
+    spyOn(window, 'ResizeObserver').and.callFake(function(callback: ResizeObserverCallback): ResizeObserver {
+      notify = callback; return observer;
+    });
+    const fixture: ComponentFixture<TopMenuComponent> = TestBed.createComponent(TopMenuComponent);
+    try {
+      fixture.detectChanges(); await fixture.whenStable();
+      const row: HTMLElement = fixture.nativeElement.querySelector('.store-header-row');
+      spyOn(row, 'getBoundingClientRect').and.returnValue({height: 143.25} as DOMRect);
+      notify!([], observer);
+      expect(observer.observe).toHaveBeenCalledWith(row);
+      expect(root.style.getPropertyValue('--header-clearance')).toBe('161px');
+      fixture.destroy();
+      expect(observer.disconnect).toHaveBeenCalledTimes(1);
+      expect(root.style.getPropertyValue('--header-clearance')).toBe('91px');
+    } finally {
+      fixture.destroy();
+      if (previous) root.style.setProperty('--header-clearance', previous);
+      else root.style.removeProperty('--header-clearance');
+    }
+  });
+
   it('exposes administration on desktop and mobile only for an authenticated administrator', () => {
     const loggedIn: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(true);
     let administrator: boolean = true;

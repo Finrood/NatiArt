@@ -21,7 +21,7 @@ reduced-motion styles apply across shopping and administration.
 
 ## Verification
 
-The October 2026 suite has 390 passing ChromeHeadless specs, including native
+The earlier atelier suite had 390 passing ChromeHeadless specs, including native
 modal/background focus, nested scroll restoration, rendered journeys, projected
 labels/errors, password state, static-hero behavior and recovery. Real browser
 checks verified menu Enter/Escape, personalization dismissal, cancel-first cart
@@ -65,3 +65,42 @@ The fresh whole-store review has 435 passing specs and saved responsive/browser
 evidence in `docs/design-review/full-review-2026-10/`. It includes filtered-route
 skip navigation, immediate invalid-link recovery and deployment failure alerts.
 This evidence does not establish whole-app WCAG conformance.
+
+## Responsive and accessibility regression contract (10 October 2026)
+
+Public route content has one `main` landmark containing the page's primary
+heading, including the Home hero and product-detail return link. Dialogs retain
+their native modal semantics; the cart's mobile product headings follow its H1.
+
+Headers and wordmarks must wrap with enlarged, spaced text. The header observes
+its actual row height and reserves scroll clearance for keyboard focus. The
+comparison tray observes its actual height and bottom inset, reserves that space
+at the end of the document, and updates scroll clearance on resize. Both release
+their observers and restore prior root styles when destroyed; hiding comparison
+on checkout releases its clearance. At viewport heights of 520px or less, header
+and comparison tray use normal flow so they cannot cover the whole viewport.
+
+Field borders have at least 3:1 contrast against their adjacent surfaces;
+placeholders have at least 4.5:1. Shared buttons, including link-style password
+toggles, and shared inputs have a solid visible focus outline. Forced-color mode
+uses the system Highlight color for those outlines. Gold personalization and the
+guest remembrance option have a full, named label activation area of at least
+44px height. Native checkboxes and file controls retain keyboard operation.
+
+Registration steps, cart quantity controls, fieldsets and checkout summaries
+must reflow with 200% text and WCAG text-spacing overrides. Checkout summary
+columns depend on their own container width, so narrow cards do not inherit a
+desktop arrangement just because the viewport is wide. Monetary values and
+server shipping quotes keep their existing calculation and validation contract.
+
+The current suite has 525 passing ChromeHeadless specs. Test-only axe-core audits
+cover routed screens, invalid fields, cart and comparison dialogs, personalization,
+account forms and admin navigation. Seventy-two iframe layout combinations use
+the actual rendered English component markup and CSS, four viewport sizes, 100%
+and 200% text, and text-spacing overrides. Native Chromium checks cover 120 public
+layouts plus 42 populated account/admin layouts in both locales. Raw metrics,
+keyboard evidence, screenshots, reproduction commands and remaining manual
+verification are in `docs/design-review/accessibility-2026-10-10/README.md`.
+These checks do not certify WCAG conformance; actual browser zoom, forced-color
+visual review, other browser engines and full assistive-technology testing remain
+separate verification work.

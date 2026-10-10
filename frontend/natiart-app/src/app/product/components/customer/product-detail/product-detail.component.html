@@ -1,10 +1,10 @@
-<div class="art-page product-detail">
+<main class="art-page product-detail">
   @if ($collectionReturn(); as context) {
     <a routerLink="/collection" [queryParams]="context" class="detail-back"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 12H4m6-6-6 6 6 6"/></svg><span i18n="@@collectionBack">Back to collection</span></a>
   } @else {
     <a routerLink="/products" [queryParams]="$catalogContext()" class="detail-back"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 12H4m6-6-6 6 6 6"/></svg><span i18n>Collections</span></a>
   }
-  <main class="min-w-0" [attr.aria-busy]="isLoading">
+  <div class="min-w-0" [attr.aria-busy]="isLoading">
     @if (product$ | async; as product) {
       <div class="product-content">
         <div class="detail-layout">
@@ -194,8 +194,8 @@
             <p i18n>Product not found.</p>
           </div>
         }
-      </main>
-    </div>
+      </div>
+    </main>
 
 <app-personalization-modal
   (close)="closePersonalizationModal()"

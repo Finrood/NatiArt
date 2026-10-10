@@ -7,6 +7,7 @@ import {ProductComparisonService} from '../../../product/service/product-compari
 import {Product} from '../../../product/models/product.model';
 import {PersonalizationOption} from '../../../product/models/support/personalization-option';
 import {environment} from '../../../../environments/environment';
+import * as axe from 'axe-core';
 
 const piece = (id: string): Product => ({id, label: 'Piece ' + id, categoryId: 'c', originalPrice: 100,
   markedPrice: 90, stockQuantity: 4, availablePersonalizations: [], images: [], tags: []});
@@ -135,5 +136,31 @@ describe('Viewing table recovery and lifetime', (): void => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.tray-compare').disabled).toBeFalse();
     http.expectNone(`${api}/products/a`);
+  });
+  it('reserves the measured tray height for scrolling and releases it when checkout hides the tray', async (): Promise<void> => {
+    const tray: HTMLElement = fixture.nativeElement.querySelector('.comparison-tray');
+    spyOn(tray, 'getBoundingClientRect').and.returnValue({height: 230} as DOMRect);
+    window.dispatchEvent(new Event('resize'));
+    fixture.detectChanges(); await fixture.whenStable();
+    const style: CSSStyleDeclaration = getComputedStyle(tray);
+    const expected: number = style.position === 'fixed' ? 230 + (parseFloat(style.bottom) || 0) + 16 : 0;
+    expect(parseFloat(document.documentElement.style.getPropertyValue('--comparison-clearance'))).toBe(expected);
+    expect(parseFloat(fixture.nativeElement.querySelector('.comparison-space').style.height)).toBe(expected);
+    await TestBed.inject(Router).navigateByUrl('/checkout');
+    fixture.detectChanges(); await fixture.whenStable();
+    expect(document.documentElement.style.getPropertyValue('--comparison-clearance')).toBe('');
+    window.dispatchEvent(new Event('resize'));
+    expect(document.documentElement.style.getPropertyValue('--comparison-clearance')).toBe('');
+  });
+  it('audits the comparison table and includes the visible Remove label in each accessible name', async (): Promise<void> => {
+    open(); http.expectOne(`${api}/products/a`).flush(piece('a')); http.expectOne(`${api}/products/b`).flush(piece('b'));
+    fixture.detectChanges(); await fixture.whenStable();
+    const dialog: HTMLDialogElement = fixture.nativeElement.querySelector('dialog');
+    for (const button of dialog.querySelectorAll<HTMLButtonElement>('.remove-piece')) {
+      expect(button.getAttribute('aria-label')).toContain(button.querySelector('span')!.textContent!.trim());
+    }
+    const result: axe.AxeResults = await axe.run(dialog, {runOnly: {type: 'tag',
+      values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa', 'best-practice']}});
+    expect(result.violations.map((issue: axe.Result): string => issue.id + ' ' + issue.nodes.map((node: axe.NodeResult): string => node.failureSummary ?? '').join('\n'))).toEqual([]);
   });
 });

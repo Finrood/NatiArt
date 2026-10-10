@@ -9,7 +9,7 @@ import {OrderDto} from '../../../models/order.model';
 import {environment} from '../../../../../environments/environment';
 
 @Component({selector: 'app-guest-orders', imports: [RouterLink, CurrencyPipe, DatePipe, OrderJourneyComponent], template: `
-  <section class="art-page"><div class="art-shell max-w-3xl mx-auto py-10 px-4">
+  <main class="art-page"><div class="art-shell max-w-3xl mx-auto py-10 px-4">
     <h1 class="art-title mb-4" i18n>Your guest orders</h1>
     <p class="mb-6" i18n>This visit is verified by email. You can view your orders without creating an account.</p>
     @if ($error()) { <p role="alert" i18n>Your order link has expired or orders could not be loaded. Request a fresh secure link.</p> }
@@ -33,7 +33,7 @@ import {environment} from '../../../../../environments/environment';
       <a class="art-link" routerLink="/claim-orders" i18n>Request a new link or save orders to an account</a>
       <a class="art-link" routerLink="/dashboard" i18n>Continue exploring</a>
     </div>
-  </div></section>`})
+  </div></main>`})
 export class GuestOrdersComponent implements OnInit {
   private readonly _http: HttpClient = inject(HttpClient);
   private readonly _guest: GuestCheckoutService = inject(GuestCheckoutService);

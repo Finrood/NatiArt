@@ -73,7 +73,7 @@ export class NatiartFormFieldComponent implements OnInit {
   }
 
   hasPasswordMismatch(): boolean {
-    return this.controlName === 'confirmPassword' && this.form.hasError('passwordMismatch');
+    return (this.controlName === 'confirmPassword' || this.controlName === 'confirmation') && this.form.hasError('passwordMismatch');
   }
 
   showErrors(): boolean {

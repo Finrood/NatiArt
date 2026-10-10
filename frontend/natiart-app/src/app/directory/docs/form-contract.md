@@ -27,6 +27,16 @@ field-hint content sits outside the input/toggle container, avoiding a toggle
 that stretches across the requirement list. Revealing a password changes only
 the native input type; it does not alter the control value or submit the form.
 
+Guest-order claiming uses the same named fields and password visibility controls.
+Invalid email submission marks the field, associates its localized explanation and
+focuses it after rendering, without requesting a link. After mailbox-proof
+inspection, an unverified account requires a strong matching new password;
+the `confirmation` control receives the same group mismatch description as
+`confirmPassword`. Invalid activation focuses the first invalid field. A verified
+account still accepts its current password without imposing new-password
+complexity requirements. No new validator changes the server's proof, ownership,
+uniform email response or existing-account authentication rules.
+
 Login renders its error and submission state from signals. A rejected request
 must display the localized alert and enable retry without another keystroke or
 manual change detection. A new attempt clears the previous alert while retaining

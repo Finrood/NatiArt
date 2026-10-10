@@ -1,2 +1,5 @@
 .skip-link { position: fixed; left: 1rem; top: -5rem; z-index: 100; background: white; color: rgb(var(--primary)); padding: .75rem 1.25rem; border-radius: .375rem; }
 .skip-link:focus { top: 1rem; }
+@media (max-height: 520px) {
+  app-top-menu { position: static; }
+}

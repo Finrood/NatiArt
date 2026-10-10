@@ -1,4 +1,4 @@
-<div class="bg-background min-h-screen">
+<main class="bg-background min-h-screen">
   <div class="art-page">
     <h1 class="art-title mb-6" data-page-heading i18n>Checkout</h1>
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-12">
@@ -29,8 +29,8 @@
             <div class="mb-6 rounded-md bg-primary-light/20 p-4" role="status">
               <p i18n>Continue as a guest. You can create an account after placing your order.</p>
               <a routerLink="/login" class="art-link" i18n>Already have an account? Sign in</a>
-              <label class="mt-3 flex items-center gap-2"><input type="checkbox" [(ngModel)]="rememberDetails">
-                <span i18n>Remember my details on this device for 30 days</span></label>
+              <label class="mt-3 flex min-h-11 items-center gap-2"><input class="shrink-0" type="checkbox" [(ngModel)]="rememberDetails">
+                <span class="min-w-0 [overflow-wrap:anywhere]" i18n>Remember my details on this device for 30 days</span></label>
               @if (guest.$session()?.profile && !hasSavedAttempt) {
                 <button type="button" class="art-link mt-2" (click)="forgetGuestDetails()" i18n>Forget my details</button>
               }
@@ -151,4 +151,4 @@
 
     </div>
   </div>
-</div>
+</main>

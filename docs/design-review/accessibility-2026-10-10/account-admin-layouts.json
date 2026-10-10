@@ -1,0 +1,422 @@
+[
+  {
+    "documentWidth": 305,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 700,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/admin/categories",
+    "width": 320
+  },
+  {
+    "documentWidth": 1009,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 768,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/admin/categories",
+    "width": 1024
+  },
+  {
+    "documentWidth": 1425,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 900,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/admin/categories",
+    "width": 1440
+  },
+  {
+    "documentWidth": 305,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 700,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/admin/products",
+    "width": 320
+  },
+  {
+    "documentWidth": 1009,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 768,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/admin/products",
+    "width": 1024
+  },
+  {
+    "documentWidth": 1425,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 900,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/admin/products",
+    "width": 1440
+  },
+  {
+    "documentWidth": 305,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 700,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/admin/packages",
+    "width": 320
+  },
+  {
+    "documentWidth": 1009,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 768,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/admin/packages",
+    "width": 1024
+  },
+  {
+    "documentWidth": 1425,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 900,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/admin/packages",
+    "width": 1440
+  },
+  {
+    "documentWidth": 305,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 700,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/admin/orders",
+    "width": 320
+  },
+  {
+    "documentWidth": 1009,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 768,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/admin/orders",
+    "width": 1024
+  },
+  {
+    "documentWidth": 1425,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 900,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/admin/orders",
+    "width": 1440
+  },
+  {
+    "documentWidth": 305,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 700,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/account",
+    "width": 320
+  },
+  {
+    "documentWidth": 1009,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 768,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/account",
+    "width": 1024
+  },
+  {
+    "documentWidth": 1425,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 900,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/account",
+    "width": 1440
+  },
+  {
+    "documentWidth": 305,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 700,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/account/profile",
+    "width": 320
+  },
+  {
+    "documentWidth": 1009,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 768,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/account/profile",
+    "width": 1024
+  },
+  {
+    "documentWidth": 1425,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 900,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/account/profile",
+    "width": 1440
+  },
+  {
+    "documentWidth": 305,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 700,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/account/security",
+    "width": 320
+  },
+  {
+    "documentWidth": 1009,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 768,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/account/security",
+    "width": 1024
+  },
+  {
+    "documentWidth": 1425,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 900,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/en/account/security",
+    "width": 1440
+  },
+  {
+    "documentWidth": 305,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 700,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/admin/categories",
+    "width": 320
+  },
+  {
+    "documentWidth": 1009,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 768,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/admin/categories",
+    "width": 1024
+  },
+  {
+    "documentWidth": 1425,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 900,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/admin/categories",
+    "width": 1440
+  },
+  {
+    "documentWidth": 305,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 700,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/admin/products",
+    "width": 320
+  },
+  {
+    "documentWidth": 1009,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 768,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/admin/products",
+    "width": 1024
+  },
+  {
+    "documentWidth": 1425,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 900,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/admin/products",
+    "width": 1440
+  },
+  {
+    "documentWidth": 305,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 700,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/admin/packages",
+    "width": 320
+  },
+  {
+    "documentWidth": 1009,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 768,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/admin/packages",
+    "width": 1024
+  },
+  {
+    "documentWidth": 1425,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 900,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/admin/packages",
+    "width": 1440
+  },
+  {
+    "documentWidth": 305,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 700,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/admin/orders",
+    "width": 320
+  },
+  {
+    "documentWidth": 1009,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 768,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/admin/orders",
+    "width": 1024
+  },
+  {
+    "documentWidth": 1425,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 900,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/admin/orders",
+    "width": 1440
+  },
+  {
+    "documentWidth": 305,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 700,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/account",
+    "width": 320
+  },
+  {
+    "documentWidth": 1009,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 768,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/account",
+    "width": 1024
+  },
+  {
+    "documentWidth": 1425,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 900,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/account",
+    "width": 1440
+  },
+  {
+    "documentWidth": 305,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 700,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/account/profile",
+    "width": 320
+  },
+  {
+    "documentWidth": 1009,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 768,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/account/profile",
+    "width": 1024
+  },
+  {
+    "documentWidth": 1425,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 900,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/account/profile",
+    "width": 1440
+  },
+  {
+    "documentWidth": 305,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 700,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/account/security",
+    "width": 320
+  },
+  {
+    "documentWidth": 1009,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 768,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/account/security",
+    "width": 1024
+  },
+  {
+    "documentWidth": 1425,
+    "duplicateIds": [],
+    "h1Count": 1,
+    "height": 900,
+    "mainCount": 1,
+    "unnamedFields": [],
+    "url": "/pt-BR/account/security",
+    "width": 1440
+  }
+]

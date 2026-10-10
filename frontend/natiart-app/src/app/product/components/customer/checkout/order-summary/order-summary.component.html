@@ -1,14 +1,14 @@
-<div class="bg-white art-panel p-4 sm:p-6">
+<div class="order-summary bg-white art-panel p-4 sm:p-6">
   <h2 class="text-2xl font-normal text-secondary-dark mb-6 pb-4 border-b border-gray-200" i18n>Order Summary</h2>
 
   @if (cartItems && cartItems.length > 0) {
-    <div class="space-y-5 max-h-[60vh] overflow-y-auto pr-2 -mr-2">
+    <div class="summary-lines space-y-5 max-h-[60vh] overflow-y-auto pr-2 -mr-2">
       @for (item of cartItems; track item.cartItemId) {
-        <div class="grid grid-cols-[3.5rem_minmax(0,1fr)] gap-x-3 gap-y-2 pb-5 border-b border-gray-100 last:border-b-0">
+        <div class="summary-item grid gap-x-3 gap-y-2 pb-5 border-b border-gray-100 last:border-b-0">
           <div class="contents">
             <img (error)="images.failed(item.cartItemId)" [src]="imageUrls[item.cartItemId] || emptyImage"
               [alt]="item.product.label"
-              class="w-14 h-14 row-span-2 shrink-0 rounded-md object-contain border border-gray-200 p-1">
+              class="w-14 h-14 shrink-0 rounded-md object-contain border border-gray-200 p-1">
             <div class="min-w-0 break-words">
               <p class="font-medium text-base text-secondary-dark leading-tight">{{ item.product.label }}</p>
               <p class="text-sm text-gray-600" i18n>Unit: {{ getDisplayedItemUnitPrice(item) | currency:'BRL' }}</p>
@@ -21,7 +21,7 @@
               }
             </div>
           </div>
-          <p class="col-start-2 font-medium text-base text-secondary-dark tabular-nums">
+          <p class="summary-line-total font-medium text-base text-secondary-dark tabular-nums">
             {{ getItemAmount(item) | currency:'BRL' }}
           </p>
         </div>
@@ -38,23 +38,23 @@
   @if (cartItems && cartItems.length > 0) {
     <div class="mt-8 pt-6 border-t border-gray-200">
       <div class="space-y-3 text-gray-700">
-        <div class="grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] gap-1 sm:gap-4 sm:items-start">
+        <div class="summary-totals-row gap-1">
           @if (shippingQuote) { <span class="text-base" i18n>Subtotal:</span> }
           @else { <span class="text-base" i18n>Estimated subtotal:</span> }
-          <span class="font-semibold text-base tabular-nums sm:text-right">
+          <span class="font-semibold text-base tabular-nums">
             {{ (shippingQuote ? shippingQuote.itemAmount : getEstimatedSubtotal()) | currency:'BRL' }}
           </span>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] gap-1 sm:gap-4 sm:items-start text-sm">
+        <div class="summary-totals-row gap-1 text-sm">
           <span class="text-gray-600" i18n>Shipping:</span>
-          <span class="text-gray-600 sm:text-right break-words" i18n>
+          <span class="text-gray-600 break-words" i18n>
             {{ shippingQuote ? (shippingQuote.shippingAmount | currency:'BRL') : calculatedAfterAddress }}
           </span>
         </div>
         @if (shippingQuote) {
-          <div class="grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] gap-1 sm:gap-4 sm:items-start text-sm">
+          <div class="summary-totals-row gap-1 text-sm">
             <span class="text-gray-600" i18n>Service:</span>
-            <span class="text-gray-600 sm:text-right break-words" i18n>{{ shippingQuote.serviceName }}</span>
+            <span class="text-gray-600 break-words" i18n>{{ shippingQuote.serviceName }}</span>
           </div>
           @if (shippingQuote.estimatedDeliveryDays != null) {
             <p class="text-xs text-text-muted" i18n="@@shippingQuoteDeliveryEstimate">Carrier estimate: {{ shippingQuote.estimatedDeliveryDays }} business days after dispatch. Preparation time is additional.</p>
@@ -65,9 +65,9 @@
         }
 
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] gap-1 sm:gap-4 sm:items-start font-medium text-secondary-dark text-lg mt-6 pt-6 border-t-2 border-gray-300">
+      <div class="summary-totals-row gap-1 font-medium text-secondary-dark text-lg mt-6 pt-6 border-t-2 border-gray-300">
         <p i18n>Total:</p>
-        <p class="tabular-nums sm:text-right">
+        <p class="tabular-nums">
           {{ shippingQuote ? (shippingQuote.totalAmount | currency:'BRL') : calculatedAfterAddress }}
         </p>
       </div>

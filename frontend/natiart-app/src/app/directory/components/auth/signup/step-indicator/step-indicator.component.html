@@ -1,6 +1,6 @@
-<div class="flex justify-center items-center space-x-6 mb-8">
-  <div class="flex flex-col items-center">
-    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300"
+<div class="grid grid-cols-2 gap-3 mb-8">
+  <div class="flex min-w-0 flex-col items-center">
+    <div class="w-10 max-w-full aspect-square shrink-0 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300"
          [ngClass]="{
            'bg-primary text-primary-contrast shadow-md': currentStep === 1,
            'bg-primary-lighter text-primary-dark': currentStep > 1,
@@ -8,20 +8,17 @@
          }">
       1
     </div>
-    <span class="mt-2 text-sm font-medium text-secondary-dark" i18n>Account</span>
+    <span class="mt-2 w-full text-center text-sm font-medium text-secondary-dark [overflow-wrap:anywhere]" i18n>Account</span>
   </div>
 
-  <div class="flex-1 h-0.5 bg-primary-lighter/50 transition-all duration-300"
-       [ngClass]="{'bg-primary': currentStep > 1}"></div>
-
-  <div class="flex flex-col items-center">
-    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300"
+  <div class="flex min-w-0 flex-col items-center">
+    <div class="w-10 max-w-full aspect-square shrink-0 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300"
          [ngClass]="{
            'bg-primary text-primary-contrast shadow-md': currentStep === 2,
            'bg-surface-variant text-secondary-light': currentStep < 2
          }">
       2
     </div>
-    <span class="mt-2 text-sm font-medium text-secondary-dark" i18n>Profile</span>
+    <span class="mt-2 w-full text-center text-sm font-medium text-secondary-dark [overflow-wrap:anywhere]" i18n>Profile</span>
   </div>
 </div>

@@ -96,4 +96,29 @@ describe('ClaimOrdersComponent verified access', () => {
     expect(tokens.clearTokens).not.toHaveBeenCalled();
     expect(fixture.componentInstance.$success()).toBeFalse();
   });
+
+  it('describes activation password errors, focuses the first invalid field and clears corrected errors', async (): Promise<void> => {
+    openVerifiedLink(false);
+    const form: HTMLFormElement = fixture.nativeElement.querySelector('form');
+    const password: HTMLInputElement = fixture.nativeElement.querySelector('#claim-password');
+    const confirmation: HTMLInputElement = fixture.nativeElement.querySelector('#claim-confirmation');
+    fixture.componentInstance.passwordForm.setValue({password: 'weak', confirmation: 'different'});
+    form.dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}));
+    fixture.detectChanges(); await fixture.whenStable();
+    expect(password.getAttribute('aria-invalid')).toBe('true');
+    expect(password.getAttribute('aria-describedby')).toContain('claim-password-error');
+    expect(document.activeElement).toBe(password);
+    expect(fixture.nativeElement.querySelector('#claim-password-error').textContent).toContain('uppercase');
+    expect(confirmation.getAttribute('aria-invalid')).toBe('true');
+    expect(confirmation.getAttribute('aria-describedby')).toContain('claim-confirmation-error');
+    expect(fixture.nativeElement.querySelector('#claim-confirmation-error').textContent).toContain('Passwords do not match');
+    http.expectNone(baseUrl + '/confirm');
+
+    fixture.componentInstance.passwordForm.setValue({password: 'SecureGuest42!', confirmation: 'SecureGuest42!'});
+    fixture.detectChanges(); await fixture.whenStable();
+    expect(password.getAttribute('aria-invalid')).toBe('false');
+    expect(confirmation.getAttribute('aria-invalid')).toBe('false');
+    expect(fixture.nativeElement.querySelector('#claim-confirmation-error')).toBeNull();
+    expect(fixture.componentInstance.passwordForm.valid).toBeTrue();
+  });
 });

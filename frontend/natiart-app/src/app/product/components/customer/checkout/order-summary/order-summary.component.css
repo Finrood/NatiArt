@@ -1,3 +1,13 @@
 .tabular-nums {
   font-feature-settings: 'tnum';
 }
+.order-summary { container-type: inline-size; }
+.order-summary :is(p, span) { min-width: 0; overflow-wrap: anywhere; }
+.summary-item, .summary-totals-row { display: grid; grid-template-columns: minmax(0, 1fr); }
+@container (min-width: 18rem) {
+  .summary-item { grid-template-columns: 3.5rem minmax(0, 1fr); }
+  .summary-item img { grid-row: span 2; }
+  .summary-line-total { grid-column: 2; }
+  .summary-totals-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+  .summary-totals-row > :last-child { text-align: right; }
+}

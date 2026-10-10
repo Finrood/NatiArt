@@ -1,0 +1,144 @@
+[
+  {
+    "journey": "comparison focus",
+    "viewport": "320x256",
+    "result": {
+      "bottom": 150.484375,
+      "covered": false,
+      "fullyVisible": true,
+      "name": "Compare Blush Scalloped Soap Dish",
+      "top": 106.484375
+    }
+  },
+  {
+    "journey": "comparison dialog keyboard sequence",
+    "viewport": "390x844",
+    "steps": [
+      {
+        "covered": false,
+        "fullyVisible": true,
+        "insideDialog": true,
+        "name": "Remove Blush Botanical Dinner Plate from comparison"
+      },
+      {
+        "covered": false,
+        "fullyVisible": true,
+        "insideDialog": true,
+        "name": "Remove Blush Scalloped Soap Dish from comparison"
+      },
+      {
+        "covered": false,
+        "fullyVisible": true,
+        "insideDialog": true,
+        "name": "View product↗"
+      },
+      {
+        "covered": false,
+        "fullyVisible": true,
+        "insideDialog": true,
+        "name": "View product↗"
+      },
+      {
+        "covered": false,
+        "fullyVisible": true,
+        "insideDialog": true,
+        "name": "Keep exploring"
+      },
+      {
+        "covered": false,
+        "fullyVisible": false,
+        "insideDialog": false,
+        "name": "Document/browser focus boundary after the last control"
+      }
+    ]
+  },
+  {
+    "journey": "cart drawer Escape",
+    "viewport": "320x700",
+    "result": {
+      "dialogCount": 0,
+      "focus": "Shopping cart"
+    }
+  },
+  {
+    "journey": "checkout landscape keyboard focus",
+    "result": {
+      "bottom": 219.296875,
+      "covered": false,
+      "documentWidth": 829,
+      "focusedId": "natiart-field-1",
+      "fullyVisible": true,
+      "headerPosition": "static",
+      "height": 390,
+      "top": 171.296875,
+      "width": 844
+    }
+  },
+  {
+    "journey": "Portuguese guest-order invalid email",
+    "result": {
+      "error": "Informe um e-mail válido",
+      "focused": true,
+      "invalid": "true"
+    }
+  },
+  {
+    "journey": "Portuguese menu Escape",
+    "result": {
+      "dialogs": 0,
+      "focused": "Abrir ou fechar menu"
+    }
+  },
+  {
+    "journey": "product editor keyboard without saving",
+    "viewport": "320x700",
+    "steps": [
+      {
+        "covered": false,
+        "fullyVisible": true,
+        "insideDialog": true,
+        "name": "Label"
+      },
+      {
+        "covered": false,
+        "fullyVisible": true,
+        "insideDialog": true,
+        "name": "Description"
+      },
+      {
+        "covered": false,
+        "fullyVisible": true,
+        "insideDialog": true,
+        "name": "Original Price"
+      },
+      {
+        "covered": false,
+        "fullyVisible": true,
+        "insideDialog": true,
+        "name": "Marked Price"
+      },
+      {
+        "covered": false,
+        "fullyVisible": true,
+        "insideDialog": true,
+        "name": "Stock Quantity"
+      },
+      {
+        "covered": false,
+        "fullyVisible": true,
+        "insideDialog": true,
+        "name": "Packed weight per unit (kg)"
+      },
+      {
+        "covered": false,
+        "fullyVisible": true,
+        "insideDialog": true,
+        "name": "Category"
+      }
+    ],
+    "dismissal": {
+      "dialogs": 0,
+      "focus": "Edit"
+    }
+  }
+]
