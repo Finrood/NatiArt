@@ -1,0 +1,3722 @@
+[
+  {
+    "locale": "en",
+    "screen": "home",
+    "requestedWidth": 320,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      }
+    ],
+    "documentWidth": 305,
+    "heading": "The Art of Porcelain",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 320
+  },
+  {
+    "locale": "en",
+    "screen": "catalog",
+    "requestedWidth": 320,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      }
+    ],
+    "documentWidth": 305,
+    "heading": "Collections",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 320
+  },
+  {
+    "locale": "en",
+    "screen": "product",
+    "requestedWidth": 320,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      }
+    ],
+    "documentWidth": 305,
+    "heading": "Blush Botanical Dinner Plate",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": false
+      },
+      {
+        "fit": "contain",
+        "loaded": false
+      }
+    ],
+    "width": 320
+  },
+  {
+    "locale": "en",
+    "screen": "collection",
+    "requestedWidth": 320,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Share collection",
+        "width": 128.3125
+      },
+      {
+        "height": 44,
+        "label": "Check again",
+        "width": 101.375
+      },
+      {
+        "height": 44,
+        "label": "Clear collection",
+        "width": 124.96875
+      },
+      {
+        "height": 44,
+        "label": "Remove",
+        "width": 48.953125
+      },
+      {
+        "height": 44,
+        "label": "Remove",
+        "width": 48.953125
+      },
+      {
+        "height": 44,
+        "label": "Remove",
+        "width": 48.953125
+      }
+    ],
+    "documentWidth": 305,
+    "heading": "Your collection.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 320
+  },
+  {
+    "locale": "en",
+    "screen": "shared",
+    "requestedWidth": 320,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Share collection",
+        "width": 128.3125
+      },
+      {
+        "height": 44,
+        "label": "Check again",
+        "width": 101.375
+      },
+      {
+        "height": 49.09375,
+        "label": "Keep these pieces",
+        "width": 178.296875
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      }
+    ],
+    "documentWidth": 305,
+    "heading": "A collection, shared with you.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 320
+  },
+  {
+    "locale": "en",
+    "screen": "home",
+    "requestedWidth": 390,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      }
+    ],
+    "documentWidth": 375,
+    "heading": "The Art of Porcelain",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 390
+  },
+  {
+    "locale": "en",
+    "screen": "catalog",
+    "requestedWidth": 390,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      }
+    ],
+    "documentWidth": 375,
+    "heading": "Collections",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 390
+  },
+  {
+    "locale": "en",
+    "screen": "product",
+    "requestedWidth": 390,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      }
+    ],
+    "documentWidth": 375,
+    "heading": "Blush Botanical Dinner Plate",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": false
+      }
+    ],
+    "width": 390
+  },
+  {
+    "locale": "en",
+    "screen": "collection",
+    "requestedWidth": 390,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Share collection",
+        "width": 128.3125
+      },
+      {
+        "height": 44,
+        "label": "Check again",
+        "width": 101.375
+      },
+      {
+        "height": 44,
+        "label": "Clear collection",
+        "width": 124.96875
+      },
+      {
+        "height": 44,
+        "label": "Remove",
+        "width": 48.953125
+      },
+      {
+        "height": 44,
+        "label": "Remove",
+        "width": 48.953125
+      },
+      {
+        "height": 44,
+        "label": "Remove",
+        "width": 48.953125
+      }
+    ],
+    "documentWidth": 375,
+    "heading": "Your collection.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 390
+  },
+  {
+    "locale": "en",
+    "screen": "shared",
+    "requestedWidth": 390,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Share collection",
+        "width": 128.3125
+      },
+      {
+        "height": 44,
+        "label": "Check again",
+        "width": 101.375
+      },
+      {
+        "height": 49.09375,
+        "label": "Keep these pieces",
+        "width": 178.296875
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      }
+    ],
+    "documentWidth": 375,
+    "heading": "A collection, shared with you.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 390
+  },
+  {
+    "locale": "en",
+    "screen": "home",
+    "requestedWidth": 768,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      }
+    ],
+    "documentWidth": 753,
+    "heading": "The Art of Porcelain",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 768
+  },
+  {
+    "locale": "en",
+    "screen": "catalog",
+    "requestedWidth": 768,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      }
+    ],
+    "documentWidth": 753,
+    "heading": "Collections",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 768
+  },
+  {
+    "locale": "en",
+    "screen": "product",
+    "requestedWidth": 768,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      }
+    ],
+    "documentWidth": 753,
+    "heading": "Blush Botanical Dinner Plate",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 768
+  },
+  {
+    "locale": "en",
+    "screen": "collection",
+    "requestedWidth": 768,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Share collection",
+        "width": 128.3125
+      },
+      {
+        "height": 44,
+        "label": "Check again",
+        "width": 101.375
+      },
+      {
+        "height": 44,
+        "label": "Clear collection",
+        "width": 124.96875
+      },
+      {
+        "height": 44,
+        "label": "Remove",
+        "width": 48.953125
+      },
+      {
+        "height": 44,
+        "label": "Remove",
+        "width": 48.953125
+      },
+      {
+        "height": 44,
+        "label": "Remove",
+        "width": 48.953125
+      }
+    ],
+    "documentWidth": 753,
+    "heading": "Your collection.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 768
+  },
+  {
+    "locale": "en",
+    "screen": "shared",
+    "requestedWidth": 768,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Share collection",
+        "width": 128.3125
+      },
+      {
+        "height": 44,
+        "label": "Check again",
+        "width": 101.375
+      },
+      {
+        "height": 49.09375,
+        "label": "Keep these pieces",
+        "width": 178.296875
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      }
+    ],
+    "documentWidth": 753,
+    "heading": "A collection, shared with you.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 768
+  },
+  {
+    "locale": "en",
+    "screen": "home",
+    "requestedWidth": 1280,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      }
+    ],
+    "documentWidth": 1265,
+    "heading": "The Art of Porcelain",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1280
+  },
+  {
+    "locale": "en",
+    "screen": "catalog",
+    "requestedWidth": 1280,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      }
+    ],
+    "documentWidth": 1265,
+    "heading": "Collections",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1280
+  },
+  {
+    "locale": "en",
+    "screen": "product",
+    "requestedWidth": 1280,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      }
+    ],
+    "documentWidth": 1265,
+    "heading": "Blush Botanical Dinner Plate",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1280
+  },
+  {
+    "locale": "en",
+    "screen": "collection",
+    "requestedWidth": 1280,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Share collection",
+        "width": 128.3125
+      },
+      {
+        "height": 44,
+        "label": "Check again",
+        "width": 101.375
+      },
+      {
+        "height": 44,
+        "label": "Clear collection",
+        "width": 124.96875
+      },
+      {
+        "height": 44,
+        "label": "Remove",
+        "width": 48.953125
+      },
+      {
+        "height": 44,
+        "label": "Remove",
+        "width": 48.953125
+      },
+      {
+        "height": 44,
+        "label": "Remove",
+        "width": 48.953125
+      }
+    ],
+    "documentWidth": 1265,
+    "heading": "Your collection.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1280
+  },
+  {
+    "locale": "en",
+    "screen": "shared",
+    "requestedWidth": 1280,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Share collection",
+        "width": 128.3125
+      },
+      {
+        "height": 44,
+        "label": "Check again",
+        "width": 101.375
+      },
+      {
+        "height": 49.09375,
+        "label": "Keep these pieces",
+        "width": 178.296875
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      }
+    ],
+    "documentWidth": 1265,
+    "heading": "A collection, shared with you.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1280
+  },
+  {
+    "locale": "en",
+    "screen": "home",
+    "requestedWidth": 1440,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      }
+    ],
+    "documentWidth": 1425,
+    "heading": "The Art of Porcelain",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1440
+  },
+  {
+    "locale": "en",
+    "screen": "catalog",
+    "requestedWidth": 1440,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      }
+    ],
+    "documentWidth": 1425,
+    "heading": "Collections",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1440
+  },
+  {
+    "locale": "en",
+    "screen": "product",
+    "requestedWidth": 1440,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Save",
+        "width": 53.34375
+      }
+    ],
+    "documentWidth": 1425,
+    "heading": "Blush Botanical Dinner Plate",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1440
+  },
+  {
+    "locale": "en",
+    "screen": "collection",
+    "requestedWidth": 1440,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Share collection",
+        "width": 128.3125
+      },
+      {
+        "height": 44,
+        "label": "Check again",
+        "width": 101.375
+      },
+      {
+        "height": 44,
+        "label": "Clear collection",
+        "width": 124.96875
+      },
+      {
+        "height": 44,
+        "label": "Remove",
+        "width": 48.953125
+      },
+      {
+        "height": 44,
+        "label": "Remove",
+        "width": 48.953125
+      },
+      {
+        "height": 44,
+        "label": "Remove",
+        "width": 48.953125
+      }
+    ],
+    "documentWidth": 1425,
+    "heading": "Your collection.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1440
+  },
+  {
+    "locale": "en",
+    "screen": "shared",
+    "requestedWidth": 1440,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Share collection",
+        "width": 128.3125
+      },
+      {
+        "height": 44,
+        "label": "Check again",
+        "width": 101.375
+      },
+      {
+        "height": 49.09375,
+        "label": "Keep these pieces",
+        "width": 178.296875
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      },
+      {
+        "height": 44,
+        "label": "Saved",
+        "width": 61.453125
+      }
+    ],
+    "documentWidth": 1425,
+    "heading": "A collection, shared with you.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1440
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "home",
+    "requestedWidth": 320,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      }
+    ],
+    "documentWidth": 305,
+    "heading": "A arte da porcelana",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 320
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "catalog",
+    "requestedWidth": 320,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      }
+    ],
+    "documentWidth": 305,
+    "heading": "Coleções",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 320
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "product",
+    "requestedWidth": 320,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      }
+    ],
+    "documentWidth": 305,
+    "heading": "Blush Botanical Dinner Plate",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": false
+      },
+      {
+        "fit": "contain",
+        "loaded": false
+      }
+    ],
+    "width": 320
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "collection",
+    "requestedWidth": 320,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Compartilhar coleção",
+        "width": 176.25
+      },
+      {
+        "height": 44,
+        "label": "Consultar novamente",
+        "width": 174.90625
+      },
+      {
+        "height": 44,
+        "label": "Limpar coleção",
+        "width": 123.78125
+      },
+      {
+        "height": 44,
+        "label": "Remover",
+        "width": 53.4375
+      },
+      {
+        "height": 44,
+        "label": "Remover",
+        "width": 53.4375
+      },
+      {
+        "height": 44,
+        "label": "Remover",
+        "width": 53.4375
+      }
+    ],
+    "documentWidth": 305,
+    "heading": "Sua coleção.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 320
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "shared",
+    "requestedWidth": 320,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Compartilhar coleção",
+        "width": 176.25
+      },
+      {
+        "height": 44,
+        "label": "Consultar novamente",
+        "width": 174.90625
+      },
+      {
+        "height": 49.09375,
+        "label": "Guardar estas peças",
+        "width": 198.21875
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      }
+    ],
+    "documentWidth": 305,
+    "heading": "Uma coleção, compartilhada com você.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 320
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "home",
+    "requestedWidth": 390,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      }
+    ],
+    "documentWidth": 375,
+    "heading": "A arte da porcelana",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 390
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "catalog",
+    "requestedWidth": 390,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      }
+    ],
+    "documentWidth": 375,
+    "heading": "Coleções",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 390
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "product",
+    "requestedWidth": 390,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      }
+    ],
+    "documentWidth": 375,
+    "heading": "Blush Botanical Dinner Plate",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": false
+      }
+    ],
+    "width": 390
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "collection",
+    "requestedWidth": 390,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Compartilhar coleção",
+        "width": 176.25
+      },
+      {
+        "height": 44,
+        "label": "Consultar novamente",
+        "width": 174.90625
+      },
+      {
+        "height": 44,
+        "label": "Limpar coleção",
+        "width": 123.78125
+      },
+      {
+        "height": 44,
+        "label": "Remover",
+        "width": 53.4375
+      },
+      {
+        "height": 44,
+        "label": "Remover",
+        "width": 53.4375
+      },
+      {
+        "height": 44,
+        "label": "Remover",
+        "width": 53.4375
+      }
+    ],
+    "documentWidth": 375,
+    "heading": "Sua coleção.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 390
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "shared",
+    "requestedWidth": 390,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Compartilhar coleção",
+        "width": 176.25
+      },
+      {
+        "height": 44,
+        "label": "Consultar novamente",
+        "width": 174.90625
+      },
+      {
+        "height": 49.09375,
+        "label": "Guardar estas peças",
+        "width": 198.21875
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      }
+    ],
+    "documentWidth": 375,
+    "heading": "Uma coleção, compartilhada com você.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 390
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "home",
+    "requestedWidth": 768,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      }
+    ],
+    "documentWidth": 753,
+    "heading": "A arte da porcelana",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 768
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "catalog",
+    "requestedWidth": 768,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      }
+    ],
+    "documentWidth": 753,
+    "heading": "Coleções",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 768
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "product",
+    "requestedWidth": 768,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      }
+    ],
+    "documentWidth": 753,
+    "heading": "Blush Botanical Dinner Plate",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 768
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "collection",
+    "requestedWidth": 768,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Compartilhar coleção",
+        "width": 176.25
+      },
+      {
+        "height": 44,
+        "label": "Consultar novamente",
+        "width": 174.90625
+      },
+      {
+        "height": 44,
+        "label": "Limpar coleção",
+        "width": 123.78125
+      },
+      {
+        "height": 44,
+        "label": "Remover",
+        "width": 53.4375
+      },
+      {
+        "height": 44,
+        "label": "Remover",
+        "width": 53.4375
+      },
+      {
+        "height": 44,
+        "label": "Remover",
+        "width": 53.4375
+      }
+    ],
+    "documentWidth": 753,
+    "heading": "Sua coleção.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 768
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "shared",
+    "requestedWidth": 768,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Compartilhar coleção",
+        "width": 176.25
+      },
+      {
+        "height": 44,
+        "label": "Consultar novamente",
+        "width": 174.90625
+      },
+      {
+        "height": 49.09375,
+        "label": "Guardar estas peças",
+        "width": 198.21875
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      }
+    ],
+    "documentWidth": 753,
+    "heading": "Uma coleção, compartilhada com você.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 768
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "home",
+    "requestedWidth": 1280,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      }
+    ],
+    "documentWidth": 1265,
+    "heading": "A arte da porcelana",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1280
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "catalog",
+    "requestedWidth": 1280,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      }
+    ],
+    "documentWidth": 1265,
+    "heading": "Coleções",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1280
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "product",
+    "requestedWidth": 1280,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      }
+    ],
+    "documentWidth": 1265,
+    "heading": "Blush Botanical Dinner Plate",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1280
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "collection",
+    "requestedWidth": 1280,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Compartilhar coleção",
+        "width": 176.25
+      },
+      {
+        "height": 44,
+        "label": "Consultar novamente",
+        "width": 174.90625
+      },
+      {
+        "height": 44,
+        "label": "Limpar coleção",
+        "width": 123.78125
+      },
+      {
+        "height": 44,
+        "label": "Remover",
+        "width": 53.4375
+      },
+      {
+        "height": 44,
+        "label": "Remover",
+        "width": 53.4375
+      },
+      {
+        "height": 44,
+        "label": "Remover",
+        "width": 53.4375
+      }
+    ],
+    "documentWidth": 1265,
+    "heading": "Sua coleção.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1280
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "shared",
+    "requestedWidth": 1280,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Compartilhar coleção",
+        "width": 176.25
+      },
+      {
+        "height": 44,
+        "label": "Consultar novamente",
+        "width": 174.90625
+      },
+      {
+        "height": 49.09375,
+        "label": "Guardar estas peças",
+        "width": 198.21875
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      }
+    ],
+    "documentWidth": 1265,
+    "heading": "Uma coleção, compartilhada com você.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1280
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "home",
+    "requestedWidth": 1440,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      }
+    ],
+    "documentWidth": 1425,
+    "heading": "A arte da porcelana",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1440
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "catalog",
+    "requestedWidth": 1440,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      }
+    ],
+    "documentWidth": 1425,
+    "heading": "Coleções",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1440
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "product",
+    "requestedWidth": 1440,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salvar",
+        "width": 61.4375
+      }
+    ],
+    "documentWidth": 1425,
+    "heading": "Blush Botanical Dinner Plate",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1440
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "collection",
+    "requestedWidth": 1440,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Compartilhar coleção",
+        "width": 176.25
+      },
+      {
+        "height": 44,
+        "label": "Consultar novamente",
+        "width": 174.90625
+      },
+      {
+        "height": 44,
+        "label": "Limpar coleção",
+        "width": 123.78125
+      },
+      {
+        "height": 44,
+        "label": "Remover",
+        "width": 53.4375
+      },
+      {
+        "height": 44,
+        "label": "Remover",
+        "width": 53.4375
+      },
+      {
+        "height": 44,
+        "label": "Remover",
+        "width": 53.4375
+      }
+    ],
+    "documentWidth": 1425,
+    "heading": "Sua coleção.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1440
+  },
+  {
+    "locale": "pt-BR",
+    "screen": "shared",
+    "requestedWidth": 1440,
+    "buttons": [
+      {
+        "height": 44,
+        "label": "3",
+        "width": 44
+      },
+      {
+        "height": 44,
+        "label": "Compartilhar coleção",
+        "width": 176.25
+      },
+      {
+        "height": 44,
+        "label": "Consultar novamente",
+        "width": 174.90625
+      },
+      {
+        "height": 49.09375,
+        "label": "Guardar estas peças",
+        "width": 198.21875
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      },
+      {
+        "height": 44,
+        "label": "Salva",
+        "width": 56.953125
+      }
+    ],
+    "documentWidth": 1425,
+    "heading": "Uma coleção, compartilhada com você.",
+    "images": [
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      },
+      {
+        "fit": "contain",
+        "loaded": true
+      }
+    ],
+    "width": 1440
+  }
+]

@@ -1,4 +1,8 @@
 header { box-shadow: 0 1px 0 rgb(var(--primary-light) / .2); }
+.collection-nav { position:relative; display:flex; align-items:center; justify-content:center; width:2.75rem; height:2.75rem; color:rgb(var(--secondary)); }
+.collection-nav:hover, .collection-nav.current { color:rgb(var(--primary)); }
+.collection-nav svg { width:1.375rem; height:1.375rem; }
+.collection-badge { position:absolute; top:0; right:0; display:grid; place-items:center; min-width:1.25rem; height:1.25rem; padding-inline:.125rem; border-radius:50%; font-size:.6875rem; background:rgb(var(--primary)); color:white; }
 .store-wordmark { display: inline-flex; align-items: center; min-height: 2.75rem; font: 400 2.25rem/1 var(--font-serif); letter-spacing: -.045em; color: rgb(var(--primary-dark)); }
 nav a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 nav a.current { color: rgb(var(--primary)); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .6em; }

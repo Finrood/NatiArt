@@ -25,12 +25,14 @@ function makeProduct(id: string): Product {
 
 describe('ProductDetailComponent', () => {
   let paramMap$: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
+  let queryParamMap$: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
   let getProduct: jasmine.Spy;
   let fixture: ComponentFixture<ProductDetailComponent>;
   let component: ProductDetailComponent;
 
   beforeEach(async () => {
     paramMap$ = new BehaviorSubject(convertToParamMap({ id: 'p1' }));
+    queryParamMap$ = new BehaviorSubject(convertToParamMap({}));
     getProduct = jasmine.createSpy('getProduct').and.callFake((id: string) => of(makeProduct(id)));
 
     await TestBed.configureTestingModule({
@@ -38,7 +40,7 @@ describe('ProductDetailComponent', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-                { provide: ActivatedRoute, useValue: { paramMap: paramMap$.asObservable(), queryParamMap: of(convertToParamMap({})) } },
+        { provide: ActivatedRoute, useValue: { paramMap: paramMap$.asObservable(), queryParamMap: queryParamMap$.asObservable() } },
         {
           provide: ProductService,
           useValue: {
@@ -59,6 +61,17 @@ describe('ProductDetailComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('returns to the originating saved or shared collection and rejects untrusted return paths', (): void => {
+    queryParamMap$.next(convertToParamMap({collection: 'saved'})); fixture.detectChanges();
+    expect(component.$collectionReturn()).toEqual({});
+    expect(fixture.nativeElement.querySelector('.detail-back').textContent).toContain('Back to collection');
+    queryParamMap$.next(convertToParamMap({collection: 'a,b'})); fixture.detectChanges();
+    expect(component.$collectionReturn()).toEqual({pieces: 'a,b'});
+    queryParamMap$.next(convertToParamMap({collection: 'https://elsewhere'})); fixture.detectChanges();
+    expect(component.$collectionReturn()).toBeNull();
+    expect(fixture.nativeElement.querySelector('.detail-back').textContent).toContain('Collections');
   });
 
   it('limits the quantity control to the server per-product cap', () => {

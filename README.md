@@ -39,3 +39,9 @@ Purchase emails, shipment tracking and the order workspace are described in
 [the purchase journey guide](backend/product-service/docs/purchase-journey.md).
 Follow [the complete production setup checklist](docs/production-setup.md) to connect
 real payments, freight, mail, storage and customer support.
+
+Shoppers can save up to 24 pieces in this browser and share a public collection
+without signing in. Prices and availability are checked again when they visit;
+saved pieces do not reserve stock. This feature needs no additional service or
+configuration. See [the collection review and visual evidence](docs/design-review/saved-collection-2026-10-10/README.md)
+and [the storage and sharing contract](frontend/natiart-app/src/app/product/docs/saved-collection.md).

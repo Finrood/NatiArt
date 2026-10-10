@@ -1,5 +1,9 @@
 <div class="art-page product-detail">
-  <a routerLink="/products" [queryParams]="$catalogContext()" class="detail-back"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 12H4m6-6-6 6 6 6"/></svg><span i18n>Collections</span></a>
+  @if ($collectionReturn(); as context) {
+    <a routerLink="/collection" [queryParams]="context" class="detail-back"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 12H4m6-6-6 6 6 6"/></svg><span i18n="@@collectionBack">Back to collection</span></a>
+  } @else {
+    <a routerLink="/products" [queryParams]="$catalogContext()" class="detail-back"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 12H4m6-6-6 6 6 6"/></svg><span i18n>Collections</span></a>
+  }
   <main class="min-w-0" [attr.aria-busy]="isLoading">
     @if (product$ | async; as product) {
       <div class="product-content">
@@ -8,6 +12,7 @@
           <header class="product-heading min-w-0 [overflow-wrap:anywhere]">
             <a routerLink="/products" [queryParams]="{categoryId: product.categoryId}" class="art-eyebrow category-link">{{ product.categoryLabel || categoryUnavailable }}</a>
             <h1 class="art-title mb-4">{{ product.label }}</h1>
+            @if (product.active !== false) { <app-saved-piece-toggle [product]="product"></app-saved-piece-toggle> }
           </header>
 
           <div class="gallery-column min-w-0">

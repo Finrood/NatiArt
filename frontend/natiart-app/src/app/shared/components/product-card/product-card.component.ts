@@ -7,12 +7,14 @@ import {EMPTY_PRODUCT_IMAGE} from '../../../product/service/image-loader.service
 import {AddToCartButtonComponent} from '../../../product/components/customer/add-to-cart-button/add-to-cart-button.component';
 import {CatalogContext} from '../../models/catalog-context';
 import {ProductComparisonService} from '../../../product/service/product-comparison.service';
+import {SavedPieceToggleComponent} from '../saved-piece-toggle.component';
 
-@Component({selector: 'app-product-card', imports: [CurrencyPipe, RouterLink, AddToCartButtonComponent],
+@Component({selector: 'app-product-card', imports: [CurrencyPipe, RouterLink, AddToCartButtonComponent, SavedPieceToggleComponent],
   templateUrl: './product-card.component.html', styleUrl: './product-card.component.css', host: {class: 'block h-full min-w-0'}})
 export class ProductCardComponent {
   readonly comparison: ProductComparisonService = inject(ProductComparisonService);
   readonly $compareEnabled: InputSignal<boolean> = input<boolean>(false, {alias: 'compareEnabled'});
+  readonly $saveEnabled: InputSignal<boolean> = input<boolean>(true, {alias: 'saveEnabled'});
   readonly $imagePriority: InputSignal<boolean> = input<boolean>(false, {alias: 'imagePriority'});
   readonly $comparisonName: Signal<string> = computed<string>((): string => $localize`Compare ${this.$product().label}`);
   readonly $product = input.required<Product>({alias: 'product'});

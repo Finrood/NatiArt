@@ -4,6 +4,7 @@ import {adminGuard} from "./directory/guards/admin.guard";
 import {productGuard} from "./product/guards/product-guard.guard";
 
 export const routes: Routes = [
+  {path: 'collection', loadComponent: () => import('./product/components/customer/saved-collection/saved-collection.component').then(m => m.SavedCollectionComponent)},
   {
     path: 'login',
     loadComponent: () => import('./directory/components/auth/login/login.component').then(m => m.LoginComponent)

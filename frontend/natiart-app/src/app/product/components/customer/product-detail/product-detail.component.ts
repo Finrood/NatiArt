@@ -17,6 +17,8 @@ import {ButtonComponent} from "../../../../shared/components/button.component";
 import {reportError} from '../../../../shared/service/error-reporting.service';
 import {CatalogContext} from '../../../../shared/models/catalog-context';
 import {toSignal} from '@angular/core/rxjs-interop';
+import {SavedPieceToggleComponent} from '../../../../shared/components/saved-piece-toggle.component';
+import {collectionReturnContext} from '../../../service/saved-collection.service';
 
 interface DetailImage { key: string; url: string | null; state: ImageState; }
 
@@ -27,6 +29,7 @@ interface DetailImage { key: string; url: string | null; state: ImageState; }
     FormsModule,
     CurrencyPipe,
     ProductCardComponent,
+    SavedPieceToggleComponent,
     NgStyle,
     PersonalizationModalComponent,
     RouterLink,
@@ -87,8 +90,13 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
   private readonly _route: ActivatedRoute = inject(ActivatedRoute);
   readonly $catalogContext: Signal<CatalogContext> = toSignal(this._route.queryParamMap.pipe(
-    map((params: ParamMap): CatalogContext => ({categoryId: params.get('categoryId'), query: params.get('query'), page: params.get('page')}))
+    map((params: ParamMap): CatalogContext => ({categoryId: params.get('categoryId'), query: params.get('query'), page: params.get('page'),
+      collection: collectionReturnContext(params.get('collection'))}))
   ), {initialValue: {}});
+  readonly $collectionReturn: Signal<{pieces?: string} | null> = computed<{pieces?: string} | null>((): {pieces?: string} | null => {
+    const context: string | null | undefined = this.$catalogContext().collection;
+    return context ? context === 'saved' ? {} : {pieces: context} : null;
+  });
   private readonly _productService: ProductService = inject(ProductService);
   private readonly _renderer: Renderer2 = inject(Renderer2);
   private readonly _cartService: CartService = inject(CartService);

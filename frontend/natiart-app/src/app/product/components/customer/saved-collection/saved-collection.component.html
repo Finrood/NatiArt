@@ -1,0 +1,68 @@
+<main class="art-page collection-page" [attr.aria-busy]="$busy()">
+  <header class="collection-intro">
+    <p class="art-eyebrow" i18n="@@collectionEyebrow">Pieces worth keeping</p>
+    <h1 #heading data-page-heading tabindex="-1" class="art-title">@if ($shared()) { <span i18n="@@collectionSharedTitle">A collection, shared with you.</span> } @else { <span i18n="@@collectionTitle">Your collection.</span> }</h1>
+    <p class="collection-description">@if ($shared()) { <span i18n="@@collectionSharedIntro">Take a closer look. Keep the pieces you love, or compare two before choosing.</span> } @else { <span i18n="@@collectionIntro">A little room for the pieces you love. Save them now, come back when you are ready.</span> }</p>
+    <p class="collection-note">@if ($shared()) { <span i18n="@@collectionSharedPrivacy">Nothing is saved automatically. Choose Save or Keep these pieces to add to this browser's collection (up to 24). Saved pieces are visible to anyone using this browser and are not reserved.</span> } @else { <span i18n="@@collectionPrivacy">Up to 24 pieces, saved on this browser. They are visible to anyone using it and are not reserved. Prices and availability are checked when you visit.</span> }</p>
+    @if (!collection.$storageAvailable()) { <p role="alert" class="collection-warning" i18n="@@collectionTemporary">Your collection works for this visit, but this browser could not save it. Copy its link to keep it.</p> }
+  </header>
+
+  @if ($shared()?.invalid) {
+    <section class="art-empty"><p role="alert" i18n="@@collectionInvalid">This collection link is incomplete or invalid.</p><a routerLink="/collection" class="art-action mt-5" i18n="@@collectionMy">Open your collection</a></section>
+  } @else {
+    <div class="collection-toolbar">
+      <p class="collection-count">{{ $rows().length }}@if ($rows().length === 1) { <span i18n="@@collectionCountOne">piece to revisit</span> } @else { <span i18n="@@collectionCount">pieces to revisit</span> }</p>
+      <div class="collection-actions">
+        @if ($rows().length) {
+          <button type="button" class="art-link" (click)="share()" i18n="@@collectionShare">Share collection</button>
+          <button type="button" class="art-link" [disabled]="$busy()" (click)="refresh()" i18n="@@collectionRefresh">Check again</button>
+          @if (!$shared()) { <button type="button" class="art-link" (click)="clear()" i18n="@@collectionClear">Clear collection</button> }
+        }
+        @if ($shared()) {
+          <button type="button" class="art-action" [disabled]="$busy() || !$canKeep()" (click)="keep()" i18n="@@collectionKeep">Keep these pieces</button>
+          <a routerLink="/collection" class="art-link" i18n="@@collectionMy">Open your collection</a>
+        }
+      </div>
+    </div>
+
+    @if ($shareOpen()) {
+      <section class="collection-share" aria-label="Share collection" i18n-aria-label="@@collectionShare">
+        <label for="collection-link" i18n="@@collectionLink">Collection link</label>
+        <p class="text-sm text-text-muted" i18n="@@collectionSharingNote">Anyone with this link can view these public pieces. Your details, artwork and shopping cart are not included. The link keeps this selection even if you edit your collection later.</p>
+        <div class="share-field"><input #shareLink id="collection-link" type="text" readonly [value]="$shareUrl()" (click)="shareLink.select()" class="form-input"><button type="button" class="art-action" (click)="copy()" i18n="@@collectionCopy">Copy link</button></div>
+        <p role="status" class="text-sm">{{ $copyMessage() }}</p>
+      </section>
+    }
+
+    @if (!$shared() && collection.$undo().length) {
+      <div class="collection-undo"><p i18n="@@collectionUndoNote">Changed your mind? Your last removal can be restored during this visit.</p><button type="button" class="art-link" (click)="undo()" i18n="@@collectionUndo">Undo removal</button></div>
+    }
+
+    <div class="art-grid collection-grid" [class.three-pieces]="$rows().length === 3">
+      @for (row of $rows(); track row.id) {
+        <div class="collection-piece">
+          @if (row.state === 'loaded' && row.product; as product) {
+            <app-product-card [product]="product" [catalogContext]="$catalogContext()" [compareEnabled]="true" [saveEnabled]="!!$shared()" [imageUrl]="images.urls()[row.id] || emptyImage"
+              [imageLoading]="images.states()[row.id] === 'loading'" (imageFailed)="images.failed(row.id)"></app-product-card>
+          } @else {
+            <article class="collection-unchecked">
+              <div class="aspect-square" [class.art-skeleton]="row.state === 'loading'"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M6 3h12v18l-6-4-6 4V3Z"/></svg></div>
+              <h2>{{ row.label }}</h2>
+              @if (row.state === 'loading') { <p role="status" i18n="@@collectionChecking">Checking this piece...</p> }
+              @else if (row.state === 'unavailable') { <p i18n="@@collectionUnavailable">This piece is no longer available to view.</p> }
+              @else { <p role="alert" i18n="@@collectionCheckError">We could not check this piece. Your saved choice is still here.</p><button type="button" class="art-link" (click)="retry(row.id)" i18n="@@collectionRetry">Retry this piece</button> }
+            </article>
+          }
+          @if (!$shared()) { <button type="button" class="collection-remove art-link" [attr.aria-label]="removeLabel(row.label)" (click)="remove(row.id)" i18n="@@collectionRemove">Remove</button> }
+        </div>
+      } @empty {
+        <section class="collection-empty">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M6 3h12v18l-6-4-6 4V3Z"/></svg>
+          <h2 i18n="@@collectionEmptyTitle">Start with a piece you love.</h2>
+          <p i18n="@@collectionEmptyIntro">Choose Save piece as you explore. Your collection will be waiting here on your next visit to this browser.</p>
+          <a routerLink="/products" class="art-action" i18n>Explore Collections</a>
+        </section>
+      }
+    </div>
+  }
+</main>

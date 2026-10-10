@@ -44,4 +44,15 @@ describe('Tab-local product comparison', (): void => {
     expect((): void => service.toggle(piece('a'), {})).not.toThrow();
     expect(service.isSelected('a')).toBeTrue();
   });
+
+  it('retains a validated collection return path and rejects arbitrary destinations', (): void => {
+    const service: ProductComparisonService = TestBed.inject(ProductComparisonService);
+    service.toggle(piece('a'), {collection: 'saved'});
+    service.toggle(piece('b'), {collection: 'a,b'});
+    expect(service.$pieces()[0].context.collection).toBe('saved');
+    expect(service.$pieces()[1].context.collection).toBe('a,b');
+    service.clear();
+    service.toggle(piece('a'), {collection: 'https://elsewhere'});
+    expect(service.$pieces()[0].context.collection).toBeUndefined();
+  });
 });

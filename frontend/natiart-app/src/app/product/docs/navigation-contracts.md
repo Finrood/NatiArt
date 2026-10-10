@@ -8,7 +8,7 @@ CA23 backend before releasing this route. The identical catalog/shared helper
 files in CA23/CA27 should be retained once when resolving their route overlap;
 preserve CA27 informational/404 routes and CA23 admin/sidebar pagination.
 
-Desktop and mobile account navigation expose logout. Unfinished Google sign-in, wishlist, header search and newsletter controls are
+Desktop and mobile account navigation expose logout. Unfinished Google sign-in, header search and newsletter controls are
 omitted; the catalog search form is implemented. CA61 provides actual order history and should retain its
 account page when combined. No contact address or shipping policy is fabricated.
 Unknown URLs retain the explicit not-found view.
@@ -24,10 +24,11 @@ the existing dirty-form confirmation still protects unsaved entries.
 Locale links now live inside desktop navigation and the phone's native menu
 dialog. Closing that dialog retains the accessible-dialog focus contract.
 
-Home, product details and the browser-local cart are public. Authentication is
-required when proceeding to checkout, viewing orders or using administration.
-The checkout guard preserves its destination for sign-in; guest cart contents
-remain in browser storage and are validated by the server at checkout.
+Home, product details, saved collections and the browser-local cart are public.
+Checkout supports signed-in and guest buyers. Account order history and
+administration require authentication; guest order viewing requires the existing
+email-verification/capability flow. Guest cart contents remain in browser storage
+and are validated by the server at checkout.
 
 Categories are collapsed behind Filters on phones and remain visible on desktop.
 Selecting a category closes the phone panel. A removable category chip reflects
@@ -35,9 +36,10 @@ the router filter, including a fallback label for a category outside the loaded 
 This category rail belongs to Collections; Home and product details lead directly
 with artwork and product information rather than repeating it.
 
-Unpublished About, Contact, FAQ and Shipping & Returns links are omitted. Their
-legacy URLs redirect to Collections. Care instructions and the explicit unknown
-page remain available. Reintroduce business pages only with verified content.
+Unpublished About and Shipping & Returns links are omitted; their legacy URLs
+redirect to Collections. Contact and FAQ share the working order-help center,
+available through the footer. Care instructions and the explicit unknown page
+remain available. Reintroduce business policies only with verified content.
 
 The app shell owns one shared store header across shopping, cart, checkout,
 account, informational and admin screens. New routes scroll to the top; Back
@@ -114,12 +116,13 @@ Home and Collections expose a separate, named Compare toggle on each identified
 piece. It is a sibling above the stretched product link, never nested inside it.
 Two selections form a viewing table. Selected pieces remain removable at the
 limit; other toggles disable until one is removed. The global tray appears only
-on Home, Collections and product detail, and is absent during checkout, account,
+on Home, Collections, saved/shared collections and product detail, and is absent
+during checkout, account,
 authentication and administration. Its reserved footer space keeps the bottom
 of each shopping page reachable.
 
 The root comparison service retains at most two public IDs, labels and whitelisted
-catalog contexts in sessionStorage for this tab. It restores a sanitized pair
+catalog/collection return contexts in sessionStorage for this tab. It restores a sanitized pair
 through Back, pagination, reload and locale navigation. It stores no price,
 availability, customer identity, file or payment data. Blocked/malformed storage
 falls back to an in-memory selection. Clearing affects comparison only.
@@ -138,3 +141,10 @@ loading feedback, without moving focus if the shopper has already moved elsewher
 The heavier comparison panel is deferred until the first selection. The root's
 polite status region is present before selections change, so this loading step
 does not create the announcement region after the event it needs to report.
+
+The public `/collection` route stores a browser-owned shortlist independently of
+authentication. Its shared-link variant requires an explicit save; opening a link
+does not replace the recipient's list. Product/related/comparison links carry a
+validated `collection` return context and expose Back to collection. Cart and
+checkout remain separate. See [saved-collection.md](saved-collection.md) for
+storage, concurrency, freshness, privacy and accessible recovery contracts.

@@ -10,6 +10,7 @@ import {FooterComponent} from "./shared/components/shared/footer/footer.componen
 import {AuthenticationService} from "./directory/service/authentication.service";
 import {ProductComparisonComponent} from './shared/components/product-comparison/product-comparison.component';
 import {ProductComparisonService} from './product/service/product-comparison.service';
+import {SavedCollectionService} from './product/service/saved-collection.service';
 
 @Component({
     selector: 'app-root',
@@ -20,6 +21,7 @@ import {ProductComparisonService} from './product/service/product-comparison.ser
 export class AppComponent {
   readonly title: string = 'NatiArt';
   readonly comparison: ProductComparisonService = inject(ProductComparisonService);
+  readonly collection: SavedCollectionService = inject(SavedCollectionService);
 
   private readonly _element = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly _router = inject(Router);

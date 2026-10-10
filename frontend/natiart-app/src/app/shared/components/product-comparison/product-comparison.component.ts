@@ -101,5 +101,5 @@ export class ProductComparisonComponent implements OnDestroy {
 
   ngOnDestroy(): void { this.close(); }
 
-  private isShopping(url: string): boolean { return /^\/(dashboard|products)([/?#]|$)/.test(url) || url.startsWith('/product/'); }
+  private isShopping(url: string): boolean { return /^\/(dashboard|products|collection)([/?#]|$)/.test(url) || url.startsWith('/product/'); }
 }

@@ -1,0 +1,127 @@
+{
+  "method": "Static import closure (raw bytes); excludes dynamic imports; not an HTTP transfer or timing measurement.",
+  "versions": [
+    {
+      "version": "before",
+      "entry": "chunk-BNN4TR3o.js",
+      "staticClosureBytes": 1938147,
+      "files": [
+        {
+          "name": "chunk-BNN4TR3o.js",
+          "bytes": 1449004
+        },
+        {
+          "name": "chunk-BeS4xlVs.js",
+          "bytes": 15016
+        },
+        {
+          "name": "chunk-Bw-I-_qy.js",
+          "bytes": 571
+        },
+        {
+          "name": "chunk-CKSHX5lO.js",
+          "bytes": 54671
+        },
+        {
+          "name": "chunk-C_y7wF1V.js",
+          "bytes": 248522
+        },
+        {
+          "name": "chunk-Ccu1pyhC.js",
+          "bytes": 2011
+        },
+        {
+          "name": "chunk-CiiC2OYM.js",
+          "bytes": 1939
+        },
+        {
+          "name": "chunk-Cj30Ilxt.js",
+          "bytes": 2770
+        },
+        {
+          "name": "chunk-D3ZFUFpb.js",
+          "bytes": 109
+        },
+        {
+          "name": "chunk-D9hXsflf.js",
+          "bytes": 975
+        },
+        {
+          "name": "chunk-Drm5hBJw.js",
+          "bytes": 9518
+        },
+        {
+          "name": "chunk-qJgdnB8S.js",
+          "bytes": 870
+        },
+        {
+          "name": "main-H3RJ2C22.js",
+          "bytes": 152171
+        }
+      ]
+    },
+    {
+      "version": "after",
+      "entry": "chunk-Dzc2ZuZ6.js",
+      "staticClosureBytes": 590531,
+      "files": [
+        {
+          "name": "chunk-BLg8s_GQ.js",
+          "bytes": 15047
+        },
+        {
+          "name": "chunk-BS9nxW1P.js",
+          "bytes": 54690
+        },
+        {
+          "name": "chunk-Bhdb94v3.js",
+          "bytes": 947
+        },
+        {
+          "name": "chunk-Bw-I-_qy.js",
+          "bytes": 571
+        },
+        {
+          "name": "chunk-C0F2UBRn.js",
+          "bytes": 974
+        },
+        {
+          "name": "chunk-CMdOhWcu.js",
+          "bytes": 9518
+        },
+        {
+          "name": "chunk-CtYarVZ4.js",
+          "bytes": 2770
+        },
+        {
+          "name": "chunk-D3ZFUFpb.js",
+          "bytes": 109
+        },
+        {
+          "name": "chunk-DitweG36.js",
+          "bytes": 869
+        },
+        {
+          "name": "chunk-DxGlKCM4.js",
+          "bytes": 2054
+        },
+        {
+          "name": "chunk-Dzc2ZuZ6.js",
+          "bytes": 96346
+        },
+        {
+          "name": "chunk-HW6T9jc7.js",
+          "bytes": 247212
+        },
+        {
+          "name": "chunk-dK4BO2Ux.js",
+          "bytes": 1941
+        },
+        {
+          "name": "main-MBVCNNZ2.js",
+          "bytes": 157483
+        }
+      ]
+    }
+  ]
+}

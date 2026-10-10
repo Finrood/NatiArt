@@ -5,6 +5,7 @@ import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {AsyncPipe} from "@angular/common";
 import {CartService} from "../../../service/cart.service";
 import {Observable} from "rxjs";
+import {SavedCollectionService} from '../../../service/saved-collection.service';
 import {CartModalComponent} from "../cart-modal/cart-modal.component";
 import {AuthenticationService} from "../../../../directory/service/authentication.service";
 import {Event, NavigationSkipped, NavigationStart, Router, RouterLink, RouterLinkActive} from "@angular/router";
@@ -23,6 +24,7 @@ import {Event, NavigationSkipped, NavigationStart, Router, RouterLink, RouterLin
     styleUrl: './top-menu.component.css'
 })
 export class TopMenuComponent implements OnInit {
+  readonly collection: SavedCollectionService = inject(SavedCollectionService);
   readonly $isLoggedIn: WritableSignal<boolean> = signal(false);
   readonly $isAdmin: WritableSignal<boolean> = signal(false);
   get isLoggedIn(): boolean { return this.$isLoggedIn(); }

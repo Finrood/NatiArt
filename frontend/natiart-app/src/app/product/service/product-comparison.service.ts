@@ -2,6 +2,7 @@ import {inject, Injectable, Signal, signal, WritableSignal} from '@angular/core'
 import {DOCUMENT} from '@angular/common';
 import {Product} from '../models/product.model';
 import {CatalogContext} from '../../shared/models/catalog-context';
+import {collectionReturnContext} from './saved-collection.service';
 
 export interface ComparedPiece {
   id: string;
@@ -48,7 +49,9 @@ export class ProductComparisonService {
 
   private cleanContext(context: CatalogContext): CatalogContext {
     const page: number = Number(context.page ?? 0);
+    const collection: string | null = collectionReturnContext(context.collection);
     return {
+      ...(collection ? {collection} : {}),
       categoryId: typeof context.categoryId === 'string' ? context.categoryId.slice(0, 200) : null,
       query: typeof context.query === 'string' ? context.query.slice(0, 200) : null,
       page: Number.isSafeInteger(page) && page >= 0 ? page : 0
@@ -58,7 +61,7 @@ export class ProductComparisonService {
   private restore(): ComparedPiece[] {
     try {
       const raw: string | null | undefined = this._document.defaultView?.sessionStorage.getItem(STORAGE_KEY);
-      if (!raw || raw.length > 5000) return [];
+      if (!raw || raw.length > 15000) return [];
       const parsed: unknown = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
       const restored: ComparedPiece[] = [];
